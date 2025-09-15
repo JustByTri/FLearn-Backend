@@ -1,0 +1,16 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace DAL.Models
+{
+    public  class Achievement
+    {
+         public Guid AchivementID { get; set; }
+        public string? AchivementName { get; set; }
+        public string? IconUrl { get; set; }
+        public string? Critertia { get; set; }
+    }
+}

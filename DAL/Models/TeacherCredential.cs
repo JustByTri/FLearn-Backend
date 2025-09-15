@@ -1,0 +1,37 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
+
+namespace DAL.Models
+{
+    public class TeacherCredential
+    {
+        [Key]
+        public Guid TeacherCredentialID { get; set; }
+
+        [Required]
+        public Guid UserID { get; set; }
+
+        [Required]
+        [StringLength(200)]
+        public string CredentialName { get; set; }
+
+        [StringLength(300)]
+        public string CredentialFileUrl { get; set; }
+
+        public Guid ApplicationID { get; set; }
+        public TeacherApplication? Application { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public enum CredentialType
+        {
+            IdentityProof,
+            TeachingCertificate,
+            Other
+        }
+        public CredentialType Type { get; set; }
+        public User? User { get; set; }
+    }
+}

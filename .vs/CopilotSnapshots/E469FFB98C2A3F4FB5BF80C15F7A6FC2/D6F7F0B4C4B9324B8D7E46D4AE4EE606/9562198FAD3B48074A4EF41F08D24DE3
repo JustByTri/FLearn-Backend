@@ -1,0 +1,154 @@
+﻿using Microsoft.EntityFrameworkCore;
+using DAL.Models;
+
+namespace DAL.DBContext;
+
+public class ApplicationDbContext : DbContext
+{
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
+    {
+    }
+
+    // DbSets
+    public DbSet<User> Users { get; set; }
+    public DbSet<Role> Roles { get; set; }
+    public DbSet<UserRole> UserRoles { get; set; }
+    public DbSet<Language> Languages { get; set; }
+    public DbSet<ExchangeRate> ExchangeRates { get; set; }
+    public DbSet<Geography> Geographies { get; set; }
+    public DbSet<Location> Locations { get; set; }
+    public DbSet<Industry> Industries { get; set; }
+    public DbSet<Sector> Sectors { get; set; }
+    public DbSet<Educational> Educational { get; set; }
+    public DbSet<Technical> Technical { get; set; }
+    public DbSet<Practical> Practical { get; set; }
+    public DbSet<Legal> Legal { get; set; }
+    public DbSet<Contract> Contracts { get; set; }
+    public DbSet<Revenue> Revenues { get; set; }
+    public DbSet<Expense> Expenses { get; set; }
+    public DbSet<Equipment> Equipment { get; set; }
+    public DbSet<Transaction> Transactions { get; set; }
+    public DbSet<LocationGeography> LocationGeographies { get; set; }
+    public DbSet<LocationIndustry> LocationIndustries { get; set; }
+    public DbSet<CourseInformationField> CourseInformationFields { get; set; }
+    public DbSet<UserInformationField> UserInformationFields { get; set; }
+    public DbSet<IndustryInformationField> IndustryInformationFields { get; set; }
+    public DbSet<SectorInformationField> SectorInformationFields { get; set; }
+    public DbSet<TechnicalInformationField> TechnicalInformationFields { get; set; }
+    public DbSet<PracticalInformationField> PracticalInformationFields { get; set; }
+    public DbSet<EducationalInformationField> EducationalInformationFields { get; set; }
+    public DbSet<LegalInformationField> LegalInformationFields { get; set; }
+    public DbSet<GeographyInformationField> GeographyInformationFields { get; set; }
+    public DbSet<LocationGeographyInformationField> LocationGeographyInformationFields { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // Configure User entity
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasIndex(e => e.Email).IsUnique();
+            entity.HasIndex(e => e.Username).IsUnique();
+        });
+
+        // Configure UserRole relationships
+        modelBuilder.Entity<UserRole>(entity =>
+        {
+            entity.HasIndex(e => new { e.UserId, e.RoleId }).IsUnique();
+        });
+
+        // Configure ExchangeRate
+        modelBuilder.Entity<ExchangeRate>(entity =>
+        {
+            entity.HasIndex(e => new { e.FromCurrency, e.ToCurrency, e.ExchangeDate });
+        });
+
+        // Configure LocationGeography relationships
+        modelBuilder.Entity<LocationGeography>(entity =>
+        {
+            entity.HasIndex(e => new { e.LocationId, e.GeographyId }).IsUnique();
+        });
+
+        // Configure LocationIndustry relationships
+        modelBuilder.Entity<LocationIndustry>(entity =>
+        {
+            entity.HasIndex(e => new { e.LocationId, e.IndustryId }).IsUnique();
+        });
+
+        // Configure Equipment
+        modelBuilder.Entity<Equipment>(entity =>
+        {
+            entity.HasIndex(e => e.SerialNumber).IsUnique();
+        });
+
+        // Configure Language
+        modelBuilder.Entity<Language>(entity =>
+        {
+            entity.HasIndex(e => e.LanguageCode).IsUnique();
+        });
+
+        // Configure Industry
+        modelBuilder.Entity<Industry>(entity =>
+        {
+            entity.HasIndex(e => e.IndustryCode).IsUnique();
+        });
+
+        // Configure Sector
+        modelBuilder.Entity<Sector>(entity =>
+        {
+            entity.HasIndex(e => e.SectorCode).IsUnique();
+        });
+
+        // Configure information field tables indexes
+        modelBuilder.Entity<UserInformationField>(entity =>
+        {
+            entity.HasIndex(e => new { e.UserId, e.FieldName });
+        });
+
+        modelBuilder.Entity<IndustryInformationField>(entity =>
+        {
+            entity.HasIndex(e => new { e.IndustryId, e.FieldName });
+        });
+
+        modelBuilder.Entity<SectorInformationField>(entity =>
+        {
+            entity.HasIndex(e => new { e.SectorId, e.FieldName });
+        });
+
+        modelBuilder.Entity<TechnicalInformationField>(entity =>
+        {
+            entity.HasIndex(e => new { e.TechnicalId, e.FieldName });
+        });
+
+        modelBuilder.Entity<PracticalInformationField>(entity =>
+        {
+            entity.HasIndex(e => new { e.PracticalId, e.FieldName });
+        });
+
+        modelBuilder.Entity<EducationalInformationField>(entity =>
+        {
+            entity.HasIndex(e => new { e.EducationalId, e.FieldName });
+        });
+
+        modelBuilder.Entity<LegalInformationField>(entity =>
+        {
+            entity.HasIndex(e => new { e.LegalId, e.FieldName });
+        });
+
+        modelBuilder.Entity<GeographyInformationField>(entity =>
+        {
+            entity.HasIndex(e => new { e.GeographyId, e.FieldName });
+        });
+
+        modelBuilder.Entity<CourseInformationField>(entity =>
+        {
+            entity.HasIndex(e => new { e.EducationalId, e.FieldName });
+        });
+
+        modelBuilder.Entity<LocationGeographyInformationField>(entity =>
+        {
+            entity.HasIndex(e => new { e.LocationGeographyId, e.FieldName });
+        });
+    }
+}

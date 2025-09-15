@@ -1,0 +1,18 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace DAL.Models
+{
+    public class PurchasesDetail
+    {
+        public Guid PurchasesDetailID { get; set; }
+        public Guid PurchasesID { get; set; }
+        public Purchases? Purchases { get; set; }
+        public Guid CourseID { get; set; }
+        public Course? Course { get; set; }
+        public decimal Amount { get; set; }
+    }
+}

@@ -1,0 +1,30 @@
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace DAL.Models;
+
+[Table("SectorInformationFields")]
+public class SectorInformationField
+{
+    [Key]
+    public int SectorInformationFieldId { get; set; }
+
+    [Required]
+    public int SectorId { get; set; }
+
+    [Required]
+    [StringLength(100)]
+    public string FieldName { get; set; } = string.Empty;
+
+    [StringLength(2000)]
+    public string? FieldValue { get; set; }
+
+    [StringLength(50)]
+    public string? FieldType { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // Navigation properties
+    [ForeignKey("SectorId")]
+    public virtual Sector Sector { get; set; } = null!;
+}

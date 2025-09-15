@@ -1,0 +1,49 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
+
+namespace DAL.Models
+{
+    public class Lesson
+    {
+        [Key]
+        public Guid LessonID { get; set; }
+
+        [Required]
+        [StringLength(200)]
+        public string Title { get; set; }
+
+        public string Content { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string Position { get; set; }
+
+        [Required]
+        [StringLength(100)]
+        public string SkillFocus { get; set; }
+
+        [Required]
+        [StringLength(500)]
+        public string Description { get; set; }
+
+        [Required]
+        public DateTime IsPublished { get; set; }
+
+        [Required]
+        public Guid CourseUnitID { get; set; }
+
+        public CourseUnit? CourseUnit { get; set; }
+
+        [Required]
+        public DateTime CreateAt { get; set; }
+
+        [Required]
+        public DateTime UpdatedAt { get; set; }
+
+        public ICollection<Exercise> Exerices { get; set; }
+    }
+}

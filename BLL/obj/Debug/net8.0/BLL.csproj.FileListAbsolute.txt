@@ -1,0 +1,17 @@
+D:\F-Learn\F-Learn-BackEnd\BLL\bin\Debug\net8.0\BLL.deps.json
+D:\F-Learn\F-Learn-BackEnd\BLL\bin\Debug\net8.0\BLL.dll
+D:\F-Learn\F-Learn-BackEnd\BLL\bin\Debug\net8.0\BLL.pdb
+D:\F-Learn\F-Learn-BackEnd\BLL\obj\Debug\net8.0\BLL.csproj.AssemblyReference.cache
+D:\F-Learn\F-Learn-BackEnd\BLL\obj\Debug\net8.0\BLL.GeneratedMSBuildEditorConfig.editorconfig
+D:\F-Learn\F-Learn-BackEnd\BLL\obj\Debug\net8.0\BLL.AssemblyInfoInputs.cache
+D:\F-Learn\F-Learn-BackEnd\BLL\obj\Debug\net8.0\BLL.AssemblyInfo.cs
+D:\F-Learn\F-Learn-BackEnd\BLL\obj\Debug\net8.0\BLL.csproj.CoreCompileInputs.cache
+D:\F-Learn\F-Learn-BackEnd\BLL\obj\Debug\net8.0\BLL.csproj.Up2Date
+D:\F-Learn\F-Learn-BackEnd\BLL\obj\Debug\net8.0\BLL.dll
+D:\F-Learn\F-Learn-BackEnd\BLL\obj\Debug\net8.0\refint\BLL.dll
+D:\F-Learn\F-Learn-BackEnd\BLL\obj\Debug\net8.0\BLL.pdb
+D:\F-Learn\F-Learn-BackEnd\BLL\obj\Debug\net8.0\ref\BLL.dll
+D:\F-Learn\F-Learn-BackEnd\BLL\bin\Debug\net8.0\BLL.runtimeconfig.json
+D:\F-Learn\F-Learn-BackEnd\BLL\obj\Debug\net8.0\BLL.genruntimeconfig.cache
+D:\F-Learn\F-Learn-BackEnd\BLL\bin\Debug\net8.0\DAL.dll
+D:\F-Learn\F-Learn-BackEnd\BLL\bin\Debug\net8.0\DAL.pdb

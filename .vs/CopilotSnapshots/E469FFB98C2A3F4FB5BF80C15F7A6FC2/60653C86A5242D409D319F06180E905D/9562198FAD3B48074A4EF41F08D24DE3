@@ -1,0 +1,180 @@
+﻿using Microsoft.EntityFrameworkCore;
+using DAL.Models;
+
+namespace DAL.DBContext;
+
+public class ApplicationDbContext : DbContext
+{
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
+    {
+    }
+
+    // User related DbSets
+    public DbSet<User> Users { get; set; }
+    public DbSet<UserProfile> UserProfiles { get; set; }
+    public DbSet<UserSetting> UserSettings { get; set; }
+    public DbSet<Role> Roles { get; set; }
+    public DbSet<UserRole> UserRoles { get; set; }
+    public DbSet<OTPCode> OTPCodes { get; set; }
+
+    // Language and Learning DbSets
+    public DbSet<Language> Languages { get; set; }
+    public DbSet<UserLanguage> UserLanguages { get; set; }
+    public DbSet<Level> Levels { get; set; }
+    public DbSet<Skill> Skills { get; set; }
+    public DbSet<UserSkill> UserSkills { get; set; }
+
+    // Course structure DbSets
+    public DbSet<Course> Courses { get; set; }
+    public DbSet<CourseVersion> CourseVersions { get; set; }
+    public DbSet<UserCourse> UserCourses { get; set; }
+    public DbSet<Module> Modules { get; set; }
+    public DbSet<ModuleVersion> ModuleVersions { get; set; }
+    public DbSet<Lesson> Lessons { get; set; }
+    public DbSet<LessonVersion> LessonVersions { get; set; }
+    public DbSet<UserLesson> UserLessons { get; set; }
+
+    // Exercise DbSets
+    public DbSet<ExerciseType> ExerciseTypes { get; set; }
+    public DbSet<Exercise> Exercises { get; set; }
+    public DbSet<ExerciseVersion> ExerciseVersions { get; set; }
+
+    // Gamification DbSets
+    public DbSet<Achievement> Achievements { get; set; }
+    public DbSet<UserAchievement> UserAchievements { get; set; }
+    public DbSet<DailyChallenge> DailyChallenges { get; set; }
+    public DbSet<UserDailyChallenge> UserDailyChallenges { get; set; }
+    public DbSet<LeaderBoard> LeaderBoards { get; set; }
+    public DbSet<LeaderBoardEntry> LeaderBoardEntries { get; set; }
+    public DbSet<UserStreak> UserStreaks { get; set; }
+
+    // System DbSets
+    public DbSet<Transaction> Transactions { get; set; }
+    public DbSet<Text> Texts { get; set; }
+    public DbSet<Comment> Comments { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
+    public DbSet<UserNotification> UserNotifications { get; set; }
+                                    
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // Configure User entity
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasIndex(e => e.Email).IsUnique();
+            entity.HasIndex(e => e.Username).IsUnique();
+        });
+
+        // Configure one-to-one relationships
+        modelBuilder.Entity<UserProfile>(entity =>
+        {
+            entity.HasIndex(e => e.UserId).IsUnique();
+        });
+
+        modelBuilder.Entity<UserSetting>(entity =>
+        {
+            entity.HasIndex(e => e.UserId).IsUnique();
+        });
+
+        // Configure UserRole relationships
+        modelBuilder.Entity<UserRole>(entity =>
+        {
+            entity.HasIndex(e => new { e.UserId, e.RoleId }).IsUnique();
+        });
+
+        // Configure Language
+        modelBuilder.Entity<Language>(entity =>
+        {
+            entity.HasIndex(e => e.LanguageCode).IsUnique();
+        });
+
+        // Configure UserLanguage relationships
+        modelBuilder.Entity<UserLanguage>(entity =>
+        {
+            entity.HasIndex(e => new { e.UserId, e.LanguageId }).IsUnique();
+        });
+
+        // Configure UserSkill relationships
+        modelBuilder.Entity<UserSkill>(entity =>
+        {
+            entity.HasIndex(e => new { e.UserId, e.SkillId }).IsUnique();
+        });
+
+        // Configure UserCourse relationships
+        modelBuilder.Entity<UserCourse>(entity =>
+        {
+            entity.HasIndex(e => new { e.UserId, e.CourseId }).IsUnique();
+        });
+
+        // Configure UserLesson relationships
+        modelBuilder.Entity<UserLesson>(entity =>
+        {
+            entity.HasIndex(e => new { e.UserId, e.LessonId }).IsUnique();
+        });
+
+        // Configure UserAchievement relationships
+        modelBuilder.Entity<UserAchievement>(entity =>
+        {
+            entity.HasIndex(e => new { e.UserId, e.AchievementId }).IsUnique();
+        });
+
+        // Configure UserDailyChallenge relationships
+        modelBuilder.Entity<UserDailyChallenge>(entity =>
+        {
+            entity.HasIndex(e => new { e.UserId, e.DailyChallengeId }).IsUnique();
+        });
+
+        // Configure LeaderBoardEntry relationships
+        modelBuilder.Entity<LeaderBoardEntry>(entity =>
+        {
+            entity.HasIndex(e => new { e.LeaderBoardId, e.UserId }).IsUnique();
+            entity.HasIndex(e => new { e.LeaderBoardId, e.Rank });
+        });
+
+        // Configure UserNotification relationships
+        modelBuilder.Entity<UserNotification>(entity =>
+        {
+            entity.HasIndex(e => new { e.UserId, e.NotificationId }).IsUnique();
+        });
+
+        // Configure UserStreak
+        modelBuilder.Entity<UserStreak>(entity =>
+        {
+            entity.HasIndex(e => e.UserId).IsUnique();
+        });
+
+        // Configure Text entity
+        modelBuilder.Entity<Text>(entity =>
+        {
+            entity.HasIndex(e => new { e.TextKey, e.LanguageId }).IsUnique();
+        });
+
+        // Configure OTPCode
+        modelBuilder.Entity<OTPCode>(entity =>
+        {
+            entity.HasIndex(e => new { e.Code, e.Purpose });
+        });
+
+        // Configure ordering indexes
+        modelBuilder.Entity<Course>(entity =>
+        {
+            entity.HasIndex(e => e.OrderIndex);
+        });
+
+        modelBuilder.Entity<Module>(entity =>
+        {
+            entity.HasIndex(e => new { e.CourseId, e.OrderIndex });
+        });
+
+        modelBuilder.Entity<Lesson>(entity =>
+        {
+            entity.HasIndex(e => new { e.ModuleId, e.OrderIndex });
+        });
+
+        modelBuilder.Entity<Exercise>(entity =>
+        {
+            entity.HasIndex(e => new { e.LessonId, e.OrderIndex });
+        });
+    }
+}

@@ -1,0 +1,38 @@
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace DAL.Models;
+
+[Table("Expenses")]
+public class Expense
+{
+    [Key]
+    public int ExpenseId { get; set; }
+
+    [Required]
+    public int ContractId { get; set; }
+
+    [Required]
+    [StringLength(200)]
+    public string Description { get; set; } = string.Empty;
+
+    [Required]
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal Amount { get; set; }
+
+    [Required]
+    [StringLength(3)]
+    public string Currency { get; set; } = "USD";
+
+    [Required]
+    public DateTime ExpenseDate { get; set; }
+
+    [StringLength(100)]
+    public string? Category { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // Navigation properties
+    [ForeignKey("ContractId")]
+    public virtual Contract Contract { get; set; } = null!;
+}

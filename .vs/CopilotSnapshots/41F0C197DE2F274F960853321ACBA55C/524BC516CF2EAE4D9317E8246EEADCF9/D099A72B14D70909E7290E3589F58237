@@ -1,0 +1,47 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace DAL.Models
+{
+    public class Course
+    {
+        
+        public Guid CourseID { get; set; }
+        public string Title { get; set; }
+        public string Description { get; set; }
+        public string CoverImageUrl { get; set; }
+        public decimal Price { get; set; }
+        public Guid TeacherID { get; set; }
+        public User? Teacher { get; set; }
+        public Language? Language { get; set; }
+        public Guid LanguageID { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+        public string Goal { get; set; }
+        public string Level { get; set; }
+        public string SkillFocus { get; set; }
+        public DateTime? PublishedAt { get; set; }
+        public int NumLessons { get; set; }
+        public Guid ApprovedByID { get; set; }
+    public enum CourseStatus
+        {
+            Draft,
+            PendingApproval,
+            Published,
+            Rejected,
+            Archived
+        }
+        public CourseStatus Status { get; set; }
+     
+        public ICollection<CourseUnit> CourseUnits { get; set; }
+        public ICollection<CourseTopic> CourseTopics { get; set; }
+        public ICollection<PurchasesDetail> PurchasesDetails { get; set; }
+
+        public ICollection<Enrollment> Enrollments { get; set; }
+        public ICollection<CourseSubmission> CourseSubmissions { get; set; }
+
+    }
+}

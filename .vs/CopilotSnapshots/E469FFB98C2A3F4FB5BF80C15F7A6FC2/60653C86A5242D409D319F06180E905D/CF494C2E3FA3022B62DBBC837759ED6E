@@ -1,0 +1,26 @@
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace DAL.Models;
+
+[Table("Sectors")]
+public class Sector
+{
+    [Key]
+    public int SectorId { get; set; }
+
+    [Required]
+    [StringLength(200)]
+    public string SectorName { get; set; } = string.Empty;
+
+    [StringLength(1000)]
+    public string? Description { get; set; }
+
+    [StringLength(50)]
+    public string? SectorCode { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // Navigation properties
+    public virtual ICollection<SectorInformationField> SectorInformationFields { get; set; } = new List<SectorInformationField>();
+}
