@@ -28,7 +28,7 @@ namespace DAL.Models
         public string RejectionReason { get; set; } = string.Empty;
         public bool Status { get; set; }
         public Guid TeacherCredentialID { get; set; }
-        public ICollection<TeacherCredential>? Credentials { get; set; }
+        public ICollection<TeacherCredential>? TeacherCredentials { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 }

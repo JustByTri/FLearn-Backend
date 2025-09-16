@@ -30,6 +30,7 @@ namespace DAL.Models
         public DateTime CreatedAt { get; set; }
         public DateTime? Duration { get; set; }
         public Guid ConverationID { get; set; }
+        public Conversation Conversation { get; set; }
         public string Format { get; set; }
     }
 }

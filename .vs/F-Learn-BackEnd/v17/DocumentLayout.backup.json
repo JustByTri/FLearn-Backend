@@ -3,12 +3,288 @@
   "WorkspaceRootPath": "D:\\F-Learn\\F-Learn-BackEnd\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Migrations\\20250915121055_a.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:DAL\\Migrations\\20250915121055_a.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Migrations\\20250916053935_a.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:DAL\\Migrations\\20250916053935_a.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|d:\\f-learn\\f-learn-backend\\common\\common.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}",
+      "RelativeMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|solutionrelative:common\\common.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\daldependencyinjection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\daldependencyinjection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\unitofwork\\unitofwork.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\unitofwork\\unitofwork.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\unitofwork\\iunitofwork.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\unitofwork\\iunitofwork.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\lessonrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\lessonrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\userrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\userrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\roadmapdetailrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\roadmapdetailrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\roadmaprepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\roadmaprepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\refreshtokenrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\refreshtokenrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\reportrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\reportrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\recordingrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\recordingrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\recording.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\recording.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\teachercredentialrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\teachercredentialrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\teacherapplicationrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\teacherapplicationrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\teacherapplication.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\teacherapplication.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\coursesubmissionrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\coursesubmissionrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\topicrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\topicrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\topic.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\topic.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\coursetopicrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\coursetopicrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\purchasesdetailrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\purchasesdetailrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\purchasesdetail.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\purchasesdetail.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\dbcontext\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\dbcontext\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\purchasesrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\purchasesrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\exerciserepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\exerciserepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\courseunitrepository..cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\courseunitrepository..cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\userachievementrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\userachievementrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\userlearninglanguagerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\userlearninglanguagerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\languagerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\languagerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\userrolerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\userrolerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\rolerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\rolerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\basic\\genericrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\basic\\genericrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\enrollmentrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\enrollmentrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\courserepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\courserepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\conversationrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\conversationrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\aifeedbackrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\aifeedbackrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\repositories\\achievementrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\repositories\\achievementrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\irefreshtokenrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\irefreshtokenrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\iuserrolerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\iuserrolerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\iuserrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\iuserrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\iuserlearninglanguagerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\iuserlearninglanguagerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\iuserachievementrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\iuserachievementrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\itopicrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\itopicrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\iteachercredentialrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\iteachercredentialrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\iteacherapplicationrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\iteacherapplicationrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\irolerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\irolerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\iroadmaprepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\iroadmaprepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\iroadmapdetailrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\iroadmapdetailrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\ireportrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\ireportrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\irecordingrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\irecordingrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\ipurchasesrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\ipurchasesrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\ipurchasesdetailrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\ipurchasesdetailrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\ilessonrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\ilessonrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\ilanguagerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\ilanguagerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\iexerciserepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\iexerciserepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\ienrollmentrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\ienrollmentrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\icourseunitrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\icourseunitrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\icoursetopicrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\icoursetopicrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\icoursesubmissionrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\icoursesubmissionrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\icourserepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\icourserepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\iconversationrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\iconversationrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\iaifeedbackrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\iaifeedbackrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\irepositories\\iachievementrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\irepositories\\iachievementrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\basic\\igenericrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\basic\\igenericrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\role.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\role.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\language.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\language.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\userrole.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\userrole.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\roadmap.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\roadmap.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\roadmapdetail.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\roadmapdetail.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\refreshtoken.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\refreshtoken.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\enrollment.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -23,14 +299,6 @@
       "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\lesson.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\language.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\language.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\exercise.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\exercise.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -39,32 +307,12 @@
       "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\teachercredential.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\topic.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\topic.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\userlearninglanguage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\userlearninglanguage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\userrole.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\userrole.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\report.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\report.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\daldependencyinjection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\daldependencyinjection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\role.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\role.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\recording.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\recording.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\achievement.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -119,28 +367,12 @@
       "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\purchases.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\purchasesdetail.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\purchasesdetail.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\teacherapplication.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\teacherapplication.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\coursesubmission.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\coursesubmission.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\aifeedback.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\aifeedback.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|d:\\f-learn\\f-learn-backend\\common\\entities\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|solutionrelative:common\\entities\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|d:\\f-learn\\f-learn-backend\\common\\entities\\baseentity.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|solutionrelative:common\\entities\\baseentity.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|d:\\f-learn\\f-learn-backend\\presentation\\presentation.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}",
@@ -153,10 +385,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|d:\\f-learn\\f-learn-backend\\bll\\bll.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}",
       "RelativeMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|solutionrelative:bll\\bll.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|d:\\f-learn\\f-learn-backend\\common\\common.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}",
-      "RelativeMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|solutionrelative:common\\common.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}"
     }
   ],
   "DocumentGroupContainers": [
@@ -219,32 +447,929 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "20250915121055_a.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Migrations\\20250915121055_a.cs",
-              "RelativeDocumentMoniker": "DAL\\Migrations\\20250915121055_a.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Migrations\\20250915121055_a.cs",
-              "RelativeToolTip": "DAL\\Migrations\\20250915121055_a.cs",
+              "Title": "20250916053935_a.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Migrations\\20250916053935_a.cs",
+              "RelativeDocumentMoniker": "DAL\\Migrations\\20250916053935_a.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Migrations\\20250916053935_a.cs",
+              "RelativeToolTip": "DAL\\Migrations\\20250916053935_a.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T12:10:55.238Z",
+              "WhenOpened": "2025-09-16T05:39:35.747Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "IUnitOfWork.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\UnitOfWork\\IUnitOfWork.cs",
+              "RelativeDocumentMoniker": "DAL\\UnitOfWork\\IUnitOfWork.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\UnitOfWork\\IUnitOfWork.cs",
+              "RelativeToolTip": "DAL\\UnitOfWork\\IUnitOfWork.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAOAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:35:13.282Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "UnitOfWork.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\UnitOfWork\\UnitOfWork.cs",
+              "RelativeDocumentMoniker": "DAL\\UnitOfWork\\UnitOfWork.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\UnitOfWork\\UnitOfWork.cs",
+              "RelativeToolTip": "DAL\\UnitOfWork\\UnitOfWork.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAAjAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:09:46.979Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "LessonRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\LessonRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\LessonRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\LessonRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\LessonRepository.cs",
+              "ViewState": "AgIAAA4AAAAAAAAAAAAUwB4AAAAoAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:16:38.838Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "DalDependencyInjection.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\DalDependencyInjection.cs",
+              "RelativeDocumentMoniker": "DAL\\DalDependencyInjection.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\DalDependencyInjection.cs",
+              "RelativeToolTip": "DAL\\DalDependencyInjection.cs",
+              "ViewState": "AgIAAAsAAAAAAAAAAADwvxgAAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-15T11:06:42.22Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 1,
+              "Title": "Common.csproj",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\Common.csproj",
+              "RelativeDocumentMoniker": "Common\\Common.csproj",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\Common.csproj",
+              "RelativeToolTip": "Common\\Common.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-09-06T02:09:49.597Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "UserRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\UserRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\UserRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\UserRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\UserRepository.cs",
+              "ViewState": "AgIAADEAAAAAAAAAAAAUwFUAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:51:03.511Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "RoadmapDetailRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\RoadmapDetailRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\RoadmapDetailRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\RoadmapDetailRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\RoadmapDetailRepository.cs",
+              "ViewState": "AgIAABIAAAAAAAAAAAAiwDIAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:27:35.909Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "RoadmapRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\RoadmapRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\RoadmapRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\RoadmapRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\RoadmapRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAuwA8AAAAPAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:27:19.825Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "RefreshTokenRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\RefreshTokenRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\RefreshTokenRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\RefreshTokenRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\RefreshTokenRepository.cs",
+              "ViewState": "AgIAACIAAAAAAAAAAAAUwEYAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:27:00.167Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "ReportRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\ReportRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\ReportRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\ReportRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\ReportRepository.cs",
+              "ViewState": "AgIAAD0AAAAAAAAAAAAUwEgAAAAvAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:26:37.742Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "RecordingRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\RecordingRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\RecordingRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\RecordingRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\RecordingRepository.cs",
+              "ViewState": "AgIAABEAAAAAAAAAAAAywCUAAAAoAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:26:05.458Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "TeacherCredentialRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\TeacherCredentialRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\TeacherCredentialRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\TeacherCredentialRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\TeacherCredentialRepository.cs",
+              "ViewState": "AgIAACMAAAAAAAAAAAAcwDYAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:25:47.461Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "TeacherApplicationRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\TeacherApplicationRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\TeacherApplicationRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\TeacherApplicationRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\TeacherApplicationRepository.cs",
+              "ViewState": "AgIAAB0AAAAAAAAAAAArwCcAAAAuAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:25:05.043Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "Recording.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Recording.cs",
+              "RelativeDocumentMoniker": "DAL\\Models\\Recording.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Recording.cs",
+              "RelativeToolTip": "DAL\\Models\\Recording.cs",
+              "ViewState": "AgIAAAkAAAAAAAAAAAAAABYAAAASAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-15T10:31:41.562Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "CourseSubmissionRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\CourseSubmissionRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\CourseSubmissionRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\CourseSubmissionRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\CourseSubmissionRepository.cs",
+              "ViewState": "AgIAAB8AAAAAAAAAAAAUwEMAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:24:52.048Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "TopicRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\TopicRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\TopicRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\TopicRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\TopicRepository.cs",
+              "ViewState": "AgIAAAcAAAAAAAAAAAAIwCgAAAAsAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:20:44.921Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "TeacherApplication.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\TeacherApplication.cs",
+              "RelativeDocumentMoniker": "DAL\\Models\\TeacherApplication.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\TeacherApplication.cs",
+              "RelativeToolTip": "DAL\\Models\\TeacherApplication.cs",
+              "ViewState": "AgIAAA4AAAAAAAAAAAAAwB4AAAA2AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-15T09:38:29.16Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "CourseTopicRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\CourseTopicRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\CourseTopicRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\CourseTopicRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\CourseTopicRepository.cs",
+              "ViewState": "AgIAABgAAAAAAAAAAAAUwDYAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:20:28.538Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 21,
+              "Title": "PurchasesDetail.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\PurchasesDetail.cs",
+              "RelativeDocumentMoniker": "DAL\\Models\\PurchasesDetail.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\PurchasesDetail.cs",
+              "RelativeToolTip": "DAL\\Models\\PurchasesDetail.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAAAZAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-15T10:21:29.743Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "Topic.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Topic.cs",
+              "RelativeDocumentMoniker": "DAL\\Models\\Topic.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Topic.cs",
+              "RelativeToolTip": "DAL\\Models\\Topic.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAuwBQAAAAmAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-15T10:04:38.481Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 26,
+              "Title": "UserAchievementRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\UserAchievementRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\UserAchievementRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\UserAchievementRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\UserAchievementRepository.cs",
+              "ViewState": "AgIAABEAAAAAAAAAAAA0wDUAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:15:59.933Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 22,
               "Title": "AppDbContext.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\DBContext\\AppDbContext.cs",
               "RelativeDocumentMoniker": "DAL\\DBContext\\AppDbContext.cs",
               "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\DBContext\\AppDbContext.cs",
               "RelativeToolTip": "DAL\\DBContext\\AppDbContext.cs",
-              "ViewState": "AgIAAAUAAAAAAAAAAAAiwBQAAAAfAAAAAAAAAA==",
+              "ViewState": "AgIAAA8AAAAAAAAAAAAuwBkAAAAkAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-09-15T08:44:13.208Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 20,
+              "Title": "PurchasesDetailRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\PurchasesDetailRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\PurchasesDetailRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\PurchasesDetailRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\PurchasesDetailRepository.cs",
+              "ViewState": "AgIAABAAAAAAAAAAAAAQwBQAAAAoAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:17:20.384Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 25,
+              "Title": "CourseUnitRepository..cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\CourseUnitRepository..cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\CourseUnitRepository..cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\CourseUnitRepository..cs",
+              "RelativeToolTip": "DAL\\Repositories\\CourseUnitRepository..cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAD8AAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:16:14.104Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 24,
+              "Title": "ExerciseRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\ExerciseRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\ExerciseRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\ExerciseRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\ExerciseRepository.cs",
+              "ViewState": "AgIAABcAAAAAAAAAAAAUwDsAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:16:56.131Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 27,
+              "Title": "UserLearningLanguageRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\UserLearningLanguageRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\UserLearningLanguageRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\UserLearningLanguageRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\UserLearningLanguageRepository.cs",
+              "ViewState": "AgIAABQAAAAAAAAAAAAUwDgAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:15:48.115Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 23,
+              "Title": "PurchasesRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\PurchasesRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\PurchasesRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\PurchasesRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\PurchasesRepository.cs",
+              "ViewState": "AgIAABYAAAAAAAAAAAAUwDoAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:17:09.414Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 28,
+              "Title": "LanguageRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\LanguageRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\LanguageRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\LanguageRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\LanguageRepository.cs",
+              "ViewState": "AgIAAA4AAAAAAAAAAAAUwCkAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:15:33.463Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 29,
+              "Title": "UserRoleRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\UserRoleRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\UserRoleRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\UserRoleRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\UserRoleRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAD4AAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:15:20.372Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 30,
+              "Title": "RoleRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\RoleRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\RoleRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\RoleRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\RoleRepository.cs",
+              "ViewState": "AgIAAAcAAAAAAAAAAAAAABUAAAAkAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:12:17.72Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 32,
+              "Title": "EnrollmentRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\EnrollmentRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\EnrollmentRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\EnrollmentRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\EnrollmentRepository.cs",
+              "ViewState": "AgIAABgAAAAAAAAAAAAUwCEAAABIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:09:00.61Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 33,
+              "Title": "CourseRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\CourseRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\CourseRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\CourseRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\CourseRepository.cs",
+              "ViewState": "AgIAADIAAAAAAAAAAAAIwGcAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:07:13.41Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 34,
+              "Title": "ConversationRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\ConversationRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\ConversationRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\ConversationRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\ConversationRepository.cs",
+              "ViewState": "AgIAAB4AAAAAAAAAAAAUwEIAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:07:00.498Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 31,
+              "Title": "GenericRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Basic\\GenericRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Basic\\GenericRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Basic\\GenericRepository.cs",
+              "RelativeToolTip": "DAL\\Basic\\GenericRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAATAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:39:27.986Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 35,
+              "Title": "AIFeedBackRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\AIFeedBackRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\AIFeedBackRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\AIFeedBackRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\AIFeedBackRepository.cs",
+              "ViewState": "AgIAABUAAAAAAAAAAAAcwCkAAAAnAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:06:44.679Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 36,
+              "Title": "AchievementRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\AchievementRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Repositories\\AchievementRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\AchievementRepository.cs",
+              "RelativeToolTip": "DAL\\Repositories\\AchievementRepository.cs",
+              "ViewState": "AgIAAA4AAAAAAAAAAAAAwBEAAAAyAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:05:33.823Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 40,
+              "Title": "IUserLearningLanguageRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IUserLearningLanguageRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\IUserLearningLanguageRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IUserLearningLanguageRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\IUserLearningLanguageRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:04:40.649Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 39,
+              "Title": "IUserRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IUserRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\IUserRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IUserRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\IUserRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:47:37.011Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 38,
+              "Title": "IUserRoleRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IUserRoleRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\IUserRoleRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IUserRoleRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\IUserRoleRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:04:51.857Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 37,
+              "Title": "IRefreshTokenRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IRefreshTokenRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\IRefreshTokenRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IRefreshTokenRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\IRefreshTokenRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:49:22.324Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 41,
+              "Title": "IUserAchievementRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IUserAchievementRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\IUserAchievementRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IUserAchievementRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\IUserAchievementRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:04:30.122Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 42,
+              "Title": "ITopicRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ITopicRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\ITopicRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ITopicRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\ITopicRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:02:11.63Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 43,
+              "Title": "ITeacherCredentialRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ITeacherCredentialRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\ITeacherCredentialRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ITeacherCredentialRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\ITeacherCredentialRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:01:59.124Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 44,
+              "Title": "ITeacherApplicationRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ITeacherApplicationRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\ITeacherApplicationRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ITeacherApplicationRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\ITeacherApplicationRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:01:47.85Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 45,
+              "Title": "IRoleRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IRoleRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\IRoleRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IRoleRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\IRoleRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:47:53.672Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 46,
+              "Title": "IRoadmapRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IRoadmapRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\IRoadmapRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IRoadmapRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\IRoadmapRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:48:51.118Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 47,
+              "Title": "IRoadmapDetailRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IRoadmapDetailRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\IRoadmapDetailRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IRoadmapDetailRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\IRoadmapDetailRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:49:11.715Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 48,
+              "Title": "IReportRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IReportRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\IReportRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IReportRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\IReportRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABMAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:01:11.829Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 49,
+              "Title": "IRecordingRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IRecordingRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\IRecordingRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IRecordingRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\IRecordingRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:00:59.641Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 50,
+              "Title": "IPurchasesRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IPurchasesRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\IPurchasesRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IPurchasesRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\IPurchasesRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:00:34.518Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 51,
+              "Title": "IPurchasesDetailRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IPurchasesDetailRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\IPurchasesDetailRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IPurchasesDetailRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\IPurchasesDetailRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:00:47.904Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 52,
+              "Title": "ILessonRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ILessonRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\ILessonRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ILessonRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\ILessonRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:00:22.381Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 53,
+              "Title": "ILanguageRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ILanguageRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\ILanguageRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ILanguageRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\ILanguageRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:48:09.532Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 54,
+              "Title": "IExerciseRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IExerciseRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\IExerciseRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IExerciseRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\IExerciseRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:59:29.613Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 55,
+              "Title": "IEnrollmentRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IEnrollmentRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\IEnrollmentRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IEnrollmentRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\IEnrollmentRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:59:04.182Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 56,
+              "Title": "ICourseUnitRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ICourseUnitRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\ICourseUnitRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ICourseUnitRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\ICourseUnitRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:58:54.289Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 57,
+              "Title": "ICourseTopicRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ICourseTopicRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\ICourseTopicRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ICourseTopicRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\ICourseTopicRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:58:40.697Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 58,
+              "Title": "ICourseSubmissionRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ICourseSubmissionRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\ICourseSubmissionRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ICourseSubmissionRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\ICourseSubmissionRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:57:38.644Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 59,
+              "Title": "ICourseRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ICourseRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\ICourseRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ICourseRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\ICourseRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:48:38.008Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 60,
+              "Title": "IConversationRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IConversationRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\IConversationRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IConversationRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\IConversationRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:56:52.294Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 61,
+              "Title": "IAIFeedBackRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IAIFeedBackRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\IAIFeedBackRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IAIFeedBackRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\IAIFeedBackRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:56:33.208Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 62,
+              "Title": "IAchievementRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IAchievementRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\IRepositories\\IAchievementRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IAchievementRepository.cs",
+              "RelativeToolTip": "DAL\\IRepositories\\IAchievementRepository.cs",
+              "ViewState": "AgIAAAUAAAAAAAAAAAAgwA8AAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:56:09.702Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 63,
+              "Title": "IGenericRepository.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Basic\\IGenericRepository.cs",
+              "RelativeDocumentMoniker": "DAL\\Basic\\IGenericRepository.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Basic\\IGenericRepository.cs",
+              "RelativeToolTip": "DAL\\Basic\\IGenericRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAKAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:46:33.223Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 65,
+              "Title": "User.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\User.cs",
+              "RelativeDocumentMoniker": "DAL\\Models\\User.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\User.cs",
+              "RelativeToolTip": "DAL\\Models\\User.cs",
+              "ViewState": "AgIAADIAAAAAAAAAAAAmwEIAAABEAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-15T08:38:38.728Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 67,
+              "Title": "UserRole.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\UserRole.cs",
+              "RelativeDocumentMoniker": "DAL\\Models\\UserRole.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\UserRole.cs",
+              "RelativeToolTip": "DAL\\Models\\UserRole.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABgAAAAuAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-15T09:33:42.032Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 64,
+              "Title": "Role.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Role.cs",
+              "RelativeDocumentMoniker": "DAL\\Models\\Role.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Role.cs",
+              "RelativeToolTip": "DAL\\Models\\Role.cs",
+              "ViewState": "AgIAAA8AAAAAAAAAAADwvxsAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-15T09:32:47.11Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 66,
+              "Title": "Language.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Language.cs",
+              "RelativeDocumentMoniker": "DAL\\Models\\Language.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Language.cs",
+              "RelativeToolTip": "DAL\\Models\\Language.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABkAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-15T09:27:51.66Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 68,
+              "Title": "Roadmap.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Roadmap.cs",
+              "RelativeDocumentMoniker": "DAL\\Models\\Roadmap.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Roadmap.cs",
+              "RelativeToolTip": "DAL\\Models\\Roadmap.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAuwAoAAAARAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:27:58.135Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 69,
+              "Title": "RoadmapDetail.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\RoadmapDetail.cs",
+              "RelativeDocumentMoniker": "DAL\\Models\\RoadmapDetail.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\RoadmapDetail.cs",
+              "RelativeToolTip": "DAL\\Models\\RoadmapDetail.cs",
+              "ViewState": "AgIAACcAAAAAAAAAAAApwDcAAAAeAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:28:29.835Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 70,
+              "Title": "RefreshToken.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\RefreshToken.cs",
+              "RelativeDocumentMoniker": "DAL\\Models\\RefreshToken.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\RefreshToken.cs",
+              "RelativeToolTip": "DAL\\Models\\RefreshToken.cs",
+              "ViewState": "AgIAAAkAAAAAAAAAAAAAACEAAAAGAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:27:19.938Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 73,
               "Title": "Lesson.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Lesson.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Lesson.cs",
@@ -252,25 +1377,11 @@
               "RelativeToolTip": "DAL\\Models\\Lesson.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAASAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T10:08:09.021Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-15T10:08:09.021Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "User.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\User.cs",
-              "RelativeDocumentMoniker": "DAL\\Models\\User.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\User.cs",
-              "RelativeToolTip": "DAL\\Models\\User.cs",
-              "ViewState": "AgIAAAsAAAAAAAAAAAAAwDgAAAAyAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T08:38:38.728Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 72,
               "Title": "CourseUnit.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\CourseUnit.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\CourseUnit.cs",
@@ -283,7 +1394,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 71,
               "Title": "Enrollment.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Enrollment.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Enrollment.cs",
@@ -296,20 +1407,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
-              "Title": "Language.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Language.cs",
-              "RelativeDocumentMoniker": "DAL\\Models\\Language.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Language.cs",
-              "RelativeToolTip": "DAL\\Models\\Language.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABkAAAAYAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T09:27:51.66Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 74,
               "Title": "Exercise.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Exercise.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Exercise.cs",
@@ -317,12 +1415,11 @@
               "RelativeToolTip": "DAL\\Models\\Exercise.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAApAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T10:11:11.676Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-15T10:11:11.676Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 75,
               "Title": "TeacherCredential.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\TeacherCredential.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\TeacherCredential.cs",
@@ -330,25 +1427,11 @@
               "RelativeToolTip": "DAL\\Models\\TeacherCredential.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAACEAAAAwAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T09:46:13.333Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-15T09:46:13.333Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
-              "Title": "Topic.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Topic.cs",
-              "RelativeDocumentMoniker": "DAL\\Models\\Topic.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Topic.cs",
-              "RelativeToolTip": "DAL\\Models\\Topic.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABMAAAAvAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T10:04:38.481Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 76,
               "Title": "UserLearningLanguage.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\UserLearningLanguage.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\UserLearningLanguage.cs",
@@ -356,24 +1439,11 @@
               "RelativeToolTip": "DAL\\Models\\UserLearningLanguage.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABMAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T09:29:13.687Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-15T09:29:13.687Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
-              "Title": "DalDependencyInjection.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\DalDependencyInjection.cs",
-              "RelativeDocumentMoniker": "DAL\\DalDependencyInjection.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\DalDependencyInjection.cs",
-              "RelativeToolTip": "DAL\\DalDependencyInjection.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAAsAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T11:06:42.22Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 77,
               "Title": "Report.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Report.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Report.cs",
@@ -381,47 +1451,12 @@
               "RelativeToolTip": "DAL\\Models\\Report.cs",
               "ViewState": "AgIAAA0AAAAAAAAAAAArwBUAAAAjAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T10:24:54.974Z"
+              "WhenOpened": "2025-09-15T10:24:54.974Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
-              "Title": "UserRole.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\UserRole.cs",
-              "RelativeDocumentMoniker": "DAL\\Models\\UserRole.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\UserRole.cs",
-              "RelativeToolTip": "DAL\\Models\\UserRole.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAASAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T09:33:42.032Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 14,
-              "Title": "Role.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Role.cs",
-              "RelativeDocumentMoniker": "DAL\\Models\\Role.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Role.cs",
-              "RelativeToolTip": "DAL\\Models\\Role.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAAvAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T09:32:47.11Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 15,
-              "Title": "Recording.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Recording.cs",
-              "RelativeDocumentMoniker": "DAL\\Models\\Recording.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Recording.cs",
-              "RelativeToolTip": "DAL\\Models\\Recording.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAASAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T10:31:41.562Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 16,
+              "DocumentIndex": 78,
               "Title": "Achievement.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Achievement.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Achievement.cs",
@@ -429,11 +1464,12 @@
               "RelativeToolTip": "DAL\\Models\\Achievement.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T10:40:58.169Z"
+              "WhenOpened": "2025-09-15T10:40:58.169Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 17,
+              "DocumentIndex": 79,
               "Title": "Course.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Course.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Course.cs",
@@ -445,7 +1481,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 18,
+              "DocumentIndex": 80,
               "Title": "20250915111021_a.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Migrations\\20250915111021_a.cs",
               "RelativeDocumentMoniker": "DAL\\Migrations\\20250915111021_a.cs",
@@ -457,7 +1493,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 19,
+              "DocumentIndex": 81,
               "Title": "Conversation.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Conversation.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Conversation.cs",
@@ -469,7 +1505,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 20,
+              "DocumentIndex": 82,
               "Title": "Program.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Program.cs",
               "RelativeDocumentMoniker": "Presentation\\Program.cs",
@@ -481,7 +1517,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 21,
+              "DocumentIndex": 83,
               "Title": "BllDependencyInjection.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\BllDependencyInjection.cs",
               "RelativeDocumentMoniker": "BLL\\BllDependencyInjection.cs",
@@ -493,7 +1529,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 22,
+              "DocumentIndex": 84,
               "Title": "appsettings.Development.json",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\appsettings.Development.json",
               "RelativeDocumentMoniker": "Presentation\\appsettings.Development.json",
@@ -505,7 +1541,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 23,
+              "DocumentIndex": 85,
               "Title": "CourseTopic.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\CourseTopic.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\CourseTopic.cs",
@@ -513,11 +1549,12 @@
               "RelativeToolTip": "DAL\\Models\\CourseTopic.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABcAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T10:03:18.688Z"
+              "WhenOpened": "2025-09-15T10:03:18.688Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 25,
+              "DocumentIndex": 87,
               "Title": "launchSettings.json",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Properties\\launchSettings.json",
               "RelativeDocumentMoniker": "Presentation\\Properties\\launchSettings.json",
@@ -529,7 +1566,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 26,
+              "DocumentIndex": 88,
               "Title": "Presentation",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Presentation.csproj",
               "RelativeDocumentMoniker": "Presentation\\Presentation.csproj",
@@ -540,7 +1577,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 24,
+              "DocumentIndex": 86,
               "Title": "appsettings.json",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\appsettings.json",
               "RelativeDocumentMoniker": "Presentation\\appsettings.json",
@@ -552,7 +1589,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 27,
+              "DocumentIndex": 89,
               "Title": "UserAchievement.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\UserAchievement.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\UserAchievement.cs",
@@ -564,7 +1601,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 28,
+              "DocumentIndex": 90,
               "Title": "Purchases.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Purchases.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Purchases.cs",
@@ -572,35 +1609,12 @@
               "RelativeToolTip": "DAL\\Models\\Purchases.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T10:20:09.872Z"
+              "WhenOpened": "2025-09-15T10:20:09.872Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 29,
-              "Title": "PurchasesDetail.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\PurchasesDetail.cs",
-              "RelativeDocumentMoniker": "DAL\\Models\\PurchasesDetail.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\PurchasesDetail.cs",
-              "RelativeToolTip": "DAL\\Models\\PurchasesDetail.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T10:21:29.743Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 30,
-              "Title": "TeacherApplication.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\TeacherApplication.cs",
-              "RelativeDocumentMoniker": "DAL\\Models\\TeacherApplication.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\TeacherApplication.cs",
-              "RelativeToolTip": "DAL\\Models\\TeacherApplication.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAB8AAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T09:38:29.16Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 31,
+              "DocumentIndex": 91,
               "Title": "CourseSubmission.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\CourseSubmission.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\CourseSubmission.cs",
@@ -612,7 +1626,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 32,
+              "DocumentIndex": 92,
               "Title": "AIFeedBack.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\AIFeedBack.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\AIFeedBack.cs",
@@ -624,31 +1638,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 33,
-              "Title": "User.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\Entities\\User.cs",
-              "RelativeDocumentMoniker": "Common\\Entities\\User.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\Entities\\User.cs",
-              "RelativeToolTip": "Common\\Entities\\User.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T08:37:34.109Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 34,
-              "Title": "BaseEntity.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\Entities\\BaseEntity.cs",
-              "RelativeDocumentMoniker": "Common\\Entities\\BaseEntity.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\Entities\\BaseEntity.cs",
-              "RelativeToolTip": "Common\\Entities\\BaseEntity.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T08:37:29.522Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 35,
+              "DocumentIndex": 93,
               "Title": "Presentation.csproj",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Presentation.csproj",
               "RelativeDocumentMoniker": "Presentation\\Presentation.csproj",
@@ -660,7 +1650,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 36,
+              "DocumentIndex": 94,
               "Title": "DAL.csproj",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\DAL.csproj",
               "RelativeDocumentMoniker": "DAL\\DAL.csproj",
@@ -672,7 +1662,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 37,
+              "DocumentIndex": 95,
               "Title": "BLL.csproj",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\BLL.csproj",
               "RelativeDocumentMoniker": "BLL\\BLL.csproj",
@@ -681,18 +1671,6 @@
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
               "WhenOpened": "2025-09-06T02:09:50.406Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 38,
-              "Title": "Common.csproj",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\Common.csproj",
-              "RelativeDocumentMoniker": "Common\\Common.csproj",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\Common.csproj",
-              "RelativeToolTip": "Common\\Common.csproj",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-09-06T02:09:49.597Z"
             }
           ]
         },

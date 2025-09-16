@@ -12,3 +12,4 @@ D:\F-Learn\F-Learn-BackEnd\DAL\obj\Debug\net8.0\refint\DAL.dll
 D:\F-Learn\F-Learn-BackEnd\DAL\obj\Debug\net8.0\DAL.pdb
 D:\F-Learn\F-Learn-BackEnd\DAL\obj\Debug\net8.0\DAL.genruntimeconfig.cache
 D:\F-Learn\F-Learn-BackEnd\DAL\obj\Debug\net8.0\ref\DAL.dll
+D:\F-Learn\F-Learn-BackEnd\DAL\obj\Debug\net8.0\DAL.sourcelink.json

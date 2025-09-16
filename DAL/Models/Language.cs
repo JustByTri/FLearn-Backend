@@ -20,9 +20,13 @@ namespace DAL.Models
         [StringLength(10)]
         public string LanguageCode { get; set; }
 
-        public ICollection<User> Users { get; set; }
-
         [Required]
         public DateTime CreateAt { get; set; }
+
+     
+        public virtual ICollection<User> Users { get; set; }
+        public virtual ICollection<Roadmap> Roadmaps { get; set; }
+        public virtual ICollection<Course> Courses { get; set; }
+        public virtual ICollection<Conversation> Conversations { get; set; }
     }
 }

@@ -5,6 +5,9 @@ namespace DAL.DBContext
 {
     public class AppDbContext : DbContext
     {
+        public AppDbContext()
+        {
+        }
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
         public DbSet<User> Users { get; set; }
@@ -30,7 +33,9 @@ namespace DAL.DBContext
         public DbSet<Report> Reports { get; set; }
         public DbSet<AIFeedBack> AIFeedBacks { get; set; }
         public DbSet<Conversation> Conversations { get; set; }
-
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<Roadmap> Roadmaps { get; set; }
+        public DbSet<RoadmapDetail> RoadmapDetails { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -38,7 +43,7 @@ namespace DAL.DBContext
            
             modelBuilder.UseCollation("utf8mb4_general_ci");
 
-          
+
             foreach (var entityType in modelBuilder.Model.GetEntityTypes())
             {
                 foreach (var property in entityType.GetProperties())
@@ -50,6 +55,38 @@ namespace DAL.DBContext
                     }
                 }
             }
+            modelBuilder.Entity<RefreshToken>(entity =>
+            {
+                entity.HasIndex(e => e.Token).IsUnique();
+                entity.HasOne(e => e.User)
+                      .WithMany(u => u.RefreshTokens)
+                      .HasForeignKey(e => e.UserID)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Roadmap configuration
+            modelBuilder.Entity<Roadmap>(entity =>
+            {
+                entity.HasOne(e => e.User)
+                      .WithMany(u => u.Roadmaps)
+                      .HasForeignKey(e => e.UserID)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Language)
+                      .WithMany(l => l.Roadmaps)
+                      .HasForeignKey(e => e.LanguageID)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // RoadmapDetail configuration
+            modelBuilder.Entity<RoadmapDetail>(entity =>
+            {
+                entity.HasIndex(e => new { e.RoadmapID, e.StepNumber }).IsUnique();
+                entity.HasOne(e => e.Roadmap)
+                      .WithMany(r => r.RoadmapDetails)
+                      .HasForeignKey(e => e.RoadmapID)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
         }
     }
 }

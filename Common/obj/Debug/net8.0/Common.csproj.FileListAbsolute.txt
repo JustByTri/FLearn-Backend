@@ -25,3 +25,4 @@ D:\F-Learn\F-Learn-BackEnd\Common\obj\Debug\net8.0\Common.pdb
 D:\F-Learn\F-Learn-BackEnd\Common\obj\Debug\net8.0\ref\Common.dll
 D:\F-Learn\F-Learn-BackEnd\Common\bin\Debug\net8.0\Common.runtimeconfig.json
 D:\F-Learn\F-Learn-BackEnd\Common\obj\Debug\net8.0\Common.genruntimeconfig.cache
+D:\F-Learn\F-Learn-BackEnd\Common\obj\Debug\net8.0\Common.sourcelink.json

@@ -103,20 +103,6 @@ namespace DAL.Migrations
                 .Annotation("Relational:Collation", "utf8mb4_general_ci");
 
             migrationBuilder.CreateTable(
-                name: "UserRoles",
-                columns: table => new
-                {
-                    UserRoleID = table.Column<Guid>(type: "char(36)", nullable: false, collation: "utf8mb4_general_ci"),
-                    UserID = table.Column<Guid>(type: "char(36)", nullable: false, collation: "utf8mb4_general_ci"),
-                    RoleID = table.Column<Guid>(type: "char(36)", nullable: false, collation: "utf8mb4_general_ci")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_UserRoles", x => x.UserRoleID);
-                })
-                .Annotation("Relational:Collation", "utf8mb4_general_ci");
-
-            migrationBuilder.CreateTable(
                 name: "Users",
                 columns: table => new
                 {
@@ -240,6 +226,66 @@ namespace DAL.Migrations
                 .Annotation("Relational:Collation", "utf8mb4_general_ci");
 
             migrationBuilder.CreateTable(
+                name: "RefreshTokens",
+                columns: table => new
+                {
+                    RefreshTokenID = table.Column<Guid>(type: "char(36)", nullable: false, collation: "utf8mb4_general_ci"),
+                    UserID = table.Column<Guid>(type: "char(36)", nullable: false, collation: "utf8mb4_general_ci"),
+                    Token = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: false, collation: "utf8mb4_general_ci"),
+                    ExpiresAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    IsRevoked = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    RevokedAt = table.Column<DateTime>(type: "datetime(6)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RefreshTokens", x => x.RefreshTokenID);
+                    table.ForeignKey(
+                        name: "FK_RefreshTokens_Users_UserID",
+                        column: x => x.UserID,
+                        principalTable: "Users",
+                        principalColumn: "UserID",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("Relational:Collation", "utf8mb4_general_ci");
+
+            migrationBuilder.CreateTable(
+                name: "Roadmaps",
+                columns: table => new
+                {
+                    RoadmapID = table.Column<Guid>(type: "char(36)", nullable: false, collation: "utf8mb4_general_ci"),
+                    UserID = table.Column<Guid>(type: "char(36)", nullable: false, collation: "utf8mb4_general_ci"),
+                    LanguageID = table.Column<Guid>(type: "char(36)", nullable: false, collation: "utf8mb4_general_ci"),
+                    Title = table.Column<string>(type: "varchar(300)", maxLength: 300, nullable: false, collation: "utf8mb4_general_ci"),
+                    Description = table.Column<string>(type: "varchar(1000)", maxLength: 1000, nullable: false, collation: "utf8mb4_general_ci"),
+                    CurrentLevel = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false, collation: "utf8mb4_general_ci"),
+                    TargetLevel = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false, collation: "utf8mb4_general_ci"),
+                    EstimatedDuration = table.Column<int>(type: "int", nullable: false),
+                    DurationUnit = table.Column<string>(type: "varchar(20)", maxLength: 20, nullable: false, collation: "utf8mb4_general_ci"),
+                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    IsActive = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    Progress = table.Column<decimal>(type: "decimal(5,2)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Roadmaps", x => x.RoadmapID);
+                    table.ForeignKey(
+                        name: "FK_Roadmaps_Languages_LanguageID",
+                        column: x => x.LanguageID,
+                        principalTable: "Languages",
+                        principalColumn: "LanguageID",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Roadmaps_Users_UserID",
+                        column: x => x.UserID,
+                        principalTable: "Users",
+                        principalColumn: "UserID",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("Relational:Collation", "utf8mb4_general_ci");
+
+            migrationBuilder.CreateTable(
                 name: "RoleUser",
                 columns: table => new
                 {
@@ -313,6 +359,32 @@ namespace DAL.Migrations
                 .Annotation("Relational:Collation", "utf8mb4_general_ci");
 
             migrationBuilder.CreateTable(
+                name: "UserRoles",
+                columns: table => new
+                {
+                    UserRoleID = table.Column<Guid>(type: "char(36)", nullable: false, collation: "utf8mb4_general_ci"),
+                    UserID = table.Column<Guid>(type: "char(36)", nullable: false, collation: "utf8mb4_general_ci"),
+                    RoleID = table.Column<Guid>(type: "char(36)", nullable: false, collation: "utf8mb4_general_ci")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserRoles", x => x.UserRoleID);
+                    table.ForeignKey(
+                        name: "FK_UserRoles_Roles_RoleID",
+                        column: x => x.RoleID,
+                        principalTable: "Roles",
+                        principalColumn: "RoleID",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_UserRoles_Users_UserID",
+                        column: x => x.UserID,
+                        principalTable: "Users",
+                        principalColumn: "UserID",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("Relational:Collation", "utf8mb4_general_ci");
+
+            migrationBuilder.CreateTable(
                 name: "AIFeedBacks",
                 columns: table => new
                 {
@@ -351,8 +423,8 @@ namespace DAL.Migrations
                     CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     Duration = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     ConverationID = table.Column<Guid>(type: "char(36)", nullable: false, collation: "utf8mb4_general_ci"),
-                    Format = table.Column<string>(type: "longtext", nullable: false, collation: "utf8mb4_general_ci"),
-                    ConversationID = table.Column<Guid>(type: "char(36)", nullable: true, collation: "utf8mb4_general_ci")
+                    ConversationID = table.Column<Guid>(type: "char(36)", nullable: false, collation: "utf8mb4_general_ci"),
+                    Format = table.Column<string>(type: "longtext", nullable: false, collation: "utf8mb4_general_ci")
                 },
                 constraints: table =>
                 {
@@ -361,7 +433,8 @@ namespace DAL.Migrations
                         name: "FK_Recordings_Conversations_ConversationID",
                         column: x => x.ConversationID,
                         principalTable: "Conversations",
-                        principalColumn: "ConversationID");
+                        principalColumn: "ConversationID",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Recordings_Languages_LanguageID",
                         column: x => x.LanguageID,
@@ -497,6 +570,36 @@ namespace DAL.Migrations
                         column: x => x.PurchasesID,
                         principalTable: "Purchases",
                         principalColumn: "PurchasesID",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("Relational:Collation", "utf8mb4_general_ci");
+
+            migrationBuilder.CreateTable(
+                name: "RoadmapDetails",
+                columns: table => new
+                {
+                    RoadmapDetailID = table.Column<Guid>(type: "char(36)", nullable: false, collation: "utf8mb4_general_ci"),
+                    RoadmapID = table.Column<Guid>(type: "char(36)", nullable: false, collation: "utf8mb4_general_ci"),
+                    StepNumber = table.Column<int>(type: "int", nullable: false),
+                    Title = table.Column<string>(type: "varchar(300)", maxLength: 300, nullable: false, collation: "utf8mb4_general_ci"),
+                    Description = table.Column<string>(type: "varchar(1000)", maxLength: 1000, nullable: false, collation: "utf8mb4_general_ci"),
+                    Skills = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: false, collation: "utf8mb4_general_ci"),
+                    Resources = table.Column<string>(type: "longtext", nullable: true, collation: "utf8mb4_general_ci"),
+                    EstimatedHours = table.Column<int>(type: "int", nullable: false),
+                    DifficultyLevel = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false, collation: "utf8mb4_general_ci"),
+                    IsCompleted = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    CompletedAt = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RoadmapDetails", x => x.RoadmapDetailID);
+                    table.ForeignKey(
+                        name: "FK_RoadmapDetails_Roadmaps_RoadmapID",
+                        column: x => x.RoadmapID,
+                        principalTable: "Roadmaps",
+                        principalColumn: "RoadmapID",
                         onDelete: ReferentialAction.Cascade);
                 })
                 .Annotation("Relational:Collation", "utf8mb4_general_ci");
@@ -677,7 +780,8 @@ namespace DAL.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_CourseTopics_TopicID",
                 table: "CourseTopics",
-                column: "TopicID");
+                column: "TopicID",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_CourseUnits_CourseID",
@@ -725,6 +829,17 @@ namespace DAL.Migrations
                 column: "LanguageID");
 
             migrationBuilder.CreateIndex(
+                name: "IX_RefreshTokens_Token",
+                table: "RefreshTokens",
+                column: "Token",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RefreshTokens_UserID",
+                table: "RefreshTokens",
+                column: "UserID");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Reports_ReportedCourseID",
                 table: "Reports",
                 column: "ReportedCourseID");
@@ -742,6 +857,22 @@ namespace DAL.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Reports_UserID",
                 table: "Reports",
+                column: "UserID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RoadmapDetails_RoadmapID_StepNumber",
+                table: "RoadmapDetails",
+                columns: new[] { "RoadmapID", "StepNumber" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Roadmaps_LanguageID",
+                table: "Roadmaps",
+                column: "LanguageID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Roadmaps_UserID",
+                table: "Roadmaps",
                 column: "UserID");
 
             migrationBuilder.CreateIndex(
@@ -767,6 +898,16 @@ namespace DAL.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_UserLearningLanguages_UserID",
                 table: "UserLearningLanguages",
+                column: "UserID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserRoles_RoleID",
+                table: "UserRoles",
+                column: "RoleID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserRoles_UserID",
+                table: "UserRoles",
                 column: "UserID");
         }
 
@@ -801,7 +942,13 @@ namespace DAL.Migrations
                 name: "Recordings");
 
             migrationBuilder.DropTable(
+                name: "RefreshTokens");
+
+            migrationBuilder.DropTable(
                 name: "Reports");
+
+            migrationBuilder.DropTable(
+                name: "RoadmapDetails");
 
             migrationBuilder.DropTable(
                 name: "RoleUser");
@@ -831,10 +978,13 @@ namespace DAL.Migrations
                 name: "Lessons");
 
             migrationBuilder.DropTable(
-                name: "Roles");
+                name: "Roadmaps");
 
             migrationBuilder.DropTable(
                 name: "TeacherApplications");
+
+            migrationBuilder.DropTable(
+                name: "Roles");
 
             migrationBuilder.DropTable(
                 name: "CourseUnits");
