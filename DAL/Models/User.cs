@@ -62,5 +62,8 @@ namespace DAL.Models
         public ICollection<Language> Languages { get; set; }
         public ICollection<Role> Roles { get; set; }
         public ICollection<UserLearningLanguage> LearningLanguages { get; set; }
+        public virtual ICollection<RefreshToken> RefreshTokens { get; set; }
+        public virtual ICollection<Roadmap> Roadmaps { get; set; }
+        public virtual ICollection<UserRole> UserRoles { get; set; }
     }
 }

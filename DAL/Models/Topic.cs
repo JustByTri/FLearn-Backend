@@ -18,5 +18,6 @@ namespace DAL.Models
 
         [StringLength(500)]
         public string Description { get; set; }
+       public CourseTopic CourseTopics { get; set; }
     }
 }

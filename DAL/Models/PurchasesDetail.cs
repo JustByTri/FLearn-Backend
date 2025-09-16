@@ -18,6 +18,8 @@ namespace DAL.Models
         [Required]
         public Guid CourseID { get; set; }
 
+        public Course? Course { get; set; }
+        public Purchases? Purchases { get; set; }
         [Required]
         [Range(0, 100000)]
         public decimal Amount { get; set; }

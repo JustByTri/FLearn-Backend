@@ -279,7 +279,8 @@ namespace DAL.Migrations
 
                     b.HasIndex("CourseID");
 
-                    b.HasIndex("TopicID");
+                    b.HasIndex("TopicID")
+                        .IsUnique();
 
                     b.ToTable("CourseTopics");
                 });
@@ -545,7 +546,7 @@ namespace DAL.Migrations
                         .HasColumnType("char(36)")
                         .UseCollation("utf8mb4_general_ci");
 
-                    b.Property<Guid?>("ConversationID")
+                    b.Property<Guid>("ConversationID")
                         .HasColumnType("char(36)")
                         .UseCollation("utf8mb4_general_ci");
 
@@ -582,6 +583,44 @@ namespace DAL.Migrations
                     b.HasIndex("LanguageID");
 
                     b.ToTable("Recordings");
+                });
+
+            modelBuilder.Entity("DAL.Models.RefreshToken", b =>
+                {
+                    b.Property<Guid>("RefreshTokenID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)")
+                        .UseCollation("utf8mb4_general_ci");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<Guid>("UserID")
+                        .HasColumnType("char(36)")
+                        .UseCollation("utf8mb4_general_ci");
+
+                    b.HasKey("RefreshTokenID");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("UserID");
+
+                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("DAL.Models.Report", b =>
@@ -654,6 +693,130 @@ namespace DAL.Migrations
                     b.HasIndex("UserID");
 
                     b.ToTable("Reports");
+                });
+
+            modelBuilder.Entity("DAL.Models.Roadmap", b =>
+                {
+                    b.Property<Guid>("RoadmapID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)")
+                        .UseCollation("utf8mb4_general_ci");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("CurrentLevel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<string>("DurationUnit")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int>("EstimatedDuration")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<Guid>("LanguageID")
+                        .HasColumnType("char(36)")
+                        .UseCollation("utf8mb4_general_ci");
+
+                    b.Property<decimal>("Progress")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<string>("TargetLevel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("UserID")
+                        .HasColumnType("char(36)")
+                        .UseCollation("utf8mb4_general_ci");
+
+                    b.HasKey("RoadmapID");
+
+                    b.HasIndex("LanguageID");
+
+                    b.HasIndex("UserID");
+
+                    b.ToTable("Roadmaps");
+                });
+
+            modelBuilder.Entity("DAL.Models.RoadmapDetail", b =>
+                {
+                    b.Property<Guid>("RoadmapDetailID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)")
+                        .UseCollation("utf8mb4_general_ci");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<string>("DifficultyLevel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<int>("EstimatedHours")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Resources")
+                        .HasColumnType("longtext");
+
+                    b.Property<Guid>("RoadmapID")
+                        .HasColumnType("char(36)")
+                        .UseCollation("utf8mb4_general_ci");
+
+                    b.Property<string>("Skills")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<int>("StepNumber")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("RoadmapDetailID");
+
+                    b.HasIndex("RoadmapID", "StepNumber")
+                        .IsUnique();
+
+                    b.ToTable("RoadmapDetails");
                 });
 
             modelBuilder.Entity("DAL.Models.Role", b =>
@@ -930,6 +1093,10 @@ namespace DAL.Migrations
 
                     b.HasKey("UserRoleID");
 
+                    b.HasIndex("RoleID");
+
+                    b.HasIndex("UserID");
+
                     b.ToTable("UserRoles");
                 });
 
@@ -981,7 +1148,7 @@ namespace DAL.Migrations
             modelBuilder.Entity("DAL.Models.Conversation", b =>
                 {
                     b.HasOne("DAL.Models.Language", "Language")
-                        .WithMany()
+                        .WithMany("Conversations")
                         .HasForeignKey("LanguageID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1000,7 +1167,7 @@ namespace DAL.Migrations
             modelBuilder.Entity("DAL.Models.Course", b =>
                 {
                     b.HasOne("DAL.Models.Language", "Language")
-                        .WithMany()
+                        .WithMany("Courses")
                         .HasForeignKey("LanguageID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1042,8 +1209,8 @@ namespace DAL.Migrations
                         .IsRequired();
 
                     b.HasOne("DAL.Models.Topic", "Topic")
-                        .WithMany()
-                        .HasForeignKey("TopicID")
+                        .WithOne("CourseTopics")
+                        .HasForeignKey("DAL.Models.CourseTopic", "TopicID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1096,24 +1263,30 @@ namespace DAL.Migrations
 
             modelBuilder.Entity("DAL.Models.PurchasesDetail", b =>
                 {
-                    b.HasOne("DAL.Models.Course", null)
+                    b.HasOne("DAL.Models.Course", "Course")
                         .WithMany("PurchasesDetails")
                         .HasForeignKey("CourseID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("DAL.Models.Purchases", null)
+                    b.HasOne("DAL.Models.Purchases", "Purchases")
                         .WithMany("PurchasesDetails")
                         .HasForeignKey("PurchasesID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Course");
+
+                    b.Navigation("Purchases");
                 });
 
             modelBuilder.Entity("DAL.Models.Recording", b =>
                 {
-                    b.HasOne("DAL.Models.Conversation", null)
+                    b.HasOne("DAL.Models.Conversation", "Conversation")
                         .WithMany("Recordings")
-                        .HasForeignKey("ConversationID");
+                        .HasForeignKey("ConversationID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("DAL.Models.Language", "Language")
                         .WithMany()
@@ -1121,7 +1294,20 @@ namespace DAL.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Conversation");
+
                     b.Navigation("Language");
+                });
+
+            modelBuilder.Entity("DAL.Models.RefreshToken", b =>
+                {
+                    b.HasOne("DAL.Models.User", "User")
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("DAL.Models.Report", b =>
@@ -1153,6 +1339,36 @@ namespace DAL.Migrations
                     b.Navigation("Reporter");
                 });
 
+            modelBuilder.Entity("DAL.Models.Roadmap", b =>
+                {
+                    b.HasOne("DAL.Models.Language", "Language")
+                        .WithMany("Roadmaps")
+                        .HasForeignKey("LanguageID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DAL.Models.User", "User")
+                        .WithMany("Roadmaps")
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Language");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("DAL.Models.RoadmapDetail", b =>
+                {
+                    b.HasOne("DAL.Models.Roadmap", "Roadmap")
+                        .WithMany("RoadmapDetails")
+                        .HasForeignKey("RoadmapID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Roadmap");
+                });
+
             modelBuilder.Entity("DAL.Models.TeacherApplication", b =>
                 {
                     b.HasOne("DAL.Models.User", "User")
@@ -1167,7 +1383,7 @@ namespace DAL.Migrations
             modelBuilder.Entity("DAL.Models.TeacherCredential", b =>
                 {
                     b.HasOne("DAL.Models.TeacherApplication", "Application")
-                        .WithMany("Credentials")
+                        .WithMany("TeacherCredentials")
                         .HasForeignKey("ApplicationID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1190,6 +1406,25 @@ namespace DAL.Migrations
                         .HasForeignKey("UserID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("DAL.Models.UserRole", b =>
+                {
+                    b.HasOne("DAL.Models.Role", "Role")
+                        .WithMany("UserRoles")
+                        .HasForeignKey("RoleID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DAL.Models.User", "User")
+                        .WithMany("UserRoles")
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Role");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("LanguageUser", b =>
@@ -1247,6 +1482,15 @@ namespace DAL.Migrations
                     b.Navigation("Lessons");
                 });
 
+            modelBuilder.Entity("DAL.Models.Language", b =>
+                {
+                    b.Navigation("Conversations");
+
+                    b.Navigation("Courses");
+
+                    b.Navigation("Roadmaps");
+                });
+
             modelBuilder.Entity("DAL.Models.Lesson", b =>
                 {
                     b.Navigation("Exerices");
@@ -1257,14 +1501,36 @@ namespace DAL.Migrations
                     b.Navigation("PurchasesDetails");
                 });
 
+            modelBuilder.Entity("DAL.Models.Roadmap", b =>
+                {
+                    b.Navigation("RoadmapDetails");
+                });
+
+            modelBuilder.Entity("DAL.Models.Role", b =>
+                {
+                    b.Navigation("UserRoles");
+                });
+
             modelBuilder.Entity("DAL.Models.TeacherApplication", b =>
                 {
-                    b.Navigation("Credentials");
+                    b.Navigation("TeacherCredentials");
+                });
+
+            modelBuilder.Entity("DAL.Models.Topic", b =>
+                {
+                    b.Navigation("CourseTopics")
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("DAL.Models.User", b =>
                 {
                     b.Navigation("LearningLanguages");
+
+                    b.Navigation("RefreshTokens");
+
+                    b.Navigation("Roadmaps");
+
+                    b.Navigation("UserRoles");
                 });
 #pragma warning restore 612, 618
         }

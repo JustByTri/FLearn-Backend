@@ -1,0 +1,19 @@
+﻿using DAL.Basic;
+using DAL.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace DAL.IRepositories
+{
+    public interface ICourseUnitRepository : IGenericRepository<CourseUnit>
+    {
+        Task<List<CourseUnit>> GetUnitsByCourseAsync(Guid courseId);
+        Task<CourseUnit> GetUnitWithLessonsAsync(Guid unitId);
+        Task<List<CourseUnit>> GetUnitsByPositionAsync(Guid courseId, int position);
+        Task<CourseUnit> GetNextUnitAsync(Guid courseId, int currentPosition);
+        Task<CourseUnit> GetPreviousUnitAsync(Guid courseId, int currentPosition);
+    }
+}
