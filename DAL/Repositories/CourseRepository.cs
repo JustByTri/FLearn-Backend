@@ -101,5 +101,55 @@ namespace DAL.Repositories
                 .OrderBy(c => c.Price)
                 .ToListAsync();
         }
+        public async Task<List<User>> GetAllUsersWithRolesAsync()
+        {
+            return await _context.Users
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .OrderByDescending(u => u.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<int> GetTotalUsersCountAsync()
+        {
+            return await _context.Users.CountAsync();
+        }
+
+        public async Task<int> GetActiveUsersCountAsync()
+        {
+            return await _context.Users.CountAsync(u => u.Status == true);
+        }
+
+        public async Task<int> GetUsersCountByRoleAsync(string roleName)
+        {
+            return await _context.Users
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .CountAsync(u => u.UserRoles.Any(ur => ur.Role.Name == roleName));
+        }
+
+        public async Task<List<User>> GetRecentUsersAsync(int count)
+        {
+            return await _context.Users
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .OrderByDescending(u => u.CreatedAt)
+                .Take(count)
+                .ToListAsync();
+        }
+        public async Task<int> GetTotalCoursesCountAsync()
+        {
+            return await _context.Courses.CountAsync();
+        }
+
+        public async Task<int> GetCoursesByStatusCountAsync(string status)
+        {
+            if (Enum.TryParse<Course.CourseStatus>(status, out var courseStatus))
+            {
+                return await _context.Courses.CountAsync(c => c.Status == courseStatus);
+            }
+            return 0;
+        }
     }
 }
+

@@ -1,0 +1,15 @@
+D:\F-Learn\F-Learn-BackEnd\Common\bin\Release\net8.0\Common.deps.json
+D:\F-Learn\F-Learn-BackEnd\Common\bin\Release\net8.0\Common.runtimeconfig.json
+D:\F-Learn\F-Learn-BackEnd\Common\bin\Release\net8.0\Common.dll
+D:\F-Learn\F-Learn-BackEnd\Common\bin\Release\net8.0\Common.pdb
+D:\F-Learn\F-Learn-BackEnd\Common\obj\Release\net8.0\Common.csproj.AssemblyReference.cache
+D:\F-Learn\F-Learn-BackEnd\Common\obj\Release\net8.0\Common.GeneratedMSBuildEditorConfig.editorconfig
+D:\F-Learn\F-Learn-BackEnd\Common\obj\Release\net8.0\Common.AssemblyInfoInputs.cache
+D:\F-Learn\F-Learn-BackEnd\Common\obj\Release\net8.0\Common.AssemblyInfo.cs
+D:\F-Learn\F-Learn-BackEnd\Common\obj\Release\net8.0\Common.csproj.CoreCompileInputs.cache
+D:\F-Learn\F-Learn-BackEnd\Common\obj\Release\net8.0\Common.sourcelink.json
+D:\F-Learn\F-Learn-BackEnd\Common\obj\Release\net8.0\Common.dll
+D:\F-Learn\F-Learn-BackEnd\Common\obj\Release\net8.0\refint\Common.dll
+D:\F-Learn\F-Learn-BackEnd\Common\obj\Release\net8.0\Common.pdb
+D:\F-Learn\F-Learn-BackEnd\Common\obj\Release\net8.0\Common.genruntimeconfig.cache
+D:\F-Learn\F-Learn-BackEnd\Common\obj\Release\net8.0\ref\Common.dll
