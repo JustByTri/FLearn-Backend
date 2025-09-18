@@ -18,5 +18,7 @@ namespace DAL.IRepositories
         Task<List<Course>> GetCoursesByStatusAsync(Course.CourseStatus status);
         Task<List<Course>> GetCoursesByLevelAsync(string level);
         Task<List<Course>> GetCoursesByPriceRangeAsync(decimal minPrice, decimal maxPrice);
+        Task<int> GetTotalCoursesCountAsync();
+        Task<int> GetCoursesByStatusCountAsync(string status);
     }
 }

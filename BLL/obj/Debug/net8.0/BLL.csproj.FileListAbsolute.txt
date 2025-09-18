@@ -16,3 +16,5 @@ D:\F-Learn\F-Learn-BackEnd\BLL\obj\Debug\net8.0\BLL.genruntimeconfig.cache
 D:\F-Learn\F-Learn-BackEnd\BLL\bin\Debug\net8.0\DAL.dll
 D:\F-Learn\F-Learn-BackEnd\BLL\bin\Debug\net8.0\DAL.pdb
 D:\F-Learn\F-Learn-BackEnd\BLL\obj\Debug\net8.0\BLL.sourcelink.json
+D:\F-Learn\F-Learn-BackEnd\BLL\bin\Debug\net8.0\Common.dll
+D:\F-Learn\F-Learn-BackEnd\BLL\bin\Debug\net8.0\Common.pdb

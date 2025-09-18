@@ -18,5 +18,10 @@ namespace DAL.IRepositories
         Task<User> GetUserWithRolesAsync(Guid userId);
         Task<List<User>> GetActiveUsersAsync();
         Task<List<User>> GetUsersByIndustryAsync(string industry);
+        Task<List<User>> GetAllUsersWithRolesAsync();
+        Task<int> GetTotalUsersCountAsync();
+        Task<int> GetActiveUsersCountAsync();
+        Task<int> GetUsersCountByRoleAsync(string roleName);
+        Task<List<User>> GetRecentUsersAsync(int count);
     }
 }

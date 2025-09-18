@@ -94,6 +94,32 @@ namespace DAL.Migrations
                     b.HasKey("AchievementID");
 
                     b.ToTable("Achievements");
+
+                    b.HasData(
+                        new
+                        {
+                            AchievementID = new Guid("714a25a6-b989-45b9-83e0-4645a7bb4f14"),
+                            Critertia = "Complete 1 lesson",
+                            Description = "Complete your first lesson",
+                            IconUrl = "🎯",
+                            Title = "First Steps"
+                        },
+                        new
+                        {
+                            AchievementID = new Guid("6fe47c9d-25b4-40d2-834c-c79782f54658"),
+                            Critertia = "Complete 1 course",
+                            Description = "Complete your first course",
+                            IconUrl = "🏆",
+                            Title = "Course Completion"
+                        },
+                        new
+                        {
+                            AchievementID = new Guid("f7a24c21-1ebc-44df-9f3d-f7bdfdc5b3d9"),
+                            Critertia = "7 consecutive days of learning",
+                            Description = "Maintain a 7-day learning streak",
+                            IconUrl = "🔥",
+                            Title = "Week Warrior"
+                        });
                 });
 
             modelBuilder.Entity("DAL.Models.Conversation", b =>
@@ -431,6 +457,29 @@ namespace DAL.Migrations
                     b.HasKey("LanguageID");
 
                     b.ToTable("Languages");
+
+                    b.HasData(
+                        new
+                        {
+                            LanguageID = new Guid("9c66299d-bc1f-464e-8189-e55804dbbce0"),
+                            CreateAt = new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131),
+                            LanguageCode = "EN",
+                            LanguageName = "English"
+                        },
+                        new
+                        {
+                            LanguageID = new Guid("775ae28a-d00c-42aa-a682-fb28e5da4428"),
+                            CreateAt = new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131),
+                            LanguageCode = "JP",
+                            LanguageName = "Japanese"
+                        },
+                        new
+                        {
+                            LanguageID = new Guid("fbae66d2-2477-4352-9d11-89dea2ae7224"),
+                            CreateAt = new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131),
+                            LanguageCode = "ZH",
+                            LanguageName = "Chinese"
+                        });
                 });
 
             modelBuilder.Entity("DAL.Models.Lesson", b =>
@@ -621,6 +670,34 @@ namespace DAL.Migrations
                     b.HasIndex("UserID");
 
                     b.ToTable("RefreshTokens");
+                });
+
+            modelBuilder.Entity("DAL.Models.RegistrationOtp", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)")
+                        .UseCollation("utf8mb4_general_ci");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<DateTime>("ExpireAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("OtpCode")
+                        .IsRequired()
+                        .HasMaxLength(6)
+                        .HasColumnType("varchar(6)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("RegistrationOtps");
                 });
 
             modelBuilder.Entity("DAL.Models.Report", b =>
@@ -841,6 +918,36 @@ namespace DAL.Migrations
                     b.HasKey("RoleID");
 
                     b.ToTable("Roles");
+
+                    b.HasData(
+                        new
+                        {
+                            RoleID = new Guid("cbbbf98a-894c-458d-83df-5aad1128a26a"),
+                            CreatedAt = new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131),
+                            Description = "System administrator with full access",
+                            Name = "Admin"
+                        },
+                        new
+                        {
+                            RoleID = new Guid("5feef0ad-01f5-47bf-986f-f94b7eb05ffd"),
+                            CreatedAt = new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131),
+                            Description = "Staff member for specific language support",
+                            Name = "Staff"
+                        },
+                        new
+                        {
+                            RoleID = new Guid("e534f22d-84a2-4e6a-86d7-00f120e8bb52"),
+                            CreatedAt = new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131),
+                            Description = "Teacher who can create and manage courses",
+                            Name = "Teacher"
+                        },
+                        new
+                        {
+                            RoleID = new Guid("cd73ba2f-dfa4-4013-94d7-33a77824ffe2"),
+                            CreatedAt = new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131),
+                            Description = "Student learning languages",
+                            Name = "Learner"
+                        });
                 });
 
             modelBuilder.Entity("DAL.Models.TeacherApplication", b =>
@@ -933,6 +1040,52 @@ namespace DAL.Migrations
                     b.ToTable("TeacherCredentials");
                 });
 
+            modelBuilder.Entity("DAL.Models.TempRegistration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)")
+                        .UseCollation("utf8mb4_general_ci");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<DateTime>("ExpireAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("OtpCode")
+                        .IsRequired()
+                        .HasMaxLength(6)
+                        .HasColumnType("varchar(6)");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<string>("PasswordSalt")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<string>("UserName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TempRegistrations");
+                });
+
             modelBuilder.Entity("DAL.Models.Topic", b =>
                 {
                     b.Property<Guid>("TopicID")
@@ -953,6 +1106,32 @@ namespace DAL.Migrations
                     b.HasKey("TopicID");
 
                     b.ToTable("Topics");
+
+                    b.HasData(
+                        new
+                        {
+                            TopicID = new Guid("92f3648c-020d-44ae-a22d-672ffad53caa"),
+                            Description = "Basic and advanced grammar concepts",
+                            Name = "Grammar"
+                        },
+                        new
+                        {
+                            TopicID = new Guid("be3b325a-f2a1-4e9d-9456-395e54d39f23"),
+                            Description = "Essential vocabulary for daily communication",
+                            Name = "Vocabulary"
+                        },
+                        new
+                        {
+                            TopicID = new Guid("abb3214d-cb3d-47fb-9044-bbc89fd9c792"),
+                            Description = "Practical conversation skills and dialogues",
+                            Name = "Conversation"
+                        },
+                        new
+                        {
+                            TopicID = new Guid("1f3f6fa9-ed79-4609-99d8-7c226b3a61ce"),
+                            Description = "Pronunciation and speaking skills",
+                            Name = "Pronunciation"
+                        });
                 });
 
             modelBuilder.Entity("DAL.Models.User", b =>
@@ -962,7 +1141,7 @@ namespace DAL.Migrations
                         .HasColumnType("char(36)")
                         .UseCollation("utf8mb4_general_ci");
 
-                    b.Property<DateTime>("BirthDate")
+                    b.Property<DateTime?>("BirthDate")
                         .HasColumnType("datetime(6)");
 
                     b.Property<DateTime>("CreatedAt")
@@ -974,12 +1153,10 @@ namespace DAL.Migrations
                         .HasColumnType("varchar(200)");
 
                     b.Property<string>("Industry")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
                     b.Property<string>("Interests")
-                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)");
 
@@ -987,14 +1164,13 @@ namespace DAL.Migrations
                         .HasColumnType("tinyint(1)");
 
                     b.Property<string>("JobTitle")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
-                    b.Property<DateTime>("LastAcessAt")
+                    b.Property<DateTime?>("LastAcessAt")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<bool>("MfaEnabled")
+                    b.Property<bool?>("MfaEnabled")
                         .HasColumnType("tinyint(1)");
 
                     b.Property<string>("PasswordHash")
@@ -1008,14 +1184,13 @@ namespace DAL.Migrations
                         .HasColumnType("varchar(200)");
 
                     b.Property<string>("ProfilePictureUrl")
-                        .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("varchar(300)");
 
                     b.Property<bool>("Status")
                         .HasColumnType("tinyint(1)");
 
-                    b.Property<int>("StreakDays")
+                    b.Property<int?>("StreakDays")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("UpdateAt")
@@ -1029,6 +1204,88 @@ namespace DAL.Migrations
                     b.HasKey("UserID");
 
                     b.ToTable("Users");
+
+                    b.HasData(
+                        new
+                        {
+                            UserID = new Guid("bae616b9-1391-4e15-b432-e8c226b9aad1"),
+                            BirthDate = new DateTime(1990, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            CreatedAt = new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131),
+                            Email = "admin@flearn.com",
+                            Industry = "Education Technology",
+                            Interests = "System Management",
+                            IsEmailConfirmed = true,
+                            JobTitle = "System Administrator",
+                            LastAcessAt = new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131),
+                            MfaEnabled = false,
+                            PasswordHash = "zqUQ0jn3cQEc2YkipCWQG2XIsEu4oyUIhxGmx/r08KnwpIzzA7S7ZN9HB6hbmFqxUh8pE/Rz2g84Zxj8xeOsAw==",
+                            PasswordSalt = "htWHM6rMOySL+BpdqqGl9kElWqLKryn+1+Lmzw+afxzNyeOCgHteK/cqiM/Tcg7c8bcO/HqG1AsL68WXSzrjCvjc6xH4QI5CjA576xoeNZ7LwW/Dwdx5Gl39srLujtyEkMOnWOoj9aQNXyvk8rEFjsVYllgwf4QojF/hQVdA4d0=",
+                            ProfilePictureUrl = "",
+                            Status = true,
+                            StreakDays = 0,
+                            UpdateAt = new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131),
+                            UserName = "Flearn"
+                        },
+                        new
+                        {
+                            UserID = new Guid("18c3d30b-f0e1-457d-a189-3f58b3f1ac16"),
+                            BirthDate = new DateTime(1992, 3, 15, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            CreatedAt = new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131),
+                            Email = "staff.english@flearn.com",
+                            Industry = "Education",
+                            Interests = "English Language Support",
+                            IsEmailConfirmed = true,
+                            JobTitle = "English Language Staff",
+                            LastAcessAt = new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131),
+                            MfaEnabled = false,
+                            PasswordHash = "RfKZfh/ccqkjuu8hbF569mKVUf2VLjPcKvrpUS+IA4M0VUrk0nQYPgJFxDE65lR8Cja+fwESfFFRa7ZmIYGBIA==",
+                            PasswordSalt = "3pOEv1qMev+bI2dHs3V70zewbudLa/liMHawUc/HwMpP84oVGbxQb+sGPP4q23Ov0TEXJyIC1ZBP0++BScUvFfrb7psUIeJ0pCEtz2nxORZjN/QtVFpG+7om/zcVY21FCflNxFx8RR+mrsXX0B0Sk8Ghp5UQTkHNIuJQh7hqkH8=",
+                            ProfilePictureUrl = "",
+                            Status = true,
+                            StreakDays = 0,
+                            UpdateAt = new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131),
+                            UserName = "StaffEN"
+                        },
+                        new
+                        {
+                            UserID = new Guid("4433656a-c9d6-4b4c-b887-ff0e043ddd87"),
+                            BirthDate = new DateTime(1991, 7, 22, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            CreatedAt = new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131),
+                            Email = "staff.japanese@flearn.com",
+                            Industry = "Education",
+                            Interests = "Japanese Language Support",
+                            IsEmailConfirmed = true,
+                            JobTitle = "Japanese Language Staff",
+                            LastAcessAt = new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131),
+                            MfaEnabled = false,
+                            PasswordHash = "RfKZfh/ccqkjuu8hbF569mKVUf2VLjPcKvrpUS+IA4M0VUrk0nQYPgJFxDE65lR8Cja+fwESfFFRa7ZmIYGBIA==",
+                            PasswordSalt = "3pOEv1qMev+bI2dHs3V70zewbudLa/liMHawUc/HwMpP84oVGbxQb+sGPP4q23Ov0TEXJyIC1ZBP0++BScUvFfrb7psUIeJ0pCEtz2nxORZjN/QtVFpG+7om/zcVY21FCflNxFx8RR+mrsXX0B0Sk8Ghp5UQTkHNIuJQh7hqkH8=",
+                            ProfilePictureUrl = "",
+                            Status = true,
+                            StreakDays = 0,
+                            UpdateAt = new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131),
+                            UserName = "StaffJP"
+                        },
+                        new
+                        {
+                            UserID = new Guid("3309433c-38ac-4c13-960e-9b7c3986697d"),
+                            BirthDate = new DateTime(1993, 12, 8, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            CreatedAt = new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131),
+                            Email = "staff.chinese@flearn.com",
+                            Industry = "Education",
+                            Interests = "Chinese Language Support",
+                            IsEmailConfirmed = true,
+                            JobTitle = "Chinese Language Staff",
+                            LastAcessAt = new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131),
+                            MfaEnabled = false,
+                            PasswordHash = "RfKZfh/ccqkjuu8hbF569mKVUf2VLjPcKvrpUS+IA4M0VUrk0nQYPgJFxDE65lR8Cja+fwESfFFRa7ZmIYGBIA==",
+                            PasswordSalt = "3pOEv1qMev+bI2dHs3V70zewbudLa/liMHawUc/HwMpP84oVGbxQb+sGPP4q23Ov0TEXJyIC1ZBP0++BScUvFfrb7psUIeJ0pCEtz2nxORZjN/QtVFpG+7om/zcVY21FCflNxFx8RR+mrsXX0B0Sk8Ghp5UQTkHNIuJQh7hqkH8=",
+                            ProfilePictureUrl = "",
+                            Status = true,
+                            StreakDays = 0,
+                            UpdateAt = new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131),
+                            UserName = "StaffZH"
+                        });
                 });
 
             modelBuilder.Entity("DAL.Models.UserAchievement", b =>
@@ -1074,6 +1331,26 @@ namespace DAL.Migrations
                     b.HasIndex("UserID");
 
                     b.ToTable("UserLearningLanguages");
+
+                    b.HasData(
+                        new
+                        {
+                            UserLearningLanguageID = new Guid("e82720f3-77d4-455f-8c8c-c900a4e5a17c"),
+                            LanguageID = new Guid("9c66299d-bc1f-464e-8189-e55804dbbce0"),
+                            UserID = new Guid("18c3d30b-f0e1-457d-a189-3f58b3f1ac16")
+                        },
+                        new
+                        {
+                            UserLearningLanguageID = new Guid("fb6655c9-1e71-407d-b165-af5c75c97ec0"),
+                            LanguageID = new Guid("775ae28a-d00c-42aa-a682-fb28e5da4428"),
+                            UserID = new Guid("4433656a-c9d6-4b4c-b887-ff0e043ddd87")
+                        },
+                        new
+                        {
+                            UserLearningLanguageID = new Guid("9515a162-0d43-4f88-8bd7-be8958b9eac8"),
+                            LanguageID = new Guid("fbae66d2-2477-4352-9d11-89dea2ae7224"),
+                            UserID = new Guid("3309433c-38ac-4c13-960e-9b7c3986697d")
+                        });
                 });
 
             modelBuilder.Entity("DAL.Models.UserRole", b =>
@@ -1098,6 +1375,32 @@ namespace DAL.Migrations
                     b.HasIndex("UserID");
 
                     b.ToTable("UserRoles");
+
+                    b.HasData(
+                        new
+                        {
+                            UserRoleID = new Guid("57f0649a-e9be-469e-b01e-0c344eb4ae93"),
+                            RoleID = new Guid("cbbbf98a-894c-458d-83df-5aad1128a26a"),
+                            UserID = new Guid("bae616b9-1391-4e15-b432-e8c226b9aad1")
+                        },
+                        new
+                        {
+                            UserRoleID = new Guid("4bbc3816-9558-4592-ad0d-79318571288d"),
+                            RoleID = new Guid("5feef0ad-01f5-47bf-986f-f94b7eb05ffd"),
+                            UserID = new Guid("18c3d30b-f0e1-457d-a189-3f58b3f1ac16")
+                        },
+                        new
+                        {
+                            UserRoleID = new Guid("5eca3776-89a4-4b0f-8df2-4a2590233c5f"),
+                            RoleID = new Guid("5feef0ad-01f5-47bf-986f-f94b7eb05ffd"),
+                            UserID = new Guid("4433656a-c9d6-4b4c-b887-ff0e043ddd87")
+                        },
+                        new
+                        {
+                            UserRoleID = new Guid("d25980e7-5cb8-44e2-93cd-514d6c693c05"),
+                            RoleID = new Guid("5feef0ad-01f5-47bf-986f-f94b7eb05ffd"),
+                            UserID = new Guid("3309433c-38ac-4c13-960e-9b7c3986697d")
+                        });
                 });
 
             modelBuilder.Entity("LanguageUser", b =>

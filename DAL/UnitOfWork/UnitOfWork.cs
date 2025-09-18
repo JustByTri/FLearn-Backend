@@ -45,6 +45,8 @@ namespace DAL.UnitOfWork
             RefreshTokens = new RefreshTokenRepository(_context);
             Roadmaps = new RoadmapRepository(_context);
             RoadmapDetails = new RoadmapDetailRepository(_context);
+            RegistrationOtps = new RegistrationOtpRepository(_context);
+            TempRegistrations = new TempRegistrationRepository(_context);
         }
 
         public IUserRepository Users { get; private set; }
@@ -74,6 +76,8 @@ namespace DAL.UnitOfWork
         public IRoadmapRepository Roadmaps { get; private set; }
         public IRoadmapDetailRepository RoadmapDetails { get; private set; }
 
+        public IRegistrationOtpRepository RegistrationOtps { get; private set; }
+        public ITempRegistrationRepository TempRegistrations { get; private set; }
         public int SaveChanges()
         {
             return _context.SaveChanges();
