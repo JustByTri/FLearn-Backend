@@ -6,6 +6,7 @@ D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\PubTmp\Out\Presentati
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\PubTmp\Out\Presentation.pdb
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\PubTmp\Out\Azure.Core.dll
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\PubTmp\Out\Azure.Identity.dll
+D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\PubTmp\Out\CloudinaryDotNet.dll
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\PubTmp\Out\Microsoft.AspNetCore.Authentication.JwtBearer.dll
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\PubTmp\Out\Microsoft.Bcl.AsyncInterfaces.dll
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\PubTmp\Out\Microsoft.Data.SqlClient.dll
@@ -25,6 +26,7 @@ D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\PubTmp\Out\Microsoft.
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\PubTmp\Out\Microsoft.SqlServer.Server.dll
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\PubTmp\Out\Microsoft.Win32.SystemEvents.dll
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\PubTmp\Out\MySqlConnector.dll
+D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\PubTmp\Out\Newtonsoft.Json.dll
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\PubTmp\Out\Pomelo.EntityFrameworkCore.MySql.dll
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\PubTmp\Out\Swashbuckle.AspNetCore.Swagger.dll
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\PubTmp\Out\Swashbuckle.AspNetCore.SwaggerGen.dll

@@ -9,6 +9,11 @@ using BLL.IServices.Auth;
 using BLL.Services.Auth;
 using BLL.IServices.Admin;
 using BLL.Services.Admin;
+using BLL.IServices.Teacher;
+using BLL.IServices.Upload;
+using BLL.Services.Teacher;
+using BLL.Services.Upload;
+using BLL.Settings;
 namespace BLL
 {
     public static class BllDependencyInjection
@@ -19,8 +24,10 @@ namespace BLL
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IAdminService, AdminService>();
-
+            services.Configure<CloudinarySettings>(configuration.GetSection("CloudinarySettings"));
             services.AddDalServices(configuration);
+            services.AddScoped<ICloudinaryService, CloudinaryService>();
+            services.AddScoped<ITeacherApplicationService, TeacherApplicationService>();
             return services;
         }
     }

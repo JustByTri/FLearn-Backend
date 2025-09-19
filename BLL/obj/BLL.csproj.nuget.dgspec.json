@@ -58,6 +58,10 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
+            "CloudinaryDotNet": {
+              "target": "Package",
+              "version": "[1.27.7, )"
+            },
             "Microsoft.AspNetCore.Authentication.JwtBearer": {
               "target": "Package",
               "version": "[8.0.20, )"
@@ -139,7 +143,11 @@
         "frameworks": {
           "net8.0": {
             "targetAlias": "net8.0",
-            "projectReferences": {}
+            "projectReferences": {
+              "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\DAL.csproj": {
+                "projectPath": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\DAL.csproj"
+              }
+            }
           }
         },
         "warningProperties": {

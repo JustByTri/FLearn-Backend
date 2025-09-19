@@ -295,6 +295,226 @@ namespace BLL.Services.Auth
                 return false;
             }
         }
+        public async Task<bool> SendTeacherApplicationSubmittedAsync(string toEmail, string userName)
+        {
+            try
+            {
+                var subject = "📝 Đơn ứng tuyển giáo viên đã được gửi - Flearn";
+                var body = $@"
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset='UTF-8'>
+                <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+                <title>Đơn ứng tuyển đã được gửi</title>
+            </head>
+            <body style='margin: 0; padding: 0; font-family: Arial, sans-serif; background: linear-gradient(135deg, #28a745 0%, #20c997 100%);'>
+                <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff;'>
+                    <!-- Header -->
+                    <div style='background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 40px 20px; text-align: center;'>
+                        <h1 style='color: white; margin: 0; font-size: 28px; font-weight: 700;'>🎓 Flearn</h1>
+                        <p style='color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;'>Ứng tuyển giáo viên</p>
+                    </div>
+                    
+                    <!-- Content -->
+                    <div style='padding: 40px 30px;'>
+                        <div style='text-align: center; margin-bottom: 30px;'>
+                            <div style='background: linear-gradient(135deg, #28a745 0%, #20c997 100%); width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;'>
+                                <span style='font-size: 36px; color: white;'>📝</span>
+                            </div>
+                            <h2 style='color: #2c3e50; margin: 0; font-size: 24px; font-weight: 600;'>Xin chào {userName}!</h2>
+                        </div>
+                        
+                        <div style='background-color: #f0fff4; padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #28a745;'>
+                            <p style='font-size: 16px; line-height: 1.6; color: #333; margin: 0 0 15px 0;'>
+                                Cảm ơn bạn đã gửi đơn ứng tuyển làm giáo viên tại <strong>Flearn</strong>!
+                            </p>
+                            <p style='font-size: 16px; line-height: 1.6; color: #333; margin: 0;'>
+                                Đơn ứng tuyển của bạn đã được tiếp nhận và đang trong quá trình xem xét.
+                            </p>
+                        </div>
+                        
+                        <div style='background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 25px; border-radius: 12px; text-align: center; margin: 30px 0;'>
+                            <h3 style='color: white; margin: 0 0 15px 0; font-size: 20px;'>✅ Đơn đã được gửi thành công!</h3>
+                            <p style='color: rgba(255,255,255,0.9); margin: 0; font-size: 16px;'>Chúng tôi sẽ phản hồi trong vòng 3-5 ngày làm việc</p>
+                        </div>
+                        
+                        <div style='background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 20px; border-radius: 8px; margin: 25px 0;'>
+                            <p style='margin: 0; color: #856404; font-size: 14px; text-align: center;'>
+                                💡 <strong>Lưu ý:</strong> Bạn có thể theo dõi trạng thái đơn ứng tuyển trong tài khoản của mình
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div style='background-color: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef;'>
+                        <p style='color: #6c757d; margin: 0 0 10px 0; font-size: 14px;'>
+                            Cần hỗ trợ? Liên hệ với chúng tôi tại 
+                            <a href='mailto:support@flearn.com' style='color: #28a745; text-decoration: none;'>support@flearn.com</a>
+                        </p>
+                        <p style='color: #6c757d; margin: 0; font-size: 12px;'>
+                            © 2024 Flearn - Nền tảng học ngôn ngữ thông minh
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>";
+
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending teacher application submitted email to {Email}", toEmail);
+                return false;
+            }
+        }
+
+        public async Task<bool> SendTeacherApplicationApprovedAsync(string toEmail, string userName)
+        {
+            try
+            {
+                var subject = "🎉 Chúc mừng! Đơn ứng tuyển giáo viên đã được duyệt - Flearn";
+                var body = $@"
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset='UTF-8'>
+                <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+                <title>Đơn ứng tuyển được duyệt</title>
+            </head>
+            <body style='margin: 0; padding: 0; font-family: Arial, sans-serif; background: linear-gradient(135deg, #ffc107 0%, #ff8800 100%);'>
+                <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff;'>
+                    <!-- Header -->
+                    <div style='background: linear-gradient(135deg, #ffc107 0%, #ff8800 100%); padding: 40px 20px; text-align: center;'>
+                        <h1 style='color: white; margin: 0; font-size: 28px; font-weight: 700;'>🎓 Flearn</h1>
+                        <p style='color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;'>Chào mừng giáo viên mới!</p>
+                    </div>
+                    
+                    <!-- Content -->
+                    <div style='padding: 40px 30px;'>
+                        <div style='text-align: center; margin-bottom: 30px;'>
+                            <div style='background: linear-gradient(135deg, #ffc107 0%, #ff8800 100%); width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;'>
+                                <span style='font-size: 36px; color: white;'>🎉</span>
+                            </div>
+                            <h2 style='color: #2c3e50; margin: 0; font-size: 24px; font-weight: 600;'>Chúc mừng {userName}!</h2>
+                        </div>
+                        
+                        <div style='background-color: #fff8e1; padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #ffc107;'>
+                            <p style='font-size: 16px; line-height: 1.6; color: #333; margin: 0 0 15px 0;'>
+                                Đơn ứng tuyển làm giáo viên của bạn đã được <strong>phê duyệt</strong>!
+                            </p>
+                            <p style='font-size: 16px; line-height: 1.6; color: #333; margin: 0;'>
+                                Chào mừng bạn gia nhập đội ngũ giáo viên Flearn. Bạn giờ đây có thể tạo và quản lý các khóa học của mình.
+                            </p>
+                        </div>
+                        
+                        <div style='background: linear-gradient(135deg, #ffc107 0%, #ff8800 100%); padding: 25px; border-radius: 12px; text-align: center; margin: 30px 0;'>
+                            <h3 style='color: white; margin: 0 0 15px 0; font-size: 20px;'>🌟 Bạn giờ đây là giáo viên Flearn!</h3>
+                            <p style='color: rgba(255,255,255,0.9); margin: 0; font-size: 16px;'>Hãy bắt đầu tạo khóa học đầu tiên của bạn</p>
+                        </div>
+                        
+                        <div style='text-align: center; margin: 30px 0;'>
+                            <a href='{_configuration["AppSettings:BaseUrl"]}/teacher/dashboard' style='display: inline-block; background: linear-gradient(135deg, #ffc107 0%, #ff8800 100%); color: white; padding: 15px 35px; text-decoration: none; border-radius: 50px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4);'>
+                            🚀 Bắt đầu giảng dạy
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div style='background-color: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef;'>
+                        <p style='color: #6c757d; margin: 0 0 10px 0; font-size: 14px;'>
+                            Cần hỗ trợ? Liên hệ với chúng tôi tại 
+                            <a href='mailto:support@flearn.com' style='color: #ffc107; text-decoration: none;'>support@flearn.com</a>
+                        </p>
+                        <p style='color: #6c757d; margin: 0; font-size: 12px;'>
+                            © 2024 Flearn - Nền tảng học ngôn ngữ thông minh
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>";
+
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending teacher application approved email to {Email}", toEmail);
+                return false;
+            }
+        }
+
+        public async Task<bool> SendTeacherApplicationRejectedAsync(string toEmail, string userName, string reason)
+        {
+            try
+            {
+                var subject = "📋 Thông báo về đơn ứng tuyển giáo viên - Flearn";
+                var body = $@"
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset='UTF-8'>
+                <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+                <title>Thông báo đơn ứng tuyển</title>
+            </head>
+            <body style='margin: 0; padding: 0; font-family: Arial, sans-serif; background: linear-gradient(135deg, #6c757d 0%, #495057 100%);'>
+                <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff;'>
+                    <!-- Header -->
+                    <div style='background: linear-gradient(135deg, #6c757d 0%, #495057 100%); padding: 40px 20px; text-align: center;'>
+                        <h1 style='color: white; margin: 0; font-size: 28px; font-weight: 700;'>🎓 Flearn</h1>
+                        <p style='color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;'>Thông báo đơn ứng tuyển</p>
+                    </div>
+                    
+                    <!-- Content -->
+                    <div style='padding: 40px 30px;'>
+                        <div style='text-align: center; margin-bottom: 30px;'>
+                            <div style='background: linear-gradient(135deg, #6c757d 0%, #495057 100%); width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;'>
+                                <span style='font-size: 36px; color: white;'>📋</span>
+                            </div>
+                            <h2 style='color: #2c3e50; margin: 0; font-size: 24px; font-weight: 600;'>Xin chào {userName}!</h2>
+                        </div>
+                        
+                        <div style='background-color: #f8f9fa; padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #6c757d;'>
+                            <p style='font-size: 16px; line-height: 1.6; color: #333; margin: 0 0 15px 0;'>
+                                Cảm ơn bạn đã quan tâm và gửi đơn ứng tuyển làm giáo viên tại Flearn.
+                            </p>
+                            <p style='font-size: 16px; line-height: 1.6; color: #333; margin: 0;'>
+                                Sau khi xem xét kỹ lưỡng, chúng tôi rất tiếc phải thông báo rằng đơn ứng tuyển của bạn chưa được chấp nhận lần này.
+                            </p>
+                        </div>
+                        
+                        <div style='background-color: #f8d7da; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #dc3545;'>
+                            <p style='margin: 0 0 10px 0; color: #721c24; font-weight: bold; font-size: 14px;'>Lý do:</p>
+                            <p style='margin: 0; color: #721c24; font-size: 14px;'>{reason}</p>
+                        </div>
+                        
+                        <div style='background-color: #d1ecf1; border: 1px solid #b3d7df; padding: 20px; border-radius: 8px; margin: 25px 0;'>
+                            <p style='margin: 0; color: #0c5460; font-size: 14px; text-align: center;'>
+                                💡 <strong>Gợi ý:</strong> Bạn có thể cải thiện hồ sơ và ứng tuyển lại sau 30 ngày
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div style='background-color: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef;'>
+                        <p style='color: #6c757d; margin: 0 0 10px 0; font-size: 14px;'>
+                            Cần hỗ trợ? Liên hệ với chúng tôi tại 
+                            <a href='mailto:support@flearn.com' style='color: #6c757d; text-decoration: none;'>support@flearn.com</a>
+                        </p>
+                        <p style='color: #6c757d; margin: 0; font-size: 12px;'>
+                            © 2024 Flearn - Nền tảng học ngôn ngữ thông minh
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>";
+
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending teacher application rejected email to {Email}", toEmail);
+                return false;
+            }
+        }
     }
 }
-

@@ -17,38 +17,38 @@ namespace DAL.Repositories
 
         public async Task<List<UserLearningLanguage>> GetLanguagesByUserAsync(Guid userId)
         {
-            return await _context.UserLearningLanguages
+            return await _context.UserLanguages
                 .Where(ull => ull.UserID == userId)
                 .ToListAsync();
         }
 
         public async Task<List<UserLearningLanguage>> GetUsersByLanguageAsync(Guid languageId)
         {
-            return await _context.UserLearningLanguages
+            return await _context.UserLanguages
                 .Where(ull => ull.LanguageID == languageId)
                 .ToListAsync();
         }
 
         public async Task<bool> IsUserLearningLanguageAsync(Guid userId, Guid languageId)
         {
-            return await _context.UserLearningLanguages
+            return await _context.UserLanguages
                 .AnyAsync(ull => ull.UserID == userId && ull.LanguageID == languageId);
         }
 
         public async Task<UserLearningLanguage> GetUserLearningLanguageAsync(Guid userId, Guid languageId)
         {
-            return await _context.UserLearningLanguages
+            return await _context.UserLanguages
                 .FirstOrDefaultAsync(ull => ull.UserID == userId && ull.LanguageID == languageId);
         }
 
         public async Task<bool> RemoveUserLearningLanguageAsync(Guid userId, Guid languageId)
         {
-            var userLearningLanguage = await _context.UserLearningLanguages
+            var userLearningLanguage = await _context.UserLanguages
                 .FirstOrDefaultAsync(ull => ull.UserID == userId && ull.LanguageID == languageId);
 
             if (userLearningLanguage != null)
             {
-                _context.UserLearningLanguages.Remove(userLearningLanguage);
+                _context.UserLanguages.Remove(userLearningLanguage);
                 await _context.SaveChangesAsync();
                 return true;
             }

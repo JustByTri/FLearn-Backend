@@ -50,13 +50,24 @@ namespace DAL.Repositories
                 .ToListAsync();
         }
 
-        public async Task<TeacherApplication> GetLatestApplicationByUserAsync(Guid userId)
+        public async Task<TeacherApplication?> GetLatestApplicationByUserAsync(Guid userId)
         {
             return await _context.TeacherApplications
                 .Include(ta => ta.User)
+                .Include(ta => ta.Language)
                 .Where(ta => ta.UserID == userId)
                 .OrderByDescending(ta => ta.AppliedAt)
                 .FirstOrDefaultAsync();
+        }
+
+        public async Task<List<TeacherApplication>> GetApplicationsByLanguageAsync(Guid languageId)
+        {
+            return await _context.TeacherApplications
+                .Include(ta => ta.User)
+                .Include(ta => ta.Language)
+                .Where(ta => ta.LanguageID == languageId)
+                .OrderByDescending(ta => ta.AppliedAt)
+                .ToListAsync();
         }
     }
 }

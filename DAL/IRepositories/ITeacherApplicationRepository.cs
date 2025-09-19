@@ -15,5 +15,7 @@ namespace DAL.IRepositories
         Task<TeacherApplication> GetApplicationWithCredentialsAsync(Guid applicationId);
         Task<List<TeacherApplication>> GetApplicationsByStatusAsync(bool status);
         Task<TeacherApplication> GetLatestApplicationByUserAsync(Guid userId);
+      
+        Task<List<TeacherApplication>> GetApplicationsByLanguageAsync(Guid languageId);
     }
 }

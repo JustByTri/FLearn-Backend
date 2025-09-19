@@ -16,7 +16,7 @@ namespace DAL.DBContext
         public DbSet<Role> Roles { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }
         public DbSet<Language> Languages { get; set; }
-        public DbSet<UserLearningLanguage> UserLearningLanguages { get; set; }
+        public DbSet<UserLearningLanguage> UserLanguages { get; set; }
         public DbSet<Achievement> Achievements { get; set; }
         public DbSet<UserAchievement> UserAchievements { get; set; }
         public DbSet<Course> Courses { get; set; }
