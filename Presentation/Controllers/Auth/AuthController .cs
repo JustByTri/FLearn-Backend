@@ -1,11 +1,9 @@
 ﻿using BLL.IServices.Auth;
 using Common.DTO.Auth;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
+using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
-using System.Linq;
 
 namespace Presentation.Controllers.Auth
 {
@@ -20,7 +18,7 @@ namespace Presentation.Controllers.Auth
             _authService = authService;
         }
 
- 
+
         [HttpPost("register")]
         [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] TempRegistrationDto request)
@@ -50,7 +48,7 @@ namespace Presentation.Controllers.Auth
             }
         }
 
-   
+
         [HttpPost("verify-otp")]
         [AllowAnonymous]
         public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto request)
@@ -109,7 +107,7 @@ namespace Presentation.Controllers.Auth
             }
         }
 
-    
+
         [HttpPost("refresh")]
         [AllowAnonymous]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto request)
@@ -190,11 +188,23 @@ namespace Presentation.Controllers.Auth
                 return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi lấy thông tin người dùng" });
             }
         }
+        [AllowAnonymous]
+        [HttpPost("google")]
+        public async Task<IActionResult> LoginGoogle([FromBody] GoogleLoginRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+            }
 
-  
+            var result = await _authService.LoginGoogleAsync(request.IdToken);
+            if (result.AccessToken.IsNullOrEmpty())
+            {
+                return BadRequest(new { success = false, message = "Đã xảy ra lỗi trong quá trình đăng nhập Google." });
+            }
 
- 
-      
+            return Ok(new { success = true, message = "Đăng nhập Google thành công", data = result });
+        }
     }
 }
 

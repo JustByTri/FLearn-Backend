@@ -3,16 +3,13 @@ using BLL.Settings;
 using Common.DTO.Auth;
 using DAL.Models;
 using DAL.UnitOfWork;
+using Google.Apis.Auth;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using System;
-using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace BLL.Services.Auth
 {
@@ -21,12 +18,13 @@ namespace BLL.Services.Auth
         private readonly IUnitOfWork _unitOfWork;
         private readonly JwtSettings _jwtSettings;
         private readonly IEmailService _emailService;
-
-        public AuthService(IUnitOfWork unitOfWork, IOptions<JwtSettings> jwtSettings, IEmailService emailService)
+        private readonly GoogleAuthSettings _googleAuthSettings;
+        public AuthService(IUnitOfWork unitOfWork, IOptions<JwtSettings> jwtSettings, IEmailService emailService, IOptions<GoogleAuthSettings> googleAuthSettings)
         {
             _unitOfWork = unitOfWork;
             _jwtSettings = jwtSettings.Value;
             _emailService = emailService;
+            _googleAuthSettings = googleAuthSettings.Value;
         }
 
         public async Task<AuthResponseDto> LoginAsync(LoginRequestDto loginRequest)
@@ -64,16 +62,16 @@ namespace BLL.Services.Auth
             if (await _unitOfWork.Users.IsUsernameExistsAsync(registrationDto.UserName))
                 throw new InvalidOperationException("Tên người dùng đã có người sử dụng, hãy thử tên khác nhé");
 
-          
+
             var (passwordHash, passwordSalt) = CreatePasswordHash(registrationDto.Password);
 
-        
+
             var otp = new Random().Next(100000, 999999).ToString();
 
-          
+
             await _unitOfWork.TempRegistrations.InvalidateTempRegistrationsAsync(registrationDto.Email);
 
-       
+
             var tempRegistration = new TempRegistration
             {
                 Email = registrationDto.Email,
@@ -85,29 +83,29 @@ namespace BLL.Services.Auth
             };
             await _unitOfWork.TempRegistrations.CreateAsync(tempRegistration);
 
-        
+
             await _emailService.SendEmailConfirmationAsync(registrationDto.Email, registrationDto.UserName, otp);
             return true;
         }
         public async Task<AuthResponseDto> VerifyOtpAndCompleteRegistrationAsync(VerifyOtpDto verifyOtpDto)
         {
-           
+
             var tempRegistration = await _unitOfWork.TempRegistrations.GetValidTempRegistrationAsync(verifyOtpDto.Email, verifyOtpDto.OtpCode);
             if (tempRegistration == null)
                 throw new InvalidOperationException("OTP có vẻ như không đúng, hãy thử lại.");
 
-          
+
             tempRegistration.IsUsed = true;
             await _unitOfWork.TempRegistrations.UpdateAsync(tempRegistration);
 
-         
+
             if (await _unitOfWork.Users.IsEmailExistsAsync(tempRegistration.Email))
                 throw new InvalidOperationException("Email đã được sử dụng trong quá trình xác thực OTP .");
 
             if (await _unitOfWork.Users.IsUsernameExistsAsync(tempRegistration.UserName))
                 throw new InvalidOperationException("Tài khoản đã được sử dụng trong quá trình sử dụng OTP.");
 
-       
+
             var user = new User
             {
                 UserID = Guid.NewGuid(),
@@ -123,13 +121,13 @@ namespace BLL.Services.Auth
                 CreatedAt = DateTime.UtcNow,
                 UpdateAt = DateTime.UtcNow,
                 LastAcessAt = DateTime.UtcNow,
-                IsEmailConfirmed = true, 
+                IsEmailConfirmed = true,
                 MfaEnabled = false,
                 StreakDays = 0
             };
             await _unitOfWork.Users.CreateAsync(user);
 
-       
+
             var defaultRole = await _unitOfWork.Roles.GetByNameAsync("Learner");
             if (defaultRole != null)
             {
@@ -142,10 +140,10 @@ namespace BLL.Services.Auth
                 await _unitOfWork.UserRoles.CreateAsync(userRole);
             }
 
-      
+
             await _emailService.SendWelcomeEmailAsync(user.Email, user.UserName);
 
-        
+
             var (accessToken, refreshToken) = await GenerateTokensAsync(user);
 
             return new AuthResponseDto
@@ -160,7 +158,7 @@ namespace BLL.Services.Auth
         }
         public async Task<AuthResponseDto> RegisterAsync(TempRegistrationDto registerRequest)
         {
-           
+
             throw new NotImplementedException("Hãy xác thực đăng kí với OTP.");
         }
 
@@ -175,12 +173,12 @@ namespace BLL.Services.Auth
             if (user == null || !user.Status)
                 throw new UnauthorizedAccessException("Người dùng không tìm thấy hoặc ngưng hoạt động");
 
-        
+
             refreshTokenEntity.IsRevoked = true;
             refreshTokenEntity.RevokedAt = DateTime.UtcNow;
             await _unitOfWork.RefreshTokens.UpdateAsync(refreshTokenEntity);
 
-          
+
             var (accessToken, newRefreshToken) = await GenerateTokensAsync(user);
 
             return new AuthResponseDto
@@ -238,11 +236,11 @@ namespace BLL.Services.Auth
                 new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
                 new Claim(ClaimTypes.Name, user.UserName),
                 new Claim(ClaimTypes.Email, user.Email),
-             
+
                 new Claim("user_id", user.UserID.ToString()),
                 new Claim("username", user.UserName),
                 new Claim("email", user.Email),
-          
+
                 new Claim("created_at", user.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"))
             };
 
@@ -315,21 +313,21 @@ namespace BLL.Services.Auth
         }
         public async Task<bool> ChangeStaffPasswordAsync(Guid adminUserId, ChangeStaffPasswordDto changePasswordDto)
         {
-        
+
             var adminUser = await _unitOfWork.Users.GetUserWithRolesAsync(adminUserId);
             if (adminUser == null || !adminUser.UserRoles.Any(ur => ur.Role.Name == "Admin"))
             {
                 throw new UnauthorizedAccessException("Chỉ admin mới có thể đổi mật khẩu staff");
             }
 
-        
+
             var staffUser = await _unitOfWork.Users.GetUserWithRolesAsync(changePasswordDto.StaffUserId);
             if (staffUser == null || !staffUser.UserRoles.Any(ur => ur.Role.Name == "Staff"))
             {
                 throw new InvalidOperationException("Người dùng được chọn không phải là staff");
             }
 
-         
+
             var (newPasswordHash, newPasswordSalt) = CreatePasswordHash(changePasswordDto.NewPassword);
 
 
@@ -339,10 +337,117 @@ namespace BLL.Services.Auth
 
             await _unitOfWork.Users.UpdateAsync(staffUser);
 
-        
+
             await _unitOfWork.RefreshTokens.RevokeAllUserTokensAsync(staffUser.UserID);
 
             return true;
+        }
+
+        public async Task<AuthResponseDto> LoginGoogleAsync(string idToken)
+        {
+            try
+            {
+                var settings = new GoogleJsonWebSignature.ValidationSettings
+                {
+                    Audience = new[] { _googleAuthSettings.ClientId }
+                };
+
+                if (string.IsNullOrEmpty(_googleAuthSettings.ClientId))
+                {
+                    throw new InvalidOperationException("Google Client ID is not configured.");
+                }
+
+                var payload = await GoogleJsonWebSignature.ValidateAsync(idToken, settings);
+
+                var userInfo = new
+                {
+                    GoogleId = payload.Subject,
+                    Email = payload.Email,
+                    EmailVerified = payload.EmailVerified,
+                    Name = payload.Name,
+                    Picture = payload.Picture,
+                };
+
+                //Check if user exists
+                var user = await _unitOfWork.Users.GetByEmailAsync(userInfo.Email);
+
+                if (user != null)
+                {
+                    if (!user.Status)
+                        throw new UnauthorizedAccessException("Tài khoản của bạn không khả dụng, liên hệ với quản trị viên");
+
+                    var (accessToken, refreshToken) = await GenerateTokensAsync(user);
+
+                    return new AuthResponseDto
+                    {
+                        AccessToken = accessToken.Token,
+                        RefreshToken = refreshToken.Token,
+                        AccessTokenExpires = accessToken.ExpiresAt,
+                        RefreshTokenExpires = refreshToken.ExpiresAt,
+                        User = MapToUserInfoDto(user),
+                        Roles = user.UserRoles?.Select(ur => ur.Role.Name).ToList() ?? new List<string>()
+                    };
+                }
+                else
+                {
+                    var newUser = new User
+                    {
+                        UserID = Guid.NewGuid(),
+                        UserName = userInfo.Name.Replace(" ", "") + new Random().Next(1000, 9999),
+                        Email = userInfo.Email,
+                        PasswordHash = string.Empty,
+                        PasswordSalt = string.Empty,
+                        JobTitle = "Learner",
+                        Interests = string.Empty,
+                        BirthDate = DateTime.Now.AddYears(-18),
+                        ProfilePictureUrl = userInfo.Picture,
+                        Status = true,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdateAt = DateTime.UtcNow,
+                        LastAcessAt = DateTime.UtcNow,
+                        IsEmailConfirmed = userInfo.EmailVerified,
+                        MfaEnabled = false,
+                        StreakDays = 0
+                    };
+
+                    // Save new user
+                    await _unitOfWork.Users.CreateAsync(newUser);
+
+                    var defaultRole = await _unitOfWork.Roles.GetByNameAsync("Learner");
+                    if (defaultRole != null)
+                    {
+                        var userRole = new UserRole
+                        {
+                            UserRoleID = Guid.NewGuid(),
+                            UserID = newUser.UserID,
+                            RoleID = defaultRole.RoleID
+                        };
+                        await _unitOfWork.UserRoles.CreateAsync(userRole);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Vai trò mặc định không tồn tại, vui lòng liên hệ với quản trị viên.");
+                    }
+
+                    await _emailService.SendWelcomeEmailAsync(newUser.Email, newUser.UserName);
+
+                    var (accessToken, refreshToken) = await GenerateTokensAsync(newUser);
+
+                    return new AuthResponseDto
+                    {
+                        AccessToken = accessToken.Token,
+                        RefreshToken = refreshToken.Token,
+                        AccessTokenExpires = accessToken.ExpiresAt,
+                        RefreshTokenExpires = refreshToken.ExpiresAt,
+                        User = MapToUserInfoDto(newUser),
+                        Roles = new List<string> { "Learner" }
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Đã xảy ra lỗi trong quá trình xác thực người dùng.", ex);
+            }
         }
 
         #endregion

@@ -4,7 +4,6 @@ using BLL.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
 using System.Text;
 
@@ -163,6 +162,10 @@ else
     builder.Services.AddAuthentication();
     builder.Services.AddAuthorization();
 }
+
+// Configure GoogleAuthSettings from appsettings.json
+var googleAuthSection = builder.Configuration.GetSection("Authentication:Google");
+builder.Services.Configure<GoogleAuthSettings>(googleAuthSection);
 
 // Add CORS
 builder.Services.AddCors(options =>
