@@ -28,8 +28,33 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 
+    // Add XML comments if available
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        c.IncludeXmlComments(xmlPath);
+    }
 
+    // Support for nullable reference types
+    c.SupportNonNullableReferenceTypes();
 
+    // Simple file upload mapping - this is the key fix
+    c.MapType<IFormFile>(() => new OpenApiSchema
+    {
+        Type = "string",
+        Format = "binary"
+    });
+
+    c.MapType<IList<IFormFile>>(() => new OpenApiSchema
+    {
+        Type = "array",
+        Items = new OpenApiSchema
+        {
+            Type = "string",
+            Format = "binary"
+        }
+    });
 
     // Add JWT Authentication to Swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -43,22 +68,27 @@ builder.Services.AddSwaggerGen(c =>
     });
 
     c.AddSecurityRequirement(new OpenApiSecurityRequirement()
-{
     {
-        new OpenApiSecurityScheme
         {
-            Reference = new OpenApiReference
+            new OpenApiSecurityScheme
             {
-                Type = ReferenceType.SecurityScheme,
-                Id = "Bearer"
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                },
+                Scheme = "bearer",
+                Name = "Bearer",
+                In = ParameterLocation.Header,
             },
-            Scheme = "bearer", 
-            Name = "Bearer",
-            In = ParameterLocation.Header,
-        },
-        new List<string>()
-    }
-});
+            new List<string>()
+        }
+    });
+    c.DocInclusionPredicate((docName, apiDesc) =>
+    {
+        var controllerName = apiDesc.ActionDescriptor.RouteValues["controller"];
+        return !controllerName?.Equals("Upload", StringComparison.OrdinalIgnoreCase) == true;
+    });
 });
 
 // Configure JwtSettings from appsettings.json
@@ -121,9 +151,9 @@ if (jwtSettings != null && !string.IsNullOrEmpty(jwtSettings.SecretKey))
     builder.Services.AddAuthorization(options =>
     {
         options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-        options.AddPolicy("StaffOnly", policy => policy.RequireRole("Staff", "Admin"));
-        options.AddPolicy("TeacherOnly", policy => policy.RequireRole("Teacher", "Admin"));
-        options.AddPolicy("LearnerOnly", policy => policy.RequireRole("Learner", "Teacher", "Staff", "Admin"));
+        options.AddPolicy("StaffOnly", policy => policy.RequireRole("Staff"));
+        options.AddPolicy("TeacherOnly", policy => policy.RequireRole("Teacher"));
+        options.AddPolicy("LearnerOnly", policy => policy.RequireRole("Learner", "Teacher"));
     });
 }
 else
@@ -132,6 +162,10 @@ else
     builder.Services.AddAuthentication();
     builder.Services.AddAuthorization();
 }
+
+// Configure GoogleAuthSettings from appsettings.json
+var googleAuthSection = builder.Configuration.GetSection("Authentication:Google");
+builder.Services.Configure<GoogleAuthSettings>(googleAuthSection);
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -147,16 +181,14 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Flearn API V1");
-
-        c.RoutePrefix = "swagger";
-        c.DisplayRequestDuration();
-        c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
-    });
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Flearn API V1");
+    c.RoutePrefix = "swagger";
+    c.DisplayRequestDuration();
+    c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
+});
 
 app.UseHttpsRedirection();
 

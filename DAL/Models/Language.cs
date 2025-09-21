@@ -23,7 +23,7 @@ namespace DAL.Models
         [Required]
         public DateTime CreateAt { get; set; }
 
-     
+     public virtual ICollection<TeacherApplication> TeacherApplications { get; set; }
         public virtual ICollection<User> Users { get; set; }
         public virtual ICollection<Roadmap> Roadmaps { get; set; }
         public virtual ICollection<Course> Courses { get; set; }

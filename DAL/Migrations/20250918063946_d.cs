@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DAL.Migrations
 {
     /// <inheritdoc />
-    public partial class a : Migration
+    public partial class d : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -362,11 +362,18 @@ namespace DAL.Migrations
                     RejectionReason = table.Column<string>(type: "longtext", nullable: false, collation: "utf8mb4_general_ci"),
                     Status = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     TeacherCredentialID = table.Column<Guid>(type: "char(36)", nullable: false, collation: "utf8mb4_general_ci"),
+                    LanguageID = table.Column<Guid>(type: "char(36)", nullable: false, collation: "utf8mb4_general_ci"),
                     CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_TeacherApplications", x => x.TeacherApplicationID);
+                    table.ForeignKey(
+                        name: "FK_TeacherApplications_Languages_LanguageID",
+                        column: x => x.LanguageID,
+                        principalTable: "Languages",
+                        principalColumn: "LanguageID",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_TeacherApplications_Users_UserID",
                         column: x => x.UserID,
@@ -377,7 +384,7 @@ namespace DAL.Migrations
                 .Annotation("Relational:Collation", "utf8mb4_general_ci");
 
             migrationBuilder.CreateTable(
-                name: "UserLearningLanguages",
+                name: "UserLanguages",
                 columns: table => new
                 {
                     UserLearningLanguageID = table.Column<Guid>(type: "char(36)", nullable: false, collation: "utf8mb4_general_ci"),
@@ -386,9 +393,9 @@ namespace DAL.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_UserLearningLanguages", x => x.UserLearningLanguageID);
+                    table.PrimaryKey("PK_UserLanguages", x => x.UserLearningLanguageID);
                     table.ForeignKey(
-                        name: "FK_UserLearningLanguages_Users_UserID",
+                        name: "FK_UserLanguages_Users_UserID",
                         column: x => x.UserID,
                         principalTable: "Users",
                         principalColumn: "UserID",
@@ -780,9 +787,9 @@ namespace DAL.Migrations
                 columns: new[] { "AchievementID", "Critertia", "Description", "IconUrl", "Title" },
                 values: new object[,]
                 {
-                    { new Guid("6fe47c9d-25b4-40d2-834c-c79782f54658"), "Complete 1 course", "Complete your first course", "🏆", "Course Completion" },
-                    { new Guid("714a25a6-b989-45b9-83e0-4645a7bb4f14"), "Complete 1 lesson", "Complete your first lesson", "🎯", "First Steps" },
-                    { new Guid("f7a24c21-1ebc-44df-9f3d-f7bdfdc5b3d9"), "7 consecutive days of learning", "Maintain a 7-day learning streak", "🔥", "Week Warrior" }
+                    { new Guid("1fe0a2d9-2ab3-4d24-b363-1a8eb29e2a7b"), "7 consecutive days of learning", "Maintain a 7-day learning streak", "🔥", "Week Warrior" },
+                    { new Guid("56aae191-004a-4356-b9fe-9612c9355a1f"), "Complete 1 course", "Complete your first course", "🏆", "Course Completion" },
+                    { new Guid("a1370cd0-9f8d-4d53-ae8e-ba0a747d4590"), "Complete 1 lesson", "Complete your first lesson", "🎯", "First Steps" }
                 });
 
             migrationBuilder.InsertData(
@@ -790,9 +797,9 @@ namespace DAL.Migrations
                 columns: new[] { "LanguageID", "CreateAt", "LanguageCode", "LanguageName" },
                 values: new object[,]
                 {
-                    { new Guid("775ae28a-d00c-42aa-a682-fb28e5da4428"), new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131), "JP", "Japanese" },
-                    { new Guid("9c66299d-bc1f-464e-8189-e55804dbbce0"), new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131), "EN", "English" },
-                    { new Guid("fbae66d2-2477-4352-9d11-89dea2ae7224"), new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131), "ZH", "Chinese" }
+                    { new Guid("15fb35b9-a104-4efe-ab6a-a542bbd72ea5"), new DateTime(2025, 9, 18, 6, 39, 46, 524, DateTimeKind.Utc).AddTicks(655), "JP", "Japanese" },
+                    { new Guid("b225740d-7c5c-4de0-a196-83d6405517db"), new DateTime(2025, 9, 18, 6, 39, 46, 524, DateTimeKind.Utc).AddTicks(655), "EN", "English" },
+                    { new Guid("d696a74c-2e22-45e0-b81f-820bcfea2d82"), new DateTime(2025, 9, 18, 6, 39, 46, 524, DateTimeKind.Utc).AddTicks(655), "ZH", "Chinese" }
                 });
 
             migrationBuilder.InsertData(
@@ -800,10 +807,10 @@ namespace DAL.Migrations
                 columns: new[] { "RoleID", "CreatedAt", "Description", "Name" },
                 values: new object[,]
                 {
-                    { new Guid("5feef0ad-01f5-47bf-986f-f94b7eb05ffd"), new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131), "Staff member for specific language support", "Staff" },
-                    { new Guid("cbbbf98a-894c-458d-83df-5aad1128a26a"), new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131), "System administrator with full access", "Admin" },
-                    { new Guid("cd73ba2f-dfa4-4013-94d7-33a77824ffe2"), new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131), "Student learning languages", "Learner" },
-                    { new Guid("e534f22d-84a2-4e6a-86d7-00f120e8bb52"), new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131), "Teacher who can create and manage courses", "Teacher" }
+                    { new Guid("170397fd-92d8-4db0-bf04-f0459cba3868"), new DateTime(2025, 9, 18, 6, 39, 46, 524, DateTimeKind.Utc).AddTicks(655), "Teacher who can create and manage courses", "Teacher" },
+                    { new Guid("26783bd9-52ba-4388-8e00-a9bcc1668022"), new DateTime(2025, 9, 18, 6, 39, 46, 524, DateTimeKind.Utc).AddTicks(655), "Staff member for specific language support", "Staff" },
+                    { new Guid("c7957c0e-a79c-484e-9b11-a7a0c6360fa7"), new DateTime(2025, 9, 18, 6, 39, 46, 524, DateTimeKind.Utc).AddTicks(655), "System administrator with full access", "Admin" },
+                    { new Guid("d312450c-6a8b-430a-a54e-56b32ff2c6bc"), new DateTime(2025, 9, 18, 6, 39, 46, 524, DateTimeKind.Utc).AddTicks(655), "Student learning languages", "Learner" }
                 });
 
             migrationBuilder.InsertData(
@@ -811,10 +818,10 @@ namespace DAL.Migrations
                 columns: new[] { "TopicID", "Description", "Name" },
                 values: new object[,]
                 {
-                    { new Guid("1f3f6fa9-ed79-4609-99d8-7c226b3a61ce"), "Pronunciation and speaking skills", "Pronunciation" },
-                    { new Guid("92f3648c-020d-44ae-a22d-672ffad53caa"), "Basic and advanced grammar concepts", "Grammar" },
-                    { new Guid("abb3214d-cb3d-47fb-9044-bbc89fd9c792"), "Practical conversation skills and dialogues", "Conversation" },
-                    { new Guid("be3b325a-f2a1-4e9d-9456-395e54d39f23"), "Essential vocabulary for daily communication", "Vocabulary" }
+                    { new Guid("3744893a-9ca0-480c-88dc-17ced5e300dc"), "Pronunciation and speaking skills", "Pronunciation" },
+                    { new Guid("ad6e7520-fe87-49bc-ab83-980addee0edb"), "Basic and advanced grammar concepts", "Grammar" },
+                    { new Guid("e4158acd-d368-4e00-ab74-cdb432774b43"), "Practical conversation skills and dialogues", "Conversation" },
+                    { new Guid("e864b8b0-fffe-44a8-ac02-6b049d2e033c"), "Essential vocabulary for daily communication", "Vocabulary" }
                 });
 
             migrationBuilder.InsertData(
@@ -822,20 +829,20 @@ namespace DAL.Migrations
                 columns: new[] { "UserID", "BirthDate", "CreatedAt", "Email", "Industry", "Interests", "IsEmailConfirmed", "JobTitle", "LastAcessAt", "MfaEnabled", "PasswordHash", "PasswordSalt", "ProfilePictureUrl", "Status", "StreakDays", "UpdateAt", "UserName" },
                 values: new object[,]
                 {
-                    { new Guid("18c3d30b-f0e1-457d-a189-3f58b3f1ac16"), new DateTime(1992, 3, 15, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131), "staff.english@flearn.com", "Education", "English Language Support", true, "English Language Staff", new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131), false, "RfKZfh/ccqkjuu8hbF569mKVUf2VLjPcKvrpUS+IA4M0VUrk0nQYPgJFxDE65lR8Cja+fwESfFFRa7ZmIYGBIA==", "3pOEv1qMev+bI2dHs3V70zewbudLa/liMHawUc/HwMpP84oVGbxQb+sGPP4q23Ov0TEXJyIC1ZBP0++BScUvFfrb7psUIeJ0pCEtz2nxORZjN/QtVFpG+7om/zcVY21FCflNxFx8RR+mrsXX0B0Sk8Ghp5UQTkHNIuJQh7hqkH8=", "", true, 0, new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131), "StaffEN" },
-                    { new Guid("3309433c-38ac-4c13-960e-9b7c3986697d"), new DateTime(1993, 12, 8, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131), "staff.chinese@flearn.com", "Education", "Chinese Language Support", true, "Chinese Language Staff", new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131), false, "RfKZfh/ccqkjuu8hbF569mKVUf2VLjPcKvrpUS+IA4M0VUrk0nQYPgJFxDE65lR8Cja+fwESfFFRa7ZmIYGBIA==", "3pOEv1qMev+bI2dHs3V70zewbudLa/liMHawUc/HwMpP84oVGbxQb+sGPP4q23Ov0TEXJyIC1ZBP0++BScUvFfrb7psUIeJ0pCEtz2nxORZjN/QtVFpG+7om/zcVY21FCflNxFx8RR+mrsXX0B0Sk8Ghp5UQTkHNIuJQh7hqkH8=", "", true, 0, new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131), "StaffZH" },
-                    { new Guid("4433656a-c9d6-4b4c-b887-ff0e043ddd87"), new DateTime(1991, 7, 22, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131), "staff.japanese@flearn.com", "Education", "Japanese Language Support", true, "Japanese Language Staff", new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131), false, "RfKZfh/ccqkjuu8hbF569mKVUf2VLjPcKvrpUS+IA4M0VUrk0nQYPgJFxDE65lR8Cja+fwESfFFRa7ZmIYGBIA==", "3pOEv1qMev+bI2dHs3V70zewbudLa/liMHawUc/HwMpP84oVGbxQb+sGPP4q23Ov0TEXJyIC1ZBP0++BScUvFfrb7psUIeJ0pCEtz2nxORZjN/QtVFpG+7om/zcVY21FCflNxFx8RR+mrsXX0B0Sk8Ghp5UQTkHNIuJQh7hqkH8=", "", true, 0, new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131), "StaffJP" },
-                    { new Guid("bae616b9-1391-4e15-b432-e8c226b9aad1"), new DateTime(1990, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131), "admin@flearn.com", "Education Technology", "System Management", true, "System Administrator", new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131), false, "zqUQ0jn3cQEc2YkipCWQG2XIsEu4oyUIhxGmx/r08KnwpIzzA7S7ZN9HB6hbmFqxUh8pE/Rz2g84Zxj8xeOsAw==", "htWHM6rMOySL+BpdqqGl9kElWqLKryn+1+Lmzw+afxzNyeOCgHteK/cqiM/Tcg7c8bcO/HqG1AsL68WXSzrjCvjc6xH4QI5CjA576xoeNZ7LwW/Dwdx5Gl39srLujtyEkMOnWOoj9aQNXyvk8rEFjsVYllgwf4QojF/hQVdA4d0=", "", true, 0, new DateTime(2025, 9, 17, 9, 21, 1, 821, DateTimeKind.Utc).AddTicks(8131), "Flearn" }
+                    { new Guid("17b560b9-d332-4aea-b8a1-7a90f28b3055"), new DateTime(1992, 3, 15, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 9, 18, 6, 39, 46, 524, DateTimeKind.Utc).AddTicks(655), "staff.english@flearn.com", "Education", "English Language Support", true, "English Language Staff", new DateTime(2025, 9, 18, 6, 39, 46, 524, DateTimeKind.Utc).AddTicks(655), false, "b4SV/UcO4AGyONnIaTSLsCieORDEwpfIr290AgL73+8hLm2vEOqeu2IhVTKG3ASswTTaFUopnlNe9YwnVUrUqQ==", "V3GDTSWM6caqKKS7YmtyqXVXaoznHplo+a5FMZC39qvjPe0ux+HBejSqDrlJqkk3iITesw1XoftYf4dd1nSV65qeNYDUU9mYM+0Ynf7IXy+rrbX5W5sNd+d1FkYvIsLP2ZWvivc9elS1ccbinV8LpVNnlJm4x76c0zTIhViDzbI=", "", true, 0, new DateTime(2025, 9, 18, 6, 39, 46, 524, DateTimeKind.Utc).AddTicks(655), "StaffEN" },
+                    { new Guid("72757900-03f9-4bf6-9f52-5a030466bbf3"), new DateTime(1991, 7, 22, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 9, 18, 6, 39, 46, 524, DateTimeKind.Utc).AddTicks(655), "staff.japanese@flearn.com", "Education", "Japanese Language Support", true, "Japanese Language Staff", new DateTime(2025, 9, 18, 6, 39, 46, 524, DateTimeKind.Utc).AddTicks(655), false, "b4SV/UcO4AGyONnIaTSLsCieORDEwpfIr290AgL73+8hLm2vEOqeu2IhVTKG3ASswTTaFUopnlNe9YwnVUrUqQ==", "V3GDTSWM6caqKKS7YmtyqXVXaoznHplo+a5FMZC39qvjPe0ux+HBejSqDrlJqkk3iITesw1XoftYf4dd1nSV65qeNYDUU9mYM+0Ynf7IXy+rrbX5W5sNd+d1FkYvIsLP2ZWvivc9elS1ccbinV8LpVNnlJm4x76c0zTIhViDzbI=", "", true, 0, new DateTime(2025, 9, 18, 6, 39, 46, 524, DateTimeKind.Utc).AddTicks(655), "StaffJP" },
+                    { new Guid("a8ecb768-a4ec-409d-9703-d8feae50fb1f"), new DateTime(1993, 12, 8, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 9, 18, 6, 39, 46, 524, DateTimeKind.Utc).AddTicks(655), "staff.chinese@flearn.com", "Education", "Chinese Language Support", true, "Chinese Language Staff", new DateTime(2025, 9, 18, 6, 39, 46, 524, DateTimeKind.Utc).AddTicks(655), false, "b4SV/UcO4AGyONnIaTSLsCieORDEwpfIr290AgL73+8hLm2vEOqeu2IhVTKG3ASswTTaFUopnlNe9YwnVUrUqQ==", "V3GDTSWM6caqKKS7YmtyqXVXaoznHplo+a5FMZC39qvjPe0ux+HBejSqDrlJqkk3iITesw1XoftYf4dd1nSV65qeNYDUU9mYM+0Ynf7IXy+rrbX5W5sNd+d1FkYvIsLP2ZWvivc9elS1ccbinV8LpVNnlJm4x76c0zTIhViDzbI=", "", true, 0, new DateTime(2025, 9, 18, 6, 39, 46, 524, DateTimeKind.Utc).AddTicks(655), "StaffZH" },
+                    { new Guid("dce0b328-2ccc-43b5-9e6b-78a6c36a6ca4"), new DateTime(1990, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 9, 18, 6, 39, 46, 524, DateTimeKind.Utc).AddTicks(655), "admin@flearn.com", "Education Technology", "System Management", true, "System Administrator", new DateTime(2025, 9, 18, 6, 39, 46, 524, DateTimeKind.Utc).AddTicks(655), false, "5YReGHJnh1atvSpK9Izx5JO3q9VwI5IEFhaSkez+8r2cnu21O0z8lFi1qHH7WUK2MmuvpyhdzYqBvgFmbcvXKg==", "FLykKtzaRC3Xp7+UbQBghnIbXXxoPlarDE5yEUqif67kjBI7GYF8aOvCZ1V59g1JHRIqd88UwqCL48jQCpFhauEWQ/ET9E5tq1sBF7Yn6UThw6PL69/6vI+nP86W3i2T+SLRVo+e23dmmVBGbL+onmE1B/p1DvXy9Wpnw2mUahE=", "", true, 0, new DateTime(2025, 9, 18, 6, 39, 46, 524, DateTimeKind.Utc).AddTicks(655), "Flearn" }
                 });
 
             migrationBuilder.InsertData(
-                table: "UserLearningLanguages",
+                table: "UserLanguages",
                 columns: new[] { "UserLearningLanguageID", "LanguageID", "UserID" },
                 values: new object[,]
                 {
-                    { new Guid("9515a162-0d43-4f88-8bd7-be8958b9eac8"), new Guid("fbae66d2-2477-4352-9d11-89dea2ae7224"), new Guid("3309433c-38ac-4c13-960e-9b7c3986697d") },
-                    { new Guid("e82720f3-77d4-455f-8c8c-c900a4e5a17c"), new Guid("9c66299d-bc1f-464e-8189-e55804dbbce0"), new Guid("18c3d30b-f0e1-457d-a189-3f58b3f1ac16") },
-                    { new Guid("fb6655c9-1e71-407d-b165-af5c75c97ec0"), new Guid("775ae28a-d00c-42aa-a682-fb28e5da4428"), new Guid("4433656a-c9d6-4b4c-b887-ff0e043ddd87") }
+                    { new Guid("5d02ccf1-7238-4ebd-b773-e20bc7af04da"), new Guid("d696a74c-2e22-45e0-b81f-820bcfea2d82"), new Guid("a8ecb768-a4ec-409d-9703-d8feae50fb1f") },
+                    { new Guid("7f660073-5648-499d-88df-40ba83e174f8"), new Guid("15fb35b9-a104-4efe-ab6a-a542bbd72ea5"), new Guid("72757900-03f9-4bf6-9f52-5a030466bbf3") },
+                    { new Guid("a7524860-cd8f-4913-934b-f6c8dedeb8ae"), new Guid("b225740d-7c5c-4de0-a196-83d6405517db"), new Guid("17b560b9-d332-4aea-b8a1-7a90f28b3055") }
                 });
 
             migrationBuilder.InsertData(
@@ -843,10 +850,10 @@ namespace DAL.Migrations
                 columns: new[] { "UserRoleID", "RoleID", "UserID" },
                 values: new object[,]
                 {
-                    { new Guid("4bbc3816-9558-4592-ad0d-79318571288d"), new Guid("5feef0ad-01f5-47bf-986f-f94b7eb05ffd"), new Guid("18c3d30b-f0e1-457d-a189-3f58b3f1ac16") },
-                    { new Guid("57f0649a-e9be-469e-b01e-0c344eb4ae93"), new Guid("cbbbf98a-894c-458d-83df-5aad1128a26a"), new Guid("bae616b9-1391-4e15-b432-e8c226b9aad1") },
-                    { new Guid("5eca3776-89a4-4b0f-8df2-4a2590233c5f"), new Guid("5feef0ad-01f5-47bf-986f-f94b7eb05ffd"), new Guid("4433656a-c9d6-4b4c-b887-ff0e043ddd87") },
-                    { new Guid("d25980e7-5cb8-44e2-93cd-514d6c693c05"), new Guid("5feef0ad-01f5-47bf-986f-f94b7eb05ffd"), new Guid("3309433c-38ac-4c13-960e-9b7c3986697d") }
+                    { new Guid("717420f5-d273-41e6-89f7-373e966326de"), new Guid("26783bd9-52ba-4388-8e00-a9bcc1668022"), new Guid("72757900-03f9-4bf6-9f52-5a030466bbf3") },
+                    { new Guid("7a4cd38b-ccc4-4e69-b921-6a0a81264209"), new Guid("26783bd9-52ba-4388-8e00-a9bcc1668022"), new Guid("17b560b9-d332-4aea-b8a1-7a90f28b3055") },
+                    { new Guid("ce98e78e-cafa-4ed3-9941-df440dd425d8"), new Guid("26783bd9-52ba-4388-8e00-a9bcc1668022"), new Guid("a8ecb768-a4ec-409d-9703-d8feae50fb1f") },
+                    { new Guid("cf38dfc8-bd04-44a9-80c4-ae790f48c717"), new Guid("c7957c0e-a79c-484e-9b11-a7a0c6360fa7"), new Guid("dce0b328-2ccc-43b5-9e6b-78a6c36a6ca4") }
                 });
 
             migrationBuilder.CreateIndex(
@@ -993,6 +1000,11 @@ namespace DAL.Migrations
                 column: "UsersUserID");
 
             migrationBuilder.CreateIndex(
+                name: "IX_TeacherApplications_LanguageID",
+                table: "TeacherApplications",
+                column: "LanguageID");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_TeacherApplications_UserID",
                 table: "TeacherApplications",
                 column: "UserID");
@@ -1008,8 +1020,8 @@ namespace DAL.Migrations
                 column: "UserID");
 
             migrationBuilder.CreateIndex(
-                name: "IX_UserLearningLanguages_UserID",
-                table: "UserLearningLanguages",
+                name: "IX_UserLanguages_UserID",
+                table: "UserLanguages",
                 column: "UserID");
 
             migrationBuilder.CreateIndex(
@@ -1078,7 +1090,7 @@ namespace DAL.Migrations
                 name: "UserAchievements");
 
             migrationBuilder.DropTable(
-                name: "UserLearningLanguages");
+                name: "UserLanguages");
 
             migrationBuilder.DropTable(
                 name: "UserRoles");

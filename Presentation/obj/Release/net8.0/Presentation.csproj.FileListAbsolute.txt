@@ -148,3 +148,5 @@ D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\refint\Presentation.d
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\Presentation.pdb
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\Presentation.genruntimeconfig.cache
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\ref\Presentation.dll
+D:\F-Learn\F-Learn-BackEnd\Presentation\bin\Release\net8.0\CloudinaryDotNet.dll
+D:\F-Learn\F-Learn-BackEnd\Presentation\bin\Release\net8.0\Newtonsoft.Json.dll

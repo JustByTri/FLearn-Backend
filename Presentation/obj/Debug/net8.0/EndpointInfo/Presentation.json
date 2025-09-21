@@ -369,7 +369,7 @@
         }
       }
     },
-    "/api/Auth/change-staff-password": {
+    "/api/Auth/google": {
       "post": {
         "tags": [
           "Auth"
@@ -378,17 +378,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ChangeStaffPasswordDto"
+                "$ref": "#/components/schemas/GoogleLoginRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/ChangeStaffPasswordDto"
+                "$ref": "#/components/schemas/GoogleLoginRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/ChangeStaffPasswordDto"
+                "$ref": "#/components/schemas/GoogleLoginRequest"
               }
             }
           }
@@ -400,10 +400,200 @@
         }
       }
     },
-    "/api/Auth/staff-list": {
+    "/api/TeacherApplication": {
+      "post": {
+        "tags": [
+          "TeacherApplication"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "CredentialFiles",
+                  "CredentialNames",
+                  "CredentialTypes",
+                  "LanguageID",
+                  "Motivation"
+                ],
+                "type": "object",
+                "properties": {
+                  "LanguageID": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "Motivation": {
+                    "maxLength": 1000,
+                    "minLength": 0,
+                    "type": "string"
+                  },
+                  "CredentialFiles": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  },
+                  "CredentialNames": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "CredentialTypes": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "format": "int32"
+                    }
+                  }
+                }
+              },
+              "encoding": {
+                "LanguageID": {
+                  "style": "form"
+                },
+                "Motivation": {
+                  "style": "form"
+                },
+                "CredentialFiles": {
+                  "style": "form"
+                },
+                "CredentialNames": {
+                  "style": "form"
+                },
+                "CredentialTypes": {
+                  "style": "form"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/TeacherApplication/my-application": {
       "get": {
         "tags": [
-          "Auth"
+          "TeacherApplication"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/TeacherApplication/can-apply": {
+      "get": {
+        "tags": [
+          "TeacherApplication"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/TeacherApplication/all": {
+      "get": {
+        "tags": [
+          "TeacherApplication"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/TeacherApplication/my-language": {
+      "get": {
+        "tags": [
+          "TeacherApplication"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/TeacherApplication/pending": {
+      "get": {
+        "tags": [
+          "TeacherApplication"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/TeacherApplication/{applicationId}": {
+      "get": {
+        "tags": [
+          "TeacherApplication"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/TeacherApplication/review": {
+      "post": {
+        "tags": [
+          "TeacherApplication"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewApplicationDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewApplicationDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewApplicationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/TeacherApplication/languages": {
+      "get": {
+        "tags": [
+          "TeacherApplication"
         ],
         "responses": {
           "200": {
@@ -440,6 +630,19 @@
         },
         "additionalProperties": false
       },
+      "GoogleLoginRequest": {
+        "required": [
+          "idToken"
+        ],
+        "type": "object",
+        "properties": {
+          "idToken": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "LoginRequestDto": {
         "required": [
           "password",
@@ -470,6 +673,29 @@
           "refreshToken": {
             "minLength": 1,
             "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewApplicationDto": {
+        "required": [
+          "applicationId",
+          "isApproved"
+        ],
+        "type": "object",
+        "properties": {
+          "applicationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isApproved": {
+            "type": "boolean"
+          },
+          "rejectionReason": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
