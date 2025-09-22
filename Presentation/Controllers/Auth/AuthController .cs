@@ -1,11 +1,9 @@
 ﻿using BLL.IServices.Auth;
 using Common.DTO.Auth;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
+using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
-using System.Linq;
 
 namespace Presentation.Controllers.Auth
 {
@@ -20,7 +18,7 @@ namespace Presentation.Controllers.Auth
             _authService = authService;
         }
 
- 
+
         [HttpPost("register")]
         [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] TempRegistrationDto request)
@@ -50,7 +48,7 @@ namespace Presentation.Controllers.Auth
             }
         }
 
-   
+
         [HttpPost("verify-otp")]
         [AllowAnonymous]
         public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto request)
@@ -109,7 +107,7 @@ namespace Presentation.Controllers.Auth
             }
         }
 
-    
+
         [HttpPost("refresh")]
         [AllowAnonymous]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto request)
@@ -190,104 +188,118 @@ namespace Presentation.Controllers.Auth
                 return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi lấy thông tin người dùng" });
             }
         }
-
-        /// <summary>
-        /// Gửi lại mã OTP cho đăng ký
-        /// </summary>
-        [HttpPost("resend-otp")]
         [AllowAnonymous]
-        public async Task<IActionResult> ResendOtp([FromBody] ResendOtpDto request)
+        [HttpPost("google")]
+        public async Task<IActionResult> LoginGoogle([FromBody] GoogleLoginRequest request)
         {
-            try
+            if (!ModelState.IsValid)
             {
-                if (!ModelState.IsValid)
-                {
-                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
-                }
+                return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+            }
 
-                await _authService.ResendOtpAsync(request);
-                return Ok(new
-                {
-                    success = true,
-                    message = "Mã OTP mới đã được gửi đến email của bạn. Vui lòng kiểm tra và xác thực trong vòng 5 phút.",
-                    email = request.Email
-                });
-            }
-            catch (InvalidOperationException ex)
+            var result = await _authService.LoginGoogleAsync(request.IdToken);
+            if (result.AccessToken.IsNullOrEmpty())
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return BadRequest(new { success = false, message = "Đã xảy ra lỗi trong quá trình đăng nhập Google." });
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi gửi lại OTP. Vui lòng thử lại!" });
-            }
+
+            return Ok(new { success = true, message = "Đăng nhập Google thành công", data = result });
         }
+    
 
-        /// <summary>
-        /// Quên mật khẩu - gửi OTP reset password
-        /// </summary>
-        [HttpPost("forgot-password")]
-        [AllowAnonymous]
-        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto request)
-        {
-            try
+/// <summary>
+/// Gửi lại mã OTP cho đăng ký
+/// </summary>
+[HttpPost("resend-otp")]
+            [AllowAnonymous]
+            public async Task<IActionResult> ResendOtp([FromBody] ResendOtpDto request)
             {
-                if (!ModelState.IsValid)
+                try
                 {
-                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+                    if (!ModelState.IsValid)
+                    {
+                        return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+                    }
+
+                    await _authService.ResendOtpAsync(request);
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "Mã OTP mới đã được gửi đến email của bạn. Vui lòng kiểm tra và xác thực trong vòng 5 phút.",
+                        email = request.Email
+                    });
                 }
-
-                await _authService.ForgotPasswordAsync(request);
-                return Ok(new
+                catch (InvalidOperationException ex)
                 {
-                    success = true,
-                    message = "Nếu email/tài khoản tồn tại, mã OTP đặt lại mật khẩu đã được gửi đến email của bạn. Vui lòng kiểm tra trong vòng 10 phút."
-                });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { success = false, message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi xử lý yêu cầu quên mật khẩu. Vui lòng thử lại!" });
-            }
-        }
-
-        /// <summary>
-        /// Đặt lại mật khẩu bằng OTP
-        /// </summary>
-        [HttpPost("reset-password")]
-        [AllowAnonymous]
-        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto request)
-        {
-            try
-            {
-                if (!ModelState.IsValid)
-                {
-                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+                    return BadRequest(new { success = false, message = ex.Message });
                 }
-
-                await _authService.ResetPasswordAsync(request);
-                return Ok(new
+                catch (Exception ex)
                 {
-                    success = true,
-                    message = "Đặt lại mật khẩu thành công! Vui lòng đăng nhập lại với mật khẩu mới."
-                });
+                    return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi gửi lại OTP. Vui lòng thử lại!" });
+                }
             }
-            catch (InvalidOperationException ex)
+
+            /// <summary>
+            /// Quên mật khẩu - gửi OTP reset password
+            /// </summary>
+            [HttpPost("forgot-password")]
+            [AllowAnonymous]
+            public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto request)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                try
+                {
+                    if (!ModelState.IsValid)
+                    {
+                        return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+                    }
+
+                    await _authService.ForgotPasswordAsync(request);
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "Nếu email/tài khoản tồn tại, mã OTP đặt lại mật khẩu đã được gửi đến email của bạn. Vui lòng kiểm tra trong vòng 10 phút."
+                    });
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return BadRequest(new { success = false, message = ex.Message });
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi xử lý yêu cầu quên mật khẩu. Vui lòng thử lại!" });
+                }
             }
-            catch (Exception ex)
+
+            /// <summary>
+            /// Đặt lại mật khẩu bằng OTP
+            /// </summary>
+            [HttpPost("reset-password")]
+            [AllowAnonymous]
+            public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto request)
             {
-                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi đặt lại mật khẩu. Vui lòng thử lại!" });
+                try
+                {
+                    if (!ModelState.IsValid)
+                    {
+                        return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+                    }
+
+                    await _authService.ResetPasswordAsync(request);
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "Đặt lại mật khẩu thành công! Vui lòng đăng nhập lại với mật khẩu mới."
+                    });
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return BadRequest(new { success = false, message = ex.Message });
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi đặt lại mật khẩu. Vui lòng thử lại!" });
+                }
             }
-        }
-
-
-
-    }
-}
+        } } 
 
 

@@ -136,15 +136,24 @@
   },
   {
     "ContainingType": "Presentation.Controllers.Auth.AuthController",
+<<<<<<< HEAD
     "Method": "ForgotPassword",
     "RelativePath": "api/Auth/forgot-password",
+=======
+    "Method": "LoginGoogle",
+    "RelativePath": "api/Auth/google",
+>>>>>>> efdd23bd36305b656377202a26d9b3da642d20a8
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
     "Parameters": [
       {
         "Name": "request",
+<<<<<<< HEAD
         "Type": "Common.DTO.Auth.ForgotPasswordDto",
+=======
+        "Type": "Common.DTO.Auth.GoogleLoginRequest",
+>>>>>>> efdd23bd36305b656377202a26d9b3da642d20a8
         "IsRequired": true
       }
     ],

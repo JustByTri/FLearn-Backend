@@ -3,16 +3,8 @@
   "WorkspaceRootPath": "D:\\F-Learn\\F-Learn-BackEnd\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|d:\\f-learn\\f-learn-backend\\presentation\\controllers\\teacher\\teacherapplicationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|solutionrelative:presentation\\controllers\\teacher\\teacherapplicationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|d:\\f-learn\\f-learn-backend\\presentation\\controllers\\admin\\admincontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|solutionrelative:presentation\\controllers\\admin\\admincontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|d:\\f-learn\\f-learn-backend\\common\\dto\\auth\\resetpassworddto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|solutionrelative:common\\dto\\auth\\resetpassworddto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|d:\\f-learn\\f-learn-backend\\presentation\\controllers\\auth\\authcontroller .cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|solutionrelative:presentation\\controllers\\auth\\authcontroller .cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|d:\\f-learn\\f-learn-backend\\bll\\services\\auth\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -23,8 +15,16 @@
       "RelativeMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|solutionrelative:bll\\iservices\\auth\\iauthservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|d:\\f-learn\\f-learn-backend\\presentation\\controllers\\auth\\authcontroller .cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|solutionrelative:presentation\\controllers\\auth\\authcontroller .cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|d:\\f-learn\\f-learn-backend\\presentation\\controllers\\teacher\\teacherapplicationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|solutionrelative:presentation\\controllers\\teacher\\teacherapplicationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|d:\\f-learn\\f-learn-backend\\presentation\\controllers\\admin\\admincontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|solutionrelative:presentation\\controllers\\admin\\admincontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|d:\\f-learn\\f-learn-backend\\common\\dto\\auth\\resetpassworddto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|solutionrelative:common\\dto\\auth\\resetpassworddto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|d:\\f-learn\\f-learn-backend\\bll\\services\\auth\\passwordresetservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -614,7 +614,7 @@
       "DocumentGroups": [
         {
           "DockedHeight": 33,
-          "SelectedChildIndex": 16,
+          "SelectedChildIndex": 15,
           "Children": [
             {
               "$type": "Bookmark",
@@ -667,56 +667,19 @@
             {
               "$type": "Document",
               "DocumentIndex": 2,
-              "Title": "ResetPasswordDto.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Auth\\ResetPasswordDto.cs",
-              "RelativeDocumentMoniker": "Common\\DTO\\Auth\\ResetPasswordDto.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Auth\\ResetPasswordDto.cs",
-              "RelativeToolTip": "Common\\DTO\\Auth\\ResetPasswordDto.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAB0AAAAFAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-19T06:56:02.595Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "AuthController .cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Controllers\\Auth\\AuthController .cs",
-              "RelativeDocumentMoniker": "Presentation\\Controllers\\Auth\\AuthController .cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Controllers\\Auth\\AuthController .cs",
-              "RelativeToolTip": "Presentation\\Controllers\\Auth\\AuthController .cs",
-              "ViewState": "AgIAAAQBAAAAAAAAAAAAwA4BAAA1AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-16T06:40:14.571Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
               "Title": "IAuthService.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\IServices\\Auth\\IAuthService.cs",
               "RelativeDocumentMoniker": "BLL\\IServices\\Auth\\IAuthService.cs",
               "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\IServices\\Auth\\IAuthService.cs",
               "RelativeToolTip": "BLL\\IServices\\Auth\\IAuthService.cs",
-              "ViewState": "AgIAAAsAAAAAAAAAAAAuwBUAAAAeAAAAAAAAAA==",
+              "ViewState": "AgIAAAwAAAAAAAAAAAAowAQAAAAVAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-16T06:21:36.133Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "AdminController.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Controllers\\Admin\\AdminController.cs",
-              "RelativeDocumentMoniker": "Presentation\\Controllers\\Admin\\AdminController.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Controllers\\Admin\\AdminController.cs",
-              "RelativeToolTip": "Presentation\\Controllers\\Admin\\AdminController.cs",
-              "ViewState": "AgIAANwAAAAAAAAAAAAgwMkBAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-17T10:57:42.089Z",
+              "WhenOpened": "2025-09-16T06:21:36.133Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 3,
               "Title": "TeacherApplicationController.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Controllers\\Teacher\\TeacherApplicationController.cs",
               "RelativeDocumentMoniker": "Presentation\\Controllers\\Teacher\\TeacherApplicationController.cs",
@@ -729,6 +692,56 @@
             },
             {
               "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "AuthService.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Services\\Auth\\AuthService.cs",
+              "RelativeDocumentMoniker": "BLL\\Services\\Auth\\AuthService.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Services\\Auth\\AuthService.cs",
+              "RelativeToolTip": "BLL\\Services\\Auth\\AuthService.cs",
+              "ViewState": "AgIAAGgCAAAAAAAAAAAAwG4CAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T06:22:40.666Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "AuthController .cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Controllers\\Auth\\AuthController .cs",
+              "RelativeDocumentMoniker": "Presentation\\Controllers\\Auth\\AuthController .cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Controllers\\Auth\\AuthController .cs",
+              "RelativeToolTip": "Presentation\\Controllers\\Auth\\AuthController .cs",
+              "ViewState": "AgIAABQBAAAAAAAAAAArwC4BAAAMAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T06:40:14.571Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "AdminController.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Controllers\\Admin\\AdminController.cs",
+              "RelativeDocumentMoniker": "Presentation\\Controllers\\Admin\\AdminController.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Controllers\\Admin\\AdminController.cs",
+              "RelativeToolTip": "Presentation\\Controllers\\Admin\\AdminController.cs",
+              "ViewState": "AgIAANwAAAAAAAAAAAAgwMkBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-17T10:57:42.089Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "ResetPasswordDto.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Auth\\ResetPasswordDto.cs",
+              "RelativeDocumentMoniker": "Common\\DTO\\Auth\\ResetPasswordDto.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Auth\\ResetPasswordDto.cs",
+              "RelativeToolTip": "Common\\DTO\\Auth\\ResetPasswordDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAB0AAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-19T06:56:02.595Z"
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 6,
               "Title": "PasswordResetService.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Services\\Auth\\PasswordResetService.cs",
@@ -738,18 +751,6 @@
               "ViewState": "AgIAAGIAAAAAAAAAAAAwwHQAAABfAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-09-19T07:17:55.283Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "AuthService.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Services\\Auth\\AuthService.cs",
-              "RelativeDocumentMoniker": "BLL\\Services\\Auth\\AuthService.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Services\\Auth\\AuthService.cs",
-              "RelativeToolTip": "BLL\\Services\\Auth\\AuthService.cs",
-              "ViewState": "AgIAAF8BAAAAAAAAAAA3wOIBAAAIAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-16T06:22:40.666Z"
             },
             {
               "$type": "Document",
@@ -989,8 +990,7 @@
               "RelativeToolTip": "DAL\\Models\\UserLearningLanguage.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABMAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T09:29:13.687Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-15T09:29:13.687Z"
             },
             {
               "$type": "Document",
@@ -1050,8 +1050,7 @@
               "RelativeToolTip": "BLL\\Services\\Teacher\\TeacherApplicationService.cs",
               "ViewState": "AgIAAIoAAAAAAAAAAAAYwJMAAAAVAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-18T04:15:05.92Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-18T04:15:05.92Z"
             },
             {
               "$type": "Document",
@@ -1075,8 +1074,7 @@
               "RelativeToolTip": "Presentation\\Program.cs",
               "ViewState": "AgIAAIkAAAAAAAAAAAAswKUAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-08T16:57:16.427Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-08T16:57:16.427Z"
             },
             {
               "$type": "Document",

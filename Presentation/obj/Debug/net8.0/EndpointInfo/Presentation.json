@@ -369,7 +369,11 @@
         }
       }
     },
+<<<<<<< HEAD
     "/api/Auth/resend-otp": {
+=======
+    "/api/Auth/google": {
+>>>>>>> efdd23bd36305b656377202a26d9b3da642d20a8
       "post": {
         "tags": [
           "Auth"
@@ -378,16 +382,25 @@
           "content": {
             "application/json": {
               "schema": {
+<<<<<<< HEAD
                 "$ref": "#/components/schemas/ResendOtpDto"
+=======
+                "$ref": "#/components/schemas/GoogleLoginRequest"
+>>>>>>> efdd23bd36305b656377202a26d9b3da642d20a8
               }
             },
             "text/json": {
               "schema": {
+<<<<<<< HEAD
                 "$ref": "#/components/schemas/ResendOtpDto"
+=======
+                "$ref": "#/components/schemas/GoogleLoginRequest"
+>>>>>>> efdd23bd36305b656377202a26d9b3da642d20a8
               }
             },
             "application/*+json": {
               "schema": {
+<<<<<<< HEAD
                 "$ref": "#/components/schemas/ResendOtpDto"
               }
             }
@@ -451,6 +464,9 @@
             "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/ResetPasswordDto"
+=======
+                "$ref": "#/components/schemas/GoogleLoginRequest"
+>>>>>>> efdd23bd36305b656377202a26d9b3da642d20a8
               }
             }
           }
@@ -704,6 +720,7 @@
         },
         "additionalProperties": false
       },
+<<<<<<< HEAD
       "ForgotPasswordDto": {
         "required": [
           "emailOrUsername"
@@ -711,6 +728,15 @@
         "type": "object",
         "properties": {
           "emailOrUsername": {
+=======
+      "GoogleLoginRequest": {
+        "required": [
+          "idToken"
+        ],
+        "type": "object",
+        "properties": {
+          "idToken": {
+>>>>>>> efdd23bd36305b656377202a26d9b3da642d20a8
             "minLength": 1,
             "type": "string"
           }

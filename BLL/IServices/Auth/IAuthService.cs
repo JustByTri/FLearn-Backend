@@ -1,9 +1,4 @@
 ﻿using Common.DTO.Auth;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BLL.IServices.Auth
 {
@@ -16,10 +11,15 @@ namespace BLL.IServices.Auth
         Task<bool> RegisterAndSendOtpAsync(TempRegistrationDto registrationDto);
         Task<AuthResponseDto> VerifyOtpAndCompleteRegistrationAsync(VerifyOtpDto verifyOtpDto);
         Task<bool> ChangeStaffPasswordAsync(Guid adminUserId, ChangeStaffPasswordDto changePasswordDto);
+
      
         Task<bool> ResendOtpAsync(ResendOtpDto resendOtpDto);
         Task<bool> ForgotPasswordAsync(ForgotPasswordDto forgotPasswordDto);
         Task<bool> ResetPasswordAsync(ResetPasswordDto resetPasswordDto);
+
+        Task<AuthResponseDto> LoginGoogleAsync(string idToken);
+
+
     }
 
 
