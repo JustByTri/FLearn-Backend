@@ -37,6 +37,7 @@ namespace DAL.UnitOfWork
         IRoadmapDetailRepository RoadmapDetails { get; }
         IRegistrationOtpRepository RegistrationOtps { get; }
         ITempRegistrationRepository TempRegistrations { get; }
+        IPasswordResetOtpRepository PasswordResetOtps { get; }
         int SaveChanges();
         Task<int> SaveChangesAsync();
         void BeginTransaction();

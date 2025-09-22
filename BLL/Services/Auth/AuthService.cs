@@ -34,7 +34,7 @@ namespace BLL.Services.Auth
             var user = await GetUserByEmailOrUsernameAsync(loginRequest.UsernameOrEmail);
 
             if (user == null || !user.Status)
-                throw new UnauthorizedAccessException("Tài khoản của bạn kh khả dụng, liên hệ với quản trị viên");
+                throw new UnauthorizedAccessException("Tài khoản của bạn không khả dụng, liên hệ với quản trị viên");
 
             if (!VerifyPassword(loginRequest.Password, user.PasswordHash, user.PasswordSalt))
                 throw new UnauthorizedAccessException("Tài khoản hoặc mật khẩu của bạn không đúng");
@@ -42,7 +42,10 @@ namespace BLL.Services.Auth
             user.LastAcessAt = DateTime.UtcNow;
             await _unitOfWork.Users.UpdateAsync(user);
 
-            var (accessToken, refreshToken) = await GenerateTokensAsync(user);
+           
+            var refreshTokenExpirationDays = loginRequest.RememberMe ? 30 : _jwtSettings.RefreshTokenExpirationDays;
+
+            var (accessToken, refreshToken) = await GenerateTokensAsync(user, refreshTokenExpirationDays);
 
             return new AuthResponseDto
             {
@@ -55,28 +58,51 @@ namespace BLL.Services.Auth
             };
         }
 
+    
+        private async Task<(TokenInfo accessToken, RefreshToken refreshToken)> GenerateTokensAsync(User user, int? customRefreshTokenDays = null)
+        {
+            var accessToken = GenerateAccessToken(user);
+
+            var refreshTokenDays = customRefreshTokenDays ?? _jwtSettings.RefreshTokenExpirationDays;
+
+            var refreshToken = new RefreshToken
+            {
+                RefreshTokenID = Guid.NewGuid(),
+                UserID = user.UserID,
+                Token = GenerateRefreshToken(),
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenDays),
+                IsRevoked = false
+            };
+
+            await _unitOfWork.RefreshTokens.CreateAsync(refreshToken);
+
+            return (accessToken, refreshToken);
+        }
+
         public async Task<bool> RegisterAndSendOtpAsync(TempRegistrationDto registrationDto)
         {
-            // Kiểm tra email và username đã tồn tại chưa
-            if (await _unitOfWork.Users.IsEmailExistsAsync(registrationDto.Email))
+      
+            var normalizedEmail = registrationDto.Email.Trim().ToLowerInvariant();
+
+         
+            if (await _unitOfWork.Users.IsEmailExistsAsync(normalizedEmail))
                 throw new InvalidOperationException("Email đã được đăng ký bởi tài khoản khác, vui lòng dùng email khác");
 
             if (await _unitOfWork.Users.IsUsernameExistsAsync(registrationDto.UserName))
                 throw new InvalidOperationException("Tên người dùng đã có người sử dụng, hãy thử tên khác nhé");
 
-          
             var (passwordHash, passwordSalt) = CreatePasswordHash(registrationDto.Password);
 
-        
-            var otp = new Random().Next(100000, 999999).ToString();
-
-          
-            await _unitOfWork.TempRegistrations.InvalidateTempRegistrationsAsync(registrationDto.Email);
-
        
+            var otp = await GenerateSecureRegistrationOtpAsync(normalizedEmail);
+
+   
+            await _unitOfWork.TempRegistrations.InvalidateTempRegistrationsAsync(normalizedEmail);
+
             var tempRegistration = new TempRegistration
             {
-                Email = registrationDto.Email,
+                Email = normalizedEmail,
                 UserName = registrationDto.UserName,
                 PasswordHash = passwordHash,
                 PasswordSalt = passwordSalt,
@@ -85,9 +111,41 @@ namespace BLL.Services.Auth
             };
             await _unitOfWork.TempRegistrations.CreateAsync(tempRegistration);
 
-        
-            await _emailService.SendEmailConfirmationAsync(registrationDto.Email, registrationDto.UserName, otp);
+            await _emailService.SendEmailConfirmationAsync(normalizedEmail, registrationDto.UserName, otp);
             return true;
+        }
+
+        private async Task<string> GenerateSecureRegistrationOtpAsync(string email)
+        {
+            string otpCode;
+            bool isUnique;
+            int maxAttempts = 10;
+            int attempts = 0;
+
+            do
+            {
+               
+                using (var rng = RandomNumberGenerator.Create())
+                {
+                    var bytes = new byte[4];
+                    rng.GetBytes(bytes);
+                    var randomNumber = Math.Abs(BitConverter.ToInt32(bytes, 0));
+                    otpCode = (randomNumber % 900000 + 100000).ToString();
+                }
+
+            
+                var allTempRegs = await _unitOfWork.TempRegistrations.GetAllAsync();
+                isUnique = !allTempRegs.Any(tr =>
+                    tr.Email.ToLowerInvariant() == email.ToLowerInvariant() &&
+                    tr.OtpCode == otpCode &&
+                    !tr.IsUsed &&
+                    tr.ExpireAt > DateTime.UtcNow);
+
+                attempts++;
+            }
+            while (!isUnique && attempts < maxAttempts);
+
+            return otpCode;
         }
         public async Task<AuthResponseDto> VerifyOtpAndCompleteRegistrationAsync(VerifyOtpDto verifyOtpDto)
         {
@@ -344,7 +402,120 @@ namespace BLL.Services.Auth
 
             return true;
         }
+        public async Task<bool> ResendOtpAsync(ResendOtpDto resendOtpDto)
+        {
+            // Kiểm tra xem có temp registration nào cho email này không
+            var tempRegistrations = await _unitOfWork.TempRegistrations.GetAllAsync();
+            var latestTempReg = tempRegistrations
+                .Where(tr => tr.Email == resendOtpDto.Email && !tr.IsUsed)
+                .OrderByDescending(tr => tr.CreatedAt)
+                .FirstOrDefault();
 
+            if (latestTempReg == null)
+            {
+                throw new InvalidOperationException("Không tìm thấy yêu cầu đăng ký cho email này. Vui lòng đăng ký lại.");
+            }
+
+            // Tạo OTP mới
+            var newOtp = new Random().Next(100000, 999999).ToString();
+
+            // Vô hiệu hóa tất cả OTP cũ cho email này
+            await _unitOfWork.TempRegistrations.InvalidateTempRegistrationsAsync(resendOtpDto.Email);
+
+            // Tạo temp registration mới với OTP mới
+            var newTempRegistration = new TempRegistration
+            {
+                Email = latestTempReg.Email,
+                UserName = latestTempReg.UserName,
+                PasswordHash = latestTempReg.PasswordHash,
+                PasswordSalt = latestTempReg.PasswordSalt,
+                OtpCode = newOtp,
+                ExpireAt = DateTime.UtcNow.AddMinutes(5),
+                CreatedAt = DateTime.UtcNow,
+                IsUsed = false
+            };
+
+            await _unitOfWork.TempRegistrations.CreateAsync(newTempRegistration);
+
+            // Gửi email với OTP mới
+            await _emailService.SendOtpResendAsync(resendOtpDto.Email, latestTempReg.UserName, newOtp);
+
+            return true;
+        }
+
+        public async Task<bool> ForgotPasswordAsync(ForgotPasswordDto forgotPasswordDto)
+        {
+            // Tìm user theo email hoặc username
+            var user = await GetUserByEmailOrUsernameAsync(forgotPasswordDto.EmailOrUsername);
+
+            if (user == null || !user.Status)
+            {
+                // Không tiết lộ thông tin user có tồn tại hay không
+                throw new InvalidOperationException("Nếu email/tài khoản tồn tại, mã OTP đã được gửi đến email của bạn.");
+            }
+
+            // Tạo OTP cho reset password
+            var resetOtp = new Random().Next(100000, 999999).ToString();
+
+            // Vô hiệu hóa tất cả OTP reset password cũ cho user này
+            await _unitOfWork.PasswordResetOtps.InvalidatePasswordResetOtpsAsync(user.Email);
+
+            // Tạo password reset OTP mới
+            var passwordResetOtp = new PasswordResetOtp
+            {
+                Id = Guid.NewGuid(),
+                Email = user.Email,
+                OtpCode = resetOtp,
+                ExpireAt = DateTime.UtcNow.AddMinutes(10), // 10 phút cho reset password
+                IsUsed = false,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.PasswordResetOtps.CreateAsync(passwordResetOtp);
+
+            // Gửi email với OTP reset password
+            await _emailService.SendPasswordResetOtpAsync(user.Email, user.UserName, resetOtp);
+
+            return true;
+        }
+
+        public async Task<bool> ResetPasswordAsync(ResetPasswordDto resetPasswordDto)
+        {
+          
+            var passwordResetOtp = await _unitOfWork.PasswordResetOtps.GetValidPasswordResetOtpAsync(
+                resetPasswordDto.Email, resetPasswordDto.OtpCode);
+
+            if (passwordResetOtp == null)
+            {
+                throw new InvalidOperationException("Mã OTP không hợp lệ hoặc đã hết hạn.");
+            }
+
+         
+            var user = await _unitOfWork.Users.GetByEmailAsync(resetPasswordDto.Email);
+            if (user == null || !user.Status)
+            {
+                throw new InvalidOperationException("Tài khoản không tồn tại hoặc đã bị khóa.");
+            }
+
+       
+            passwordResetOtp.IsUsed = true;
+            await _unitOfWork.PasswordResetOtps.UpdateAsync(passwordResetOtp);
+
+     
+            var (newPasswordHash, newPasswordSalt) = CreatePasswordHash(resetPasswordDto.NewPassword);
+
+     
+            user.PasswordHash = newPasswordHash;
+            user.PasswordSalt = newPasswordSalt;
+            user.UpdateAt = DateTime.UtcNow;
+
+            await _unitOfWork.Users.UpdateAsync(user);
+
+      
+            await _unitOfWork.RefreshTokens.RevokeAllUserTokensAsync(user.UserID);
+
+            return true;
+        }
         #endregion
 
         private class TokenInfo
