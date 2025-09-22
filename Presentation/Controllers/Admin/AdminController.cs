@@ -413,45 +413,7 @@ namespace Presentation.Controllers.Admin
             }
         }
 
-        /// <summary>
-        /// Lấy thông tin admin hiện tại
-        /// </summary>
-        [HttpGet("me")]
-        public async Task<IActionResult> GetCurrentAdmin()
-        {
-            try
-            {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                var username = User.FindFirstValue(ClaimTypes.Name);
-                var email = User.FindFirstValue(ClaimTypes.Email);
-                var createdAt = User.FindFirstValue("created_at");
-                var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "Lấy thông tin admin thành công",
-                    data = new
-                    {
-                        userId = userId,
-                        username = username,
-                        email = email,
-                        createdAt = createdAt,
-                        roles = roles,
-                        isAdmin = roles.Contains("Admin")
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Đã xảy ra lỗi khi lấy thông tin admin",
-                    error = ex.Message
-                });
-            }
-        }
+     
     }
 }
 

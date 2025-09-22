@@ -24,6 +24,9 @@ namespace DAL.Models
         public DateTime AppliedAt { get; set; }
         public DateTime SubmitAt { get; set; }
         public DateTime ReviewAt { get; set; }
+        public string TeachingExperience { get; set; } = string.Empty;
+        public string TeachingLevel { get; set; } = string.Empty;
+        public string Specialization { get; set; } = string.Empty;
         public Guid ReviewedBy { get; set; }
         public string RejectionReason { get; set; } = string.Empty;
         public bool Status { get; set; }

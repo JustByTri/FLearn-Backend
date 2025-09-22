@@ -204,7 +204,7 @@ namespace Presentation.Controllers.Teacher
         /// Lấy tất cả đơn ứng tuyển (Admin only)
         /// </summary>
         [HttpGet("all")]
-        [Authorize(Policy = "StaffOnly")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> GetAllApplications()
         {
             try
@@ -352,9 +352,6 @@ namespace Presentation.Controllers.Teacher
             }
         }
 
-        /// <summary>
-        /// Lấy đơn ứng tuyển đang chờ duyệt theo ngôn ngữ của staff
-        /// </summary>
         [HttpGet("pending")]
         [Authorize(Policy = "StaffOnly")]
         public async Task<IActionResult> GetPendingApplications()
@@ -366,21 +363,20 @@ namespace Presentation.Controllers.Teacher
 
                 List<TeacherApplicationDto> applications;
 
-                if (userRoles.Contains("Staff"))
+                // ✅ FIXED: Admin xem tất cả, Staff chỉ xem ngôn ngữ được phân công
+                if (userRoles.Contains("Admin"))
                 {
-                  
                     applications = await _teacherApplicationService.GetPendingApplicationsAsync();
                 }
-                else
+                else // Staff
                 {
-                   
                     var userLanguages = await _unitOfWork.UserLearningLanguages.GetLanguagesByUserAsync(userId);
                     if (!userLanguages.Any())
                     {
                         return BadRequest(new
                         {
                             success = false,
-                            message = "Bạn chưa được phân công ngôn ngữ nào"
+                            message = "Bạn chưa được phân công quản lý ngôn ngữ nào"
                         });
                     }
 
@@ -412,8 +408,6 @@ namespace Presentation.Controllers.Teacher
         }
 
         /// <summary>
-        /// Lấy chi tiết đơn ứng tuyển (Staff only)
-        /// </summary>
         [HttpGet("{applicationId:guid}")]
         [Authorize(Policy = "StaffOnly")]
         public async Task<IActionResult> GetApplicationById(Guid applicationId)
@@ -421,7 +415,6 @@ namespace Presentation.Controllers.Teacher
             try
             {
                 var application = await _teacherApplicationService.GetApplicationByIdAsync(applicationId);
-
                 if (application == null)
                 {
                     return NotFound(new
@@ -431,11 +424,11 @@ namespace Presentation.Controllers.Teacher
                     });
                 }
 
-                // Kiểm tra quyền xem của staff
                 var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
                 var userRoles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
 
-                if (!userRoles.Contains("Staff"))
+                // ✅ FIXED: Staff phải kiểm tra quyền ngôn ngữ
+                if (userRoles.Contains("Staff") && !userRoles.Contains("Admin"))
                 {
                     var userLanguages = await _unitOfWork.UserLearningLanguages.GetLanguagesByUserAsync(userId);
                     if (!userLanguages.Any(ul => ul.LanguageID == application.LanguageID))
@@ -546,5 +539,80 @@ namespace Presentation.Controllers.Teacher
                 });
             }
         }
+        /// <summary>
+        /// Thống kê đơn ứng tuyển theo ngôn ngữ
+        /// </summary>
+        [HttpGet("stats/by-language")]
+        [Authorize(Policy = "StaffOnly")]
+        public async Task<IActionResult> GetApplicationStatsByLanguage()
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                var userRoles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+
+                var stats = new List<object>();
+
+                if (userRoles.Contains("Admin"))
+                {
+                    // Admin xem stats tất cả ngôn ngữ
+                    var allLanguages = await _unitOfWork.Languages.GetAllAsync();
+                    foreach (var lang in allLanguages)
+                    {
+                        var applications = await _teacherApplicationService.GetApplicationsByLanguageAsync(lang.LanguageID);
+                        stats.Add(new
+                        {
+                            languageId = lang.LanguageID,
+                            languageName = lang.LanguageName,
+                            languageCode = lang.LanguageCode,
+                            totalApplications = applications.Count,
+                            pendingApplications = applications.Count(a => a.Status == ApplicationStatus.Pending),
+                            approvedApplications = applications.Count(a => a.Status == ApplicationStatus.Approved),
+                            rejectedApplications = applications.Count(a => a.Status == ApplicationStatus.Rejected)
+                        });
+                    }
+                }
+                else
+                {
+                    // Staff chỉ xem stats ngôn ngữ được phân công
+                    var userLanguages = await _unitOfWork.UserLearningLanguages.GetLanguagesByUserAsync(userId);
+                    foreach (var userLang in userLanguages)
+                    {
+                        var language = await _unitOfWork.Languages.GetByIdAsync(userLang.LanguageID);
+                        if (language != null)
+                        {
+                            var applications = await _teacherApplicationService.GetApplicationsByLanguageAsync(language.LanguageID);
+                            stats.Add(new
+                            {
+                                languageId = language.LanguageID,
+                                languageName = language.LanguageName,
+                                languageCode = language.LanguageCode,
+                                totalApplications = applications.Count,
+                                pendingApplications = applications.Count(a => a.Status == ApplicationStatus.Pending),
+                                approvedApplications = applications.Count(a => a.Status == ApplicationStatus.Approved),
+                                rejectedApplications = applications.Count(a => a.Status == ApplicationStatus.Rejected)
+                            });
+                        }
+                    }
+                }
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Lấy thống kê đơn ứng tuyển thành công",
+                    data = stats
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Đã xảy ra lỗi khi lấy thống kê",
+                    error = ex.Message
+                });
+            }
+        }
+
     }
 }

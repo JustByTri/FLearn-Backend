@@ -49,6 +49,7 @@ namespace DAL.UnitOfWork
             RegistrationOtps = new RegistrationOtpRepository(_context);
             TempRegistrations = new TempRegistrationRepository(_context);
             PasswordResetOtps = new PasswordResetOtpRepository(_context);
+            UserSurveys = new UserSurveyRepository(_context);
         }
 
         public IUserRepository Users { get; private set; }
@@ -81,6 +82,7 @@ namespace DAL.UnitOfWork
         public IRegistrationOtpRepository RegistrationOtps { get; private set; }
         public ITempRegistrationRepository TempRegistrations { get; private set; }
         public IPasswordResetOtpRepository PasswordResetOtps { get; private set; }
+        public IUserSurveyRepository UserSurveys { get; private set; }
         public int SaveChanges()
         {
             return _context.SaveChanges();

@@ -131,29 +131,52 @@ if (jwtSettings != null && !string.IsNullOrEmpty(jwtSettings.SecretKey))
             ValidAudience = jwtSettings.Audience,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero,
-            RequireExpirationTime = true
+            RequireExpirationTime = true,
+            // ✅ Thêm claims validation
+            RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role",
+            NameClaimType = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
         };
 
         options.Events = new JwtBearerEvents
         {
             OnAuthenticationFailed = context =>
             {
+                // ✅ Detailed logging for debugging
+                Console.WriteLine($"Authentication failed: {context.Exception.Message}");
+
                 if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
                 {
                     context.Response.Headers.Add("Token-Expired", "true");
                 }
+                else if (context.Exception.GetType() == typeof(SecurityTokenInvalidIssuerException))
+                {
+                    context.Response.Headers.Add("Token-Invalid-Issuer", "true");
+                }
+                else if (context.Exception.GetType() == typeof(SecurityTokenInvalidAudienceException))
+                {
+                    context.Response.Headers.Add("Token-Invalid-Audience", "true");
+                }
+
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                // ✅ Log successful validation
+                Console.WriteLine($"Token validated for user: {context.Principal?.Identity?.Name}");
                 return Task.CompletedTask;
             }
         };
     });
 
-    // Add Authorization with Policies
+  
     builder.Services.AddAuthorization(options =>
     {
         options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-        options.AddPolicy("StaffOnly", policy => policy.RequireRole("Staff"));
-        options.AddPolicy("TeacherOnly", policy => policy.RequireRole("Teacher"));
-        options.AddPolicy("LearnerOnly", policy => policy.RequireRole("Learner", "Teacher"));
+        options.AddPolicy("StaffOnly", policy => policy.RequireRole("Staff", "Admin")); // ✅ Admin có thể access Staff endpoints
+        options.AddPolicy("TeacherOnly", policy => policy.RequireRole("Teacher", "Admin"));
+        options.AddPolicy("LearnerOnly", policy => policy.RequireRole("Learner", "Teacher", "Staff", "Admin"));
+
+        options.AddPolicy("AuthenticatedUser", policy => policy.RequireAuthenticatedUser());
     });
 }
 else

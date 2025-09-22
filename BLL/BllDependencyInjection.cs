@@ -14,6 +14,10 @@ using BLL.IServices.Upload;
 using BLL.Services.Teacher;
 using BLL.Services.Upload;
 using BLL.Settings;
+using BLL.IServices.AI;
+using BLL.IServices.Survey;
+using BLL.Services.AI;
+using BLL.Services.Survey;
 namespace BLL
 {
     public static class BllDependencyInjection
@@ -27,6 +31,10 @@ namespace BLL
             services.Configure<CloudinarySettings>(configuration.GetSection("CloudinarySettings"));
             services.AddDalServices(configuration);
             services.AddScoped<ICloudinaryService, CloudinaryService>();
+            services.AddScoped<IGeminiService, GeminiService>();
+            services.AddScoped<IUserSurveyService, UserSurveyService>();
+            services.AddHttpClient<IGeminiService, GeminiService>();
+            services.Configure<GeminiSettings>(configuration.GetSection("GeminiSettings"));
             services.AddScoped<ITeacherApplicationService, TeacherApplicationService>();
             return services;
         }

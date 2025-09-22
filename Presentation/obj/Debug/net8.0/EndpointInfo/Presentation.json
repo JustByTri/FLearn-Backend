@@ -369,11 +369,7 @@
         }
       }
     },
-<<<<<<< HEAD
-    "/api/Auth/resend-otp": {
-=======
     "/api/Auth/google": {
->>>>>>> efdd23bd36305b656377202a26d9b3da642d20a8
       "post": {
         "tags": [
           "Auth"
@@ -382,25 +378,47 @@
           "content": {
             "application/json": {
               "schema": {
-<<<<<<< HEAD
-                "$ref": "#/components/schemas/ResendOtpDto"
-=======
                 "$ref": "#/components/schemas/GoogleLoginRequest"
->>>>>>> efdd23bd36305b656377202a26d9b3da642d20a8
               }
             },
             "text/json": {
               "schema": {
-<<<<<<< HEAD
-                "$ref": "#/components/schemas/ResendOtpDto"
-=======
                 "$ref": "#/components/schemas/GoogleLoginRequest"
->>>>>>> efdd23bd36305b656377202a26d9b3da642d20a8
               }
             },
             "application/*+json": {
               "schema": {
-<<<<<<< HEAD
+                "$ref": "#/components/schemas/GoogleLoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Auth/resend-otp": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendOtpDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendOtpDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
                 "$ref": "#/components/schemas/ResendOtpDto"
               }
             }
@@ -464,13 +482,89 @@
             "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/ResetPasswordDto"
-=======
-                "$ref": "#/components/schemas/GoogleLoginRequest"
->>>>>>> efdd23bd36305b656377202a26d9b3da642d20a8
               }
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Survey/status": {
+      "get": {
+        "tags": [
+          "Survey"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Survey/options": {
+      "get": {
+        "tags": [
+          "Survey"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Survey/complete": {
+      "post": {
+        "tags": [
+          "Survey"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserSurveyDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserSurveyDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserSurveyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Survey/my-survey": {
+      "get": {
+        "tags": [
+          "Survey"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Survey/regenerate-recommendations": {
+      "post": {
+        "tags": [
+          "Survey"
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -691,6 +785,18 @@
           }
         }
       }
+    },
+    "/api/TeacherApplication/stats/by-language": {
+      "get": {
+        "tags": [
+          "TeacherApplication"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -720,7 +826,6 @@
         },
         "additionalProperties": false
       },
-<<<<<<< HEAD
       "ForgotPasswordDto": {
         "required": [
           "emailOrUsername"
@@ -728,7 +833,12 @@
         "type": "object",
         "properties": {
           "emailOrUsername": {
-=======
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "GoogleLoginRequest": {
         "required": [
           "idToken"
@@ -736,7 +846,6 @@
         "type": "object",
         "properties": {
           "idToken": {
->>>>>>> efdd23bd36305b656377202a26d9b3da642d20a8
             "minLength": 1,
             "type": "string"
           }
@@ -874,6 +983,62 @@
           },
           "confirmPassword": {
             "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UserSurveyDto": {
+        "required": [
+          "currentLevel",
+          "learningReason",
+          "preferredLanguageID",
+          "preferredLearningStyle",
+          "targetTimeline"
+        ],
+        "type": "object",
+        "properties": {
+          "currentLevel": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "preferredLanguageID": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "learningReason": {
+            "maxLength": 500,
+            "minLength": 10,
+            "type": "string"
+          },
+          "previousExperience": {
+            "type": "string"
+          },
+          "preferredLearningStyle": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "interestedTopics": {
+            "type": "string"
+          },
+          "prioritySkills": {
+            "type": "string"
+          },
+          "targetTimeline": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "speakingChallenges": {
+            "type": "string"
+          },
+          "confidenceLevel": {
+            "maximum": 10,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "preferredAccent": {
             "type": "string"
           }
         },

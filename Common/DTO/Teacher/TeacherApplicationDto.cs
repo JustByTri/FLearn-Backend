@@ -20,6 +20,9 @@ namespace Common.DTO.Teacher
         public DateTime? ReviewAt { get; set; }
         public Guid? ReviewedBy { get; set; }
         public string? ReviewerName { get; set; }
+        public string TeachingExperience { get; set; } = string.Empty;
+        public string TeachingLevel { get; set; } = string.Empty;
+        public string Specialization { get; set; } = string.Empty;
         public string RejectionReason { get; set; } = string.Empty;
         public ApplicationStatus Status { get; set; }
         public List<TeacherCredentialDto> Credentials { get; set; } = new List<TeacherCredentialDto>();

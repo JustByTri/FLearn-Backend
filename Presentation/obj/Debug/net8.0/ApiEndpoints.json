@@ -136,24 +136,31 @@
   },
   {
     "ContainingType": "Presentation.Controllers.Auth.AuthController",
-<<<<<<< HEAD
     "Method": "ForgotPassword",
     "RelativePath": "api/Auth/forgot-password",
-=======
-    "Method": "LoginGoogle",
-    "RelativePath": "api/Auth/google",
->>>>>>> efdd23bd36305b656377202a26d9b3da642d20a8
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
     "Parameters": [
       {
         "Name": "request",
-<<<<<<< HEAD
         "Type": "Common.DTO.Auth.ForgotPasswordDto",
-=======
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Auth.AuthController",
+    "Method": "LoginGoogle",
+    "RelativePath": "api/Auth/google",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
         "Type": "Common.DTO.Auth.GoogleLoginRequest",
->>>>>>> efdd23bd36305b656377202a26d9b3da642d20a8
         "IsRequired": true
       }
     ],
@@ -279,6 +286,62 @@
         "IsRequired": true
       }
     ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Survey.SurveyController",
+    "Method": "CompleteSurvey",
+    "RelativePath": "api/Survey/complete",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "surveyDto",
+        "Type": "Common.DTO.Learner.UserSurveyDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Survey.SurveyController",
+    "Method": "GetMySurvey",
+    "RelativePath": "api/Survey/my-survey",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Survey.SurveyController",
+    "Method": "GetSurveyOptions",
+    "RelativePath": "api/Survey/options",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Survey.SurveyController",
+    "Method": "RegenerateRecommendations",
+    "RelativePath": "api/Survey/regenerate-recommendations",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Survey.SurveyController",
+    "Method": "GetSurveyStatus",
+    "RelativePath": "api/Survey/status",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
     "ReturnTypes": []
   },
   {
@@ -417,6 +480,16 @@
         "IsRequired": true
       }
     ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Teacher.TeacherApplicationController",
+    "Method": "GetApplicationStatsByLanguage",
+    "RelativePath": "api/TeacherApplication/stats/by-language",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
     "ReturnTypes": []
   },
   {
