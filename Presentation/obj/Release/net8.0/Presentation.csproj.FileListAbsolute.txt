@@ -150,3 +150,8 @@ D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\Presentation.genrunti
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Release\net8.0\ref\Presentation.dll
 D:\F-Learn\F-Learn-BackEnd\Presentation\bin\Release\net8.0\CloudinaryDotNet.dll
 D:\F-Learn\F-Learn-BackEnd\Presentation\bin\Release\net8.0\Newtonsoft.Json.dll
+D:\F-Learn\F-Learn-BackEnd\Presentation\bin\Release\net8.0\Google.Apis.dll
+D:\F-Learn\F-Learn-BackEnd\Presentation\bin\Release\net8.0\Google.Apis.Auth.dll
+D:\F-Learn\F-Learn-BackEnd\Presentation\bin\Release\net8.0\Google.Apis.Core.dll
+D:\F-Learn\F-Learn-BackEnd\Presentation\bin\Release\net8.0\System.Management.dll
+D:\F-Learn\F-Learn-BackEnd\Presentation\bin\Release\net8.0\runtimes\win\lib\net7.0\System.Management.dll

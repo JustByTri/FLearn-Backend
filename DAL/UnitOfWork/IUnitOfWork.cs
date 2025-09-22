@@ -38,6 +38,7 @@ namespace DAL.UnitOfWork
         IRegistrationOtpRepository RegistrationOtps { get; }
         ITempRegistrationRepository TempRegistrations { get; }
         IPasswordResetOtpRepository PasswordResetOtps { get; }
+        IUserSurveyRepository UserSurveys { get; }
         int SaveChanges();
         Task<int> SaveChangesAsync();
         void BeginTransaction();

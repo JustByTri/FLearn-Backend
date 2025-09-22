@@ -18,6 +18,9 @@ namespace Common.DTO.Teacher
 
         [Required(ErrorMessage = "Ít nhất một chứng chỉ là bắt buộc")]
         [MinLength(1, ErrorMessage = "Phải có ít nhất một chứng chỉ")]
+        public string TeachingExperience { get; set; } = string.Empty;
+        public string TeachingLevel { get; set; } = string.Empty;
+        public string Specialization { get; set; } = string.Empty;
         public List<CreateCredentialDto> Credentials { get; set; } = new List<CreateCredentialDto>();
     }
 

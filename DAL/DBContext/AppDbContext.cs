@@ -41,6 +41,7 @@ namespace DAL.DBContext
         public DbSet<RegistrationOtp> RegistrationOtps { get; set; }
         public DbSet<TempRegistration> TempRegistrations { get; set; }
         public DbSet<PasswordResetOtp> PasswordResetOtps { get; set; }
+        public DbSet<UserSurvey> UserSurveys { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

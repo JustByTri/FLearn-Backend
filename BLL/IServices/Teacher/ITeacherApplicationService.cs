@@ -20,5 +20,6 @@ namespace BLL.IServices.Teacher
         Task<List<TeacherApplicationDto>> GetPendingApplicationsByLanguageAsync(Guid languageId);
         Task<List<TeacherApplicationDto>> GetApplicationsByLanguageAsync(Guid languageId);
 
+
     }
 }

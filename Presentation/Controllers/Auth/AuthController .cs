@@ -1,4 +1,5 @@
 ﻿using BLL.IServices.Auth;
+using BLL.IServices.Survey;
 using Common.DTO.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,10 +13,11 @@ namespace Presentation.Controllers.Auth
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
-
-        public AuthController(IAuthService authService)
+        private readonly IUserSurveyService _surveyService;
+        public AuthController(IAuthService authService, IUserSurveyService userSurveyService)
         {
             _authService = authService;
+            _surveyService = userSurveyService;
         }
 
 
@@ -90,11 +92,21 @@ namespace Presentation.Controllers.Auth
                 }
 
                 var result = await _authService.LoginAsync(request);
+
+               
+                var userId = Guid.Parse(result.User.UserID.ToString());
+                var hasCompletedSurvey = await _surveyService.HasUserCompletedSurveyAsync(userId);
+
                 return Ok(new
                 {
                     success = true,
                     message = "Đăng nhập thành công! Chào mừng bạn quay trở lại.",
-                    data = result
+                    data = result,
+                    onboarding = new
+                    {
+                        needsSurvey = !hasCompletedSurvey,
+                        isFirstLogin = !hasCompletedSurvey
+                    }
                 });
             }
             catch (UnauthorizedAccessException ex)

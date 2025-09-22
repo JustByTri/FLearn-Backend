@@ -1,0 +1,31 @@
+﻿using Common.DTO.Learner;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace BLL.IServices.AI
+{
+    public interface IGeminiService
+    {
+        Task<AiCourseRecommendationDto> GenerateCourseRecommendationsAsync(
+            UserSurveyResponseDto survey,
+            List<CourseInfoDto> availableCourses);
+        Task<string> GenerateStudyPlanAsync(UserSurveyResponseDto survey);
+        Task<List<string>> GenerateStudyTipsAsync(UserSurveyResponseDto survey);
+    }
+
+    public class CourseInfoDto
+    {
+        public Guid CourseID { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string Level { get; set; } = string.Empty;
+        public string Language { get; set; } = string.Empty;
+        public List<string> Topics { get; set; } = new();
+        public List<string> Skills { get; set; } = new();
+        public int Duration { get; set; }
+        public string Difficulty { get; set; } = string.Empty;
+    }
+}

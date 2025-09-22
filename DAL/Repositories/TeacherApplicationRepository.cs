@@ -69,5 +69,14 @@ namespace DAL.Repositories
                 .OrderByDescending(ta => ta.AppliedAt)
                 .ToListAsync();
         }
+        public async Task<List<TeacherApplication>> GetByLanguageAsync(Guid languageId)
+        {
+            return await _context.TeacherApplications
+                .Where(x => x.LanguageID == languageId)
+                .Include(x => x.User)
+                .Include(x => x.Language)
+                .ToListAsync();
+        }
+
     }
 }
