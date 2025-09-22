@@ -40,6 +40,7 @@ namespace DAL.DBContext
         public DbSet<RoadmapDetail> RoadmapDetails { get; set; }
         public DbSet<RegistrationOtp> RegistrationOtps { get; set; }
         public DbSet<TempRegistration> TempRegistrations { get; set; }
+        public DbSet<PasswordResetOtp> PasswordResetOtps { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

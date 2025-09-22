@@ -229,7 +229,81 @@ namespace Presentation.Controllers.Teacher
                 });
             }
         }
+        /// <summary>
+        /// Lấy đơn ứng tuyển theo ngôn ngữ được phân công (STAFF + ADMIN)
+        /// </summary>
+        [HttpGet("my-assignments")]
+        [Authorize(Policy = "StaffOnly")]
+        public async Task<IActionResult> GetMyAssignedApplications()
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                var userRoles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
 
+                // ✅ Admin có thể xem tất cả đơn ứng tuyển
+                if (userRoles.Contains("Admin"))
+                {
+                    var allApplications = await _teacherApplicationService.GetAllApplicationsAsync();
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "Lấy danh sách đơn ứng tuyển thành công (Admin - All)",
+                        data = allApplications.OrderByDescending(x => x.AppliedAt).ToList(),
+                        total = allApplications.Count,
+                        userRole = "Admin",
+                        assignedLanguages = "All Languages"
+                    });
+                }
+
+                // ✅ Staff chỉ xem đơn ứng tuyển của ngôn ngữ được phân công
+                var userLanguages = await _unitOfWork.UserLearningLanguages.GetLanguagesByUserAsync(userId);
+                if (!userLanguages.Any())
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = "Bạn chưa được phân công quản lý ngôn ngữ nào. Vui lòng liên hệ Admin để được phân công."
+                    });
+                }
+
+                var staffApplications = new List<TeacherApplicationDto>();
+                var assignedLanguageNames = new List<string>();
+
+                foreach (var userLanguage in userLanguages)
+                {
+                    // Lấy thông tin ngôn ngữ
+                    var language = await _unitOfWork.Languages.GetByIdAsync(userLanguage.LanguageID);
+                    if (language != null)
+                    {
+                        assignedLanguageNames.Add(language.LanguageName);
+                    }
+
+                    // Lấy đơn ứng tuyển theo ngôn ngữ
+                    var applications = await _teacherApplicationService.GetApplicationsByLanguageAsync(userLanguage.LanguageID);
+                    staffApplications.AddRange(applications);
+                }
+
+                return Ok(new
+                {
+                    success = true,
+                    message = $"Lấy danh sách đơn ứng tuyển thành công cho {string.Join(", ", assignedLanguageNames)}",
+                    data = staffApplications.OrderByDescending(x => x.AppliedAt).ToList(),
+                    total = staffApplications.Count,
+                    userRole = "Staff",
+                    assignedLanguages = assignedLanguageNames
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Đã xảy ra lỗi khi lấy danh sách đơn ứng tuyển",
+                    error = ex.Message
+                });
+            }
+        }
         /// <summary>
         /// Lấy đơn ứng tuyển theo ngôn ngữ của staff
         /// </summary>

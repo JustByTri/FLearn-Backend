@@ -23,7 +23,7 @@ namespace DAL.Models
 
         [Required]
         public DateTime ExpireAt { get; set; }
-
+        public DateTime CreateAt { get; set; }
         public bool IsUsed { get; set; } = false;
     }
 }

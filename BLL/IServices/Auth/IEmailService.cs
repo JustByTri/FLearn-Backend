@@ -21,5 +21,14 @@ namespace BLL.IServices.Auth
         Task<bool> SendTeacherApplicationSubmittedAsync(string toEmail, string userName);
         Task<bool> SendTeacherApplicationApprovedAsync(string toEmail, string userName);
         Task<bool> SendTeacherApplicationRejectedAsync(string toEmail, string userName, string reason);
+        /// <summary>
+        /// Gửi Lại OTP và OTP Password
+        /// </summary>
+        /// <param name="toEmail"></param>
+        /// <param name="userName"></param>
+        /// <param name="otpCode"></param>
+        /// <returns></returns>
+        Task<bool> SendOtpResendAsync(string toEmail, string userName, string otpCode);
+        Task<bool> SendPasswordResetOtpAsync(string toEmail, string userName, string otpCode);
     }
 }

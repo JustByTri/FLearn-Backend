@@ -205,7 +205,101 @@ namespace Presentation.Controllers.Auth
 
             return Ok(new { success = true, message = "Đăng nhập Google thành công", data = result });
         }
-    }
-}
+    
+
+/// <summary>
+/// Gửi lại mã OTP cho đăng ký
+/// </summary>
+[HttpPost("resend-otp")]
+            [AllowAnonymous]
+            public async Task<IActionResult> ResendOtp([FromBody] ResendOtpDto request)
+            {
+                try
+                {
+                    if (!ModelState.IsValid)
+                    {
+                        return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+                    }
+
+                    await _authService.ResendOtpAsync(request);
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "Mã OTP mới đã được gửi đến email của bạn. Vui lòng kiểm tra và xác thực trong vòng 5 phút.",
+                        email = request.Email
+                    });
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return BadRequest(new { success = false, message = ex.Message });
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi gửi lại OTP. Vui lòng thử lại!" });
+                }
+            }
+
+            /// <summary>
+            /// Quên mật khẩu - gửi OTP reset password
+            /// </summary>
+            [HttpPost("forgot-password")]
+            [AllowAnonymous]
+            public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto request)
+            {
+                try
+                {
+                    if (!ModelState.IsValid)
+                    {
+                        return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+                    }
+
+                    await _authService.ForgotPasswordAsync(request);
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "Nếu email/tài khoản tồn tại, mã OTP đặt lại mật khẩu đã được gửi đến email của bạn. Vui lòng kiểm tra trong vòng 10 phút."
+                    });
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return BadRequest(new { success = false, message = ex.Message });
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi xử lý yêu cầu quên mật khẩu. Vui lòng thử lại!" });
+                }
+            }
+
+            /// <summary>
+            /// Đặt lại mật khẩu bằng OTP
+            /// </summary>
+            [HttpPost("reset-password")]
+            [AllowAnonymous]
+            public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto request)
+            {
+                try
+                {
+                    if (!ModelState.IsValid)
+                    {
+                        return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+                    }
+
+                    await _authService.ResetPasswordAsync(request);
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "Đặt lại mật khẩu thành công! Vui lòng đăng nhập lại với mật khẩu mới."
+                    });
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return BadRequest(new { success = false, message = ex.Message });
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi đặt lại mật khẩu. Vui lòng thử lại!" });
+                }
+            }
+        } } 
 
 

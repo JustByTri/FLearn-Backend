@@ -136,15 +136,24 @@
   },
   {
     "ContainingType": "Presentation.Controllers.Auth.AuthController",
+<<<<<<< HEAD
+    "Method": "ForgotPassword",
+    "RelativePath": "api/Auth/forgot-password",
+=======
     "Method": "LoginGoogle",
     "RelativePath": "api/Auth/google",
+>>>>>>> efdd23bd36305b656377202a26d9b3da642d20a8
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
     "Parameters": [
       {
         "Name": "request",
+<<<<<<< HEAD
+        "Type": "Common.DTO.Auth.ForgotPasswordDto",
+=======
         "Type": "Common.DTO.Auth.GoogleLoginRequest",
+>>>>>>> efdd23bd36305b656377202a26d9b3da642d20a8
         "IsRequired": true
       }
     ],
@@ -219,6 +228,38 @@
       {
         "Name": "request",
         "Type": "Common.DTO.Auth.TempRegistrationDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Auth.AuthController",
+    "Method": "ResendOtp",
+    "RelativePath": "api/Auth/resend-otp",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "Common.DTO.Auth.ResendOtpDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Auth.AuthController",
+    "Method": "ResetPassword",
+    "RelativePath": "api/Auth/reset-password",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "Common.DTO.Auth.ResetPasswordDto",
         "IsRequired": true
       }
     ],
@@ -326,6 +367,16 @@
     "ContainingType": "Presentation.Controllers.Teacher.TeacherApplicationController",
     "Method": "GetMyApplication",
     "RelativePath": "api/TeacherApplication/my-application",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Teacher.TeacherApplicationController",
+    "Method": "GetMyAssignedApplications",
+    "RelativePath": "api/TeacherApplication/my-assignments",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,

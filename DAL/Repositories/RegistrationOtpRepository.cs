@@ -17,15 +17,24 @@ namespace DAL.Repositories
 
         public async Task<RegistrationOtp> GetValidOtpAsync(string email, string otpCode)
         {
+            var normalizedEmail = email.Trim().ToLowerInvariant();
+
+       
             return await _context.Set<RegistrationOtp>()
-                .Where(x => x.Email == email && x.OtpCode == otpCode && !x.IsUsed && x.ExpireAt > DateTime.UtcNow)
-            .FirstOrDefaultAsync();
+                .Where(x => x.Email.ToLower() == normalizedEmail &&  
+                           x.OtpCode == otpCode &&                
+                           !x.IsUsed &&                    
+                           x.ExpireAt > DateTime.UtcNow)            
+                .OrderByDescending(x => x.CreateAt)                 
+                .FirstOrDefaultAsync();
         }
 
         public async Task InvalidateOtpsAsync(string email)
         {
+            var normalizedEmail = email.Trim().ToLowerInvariant();
+
             var otps = await _context.Set<RegistrationOtp>()
-                .Where(x => x.Email == email && !x.IsUsed && x.ExpireAt > DateTime.UtcNow)
+                .Where(x => x.Email.ToLower() == normalizedEmail && !x.IsUsed && x.ExpireAt > DateTime.UtcNow)
                 .ToListAsync();
 
             foreach (var otp in otps)

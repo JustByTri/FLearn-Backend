@@ -1,5 +1,6 @@
 ﻿using DAL.DBContext;
 using DAL.IRepositories;
+using DAL.Models;
 using DAL.Repositories;
 
 using Microsoft.EntityFrameworkCore.Storage;
@@ -47,6 +48,7 @@ namespace DAL.UnitOfWork
             RoadmapDetails = new RoadmapDetailRepository(_context);
             RegistrationOtps = new RegistrationOtpRepository(_context);
             TempRegistrations = new TempRegistrationRepository(_context);
+            PasswordResetOtps = new PasswordResetOtpRepository(_context);
         }
 
         public IUserRepository Users { get; private set; }
@@ -78,6 +80,7 @@ namespace DAL.UnitOfWork
 
         public IRegistrationOtpRepository RegistrationOtps { get; private set; }
         public ITempRegistrationRepository TempRegistrations { get; private set; }
+        public IPasswordResetOtpRepository PasswordResetOtps { get; private set; }
         public int SaveChanges()
         {
             return _context.SaveChanges();
