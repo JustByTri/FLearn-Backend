@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace DAL.Basic
+﻿namespace DAL.Basic
 {
     public interface IGenericRepository<T> where T : class
     {
@@ -27,5 +21,7 @@ namespace DAL.Basic
         void PrepareRemove(T entity);
         int Save();
         Task<int> SaveAsync();
+        IQueryable<T> Query();
+        Task<IQueryable<T>> QueryAsync();
     }
 }
