@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace DAL.Models
 {
-   public class Topic
+    public class Topic
     {
         [Key]
         public Guid TopicID { get; set; }
@@ -18,6 +13,8 @@ namespace DAL.Models
 
         [StringLength(500)]
         public string Description { get; set; }
-       public CourseTopic CourseTopics { get; set; }
+        public string? ImageUrl { get; set; }
+        public string? PublicId { get; set; }
+        public virtual ICollection<CourseTopic> CourseTopics { get; set; } = new List<CourseTopic>();
     }
 }
