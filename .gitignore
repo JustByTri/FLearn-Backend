@@ -401,3 +401,6 @@ FodyWeavers.xsd
 
 Migrations/
 **/Migrations/
+
+.vscode/copilot-chat/
+.copilot/
