@@ -1,7 +1,5 @@
-﻿using DAL.Basic;
-using DAL.DBContext;
+﻿using DAL.DBContext;
 using Microsoft.EntityFrameworkCore;
-
 
 namespace DAL.Basic
 {
@@ -125,6 +123,16 @@ namespace DAL.Basic
         public async Task<int> SaveAsync()
         {
             return await _context.SaveChangesAsync();
+        }
+
+        public IQueryable<T> Query()
+        {
+            return _context.Set<T>().AsNoTracking().AsQueryable();
+        }
+
+        public Task<IQueryable<T>> QueryAsync()
+        {
+            return Task.FromResult(_context.Set<T>().AsNoTracking().AsQueryable());
         }
     }
 }

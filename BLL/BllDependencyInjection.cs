@@ -1,23 +1,22 @@
 ﻿
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-
-
-using DAL.DBContext;
-using DAL;
-using BLL.IServices.Auth;
-using BLL.Services.Auth;
 using BLL.IServices.Admin;
-using BLL.Services.Admin;
+using BLL.IServices.AI;
+using BLL.IServices.Auth;
+using BLL.IServices.Survey;
 using BLL.IServices.Teacher;
+using BLL.IServices.Topic;
 using BLL.IServices.Upload;
+using BLL.Services.Admin;
+using BLL.Services.AI;
+using BLL.Services.Auth;
+using BLL.Services.Survey;
 using BLL.Services.Teacher;
+using BLL.Services.Topic;
 using BLL.Services.Upload;
 using BLL.Settings;
-using BLL.IServices.AI;
-using BLL.IServices.Survey;
-using BLL.Services.AI;
-using BLL.Services.Survey;
+using DAL;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 namespace BLL
 {
     public static class BllDependencyInjection
@@ -36,6 +35,7 @@ namespace BLL
             services.AddHttpClient<IGeminiService, GeminiService>();
             services.Configure<GeminiSettings>(configuration.GetSection("GeminiSettings"));
             services.AddScoped<ITeacherApplicationService, TeacherApplicationService>();
+            services.AddScoped<ITopicService, TopicService>();
             return services;
         }
     }
