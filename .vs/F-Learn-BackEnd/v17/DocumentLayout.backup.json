@@ -3,6 +3,42 @@
   "WorkspaceRootPath": "D:\\F-Learn\\F-Learn-BackEnd\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|d:\\f-learn\\f-learn-backend\\bll\\services\\teacher\\teacherapplicationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|solutionrelative:bll\\services\\teacher\\teacherapplicationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|d:\\f-learn\\f-learn-backend\\bll\\iservices\\teacher\\iteacherapplicationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|solutionrelative:bll\\iservices\\teacher\\iteacherapplicationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|d:\\f-learn\\f-learn-backend\\presentation\\controllers\\teacher\\teacherapplicationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|solutionrelative:presentation\\controllers\\teacher\\teacherapplicationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|d:\\f-learn\\f-learn-backend\\bll\\services\\ai\\gemeniservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|solutionrelative:bll\\services\\ai\\gemeniservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|d:\\f-learn\\f-learn-backend\\bll\\settings\\geminisettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|solutionrelative:bll\\settings\\geminisettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|d:\\f-learn\\f-learn-backend\\bll\\iservices\\ai\\igeminiservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|solutionrelative:bll\\iservices\\ai\\igeminiservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|d:\\f-learn\\f-learn-backend\\common\\dto\\teacher\\teachinglevelsuggestion.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|solutionrelative:common\\dto\\teacher\\teachinglevelsuggestion.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|d:\\f-learn\\f-learn-backend\\common\\dto\\teacher\\qualificationassessment.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|solutionrelative:common\\dto\\teacher\\qualificationassessment.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|d:\\f-learn\\f-learn-backend\\common\\dto\\teacher\\teacherqualificationanalysisdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|solutionrelative:common\\dto\\teacher\\teacherqualificationanalysisdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|d:\\f-learn\\f-learn-backend\\bll\\services\\survey\\usersurveyservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|solutionrelative:bll\\services\\survey\\usersurveyservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -15,24 +51,12 @@
       "RelativeMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|solutionrelative:bll\\settings\\jwtsettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|d:\\f-learn\\f-learn-backend\\bll\\services\\teacher\\teacherapplicationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|solutionrelative:bll\\services\\teacher\\teacherapplicationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\teacherapplication.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\teacherapplication.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|d:\\f-learn\\f-learn-backend\\presentation\\controllers\\admin\\admincontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|solutionrelative:presentation\\controllers\\admin\\admincontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|d:\\f-learn\\f-learn-backend\\presentation\\controllers\\teacher\\teacherapplicationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|solutionrelative:presentation\\controllers\\teacher\\teacherapplicationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|d:\\f-learn\\f-learn-backend\\bll\\services\\ai\\gemeniservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|solutionrelative:bll\\services\\ai\\gemeniservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|d:\\f-learn\\f-learn-backend\\presentation\\controllers\\auth\\authcontroller .cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -45,10 +69,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|d:\\f-learn\\f-learn-backend\\common\\dto\\teacher\\teacherapplicationdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|solutionrelative:common\\dto\\teacher\\teacherapplicationdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|d:\\f-learn\\f-learn-backend\\bll\\iservices\\teacher\\iteacherapplicationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|solutionrelative:bll\\iservices\\teacher\\iteacherapplicationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|d:\\f-learn\\f-learn-backend\\common\\dto\\teacher\\createteacherapplicationdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -95,10 +115,6 @@
       "RelativeMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|solutionrelative:common\\dto\\learner\\usersurveydto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|d:\\f-learn\\f-learn-backend\\bll\\iservices\\ai\\igeminiservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|solutionrelative:bll\\iservices\\ai\\igeminiservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\models\\userlearninglanguage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\userlearninglanguage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -141,10 +157,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|d:\\f-learn\\f-learn-backend\\dal\\dbcontext\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\dbcontext\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|d:\\f-learn\\f-learn-backend\\bll\\settings\\geminisettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|solutionrelative:bll\\settings\\geminisettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|d:\\f-learn\\f-learn-backend\\common\\dto\\learner\\courserecommendationdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -662,7 +674,7 @@
       "DocumentGroups": [
         {
           "DockedHeight": 33,
-          "SelectedChildIndex": 18,
+          "SelectedChildIndex": 13,
           "Children": [
             {
               "$type": "Bookmark",
@@ -714,33 +726,124 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "GoogleAuthSettings.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Settings\\GoogleAuthSettings.cs",
-              "RelativeDocumentMoniker": "BLL\\Settings\\GoogleAuthSettings.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Settings\\GoogleAuthSettings.cs",
-              "RelativeToolTip": "BLL\\Settings\\GoogleAuthSettings.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "DocumentIndex": 3,
+              "Title": "GemeniService.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Services\\AI\\GemeniService.cs",
+              "RelativeDocumentMoniker": "BLL\\Services\\AI\\GemeniService.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Services\\AI\\GemeniService.cs",
+              "RelativeToolTip": "BLL\\Services\\AI\\GemeniService.cs",
+              "ViewState": "AgIAAJ0CAAAAAAAAAAAAAMACAAAEAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-22T17:42:23.608Z",
+              "WhenOpened": "2025-09-22T10:06:32.185Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 0,
               "Title": "TeacherApplicationService.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Services\\Teacher\\TeacherApplicationService.cs",
               "RelativeDocumentMoniker": "BLL\\Services\\Teacher\\TeacherApplicationService.cs",
               "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Services\\Teacher\\TeacherApplicationService.cs",
               "RelativeToolTip": "BLL\\Services\\Teacher\\TeacherApplicationService.cs",
-              "ViewState": "AgIAAAEAAAAAAAAAAAAkwCcAAAAMAAAAAAAAAA==",
+              "ViewState": "AgIAAF8BAAAAAAAAAAAiwBACAAAMAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-09-18T04:15:05.92Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "ITeacherApplicationService.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\IServices\\Teacher\\ITeacherApplicationService.cs",
+              "RelativeDocumentMoniker": "BLL\\IServices\\Teacher\\ITeacherApplicationService.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\IServices\\Teacher\\ITeacherApplicationService.cs",
+              "RelativeToolTip": "BLL\\IServices\\Teacher\\ITeacherApplicationService.cs",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAawBYAAAB6AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-18T04:14:38.161Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "TeacherApplicationController.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Controllers\\Teacher\\TeacherApplicationController.cs",
+              "RelativeDocumentMoniker": "Presentation\\Controllers\\Teacher\\TeacherApplicationController.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Controllers\\Teacher\\TeacherApplicationController.cs",
+              "RelativeToolTip": "Presentation\\Controllers\\Teacher\\TeacherApplicationController.cs",
+              "ViewState": "AgIAAHsCAAAAAAAAAAAAwI0CAAAWAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-18T04:18:55.898Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 4,
+              "Title": "GeminiSettings.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Settings\\GeminiSettings.cs",
+              "RelativeDocumentMoniker": "BLL\\Settings\\GeminiSettings.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Settings\\GeminiSettings.cs",
+              "RelativeToolTip": "BLL\\Settings\\GeminiSettings.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-22T10:02:14.02Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "IGeminiService.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\IServices\\AI\\IGeminiService.cs",
+              "RelativeDocumentMoniker": "BLL\\IServices\\AI\\IGeminiService.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\IServices\\AI\\IGeminiService.cs",
+              "RelativeToolTip": "BLL\\IServices\\AI\\IGeminiService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABMAAAAwAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-22T10:02:42.218Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "TeachingLevelSuggestion.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Teacher\\TeachingLevelSuggestion.cs",
+              "RelativeDocumentMoniker": "Common\\DTO\\Teacher\\TeachingLevelSuggestion.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Teacher\\TeachingLevelSuggestion.cs",
+              "RelativeToolTip": "Common\\DTO\\Teacher\\TeachingLevelSuggestion.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAA6AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-25T07:19:16.846Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "QualificationAssessment.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Teacher\\QualificationAssessment.cs",
+              "RelativeDocumentMoniker": "Common\\DTO\\Teacher\\QualificationAssessment.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Teacher\\QualificationAssessment.cs",
+              "RelativeToolTip": "Common\\DTO\\Teacher\\QualificationAssessment.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAvAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-25T07:19:01.854Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "TeacherQualificationAnalysisDto.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Teacher\\TeacherQualificationAnalysisDto.cs",
+              "RelativeDocumentMoniker": "Common\\DTO\\Teacher\\TeacherQualificationAnalysisDto.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Teacher\\TeacherQualificationAnalysisDto.cs",
+              "RelativeToolTip": "Common\\DTO\\Teacher\\TeacherQualificationAnalysisDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAAxAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-25T07:17:55.134Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
               "Title": "TeacherApplication.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\TeacherApplication.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\TeacherApplication.cs",
@@ -748,12 +851,11 @@
               "RelativeToolTip": "DAL\\Models\\TeacherApplication.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAB8AAAAoAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-15T09:38:29.16Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-15T09:38:29.16Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 14,
               "Title": "AuthController .cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Controllers\\Auth\\AuthController .cs",
               "RelativeDocumentMoniker": "Presentation\\Controllers\\Auth\\AuthController .cs",
@@ -761,11 +863,12 @@
               "RelativeToolTip": "Presentation\\Controllers\\Auth\\AuthController .cs",
               "ViewState": "AgIAADEAAAAAAAAAAAAYwBMAAAAvAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-16T06:40:14.571Z"
+              "WhenOpened": "2025-09-16T06:40:14.571Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 15,
               "Title": "SurveyController.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Controllers\\Survey\\SurveyController.cs",
               "RelativeDocumentMoniker": "Presentation\\Controllers\\Survey\\SurveyController.cs",
@@ -777,7 +880,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 13,
               "Title": "AdminController.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Controllers\\Admin\\AdminController.cs",
               "RelativeDocumentMoniker": "Presentation\\Controllers\\Admin\\AdminController.cs",
@@ -785,12 +888,11 @@
               "RelativeToolTip": "Presentation\\Controllers\\Admin\\AdminController.cs",
               "ViewState": "AgIAAGcBAAAAAAAAAAAqwIYBAAAjAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-17T10:57:42.089Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-17T10:57:42.089Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 9,
               "Title": "UserSurveyService.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Services\\Survey\\UserSurveyService.cs",
               "RelativeDocumentMoniker": "BLL\\Services\\Survey\\UserSurveyService.cs",
@@ -803,19 +905,19 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
-              "Title": "TeacherApplicationController.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Controllers\\Teacher\\TeacherApplicationController.cs",
-              "RelativeDocumentMoniker": "Presentation\\Controllers\\Teacher\\TeacherApplicationController.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Controllers\\Teacher\\TeacherApplicationController.cs",
-              "RelativeToolTip": "Presentation\\Controllers\\Teacher\\TeacherApplicationController.cs",
-              "ViewState": "AgIAAMoAAAAAAAAAAAAuwNoAAAAuAAAAAAAAAA==",
+              "DocumentIndex": 10,
+              "Title": "GoogleAuthSettings.cs",
+              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Settings\\GoogleAuthSettings.cs",
+              "RelativeDocumentMoniker": "BLL\\Settings\\GoogleAuthSettings.cs",
+              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Settings\\GoogleAuthSettings.cs",
+              "RelativeToolTip": "BLL\\Settings\\GoogleAuthSettings.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-18T04:18:55.898Z"
+              "WhenOpened": "2025-09-22T17:42:23.608Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 11,
               "Title": "JwtSettings.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Settings\\JwtSettings.cs",
               "RelativeDocumentMoniker": "BLL\\Settings\\JwtSettings.cs",
@@ -823,24 +925,11 @@
               "RelativeToolTip": "BLL\\Settings\\JwtSettings.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAA6AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-16T06:34:34.487Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-16T06:34:34.487Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
-              "Title": "GemeniService.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Services\\AI\\GemeniService.cs",
-              "RelativeDocumentMoniker": "BLL\\Services\\AI\\GemeniService.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Services\\AI\\GemeniService.cs",
-              "RelativeToolTip": "BLL\\Services\\AI\\GemeniService.cs",
-              "ViewState": "AgIAAJgAAAAAAAAAAAArwKcAAAAuAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-22T10:06:32.185Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 16,
               "Title": "TeacherApplicationDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Teacher\\TeacherApplicationDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Teacher\\TeacherApplicationDto.cs",
@@ -852,19 +941,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
-              "Title": "ITeacherApplicationService.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\IServices\\Teacher\\ITeacherApplicationService.cs",
-              "RelativeDocumentMoniker": "BLL\\IServices\\Teacher\\ITeacherApplicationService.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\IServices\\Teacher\\ITeacherApplicationService.cs",
-              "RelativeToolTip": "BLL\\IServices\\Teacher\\ITeacherApplicationService.cs",
-              "ViewState": "AgIAAAMAAAAAAAAAAAAawBUAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-18T04:14:38.161Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 17,
               "Title": "CreateTeacherApplicationDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Teacher\\CreateTeacherApplicationDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Teacher\\CreateTeacherApplicationDto.cs",
@@ -876,7 +953,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 18,
               "Title": "TeacherApplicationRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\TeacherApplicationRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\TeacherApplicationRepository.cs",
@@ -888,7 +965,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 19,
               "Title": "IEmailService.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\IServices\\Auth\\IEmailService.cs",
               "RelativeDocumentMoniker": "BLL\\IServices\\Auth\\IEmailService.cs",
@@ -900,7 +977,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 20,
               "Title": "IUserSurveyService.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\IServices\\Survey\\IUserSurveyService.cs",
               "RelativeDocumentMoniker": "BLL\\IServices\\Survey\\IUserSurveyService.cs",
@@ -912,7 +989,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
+              "DocumentIndex": 21,
               "Title": "ITeacherApplicationRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ITeacherApplicationRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\ITeacherApplicationRepository.cs",
@@ -924,7 +1001,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 17,
+              "DocumentIndex": 22,
               "Title": "TempRegistrationRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\TempRegistrationRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\TempRegistrationRepository.cs",
@@ -936,7 +1013,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 18,
+              "DocumentIndex": 23,
               "Title": "TeacherCredentialRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\TeacherCredentialRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\TeacherCredentialRepository.cs",
@@ -948,7 +1025,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 20,
+              "DocumentIndex": 25,
               "Title": "UserSurvey.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\UserSurvey.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\UserSurvey.cs",
@@ -960,7 +1037,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 22,
+              "DocumentIndex": 27,
               "Title": "UserSurveyDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Learner\\UserSurveyDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Learner\\UserSurveyDto.cs",
@@ -972,19 +1049,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 23,
-              "Title": "IGeminiService.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\IServices\\AI\\IGeminiService.cs",
-              "RelativeDocumentMoniker": "BLL\\IServices\\AI\\IGeminiService.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\IServices\\AI\\IGeminiService.cs",
-              "RelativeToolTip": "BLL\\IServices\\AI\\IGeminiService.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAARAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-22T10:02:42.218Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 19,
+              "DocumentIndex": 24,
               "Title": "UserRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\UserRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\UserRepository.cs",
@@ -996,7 +1061,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 21,
+              "DocumentIndex": 26,
               "Title": "UserSurveyResponseDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Learner\\UserSurveyResponseDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Learner\\UserSurveyResponseDto.cs",
@@ -1008,7 +1073,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 26,
+              "DocumentIndex": 30,
               "Title": "Program.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Program.cs",
               "RelativeDocumentMoniker": "Presentation\\Program.cs",
@@ -1016,11 +1081,12 @@
               "RelativeToolTip": "Presentation\\Program.cs",
               "ViewState": "AgIAANAAAAAAAAAAAAAAwLEAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-08T16:57:16.427Z"
+              "WhenOpened": "2025-09-08T16:57:16.427Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 25,
+              "DocumentIndex": 29,
               "Title": "TempRegistration.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\TempRegistration.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\TempRegistration.cs",
@@ -1032,7 +1098,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 31,
+              "DocumentIndex": 35,
               "Title": "DalDependencyInjection.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\DalDependencyInjection.cs",
               "RelativeDocumentMoniker": "DAL\\DalDependencyInjection.cs",
@@ -1044,7 +1110,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 29,
+              "DocumentIndex": 33,
               "Title": "UnitOfWork.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\UnitOfWork\\UnitOfWork.cs",
               "RelativeDocumentMoniker": "DAL\\UnitOfWork\\UnitOfWork.cs",
@@ -1056,7 +1122,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 24,
+              "DocumentIndex": 28,
               "Title": "UserLearningLanguage.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\UserLearningLanguage.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\UserLearningLanguage.cs",
@@ -1068,7 +1134,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 27,
+              "DocumentIndex": 31,
               "Title": "appsettings.json",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\appsettings.json",
               "RelativeDocumentMoniker": "Presentation\\appsettings.json",
@@ -1080,7 +1146,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 28,
+              "DocumentIndex": 32,
               "Title": "UserSurveyRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\UserSurveyRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\UserSurveyRepository.cs",
@@ -1092,7 +1158,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 30,
+              "DocumentIndex": 34,
               "Title": "IUnitOfWork.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\UnitOfWork\\IUnitOfWork.cs",
               "RelativeDocumentMoniker": "DAL\\UnitOfWork\\IUnitOfWork.cs",
@@ -1104,7 +1170,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 32,
+              "DocumentIndex": 36,
               "Title": "BllDependencyInjection.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\BllDependencyInjection.cs",
               "RelativeDocumentMoniker": "BLL\\BllDependencyInjection.cs",
@@ -1116,7 +1182,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 33,
+              "DocumentIndex": 37,
               "Title": "IUserSurveyRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IUserSurveyRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\IUserSurveyRepository.cs",
@@ -1128,7 +1194,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 34,
+              "DocumentIndex": 38,
               "Title": "AppDbContext.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\DBContext\\AppDbContext.cs",
               "RelativeDocumentMoniker": "DAL\\DBContext\\AppDbContext.cs",
@@ -1140,19 +1206,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 35,
-              "Title": "GeminiSettings.cs",
-              "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Settings\\GeminiSettings.cs",
-              "RelativeDocumentMoniker": "BLL\\Settings\\GeminiSettings.cs",
-              "ToolTip": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Settings\\GeminiSettings.cs",
-              "RelativeToolTip": "BLL\\Settings\\GeminiSettings.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAFAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-22T10:02:14.02Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 36,
+              "DocumentIndex": 39,
               "Title": "CourseRecommendationDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Learner\\CourseRecommendationDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Learner\\CourseRecommendationDto.cs",
@@ -1164,7 +1218,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 37,
+              "DocumentIndex": 40,
               "Title": "AiCourseRecommendationDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Learner\\AiCourseRecommendationDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Learner\\AiCourseRecommendationDto.cs",
@@ -1176,7 +1230,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 39,
+              "DocumentIndex": 42,
               "Title": "IAuthService.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\IServices\\Auth\\IAuthService.cs",
               "RelativeDocumentMoniker": "BLL\\IServices\\Auth\\IAuthService.cs",
@@ -1188,7 +1242,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 38,
+              "DocumentIndex": 41,
               "Title": "AuthService.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Services\\Auth\\AuthService.cs",
               "RelativeDocumentMoniker": "BLL\\Services\\Auth\\AuthService.cs",
@@ -1200,7 +1254,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 40,
+              "DocumentIndex": 43,
               "Title": "ResetPasswordDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Auth\\ResetPasswordDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Auth\\ResetPasswordDto.cs",
@@ -1212,7 +1266,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 41,
+              "DocumentIndex": 44,
               "Title": "PasswordResetService.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Services\\Auth\\PasswordResetService.cs",
               "RelativeDocumentMoniker": "BLL\\Services\\Auth\\PasswordResetService.cs",
@@ -1224,7 +1278,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 42,
+              "DocumentIndex": 45,
               "Title": "TempRegistrationDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Auth\\TempRegistrationDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Auth\\TempRegistrationDto.cs",
@@ -1236,7 +1290,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 43,
+              "DocumentIndex": 46,
               "Title": "User.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\User.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\User.cs",
@@ -1248,7 +1302,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 44,
+              "DocumentIndex": 47,
               "Title": "IPasswordResetOtpRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IPasswordResetOtpRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\IPasswordResetOtpRepository.cs",
@@ -1260,7 +1314,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 45,
+              "DocumentIndex": 48,
               "Title": "PasswordResetOtpRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\PasswordResetOtpRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\PasswordResetOtpRepository.cs",
@@ -1272,7 +1326,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 46,
+              "DocumentIndex": 49,
               "Title": "AdminService.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Services\\Admin\\AdminService.cs",
               "RelativeDocumentMoniker": "BLL\\Services\\Admin\\AdminService.cs",
@@ -1284,7 +1338,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 48,
+              "DocumentIndex": 51,
               "Title": "RegistrationOtp.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\RegistrationOtp.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\RegistrationOtp.cs",
@@ -1296,7 +1350,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 47,
+              "DocumentIndex": 50,
               "Title": "RegistrationOtpRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\RegistrationOtpRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\RegistrationOtpRepository.cs",
@@ -1308,7 +1362,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 49,
+              "DocumentIndex": 52,
               "Title": "IPasswordResetService.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\IServices\\Auth\\IPasswordResetService.cs",
               "RelativeDocumentMoniker": "BLL\\IServices\\Auth\\IPasswordResetService.cs",
@@ -1320,7 +1374,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 50,
+              "DocumentIndex": 53,
               "Title": "PasswordResetOtp.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\PasswordResetOtp.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\PasswordResetOtp.cs",
@@ -1332,7 +1386,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 51,
+              "DocumentIndex": 54,
               "Title": "GenericRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Basic\\GenericRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Basic\\GenericRepository.cs",
@@ -1344,7 +1398,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 52,
+              "DocumentIndex": 55,
               "Title": "PurchasesDetailRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\PurchasesDetailRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\PurchasesDetailRepository.cs",
@@ -1356,7 +1410,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 53,
+              "DocumentIndex": 56,
               "Title": "IAdminService.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\IServices\\Admin\\IAdminService.cs",
               "RelativeDocumentMoniker": "BLL\\IServices\\Admin\\IAdminService.cs",
@@ -1368,7 +1422,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 54,
+              "DocumentIndex": 57,
               "Title": "ForgotPasswordDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Auth\\ForgotPasswordDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Auth\\ForgotPasswordDto.cs",
@@ -1380,7 +1434,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 55,
+              "DocumentIndex": 58,
               "Title": "ResendOtpDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Auth\\ResendOtpDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Auth\\ResendOtpDto.cs",
@@ -1392,7 +1446,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 56,
+              "DocumentIndex": 59,
               "Title": "EmailService.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Services\\Auth\\EmailService.cs",
               "RelativeDocumentMoniker": "BLL\\Services\\Auth\\EmailService.cs",
@@ -1404,7 +1458,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 57,
+              "DocumentIndex": 60,
               "Title": "UserLearningLanguageRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\UserLearningLanguageRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\UserLearningLanguageRepository.cs",
@@ -1416,7 +1470,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 58,
+              "DocumentIndex": 61,
               "Title": "UploadController.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Controllers\\Upload\\UploadController.cs",
               "RelativeDocumentMoniker": "Presentation\\Controllers\\Upload\\UploadController.cs",
@@ -1428,7 +1482,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 59,
+              "DocumentIndex": 62,
               "Title": "TeacherApplicationFormDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Teacher\\TeacherApplicationFormDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Teacher\\TeacherApplicationFormDto.cs",
@@ -1440,7 +1494,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 60,
+              "DocumentIndex": 63,
               "Title": "20250918061306_d.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Migrations\\20250918061306_d.cs",
               "RelativeDocumentMoniker": "DAL\\Migrations\\20250918061306_d.cs",
@@ -1452,7 +1506,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 61,
+              "DocumentIndex": 64,
               "Title": "20250918061215_d.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Migrations\\20250918061215_d.cs",
               "RelativeDocumentMoniker": "DAL\\Migrations\\20250918061215_d.cs",
@@ -1464,7 +1518,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 62,
+              "DocumentIndex": 65,
               "Title": "20250918061126_c.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Migrations\\20250918061126_c.cs",
               "RelativeDocumentMoniker": "DAL\\Migrations\\20250918061126_c.cs",
@@ -1476,7 +1530,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 64,
+              "DocumentIndex": 67,
               "Title": "20250918060807_b.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Migrations\\20250918060807_b.cs",
               "RelativeDocumentMoniker": "DAL\\Migrations\\20250918060807_b.cs",
@@ -1488,7 +1542,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 63,
+              "DocumentIndex": 66,
               "Title": "Language.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Language.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Language.cs",
@@ -1500,7 +1554,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 66,
+              "DocumentIndex": 69,
               "Title": "TeacherCredentialDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Teacher\\TeacherCredentialDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Teacher\\TeacherCredentialDto.cs",
@@ -1512,7 +1566,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 65,
+              "DocumentIndex": 68,
               "Title": "UploadResultDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Upload\\UploadResultDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Upload\\UploadResultDto.cs",
@@ -1524,7 +1578,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 67,
+              "DocumentIndex": 70,
               "Title": "Presentation.http",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Presentation.http",
               "RelativeDocumentMoniker": "Presentation\\Presentation.http",
@@ -1536,7 +1590,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 68,
+              "DocumentIndex": 71,
               "Title": "TempRegistrationCleanupService .cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Background\\TempRegistrationCleanupService .cs",
               "RelativeDocumentMoniker": "BLL\\Background\\TempRegistrationCleanupService .cs",
@@ -1548,7 +1602,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 69,
+              "DocumentIndex": 72,
               "Title": "CloudinaryService.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Services\\Upload\\CloudinaryService.cs",
               "RelativeDocumentMoniker": "BLL\\Services\\Upload\\CloudinaryService.cs",
@@ -1560,7 +1614,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 70,
+              "DocumentIndex": 73,
               "Title": "ICloudinaryService.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\IServices\\Upload\\ICloudinaryService.cs",
               "RelativeDocumentMoniker": "BLL\\IServices\\Upload\\ICloudinaryService.cs",
@@ -1572,7 +1626,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 71,
+              "DocumentIndex": 74,
               "Title": "ReviewApplicationDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Staff\\ReviewApplicationDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Staff\\ReviewApplicationDto.cs",
@@ -1584,7 +1638,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 72,
+              "DocumentIndex": 75,
               "Title": "CloudinarySettings.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Settings\\CloudinarySettings.cs",
               "RelativeDocumentMoniker": "BLL\\Settings\\CloudinarySettings.cs",
@@ -1596,7 +1650,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 73,
+              "DocumentIndex": 76,
               "Title": "AdminDashboardDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Admin\\AdminDashboardDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Admin\\AdminDashboardDto.cs",
@@ -1608,7 +1662,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 74,
+              "DocumentIndex": 77,
               "Title": "ConversationRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\ConversationRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\ConversationRepository.cs",
@@ -1620,7 +1674,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 75,
+              "DocumentIndex": 78,
               "Title": "Presentation",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Presentation.csproj",
               "RelativeDocumentMoniker": "Presentation\\Presentation.csproj",
@@ -1631,7 +1685,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 76,
+              "DocumentIndex": 79,
               "Title": "CourseRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\CourseRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\CourseRepository.cs",
@@ -1643,7 +1697,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 77,
+              "DocumentIndex": 80,
               "Title": "ICourseRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ICourseRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\ICourseRepository.cs",
@@ -1655,7 +1709,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 78,
+              "DocumentIndex": 81,
               "Title": "IUserRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IUserRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\IUserRepository.cs",
@@ -1667,7 +1721,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 79,
+              "DocumentIndex": 82,
               "Title": "UserListDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Admin\\UserListDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Admin\\UserListDto.cs",
@@ -1679,7 +1733,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 80,
+              "DocumentIndex": 83,
               "Title": "ChangeStaffPasswordDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Auth\\ChangeStaffPasswordDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Auth\\ChangeStaffPasswordDto.cs",
@@ -1691,7 +1745,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 81,
+              "DocumentIndex": 84,
               "Title": "OtpCleanupService.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\Background\\OtpCleanupService.cs",
               "RelativeDocumentMoniker": "BLL\\Background\\OtpCleanupService.cs",
@@ -1703,7 +1757,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 82,
+              "DocumentIndex": 85,
               "Title": "Presentation.csproj",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Presentation.csproj",
               "RelativeDocumentMoniker": "Presentation\\Presentation.csproj",
@@ -1715,7 +1769,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 84,
+              "DocumentIndex": 87,
               "Title": "Common.csproj",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\Common.csproj",
               "RelativeDocumentMoniker": "Common\\Common.csproj",
@@ -1727,7 +1781,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 85,
+              "DocumentIndex": 88,
               "Title": "DAL.csproj",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\DAL.csproj",
               "RelativeDocumentMoniker": "DAL\\DAL.csproj",
@@ -1739,7 +1793,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 83,
+              "DocumentIndex": 86,
               "Title": "20250917091000_a.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Migrations\\20250917091000_a.cs",
               "RelativeDocumentMoniker": "DAL\\Migrations\\20250917091000_a.cs",
@@ -1751,7 +1805,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 86,
+              "DocumentIndex": 89,
               "Title": "ITempRegistrationRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ITempRegistrationRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\ITempRegistrationRepository.cs",
@@ -1763,7 +1817,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 87,
+              "DocumentIndex": 90,
               "Title": "VerifyOtpDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Auth\\VerifyOtpDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Auth\\VerifyOtpDto.cs",
@@ -1775,7 +1829,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 88,
+              "DocumentIndex": 91,
               "Title": "SendOtpRequestDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Auth\\SendOtpRequestDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Auth\\SendOtpRequestDto.cs",
@@ -1787,7 +1841,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 89,
+              "DocumentIndex": 92,
               "Title": "20250916070806_a.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Migrations\\20250916070806_a.cs",
               "RelativeDocumentMoniker": "DAL\\Migrations\\20250916070806_a.cs",
@@ -1799,7 +1853,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 90,
+              "DocumentIndex": 93,
               "Title": "IRegistrationOtpRepository .cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IRegistrationOtpRepository .cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\IRegistrationOtpRepository .cs",
@@ -1811,7 +1865,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 91,
+              "DocumentIndex": 94,
               "Title": "RefreshTokenRequestDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Auth\\RefreshTokenRequestDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Auth\\RefreshTokenRequestDto.cs",
@@ -1823,7 +1877,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 92,
+              "DocumentIndex": 95,
               "Title": "AuthResponseDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Auth\\AuthResponseDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Auth\\AuthResponseDto.cs",
@@ -1835,7 +1889,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 93,
+              "DocumentIndex": 96,
               "Title": "LoginRequestDto.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\DTO\\Auth\\LoginRequestDto.cs",
               "RelativeDocumentMoniker": "Common\\DTO\\Auth\\LoginRequestDto.cs",
@@ -1847,7 +1901,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 94,
+              "DocumentIndex": 97,
               "Title": "LessonRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\LessonRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\LessonRepository.cs",
@@ -1859,7 +1913,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 95,
+              "DocumentIndex": 98,
               "Title": "RoadmapDetailRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\RoadmapDetailRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\RoadmapDetailRepository.cs",
@@ -1871,7 +1925,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 96,
+              "DocumentIndex": 99,
               "Title": "RoadmapRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\RoadmapRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\RoadmapRepository.cs",
@@ -1883,7 +1937,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 97,
+              "DocumentIndex": 100,
               "Title": "RefreshTokenRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\RefreshTokenRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\RefreshTokenRepository.cs",
@@ -1895,7 +1949,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 98,
+              "DocumentIndex": 101,
               "Title": "ReportRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\ReportRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\ReportRepository.cs",
@@ -1907,7 +1961,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 99,
+              "DocumentIndex": 102,
               "Title": "RecordingRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\RecordingRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\RecordingRepository.cs",
@@ -1919,7 +1973,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 100,
+              "DocumentIndex": 103,
               "Title": "Recording.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Recording.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Recording.cs",
@@ -1931,7 +1985,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 101,
+              "DocumentIndex": 104,
               "Title": "CourseSubmissionRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\CourseSubmissionRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\CourseSubmissionRepository.cs",
@@ -1943,7 +1997,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 102,
+              "DocumentIndex": 105,
               "Title": "TopicRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\TopicRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\TopicRepository.cs",
@@ -1955,7 +2009,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 104,
+              "DocumentIndex": 107,
               "Title": "CourseTopicRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\CourseTopicRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\CourseTopicRepository.cs",
@@ -1967,7 +2021,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 105,
+              "DocumentIndex": 108,
               "Title": "PurchasesDetail.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\PurchasesDetail.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\PurchasesDetail.cs",
@@ -1979,7 +2033,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 103,
+              "DocumentIndex": 106,
               "Title": "Topic.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Topic.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Topic.cs",
@@ -1991,7 +2045,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 109,
+              "DocumentIndex": 112,
               "Title": "UserAchievementRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\UserAchievementRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\UserAchievementRepository.cs",
@@ -2003,7 +2057,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 108,
+              "DocumentIndex": 111,
               "Title": "CourseUnitRepository..cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\CourseUnitRepository..cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\CourseUnitRepository..cs",
@@ -2015,7 +2069,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 107,
+              "DocumentIndex": 110,
               "Title": "ExerciseRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\ExerciseRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\ExerciseRepository.cs",
@@ -2027,7 +2081,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 106,
+              "DocumentIndex": 109,
               "Title": "PurchasesRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\PurchasesRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\PurchasesRepository.cs",
@@ -2039,7 +2093,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 110,
+              "DocumentIndex": 113,
               "Title": "LanguageRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\LanguageRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\LanguageRepository.cs",
@@ -2051,7 +2105,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 111,
+              "DocumentIndex": 114,
               "Title": "UserRoleRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\UserRoleRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\UserRoleRepository.cs",
@@ -2063,7 +2117,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 112,
+              "DocumentIndex": 115,
               "Title": "RoleRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\RoleRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\RoleRepository.cs",
@@ -2075,7 +2129,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 113,
+              "DocumentIndex": 116,
               "Title": "EnrollmentRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\EnrollmentRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\EnrollmentRepository.cs",
@@ -2087,7 +2141,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 114,
+              "DocumentIndex": 117,
               "Title": "AIFeedBackRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\AIFeedBackRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\AIFeedBackRepository.cs",
@@ -2099,7 +2153,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 115,
+              "DocumentIndex": 118,
               "Title": "AchievementRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Repositories\\AchievementRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Repositories\\AchievementRepository.cs",
@@ -2111,7 +2165,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 118,
+              "DocumentIndex": 121,
               "Title": "IUserLearningLanguageRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IUserLearningLanguageRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\IUserLearningLanguageRepository.cs",
@@ -2123,7 +2177,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 117,
+              "DocumentIndex": 120,
               "Title": "IUserRoleRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IUserRoleRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\IUserRoleRepository.cs",
@@ -2135,7 +2189,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 116,
+              "DocumentIndex": 119,
               "Title": "IRefreshTokenRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IRefreshTokenRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\IRefreshTokenRepository.cs",
@@ -2147,7 +2201,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 119,
+              "DocumentIndex": 122,
               "Title": "IUserAchievementRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IUserAchievementRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\IUserAchievementRepository.cs",
@@ -2159,7 +2213,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 120,
+              "DocumentIndex": 123,
               "Title": "ITopicRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ITopicRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\ITopicRepository.cs",
@@ -2171,7 +2225,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 121,
+              "DocumentIndex": 124,
               "Title": "ITeacherCredentialRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ITeacherCredentialRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\ITeacherCredentialRepository.cs",
@@ -2183,7 +2237,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 122,
+              "DocumentIndex": 125,
               "Title": "IRoleRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IRoleRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\IRoleRepository.cs",
@@ -2195,7 +2249,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 123,
+              "DocumentIndex": 126,
               "Title": "IRoadmapRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IRoadmapRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\IRoadmapRepository.cs",
@@ -2207,7 +2261,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 124,
+              "DocumentIndex": 127,
               "Title": "IRoadmapDetailRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IRoadmapDetailRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\IRoadmapDetailRepository.cs",
@@ -2219,7 +2273,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 125,
+              "DocumentIndex": 128,
               "Title": "IReportRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IReportRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\IReportRepository.cs",
@@ -2231,7 +2285,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 126,
+              "DocumentIndex": 129,
               "Title": "IRecordingRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IRecordingRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\IRecordingRepository.cs",
@@ -2243,7 +2297,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 127,
+              "DocumentIndex": 130,
               "Title": "IPurchasesRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IPurchasesRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\IPurchasesRepository.cs",
@@ -2255,7 +2309,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 128,
+              "DocumentIndex": 131,
               "Title": "IPurchasesDetailRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IPurchasesDetailRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\IPurchasesDetailRepository.cs",
@@ -2267,7 +2321,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 129,
+              "DocumentIndex": 132,
               "Title": "ILessonRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ILessonRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\ILessonRepository.cs",
@@ -2279,7 +2333,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 130,
+              "DocumentIndex": 133,
               "Title": "ILanguageRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ILanguageRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\ILanguageRepository.cs",
@@ -2291,7 +2345,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 131,
+              "DocumentIndex": 134,
               "Title": "IExerciseRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IExerciseRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\IExerciseRepository.cs",
@@ -2303,7 +2357,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 132,
+              "DocumentIndex": 135,
               "Title": "IEnrollmentRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IEnrollmentRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\IEnrollmentRepository.cs",
@@ -2315,7 +2369,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 133,
+              "DocumentIndex": 136,
               "Title": "ICourseUnitRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ICourseUnitRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\ICourseUnitRepository.cs",
@@ -2327,7 +2381,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 134,
+              "DocumentIndex": 137,
               "Title": "ICourseTopicRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ICourseTopicRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\ICourseTopicRepository.cs",
@@ -2339,7 +2393,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 135,
+              "DocumentIndex": 138,
               "Title": "ICourseSubmissionRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\ICourseSubmissionRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\ICourseSubmissionRepository.cs",
@@ -2351,7 +2405,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 136,
+              "DocumentIndex": 139,
               "Title": "IConversationRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IConversationRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\IConversationRepository.cs",
@@ -2363,7 +2417,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 137,
+              "DocumentIndex": 140,
               "Title": "IAIFeedBackRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IAIFeedBackRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\IAIFeedBackRepository.cs",
@@ -2375,7 +2429,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 138,
+              "DocumentIndex": 141,
               "Title": "IAchievementRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\IRepositories\\IAchievementRepository.cs",
               "RelativeDocumentMoniker": "DAL\\IRepositories\\IAchievementRepository.cs",
@@ -2387,7 +2441,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 139,
+              "DocumentIndex": 142,
               "Title": "IGenericRepository.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Basic\\IGenericRepository.cs",
               "RelativeDocumentMoniker": "DAL\\Basic\\IGenericRepository.cs",
@@ -2399,7 +2453,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 141,
+              "DocumentIndex": 144,
               "Title": "UserRole.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\UserRole.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\UserRole.cs",
@@ -2411,7 +2465,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 140,
+              "DocumentIndex": 143,
               "Title": "Role.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Role.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Role.cs",
@@ -2423,7 +2477,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 142,
+              "DocumentIndex": 145,
               "Title": "Roadmap.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Roadmap.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Roadmap.cs",
@@ -2435,7 +2489,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 143,
+              "DocumentIndex": 146,
               "Title": "RoadmapDetail.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\RoadmapDetail.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\RoadmapDetail.cs",
@@ -2447,7 +2501,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 144,
+              "DocumentIndex": 147,
               "Title": "RefreshToken.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\RefreshToken.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\RefreshToken.cs",
@@ -2459,7 +2513,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 147,
+              "DocumentIndex": 150,
               "Title": "Lesson.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Lesson.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Lesson.cs",
@@ -2471,7 +2525,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 146,
+              "DocumentIndex": 149,
               "Title": "CourseUnit.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\CourseUnit.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\CourseUnit.cs",
@@ -2483,7 +2537,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 145,
+              "DocumentIndex": 148,
               "Title": "Enrollment.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Enrollment.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Enrollment.cs",
@@ -2495,7 +2549,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 148,
+              "DocumentIndex": 151,
               "Title": "Exercise.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Exercise.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Exercise.cs",
@@ -2507,7 +2561,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 149,
+              "DocumentIndex": 152,
               "Title": "TeacherCredential.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\TeacherCredential.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\TeacherCredential.cs",
@@ -2519,7 +2573,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 150,
+              "DocumentIndex": 153,
               "Title": "Report.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Report.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Report.cs",
@@ -2531,7 +2585,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 151,
+              "DocumentIndex": 154,
               "Title": "Achievement.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Achievement.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Achievement.cs",
@@ -2543,7 +2597,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 152,
+              "DocumentIndex": 155,
               "Title": "Course.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Course.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Course.cs",
@@ -2555,7 +2609,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 153,
+              "DocumentIndex": 156,
               "Title": "20250915111021_a.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Migrations\\20250915111021_a.cs",
               "RelativeDocumentMoniker": "DAL\\Migrations\\20250915111021_a.cs",
@@ -2566,7 +2620,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 154,
+              "DocumentIndex": 157,
               "Title": "Conversation.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Conversation.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Conversation.cs",
@@ -2578,7 +2632,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 155,
+              "DocumentIndex": 158,
               "Title": "appsettings.Development.json",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\appsettings.Development.json",
               "RelativeDocumentMoniker": "Presentation\\appsettings.Development.json",
@@ -2590,7 +2644,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 156,
+              "DocumentIndex": 159,
               "Title": "CourseTopic.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\CourseTopic.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\CourseTopic.cs",
@@ -2602,7 +2656,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 157,
+              "DocumentIndex": 160,
               "Title": "launchSettings.json",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\Presentation\\Properties\\launchSettings.json",
               "RelativeDocumentMoniker": "Presentation\\Properties\\launchSettings.json",
@@ -2614,7 +2668,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 158,
+              "DocumentIndex": 161,
               "Title": "UserAchievement.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\UserAchievement.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\UserAchievement.cs",
@@ -2626,7 +2680,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 159,
+              "DocumentIndex": 162,
               "Title": "Purchases.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\Purchases.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\Purchases.cs",
@@ -2638,7 +2692,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 160,
+              "DocumentIndex": 163,
               "Title": "CourseSubmission.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\CourseSubmission.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\CourseSubmission.cs",
@@ -2650,7 +2704,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 161,
+              "DocumentIndex": 164,
               "Title": "AIFeedBack.cs",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\Models\\AIFeedBack.cs",
               "RelativeDocumentMoniker": "DAL\\Models\\AIFeedBack.cs",
@@ -2662,7 +2716,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 162,
+              "DocumentIndex": 165,
               "Title": "BLL.csproj",
               "DocumentMoniker": "D:\\F-Learn\\F-Learn-BackEnd\\BLL\\BLL.csproj",
               "RelativeDocumentMoniker": "BLL\\BLL.csproj",

@@ -1,6 +1,7 @@
 ﻿using BLL.IServices.AI;
 using BLL.Settings;
 using Common.DTO.Learner;
+using Common.DTO.Teacher;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
@@ -484,7 +485,250 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
 
             return tips.Take(10).ToList();
         }
+        public async Task<TeacherQualificationAnalysisDto> AnalyzeTeacherQualificationsAsync(
+    TeacherApplicationDto application,
+    List<TeacherCredentialDto> credentials)
+        {
+            try
+            {
+                var prompt = BuildTeacherQualificationPrompt(application, credentials);
+                var response = await CallGeminiApiAsync(prompt);
 
+                return ParseTeacherQualificationResponse(response, application);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error analyzing teacher qualifications for application {ApplicationId}", application.TeacherApplicationID);
+
+                // Return fallback analysis
+                return CreateFallbackQualificationAnalysis(application, credentials);
+            }
+        }
+
+        private string BuildTeacherQualificationPrompt(TeacherApplicationDto application, List<TeacherCredentialDto> credentials)
+        {
+            var credentialsInfo = credentials.Select(c => new
+            {
+                name = c.CredentialName,
+                type = c.Type.ToString(),
+                url = c.CredentialFileUrl
+            }).ToList();
+
+            var credentialsJson = JsonSerializer.Serialize(credentialsInfo, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = true
+            });
+
+            return $@"# Phân tích trình độ giảng dạy của ứng viên giáo viên
+
+## Thông tin ứng viên:
+- **Tên ứng viên**: {application.UserName}
+- **Ngôn ngữ ứng tuyển**: {application.LanguageName}
+- **Động cơ ứng tuyển**: {application.Motivation}
+- **Kinh nghiệm giảng dạy**: {application.TeachingExperience}
+- **Chuyên môn**: {application.Specialization}
+- **Cấp độ giảng dạy mong muốn**: {application.TeachingLevel}
+
+## Danh sách bằng cấp và chứng chỉ:
+{credentialsJson}
+
+## Tiêu chí đánh giá theo cấp độ:
+
+### 🟢 BEGINNER Level (Người mới bắt đầu):
+- **Yêu cầu tối thiểu**: 
+  - Bằng cấp liên quan đến ngôn ngữ (Cử nhân, Cao đẳng)
+  - Chứng chỉ ngôn ngữ cơ bản (IELTS 6.5+, HSK 4+, JLPT N3+)
+  - Có kinh nghiệm dạy học hoặc gia sư
+- **Thích hợp cho**: Dạy phát âm cơ bản, từ vựng, ngữ pháp đơn giản
+
+### 🟡 INTERMEDIATE Level (Trung cấp):
+- **Yêu cầu**: 
+  - Bằng Cử nhân chuyên ngành ngôn ngữ hoặc giáo dục
+  - Chứng chỉ ngôn ngữ tốt (IELTS 7.5+, HSK 5+, JLPT N2+)
+  - Chứng chỉ giảng dạy (TESOL, CELTA, hoặc tương đương)
+  - Kinh nghiệm giảng dạy 1-3 năm
+- **Thích hợp cho**: Dạy giao tiếp, ngữ pháp nâng cao, kỹ năng thực hành
+
+### 🔴 ADVANCED Level (Nâng cao):
+- **Yêu cầu**: 
+  - Thạc sĩ trở lên về ngôn ngữ/giáo dục/ngôn ngữ học
+  - Chứng chỉ ngôn ngữ xuất sắc (IELTS 8.0+, HSK 6, JLPT N1)
+  - Chứng chỉ giảng dạy chuyên nghiệp cao cấp
+  - Kinh nghiệm giảng dạy 3+ năm
+  - Có kinh nghiệm với các khóa học chuyên sâu
+- **Thích hợp cho**: Dạy business, academic, test preparation, văn hóa sâu
+
+## Yêu cầu phân tích:
+Hãy phân tích bằng cấp và chứng chỉ của ứng viên, sau đó đề xuất cấp độ giảng dạy phù hợp.
+
+Trả về kết quả CHÍNH XÁC theo định dạng JSON như sau:
+
+{{
+    ""suggestedTeachingLevels"": [""Beginner"", ""Intermediate""],
+    ""confidenceScore"": 85,
+    ""reasoningExplanation"": ""Giải thích chi tiết về việc đánh giá và đề xuất cấp độ"",
+    ""qualificationAssessments"": [
+        {{
+            ""credentialName"": ""Tên bằng cấp"",
+            ""credentialType"": ""Degree/Certificate"",
+            ""relevanceScore"": 90,
+            ""assessment"": ""Đánh giá cụ thể về bằng cấp này"",
+            ""supportedLevels"": [""Beginner"", ""Intermediate""]
+        }}
+    ],
+    ""overallRecommendation"": ""Gợi ý tổng quan về việc phê duyệt và cấp độ được phép dạy"",
+    ""teachingLevelSuggestions"": [
+        {{
+            ""level"": ""Beginner"",
+            ""confidenceScore"": 95,
+            ""justification"": ""Lý do tại sao phù hợp với cấp độ này"",
+            ""isRecommended"": true
+        }},
+        {{
+            ""level"": ""Intermediate"",
+            ""confidenceScore"": 70,
+            ""justification"": ""Có thể dạy được nhưng cần thêm kinh nghiệm"",
+            ""isRecommended"": false
+        }}
+    ]
+}}
+
+**Lưu ý quan trọng**: 
+- Hãy đánh giá khách quan và chặt chẽ
+- Chỉ đề xuất cấp độ mà ứng viên thực sự có đủ trình độ
+- Ưu tiên chất lượng giảng dạy hơn là số lượng cấp độ
+- Xem xét cả kinh nghiệm thực tế và bằng cấp lý thuyết
+
+Trả lời bằng tiếng Việt, chi tiết và có căn cứ rõ ràng.";
+        }
+        private TeacherQualificationAnalysisDto ParseTeacherQualificationResponse(string response, TeacherApplicationDto application)
+        {
+            try
+            {
+                _logger.LogDebug("Parsing teacher qualification analysis: {Response}", response);
+
+                // Clean the response
+                var cleanedResponse = response.Trim();
+                if (cleanedResponse.StartsWith("```json"))
+                {
+                    cleanedResponse = cleanedResponse.Replace("```json", "").Replace("```", "").Trim();
+                }
+                else if (cleanedResponse.StartsWith("```"))
+                {
+                    cleanedResponse = cleanedResponse.Replace("```", "").Trim();
+                }
+
+                // Find JSON boundaries
+                var jsonStart = cleanedResponse.IndexOf('{');
+                var jsonEnd = cleanedResponse.LastIndexOf('}') + 1;
+
+                if (jsonStart >= 0 && jsonEnd > jsonStart)
+                {
+                    var jsonResponse = cleanedResponse.Substring(jsonStart, jsonEnd - jsonStart);
+
+                    var aiResponse = JsonSerializer.Deserialize<TeacherQualificationAiResponse>(jsonResponse, new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                        PropertyNameCaseInsensitive = true,
+                        AllowTrailingCommas = true
+                    });
+
+                    if (aiResponse != null)
+                    {
+                        return new TeacherQualificationAnalysisDto
+                        {
+                            ApplicationId = application.TeacherApplicationID,
+                            LanguageName = application.LanguageName,
+                            SuggestedTeachingLevels = aiResponse.SuggestedTeachingLevels ?? new List<string>(),
+                            ConfidenceScore = Math.Min(100, Math.Max(0, aiResponse.ConfidenceScore)),
+                            ReasoningExplanation = aiResponse.ReasoningExplanation ?? "",
+                            QualificationAssessments = aiResponse.QualificationAssessments?.Select(qa => new QualificationAssessment
+                            {
+                                CredentialName = qa.CredentialName ?? "",
+                                CredentialType = qa.CredentialType ?? "",
+                                RelevanceScore = Math.Min(100, Math.Max(0, qa.RelevanceScore)),
+                                Assessment = qa.Assessment ?? "",
+                                SupportedLevels = qa.SupportedLevels ?? new List<string>()
+                            }).ToList() ?? new List<QualificationAssessment>(),
+                            OverallRecommendation = aiResponse.OverallRecommendation ?? "",
+                            AnalyzedAt = DateTime.UtcNow
+                        };
+                    }
+                }
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "JSON parsing error in teacher qualification analysis");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error parsing teacher qualification analysis");
+            }
+
+            // Return fallback if parsing fails
+            return CreateFallbackQualificationAnalysis(application, new List<TeacherCredentialDto>());
+        }
+
+        private TeacherQualificationAnalysisDto CreateFallbackQualificationAnalysis(TeacherApplicationDto application, List<TeacherCredentialDto> credentials)
+        {
+            // Basic analysis based on available info
+            var suggestedLevels = new List<string> { "Beginner" }; // Conservative default
+
+            // If they have teaching experience, might allow Intermediate
+            if (!string.IsNullOrEmpty(application.TeachingExperience) &&
+                application.TeachingExperience.Length > 50)
+            {
+                suggestedLevels.Add("Intermediate");
+            }
+
+            return new TeacherQualificationAnalysisDto
+            {
+                ApplicationId = application.TeacherApplicationID,
+                LanguageName = application.LanguageName,
+                SuggestedTeachingLevels = suggestedLevels,
+                ConfidenceScore = 50, // Low confidence for fallback
+                ReasoningExplanation = "Không thể phân tích chi tiết bằng AI. Đánh giá dựa trên thông tin cơ bản có sẵn. Vui lòng xem xét thủ công các bằng cấp được nộp.",
+                QualificationAssessments = credentials.Select(c => new QualificationAssessment
+                {
+                    CredentialName = c.CredentialName,
+                    CredentialType = c.Type.ToString(),
+                    RelevanceScore = 70,
+                    Assessment = "Cần xem xét thủ công",
+                    SupportedLevels = new List<string> { "Beginner" }
+                }).ToList(),
+                OverallRecommendation = "Gợi ý cho phép dạy cấp độ Beginner. Cần đánh giá thủ công để xác định các cấp độ khác.",
+                AnalyzedAt = DateTime.UtcNow
+            };
+        }
+
+    
+        private class TeacherQualificationAiResponse
+        {
+            public List<string>? SuggestedTeachingLevels { get; set; }
+            public int ConfidenceScore { get; set; }
+            public string? ReasoningExplanation { get; set; }
+            public List<QualificationAssessmentAi>? QualificationAssessments { get; set; }
+            public string? OverallRecommendation { get; set; }
+            public List<TeachingLevelSuggestionAi>? TeachingLevelSuggestions { get; set; }
+        }
+
+        private class QualificationAssessmentAi
+        {
+            public string? CredentialName { get; set; }
+            public string? CredentialType { get; set; }
+            public int RelevanceScore { get; set; }
+            public string? Assessment { get; set; }
+            public List<string>? SupportedLevels { get; set; }
+        }
+
+        private class TeachingLevelSuggestionAi
+        {
+            public string? Level { get; set; }
+            public int ConfidenceScore { get; set; }
+            public string? Justification { get; set; }
+            public bool IsRecommended { get; set; }
+        }
         #region Helper Classes for JSON Deserialization
 
         private class GeminiResponse

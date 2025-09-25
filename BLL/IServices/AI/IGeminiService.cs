@@ -1,4 +1,5 @@
 ﻿using Common.DTO.Learner;
+using Common.DTO.Teacher;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +15,9 @@ namespace BLL.IServices.AI
             List<CourseInfoDto> availableCourses);
         Task<string> GenerateStudyPlanAsync(UserSurveyResponseDto survey);
         Task<List<string>> GenerateStudyTipsAsync(UserSurveyResponseDto survey);
+        Task<TeacherQualificationAnalysisDto> AnalyzeTeacherQualificationsAsync(
+        TeacherApplicationDto application,
+        List<TeacherCredentialDto> credentials);
     }
 
     public class CourseInfoDto

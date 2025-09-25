@@ -1,4 +1,5 @@
-﻿using BLL.IServices.Auth;
+﻿using BLL.IServices.AI;
+using BLL.IServices.Auth;
 using BLL.IServices.Teacher;
 using BLL.IServices.Upload;
 using Common.DTO.Staff;
@@ -20,24 +21,26 @@ namespace BLL.Services.Teacher
         private readonly ICloudinaryService _cloudinaryService;
         private readonly IEmailService _emailService;
         private readonly ILogger<TeacherApplicationService> _logger;
-
+        private readonly IGeminiService _geminiService;
         public TeacherApplicationService(
             IUnitOfWork unitOfWork,
             ICloudinaryService cloudinaryService,
             IEmailService emailService,
-            ILogger<TeacherApplicationService> logger)
+            ILogger<TeacherApplicationService> logger,
+            IGeminiService geminiService)
         {
             _unitOfWork = unitOfWork;
             _cloudinaryService = cloudinaryService;
             _emailService = emailService;
             _logger = logger;
+            _geminiService = geminiService;
         }
 
         public async Task<TeacherApplicationDto> CreateApplicationAsync(Guid userId, CreateTeacherApplicationDto dto)
         {
             try
             {
-            
+
                 if (!await CanUserApplyAsync(userId))
                     throw new InvalidOperationException("Bạn đã có đơn ứng tuyển đang chờ duyệt hoặc đã là giáo viên");
 
@@ -62,9 +65,9 @@ namespace BLL.Services.Teacher
                     TeachingExperience = dto.TeachingExperience ?? string.Empty,
                     TeachingLevel = dto.TeachingLevel ?? "All Levels",
                     Specialization = dto.Specialization ?? string.Empty,
-                
+
                     AppliedAt = DateTime.UtcNow,
-                    Status = false, 
+                    Status = false,
                     CreatedAt = DateTime.UtcNow,
                     RejectionReason = string.Empty
                 };
@@ -95,7 +98,7 @@ namespace BLL.Services.Teacher
 
                 await _unitOfWork.SaveChangesAsync();
 
-        
+
                 try
                 {
                     await _emailService.SendTeacherApplicationSubmittedAsync(user.Email!, user.UserName);
@@ -157,7 +160,7 @@ namespace BLL.Services.Teacher
             }
         }
 
- 
+
         public async Task<List<TeacherApplicationDto>> GetApplicationsByLanguageAsync(Guid languageId)
         {
             try
@@ -261,7 +264,7 @@ namespace BLL.Services.Teacher
                 if (reviewer == null || !reviewer.UserRoles!.Any(ur => ur.Role.Name == "Admin" || ur.Role.Name == "Staff"))
                     throw new UnauthorizedAccessException("Chỉ Admin hoặc Staff mới có thể duyệt đơn ứng tuyển");
 
-        
+
                 if (reviewer.UserRoles!.Any(ur => ur.Role.Name == "Staff" && !ur.Role.Name.Contains("Admin")))
                 {
                     var staffLanguages = await _unitOfWork.UserLearningLanguages.GetLanguagesByUserAsync(reviewerId);
@@ -282,13 +285,13 @@ namespace BLL.Services.Teacher
 
                 await _unitOfWork.TeacherApplications.UpdateAsync(application);
 
-     
+
                 if (dto.IsApproved)
                 {
                     var teacherRole = await _unitOfWork.Roles.GetByNameAsync("Teacher");
                     if (teacherRole != null)
                     {
-                  
+
                         var existingRole = await _unitOfWork.UserRoles.GetUserRoleAsync(application.UserID, teacherRole.RoleID);
                         if (existingRole == null)
                         {
@@ -300,7 +303,7 @@ namespace BLL.Services.Teacher
                             };
                             await _unitOfWork.UserRoles.CreateAsync(userRole);
 
-                        
+
                             var existingUserLanguage = await _unitOfWork.UserLearningLanguages.GetUserLearningLanguageAsync(application.UserID, application.LanguageID);
                             if (existingUserLanguage == null)
                             {
@@ -317,7 +320,7 @@ namespace BLL.Services.Teacher
 
                 await _unitOfWork.SaveChangesAsync();
 
-         
+
                 try
                 {
                     if (dto.IsApproved)
@@ -353,32 +356,32 @@ namespace BLL.Services.Teacher
                 var user = await _unitOfWork.Users.GetUserWithRolesAsync(userId);
                 if (user == null) return false;
 
-    
+
                 if (user.UserRoles!.Any(ur => ur.Role.Name == "Teacher"))
                 {
                     _logger.LogInformation("User {UserId} already has Teacher role", userId);
                     return false;
                 }
 
-   
+
                 var existingApplication = await _unitOfWork.TeacherApplications.GetLatestApplicationByUserAsync(userId);
                 if (existingApplication != null)
                 {
-              
+
                     if (existingApplication.Status)
                     {
                         _logger.LogInformation("User {UserId} already has approved application", userId);
                         return false;
                     }
 
-       
+
                     if (string.IsNullOrEmpty(existingApplication.RejectionReason))
                     {
                         _logger.LogInformation("User {UserId} has pending application", userId);
                         return false;
                     }
 
-                 
+
                     if (!string.IsNullOrEmpty(existingApplication.RejectionReason) &&
                         existingApplication.ReviewAt > DateTime.UtcNow.AddDays(-5))
                     {
@@ -396,7 +399,7 @@ namespace BLL.Services.Teacher
             }
         }
 
-     
+
         public async Task<Dictionary<string, object>> GetApplicationStatsByLanguageAsync(Guid? languageId = null)
         {
             try
@@ -405,7 +408,7 @@ namespace BLL.Services.Teacher
 
                 if (languageId.HasValue)
                 {
-             
+
                     var applications = await _unitOfWork.TeacherApplications.GetByLanguageAsync(languageId.Value);
                     var language = await _unitOfWork.Languages.GetByIdAsync(languageId.Value);
 
@@ -418,7 +421,7 @@ namespace BLL.Services.Teacher
                 }
                 else
                 {
-             
+
                     var allApplications = await _unitOfWork.TeacherApplications.GetAllAsync();
                     stats["totalApplications"] = allApplications.Count;
                     stats["pendingApplications"] = allApplications.Count(a => !a.Status && string.IsNullOrEmpty(a.RejectionReason));
@@ -435,7 +438,7 @@ namespace BLL.Services.Teacher
             }
         }
 
-  
+
         private async Task<TeacherApplicationDto> MapToDtoAsync(TeacherApplication application, List<TeacherCredential> credentials)
         {
             try
@@ -446,10 +449,10 @@ namespace BLL.Services.Teacher
                 else if (!string.IsNullOrEmpty(application.RejectionReason))
                     status = ApplicationStatus.Rejected;
 
-              
+
                 var user = application.User ?? await _unitOfWork.Users.GetByIdAsync(application.UserID);
 
-             
+
                 var language = application.Language ?? await _unitOfWork.Languages.GetByIdAsync(application.LanguageID);
 
                 return new TeacherApplicationDto
@@ -463,7 +466,7 @@ namespace BLL.Services.Teacher
                     Motivation = application.Motivation,
                     TeachingExperience = application.TeachingExperience ?? "",
                     TeachingLevel = application.TeachingLevel ?? "",
-                    Specialization = application.Specialization ?? "",    
+                    Specialization = application.Specialization ?? "",
                     AppliedAt = application.AppliedAt,
                     SubmitAt = application.SubmitAt,
                     ReviewAt = application.ReviewAt == DateTime.MinValue ? null : application.ReviewAt,
@@ -486,6 +489,56 @@ namespace BLL.Services.Teacher
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error mapping TeacherApplication to DTO");
+                throw;
+            }
+        }
+        public async Task<TeacherQualificationAnalysisDto> AnalyzeQualificationsAsync(Guid applicationId)
+        {
+            try
+            {
+                var application = await GetApplicationByIdAsync(applicationId); if (application == null) throw new ArgumentException("Đơn ứng tuyển không tồn tại");
+                var credentials = application.Credentials ?? new List<TeacherCredentialDto>();
+
+                
+                var analysis = await _geminiService.AnalyzeTeacherQualificationsAsync(application, credentials);
+
+                _logger.LogInformation("AI analysis completed for application {ApplicationId}. Suggested levels: {Levels}",
+                    applicationId, string.Join(", ", analysis.SuggestedTeachingLevels));
+
+                return analysis;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error analyzing qualifications for application {ApplicationId}", applicationId);
+                throw;
+            }
+        }
+        public async Task<TeacherQualificationAnalysisDto> GetQualificationAnalysisForReviewAsync(Guid applicationId, Guid reviewerId)
+        {
+            try
+            {
+            
+                var reviewer = await _unitOfWork.Users.GetUserWithRolesAsync(reviewerId);
+                if (reviewer == null || !reviewer.UserRoles!.Any(ur => ur.Role.Name == "Admin" || ur.Role.Name == "Staff"))
+                    throw new UnauthorizedAccessException("Chỉ Admin hoặc Staff mới có thể xem phân tích AI");
+
+                var application = await GetApplicationByIdAsync(applicationId);
+                if (application == null)
+                    throw new ArgumentException("Đơn ứng tuyển không tồn tại");
+
+            
+                if (reviewer.UserRoles!.Any(ur => ur.Role.Name == "Staff" && !ur.Role.Name.Contains("Admin")))
+                {
+                    var staffLanguages = await _unitOfWork.UserLearningLanguages.GetLanguagesByUserAsync(reviewerId);
+                    if (!staffLanguages.Any(ul => ul.LanguageID == application.LanguageID))
+                        throw new UnauthorizedAccessException("Bạn chỉ có thể xem phân tích cho ngôn ngữ được phân công");
+                }
+
+                return await AnalyzeQualificationsAsync(applicationId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting qualification analysis for review {ApplicationId} by {ReviewerId}", applicationId, reviewerId);
                 throw;
             }
         }

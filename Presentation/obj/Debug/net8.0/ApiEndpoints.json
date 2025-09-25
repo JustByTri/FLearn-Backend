@@ -11,16 +11,6 @@
   },
   {
     "ContainingType": "Presentation.Controllers.Admin.AdminController",
-    "Method": "GetCurrentAdmin",
-    "RelativePath": "api/Admin/me",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "Presentation.Controllers.Admin.AdminController",
     "Method": "GetAllStaff",
     "RelativePath": "api/Admin/staff",
     "HttpMethod": "GET",
@@ -384,6 +374,38 @@
     "ContainingType": "Presentation.Controllers.Teacher.TeacherApplicationController",
     "Method": "GetApplicationById",
     "RelativePath": "api/TeacherApplication/{applicationId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "applicationId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Teacher.TeacherApplicationController",
+    "Method": "AnalyzeQualifications",
+    "RelativePath": "api/TeacherApplication/{applicationId}/analyze-qualifications",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "applicationId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Teacher.TeacherApplicationController",
+    "Method": "GetTeachingLevelSuggestions",
+    "RelativePath": "api/TeacherApplication/{applicationId}/teaching-level-suggestions",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,

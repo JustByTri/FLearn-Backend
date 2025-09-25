@@ -19,6 +19,8 @@ namespace BLL.IServices.Teacher
         Task<bool> CanUserApplyAsync(Guid userId);
         Task<List<TeacherApplicationDto>> GetPendingApplicationsByLanguageAsync(Guid languageId);
         Task<List<TeacherApplicationDto>> GetApplicationsByLanguageAsync(Guid languageId);
+        Task<TeacherQualificationAnalysisDto> AnalyzeQualificationsAsync(Guid applicationId);
+        Task<TeacherQualificationAnalysisDto> GetQualificationAnalysisForReviewAsync(Guid applicationId, Guid reviewerId);
 
 
     }
