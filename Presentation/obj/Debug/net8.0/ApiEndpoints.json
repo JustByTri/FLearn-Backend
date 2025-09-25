@@ -540,9 +540,19 @@
     "Order": 0,
     "Parameters": [
       {
-        "Name": "request",
-        "Type": "Common.DTO.Topic.Request.TopicRequest",
-        "IsRequired": true
+        "Name": "Name",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "Description",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "Image",
+        "Type": "Microsoft.AspNetCore.Http.IFormFile",
+        "IsRequired": false
       }
     ],
     "ReturnTypes": [
@@ -578,13 +588,13 @@
   {
     "ContainingType": "Presentation.Controllers.Topic.TopicController",
     "Method": "GetTopicById",
-    "RelativePath": "api/topics/{id}",
+    "RelativePath": "api/topics/{topicId}",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
     "Parameters": [
       {
-        "Name": "id",
+        "Name": "topicId",
         "Type": "System.Guid",
         "IsRequired": true
       }
@@ -607,6 +617,65 @@
           "text/json"
         ],
         "StatusCode": 404
+      }
+    ]
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Topic.TopicController",
+    "Method": "UpdateTopic",
+    "RelativePath": "api/topics/{topicId}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "topicId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "Name",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "Description",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "Image",
+        "Type": "Microsoft.AspNetCore.Http.IFormFile",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "Common.DTO.ApiResponse.BaseResponse\u00601[[Common.DTO.Topic.Response.TopicResponse, Common, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "Common.DTO.ApiResponse.BaseResponse\u00601[[Common.DTO.Topic.Response.TopicResponse, Common, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 400
+      },
+      {
+        "Type": "Common.DTO.ApiResponse.BaseResponse\u00601[[Common.DTO.Topic.Response.TopicResponse, Common, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 500
       }
     ]
   },

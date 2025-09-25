@@ -11,5 +11,6 @@ namespace BLL.IServices.Topic
         Task<PagedResponse<IEnumerable<TopicResponse>>> GetTopicsAsync(PagingRequest request);
         Task<BaseResponse<TopicResponse>> GetTopicByIdAsync(Guid topicId);
         Task<BaseResponse<TopicResponse>> CreateTopicAsync(TopicRequest request);
+        Task<BaseResponse<TopicResponse>> UpdateTopicAsync(Guid topicId, TopicRequest request);
     }
 }

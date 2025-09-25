@@ -288,7 +288,6 @@ E:\SEP\flearn-language-api\FLearn-Backend\Presentation\obj\Debug\net8.0\Presenta
 E:\SEP\flearn-language-api\FLearn-Backend\Presentation\obj\Debug\net8.0\Presentation.AssemblyInfoInputs.cache
 E:\SEP\flearn-language-api\FLearn-Backend\Presentation\obj\Debug\net8.0\Presentation.AssemblyInfo.cs
 E:\SEP\flearn-language-api\FLearn-Backend\Presentation\obj\Debug\net8.0\Presentation.csproj.CoreCompileInputs.cache
-E:\SEP\flearn-language-api\FLearn-Backend\Presentation\obj\Debug\net8.0\Presentation.MvcApplicationPartsAssemblyInfo.cs
 E:\SEP\flearn-language-api\FLearn-Backend\Presentation\obj\Debug\net8.0\Presentation.MvcApplicationPartsAssemblyInfo.cache
 E:\SEP\flearn-language-api\FLearn-Backend\Presentation\obj\Debug\net8.0\Presentation.sourcelink.json
 E:\SEP\flearn-language-api\FLearn-Backend\Presentation\obj\Debug\net8.0\rjimswa.dswa.cache.json

@@ -3,20 +3,24 @@
   "WorkspaceRootPath": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|e:\\sep\\flearn-language-api\\flearn-backend\\presentation\\controllers\\topic\\topiccontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|solutionrelative:presentation\\controllers\\topic\\topiccontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|e:\\sep\\flearn-language-api\\flearn-backend\\bll\\services\\topic\\topicservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|solutionrelative:bll\\services\\topic\\topicservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|e:\\sep\\flearn-language-api\\flearn-backend\\presentation\\controllers\\topic\\topiccontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A9DF20AF-A120-437C-86EF-385C1C7ED2F4}|Presentation\\Presentation.csproj|solutionrelative:presentation\\controllers\\topic\\topiccontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|e:\\sep\\flearn-language-api\\flearn-backend\\bll\\iservices\\topic\\itopicservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{C23B58B5-268D-4E7B-B591-CC83F519441D}|BLL\\BLL.csproj|solutionrelative:bll\\iservices\\topic\\itopicservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|e:\\sep\\flearn-language-api\\flearn-backend\\common\\dto\\topic\\request\\topicrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{510F5554-4AEA-40C0-8D7E-8606610C53F4}|Common\\Common.csproj|solutionrelative:common\\dto\\topic\\request\\topicrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|E:\\SEP\\flearn-language-api\\FLearn-Backend\\DAL\\Migrations\\20250925010044_Init02.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:DAL\\Migrations\\20250925010044_Init02.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|e:\\sep\\flearn-language-api\\flearn-backend\\dal\\models\\topic.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6D99E361-D056-402F-8F05-42D8BF4C1987}|DAL\\DAL.csproj|solutionrelative:dal\\models\\topic.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -26,32 +30,58 @@
       "DocumentGroups": [
         {
           "DockedHeight": 33,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 3,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "TopicController.cs",
-              "DocumentMoniker": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\Presentation\\Controllers\\Topic\\TopicController.cs",
-              "RelativeDocumentMoniker": "Presentation\\Controllers\\Topic\\TopicController.cs",
-              "ToolTip": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\Presentation\\Controllers\\Topic\\TopicController.cs",
-              "RelativeToolTip": "Presentation\\Controllers\\Topic\\TopicController.cs",
-              "ViewState": "AgIAAAEAAAAAAAAAAAAQwBUAAAAWAAAAAAAAAA==",
+              "DocumentIndex": 3,
+              "Title": "20250925010044_Init02.cs",
+              "DocumentMoniker": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\DAL\\Migrations\\20250925010044_Init02.cs",
+              "RelativeDocumentMoniker": "DAL\\Migrations\\20250925010044_Init02.cs",
+              "ToolTip": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\DAL\\Migrations\\20250925010044_Init02.cs",
+              "RelativeToolTip": "DAL\\Migrations\\20250925010044_Init02.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-24T20:14:22.246Z",
+              "WhenOpened": "2025-09-25T01:00:44.26Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 4,
+              "Title": "Topic.cs",
+              "DocumentMoniker": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\DAL\\Models\\Topic.cs",
+              "RelativeDocumentMoniker": "DAL\\Models\\Topic.cs",
+              "ToolTip": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\DAL\\Models\\Topic.cs",
+              "RelativeToolTip": "DAL\\Models\\Topic.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAqwBAAAAAtAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-25T00:58:08.811Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "ITopicService.cs",
+              "DocumentMoniker": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\BLL\\IServices\\Topic\\ITopicService.cs",
+              "RelativeDocumentMoniker": "BLL\\IServices\\Topic\\ITopicService.cs",
+              "ToolTip": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\BLL\\IServices\\Topic\\ITopicService.cs",
+              "RelativeToolTip": "BLL\\IServices\\Topic\\ITopicService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAuwA0AAAA7AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-25T00:52:37.526Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
               "Title": "TopicService.cs",
               "DocumentMoniker": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\BLL\\Services\\Topic\\TopicService.cs",
               "RelativeDocumentMoniker": "BLL\\Services\\Topic\\TopicService.cs",
               "ToolTip": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\BLL\\Services\\Topic\\TopicService.cs",
               "RelativeToolTip": "BLL\\Services\\Topic\\TopicService.cs",
-              "ViewState": "AgIAACAAAAAAAAAAAAAYwFYAAAANAAAAAAAAAA==",
+              "ViewState": "AgIAAH8AAAAAAAAAAAAswJcAAAA5AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-24T20:00:18.639Z",
+              "WhenOpened": "2025-09-25T00:40:56.543Z",
               "EditorCaption": ""
             },
             {
@@ -108,28 +138,15 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "ITopicService.cs",
-              "DocumentMoniker": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\BLL\\IServices\\Topic\\ITopicService.cs",
-              "RelativeDocumentMoniker": "BLL\\IServices\\Topic\\ITopicService.cs",
-              "ToolTip": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\BLL\\IServices\\Topic\\ITopicService.cs",
-              "RelativeToolTip": "BLL\\IServices\\Topic\\ITopicService.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAuwAgAAAAZAAAAAAAAAA==",
+              "DocumentIndex": 1,
+              "Title": "TopicController.cs",
+              "DocumentMoniker": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\Presentation\\Controllers\\Topic\\TopicController.cs",
+              "RelativeDocumentMoniker": "Presentation\\Controllers\\Topic\\TopicController.cs",
+              "ToolTip": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\Presentation\\Controllers\\Topic\\TopicController.cs",
+              "RelativeToolTip": "Presentation\\Controllers\\Topic\\TopicController.cs",
+              "ViewState": "AgIAAG0AAAAAAAAAAADwv3EAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-24T19:59:50.871Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "TopicRequest.cs",
-              "DocumentMoniker": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\Common\\DTO\\Topic\\Request\\TopicRequest.cs",
-              "RelativeDocumentMoniker": "Common\\DTO\\Topic\\Request\\TopicRequest.cs",
-              "ToolTip": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\Common\\DTO\\Topic\\Request\\TopicRequest.cs",
-              "RelativeToolTip": "Common\\DTO\\Topic\\Request\\TopicRequest.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAA/AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-24T19:56:36.35Z",
+              "WhenOpened": "2025-09-25T00:38:18.023Z",
               "EditorCaption": ""
             }
           ]

@@ -69,7 +69,7 @@ namespace Presentation.Controllers.Topic
         [ProducesResponseType(typeof(BaseResponse<TopicResponse>), 201)]
         [ProducesResponseType(typeof(BaseResponse<TopicResponse>), 400)]
         [ProducesResponseType(typeof(BaseResponse<TopicResponse>), 500)]
-        public async Task<IActionResult> CreateTopic([FromBody] TopicRequest request)
+        public async Task<IActionResult> CreateTopic([FromForm] TopicRequest request)
         {
             if (!ModelState.IsValid)
             {
@@ -103,16 +103,41 @@ namespace Presentation.Controllers.Topic
         /// <summary>
         /// Get topic by id (for CreatedAtAction)
         /// </summary>
-        [HttpGet("{id}")]
+        [HttpGet("{topicId}")]
         [ProducesResponseType(typeof(TopicResponse), 200)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> GetTopicById(Guid id)
+        public async Task<IActionResult> GetTopicById(Guid topicId)
         {
-            var topic = await _topicService.GetTopicByIdAsync(id);
+            var topic = await _topicService.GetTopicByIdAsync(topicId);
             if (topic == null)
                 return NotFound();
 
             return Ok(topic);
+        }
+        /// <summary>
+        /// Updates an existing topic by its ID.
+        /// </summary>
+        /// <param name="topicId">The ID of the topic to update.</param>
+        /// <param name="request">The topic request containing new details.</param>
+        /// <returns>A <see cref="BaseResponse{TopicResponse}"/> indicating success or failure of the update.</returns>
+        /// <response code="200">Topic updated successfully.</response>
+        /// <response code="400">Topic with the same name already exists or validation fails.</response>
+        /// <response code="500">Internal server error.</response>
+        [HttpPut("{topicId:guid}")]
+        [ProducesResponseType(typeof(BaseResponse<TopicResponse>), 200)]
+        [ProducesResponseType(typeof(BaseResponse<TopicResponse>), 400)]
+        [ProducesResponseType(typeof(BaseResponse<TopicResponse>), 500)]
+        public async Task<IActionResult> UpdateTopic(Guid topicId, [FromForm] TopicRequest request)
+        {
+            var result = await _topicService.UpdateTopicAsync(topicId, request);
+
+            if (result.Data != null)
+                return Ok(result);
+
+            if (result.Code == 400)
+                return BadRequest(result);
+
+            return StatusCode(500, result);
         }
     }
 }
