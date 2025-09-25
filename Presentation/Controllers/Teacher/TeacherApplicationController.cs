@@ -613,6 +613,88 @@ namespace Presentation.Controllers.Teacher
                 });
             }
         }
+        /// <summary> /// Phân tích trình độ giảng dạy của ứng viên bằng AI (Staff only) /// </summary>
+        [HttpPost("{applicationId:guid}/analyze-qualifications")]
+        [Authorize(Policy = "StaffOnly")]
+        public async Task<IActionResult> AnalyzeQualifications(Guid applicationId)
+        {
+            try
+            {
+                var reviewerId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!); var analysis = await _teacherApplicationService.GetQualificationAnalysisForReviewAsync(applicationId, reviewerId);
+                return Ok(new
+                {
+                    success = true,
+                    message = "Phân tích trình độ giảng dạy thành công",
+                    data = analysis
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Đã xảy ra lỗi khi phân tích trình độ giảng dạy",
+                    error = ex.Message
+                });
+            }
+        }
+        /// <summary> /// Lấy gợi ý cấp độ giảng dạy cho đơn ứng tuyển (Staff only)
+        /// </summary>
+        [HttpGet("{applicationId:guid}/teaching-level-suggestions")]
+        [Authorize(Policy = "StaffOnly")]
+        public async Task<IActionResult> GetTeachingLevelSuggestions(Guid applicationId)
+        {
+            try
+            {
+                var reviewerId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!); var analysis = await _teacherApplicationService.GetQualificationAnalysisForReviewAsync(applicationId, reviewerId);
+                // Format response for easy consumption by frontend
+                var suggestions = new
+                {
+                    applicationId = applicationId,
+                    suggestedLevels = analysis.SuggestedTeachingLevels,
+                    confidence = analysis.ConfidenceScore,
+                    recommendation = analysis.OverallRecommendation,
+                    reasoning = analysis.ReasoningExplanation,
+                    qualifications = analysis.QualificationAssessments.Select(qa => new
+                    {
+                        name = qa.CredentialName,
+                        type = qa.CredentialType,
+                        score = qa.RelevanceScore,
+                        assessment = qa.Assessment,
+                        supportedLevels = qa.SupportedLevels
+                    }),
+                    analyzedAt = analysis.AnalyzedAt
+                };
 
+                return Ok(new
+                {
+                    success = true,
+                    message = "Lấy gợi ý cấp độ giảng dạy thành công",
+                    data = suggestions
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Đã xảy ra lỗi khi lấy gợi ý cấp độ giảng dạy",
+                    error = ex.Message
+                });
+            }
+        }
     }
 }
+
