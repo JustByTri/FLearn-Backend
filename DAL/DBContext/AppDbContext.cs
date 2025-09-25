@@ -1,5 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
-using DAL.Models;
+﻿using DAL.Models;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -42,6 +42,8 @@ namespace DAL.DBContext
         public DbSet<TempRegistration> TempRegistrations { get; set; }
         public DbSet<PasswordResetOtp> PasswordResetOtps { get; set; }
         public DbSet<UserSurvey> UserSurveys { get; set; }
+        public DbSet<CourseTemplate> CourseTemplates { get; set; }
+        public DbSet<Goal> Goals { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -98,7 +100,7 @@ namespace DAL.DBContext
         {
             var now = DateTime.UtcNow;
 
-          
+
             var adminRoleId = Guid.NewGuid();
             var staffRoleId = Guid.NewGuid();
             var teacherRoleId = Guid.NewGuid();
@@ -116,7 +118,7 @@ namespace DAL.DBContext
             var (adminHash, adminSalt) = CreatePasswordHash("Flearn@123");
             var (staffHash, staffSalt) = CreatePasswordHash("Staff@123");
 
-           
+
             modelBuilder.Entity<Role>().HasData(
                 new Role { RoleID = adminRoleId, Name = "Admin", Description = "System administrator with full access", CreatedAt = now },
                 new Role { RoleID = staffRoleId, Name = "Staff", Description = "Staff member for specific language support", CreatedAt = now },
@@ -131,7 +133,7 @@ namespace DAL.DBContext
                 new Language { LanguageID = chineseId, LanguageName = "Chinese", LanguageCode = "ZH", CreateAt = now }
             );
 
-        
+
             modelBuilder.Entity<User>().HasData(
                 new User
                 {
@@ -215,7 +217,7 @@ namespace DAL.DBContext
                 }
             );
 
-        
+
             modelBuilder.Entity<UserRole>().HasData(
                 new UserRole { UserRoleID = Guid.NewGuid(), UserID = adminUserId, RoleID = adminRoleId },
                 new UserRole { UserRoleID = Guid.NewGuid(), UserID = staffEnUserId, RoleID = staffRoleId },
@@ -230,7 +232,7 @@ namespace DAL.DBContext
                 new UserLearningLanguage { UserLearningLanguageID = Guid.NewGuid(), UserID = staffZhUserId, LanguageID = chineseId }
             );
 
-      
+
             var grammarTopicId = Guid.NewGuid();
             var vocabularyTopicId = Guid.NewGuid();
             var conversationTopicId = Guid.NewGuid();

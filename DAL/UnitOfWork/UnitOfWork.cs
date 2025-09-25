@@ -1,14 +1,8 @@
 ﻿using DAL.DBContext;
 using DAL.IRepositories;
-using DAL.Models;
 using DAL.Repositories;
 
 using Microsoft.EntityFrameworkCore.Storage;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DAL.UnitOfWork
 {
@@ -50,6 +44,8 @@ namespace DAL.UnitOfWork
             TempRegistrations = new TempRegistrationRepository(_context);
             PasswordResetOtps = new PasswordResetOtpRepository(_context);
             UserSurveys = new UserSurveyRepository(_context);
+            Goals = new GoalRepository(_context);
+            CourseTemplates = new CourseTemplateRepository(_context);
         }
 
         public IUserRepository Users { get; private set; }
@@ -83,6 +79,8 @@ namespace DAL.UnitOfWork
         public ITempRegistrationRepository TempRegistrations { get; private set; }
         public IPasswordResetOtpRepository PasswordResetOtps { get; private set; }
         public IUserSurveyRepository UserSurveys { get; private set; }
+        public IGoalRepository Goals { get; private set; }
+        public ICourseTemplateRepository CourseTemplates { get; private set; }
         public int SaveChanges()
         {
             return _context.SaveChanges();
