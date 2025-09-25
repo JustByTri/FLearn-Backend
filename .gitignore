@@ -404,3 +404,6 @@ Migrations/
 
 .vscode/copilot-chat/
 .copilot/
+
+CopilotSnapshots/
+**CopilotSnapshots/
