@@ -1,10 +1,6 @@
 ﻿using DAL.Basic;
 using DAL.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using DAL.Type;
 
 namespace DAL.IRepositories
 {
@@ -15,7 +11,7 @@ namespace DAL.IRepositories
         Task<List<Course>> GetPublishedCoursesAsync();
         Task<Course> GetCourseWithUnitsAsync(Guid courseId);
         Task<List<Course>> SearchCoursesAsync(string searchTerm);
-        Task<List<Course>> GetCoursesByStatusAsync(Course.CourseStatus status);
+        Task<List<Course>> GetCoursesByStatusAsync(CourseStatus status);
         Task<List<Course>> GetCoursesByLevelAsync(string level);
         Task<List<Course>> GetCoursesByPriceRangeAsync(decimal minPrice, decimal maxPrice);
         Task<int> GetTotalCoursesCountAsync();

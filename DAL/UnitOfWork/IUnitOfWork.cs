@@ -1,9 +1,4 @@
 ﻿using DAL.IRepositories;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DAL.UnitOfWork
 {
@@ -39,6 +34,8 @@ namespace DAL.UnitOfWork
         ITempRegistrationRepository TempRegistrations { get; }
         IPasswordResetOtpRepository PasswordResetOtps { get; }
         IUserSurveyRepository UserSurveys { get; }
+        IGoalRepository Goals { get; }
+        ICourseTemplateRepository CourseTemplates { get; }
         int SaveChanges();
         Task<int> SaveChangesAsync();
         void BeginTransaction();

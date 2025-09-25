@@ -2,12 +2,8 @@
 using DAL.DBContext;
 using DAL.IRepositories;
 using DAL.Models;
+using DAL.Type;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DAL.Repositories
 {
@@ -31,7 +27,7 @@ namespace DAL.Repositories
             return await _context.Courses
                 .Include(c => c.Language)
                 .Include(c => c.Teacher)
-                .Where(c => c.LanguageID == languageId && c.Status == Course.CourseStatus.Published)
+                .Where(c => c.LanguageID == languageId && c.Status == CourseStatus.Published)
                 .OrderByDescending(c => c.PublishedAt)
             .ToListAsync();
         }
@@ -42,7 +38,7 @@ namespace DAL.Repositories
                 .Include(c => c.Language)
                 .Include(c => c.Teacher)
                 .Include(c => c.CourseUnits)
-                .Where(c => c.Status == Course.CourseStatus.Published)
+                .Where(c => c.Status == CourseStatus.Published)
                 .OrderByDescending(c => c.PublishedAt)
             .ToListAsync();
         }
@@ -64,7 +60,7 @@ namespace DAL.Repositories
             return await _context.Courses
                 .Include(c => c.Language)
                 .Include(c => c.Teacher)
-                .Where(c => c.Status == Course.CourseStatus.Published &&
+                .Where(c => c.Status == CourseStatus.Published &&
                            (c.Title.Contains(searchTerm) ||
                             c.Description.Contains(searchTerm) ||
                             c.Language.LanguageName.Contains(searchTerm)))
@@ -72,7 +68,7 @@ namespace DAL.Repositories
                 .ToListAsync();
         }
 
-        public async Task<List<Course>> GetCoursesByStatusAsync(Course.CourseStatus status)
+        public async Task<List<Course>> GetCoursesByStatusAsync(CourseStatus status)
         {
             return await _context.Courses
                 .Include(c => c.Language)
@@ -87,7 +83,7 @@ namespace DAL.Repositories
             return await _context.Courses
                 .Include(c => c.Language)
                 .Include(c => c.Teacher)
-                .Where(c => c.Level == level && c.Status == Course.CourseStatus.Published)
+                .Where(c => c.Level == level && c.Status == CourseStatus.Published)
                 .OrderByDescending(c => c.PublishedAt)
                 .ToListAsync();
         }
@@ -97,7 +93,7 @@ namespace DAL.Repositories
             return await _context.Courses
                 .Include(c => c.Language)
                 .Include(c => c.Teacher)
-                .Where(c => c.Price >= minPrice && c.Price <= maxPrice && c.Status == Course.CourseStatus.Published)
+                .Where(c => c.Price >= minPrice && c.Price <= maxPrice && c.Status == CourseStatus.Published)
                 .OrderBy(c => c.Price)
                 .ToListAsync();
         }
@@ -144,7 +140,7 @@ namespace DAL.Repositories
 
         public async Task<int> GetCoursesByStatusCountAsync(string status)
         {
-            if (Enum.TryParse<Course.CourseStatus>(status, out var courseStatus))
+            if (Enum.TryParse<CourseStatus>(status, out var courseStatus))
             {
                 return await _context.Courses.CountAsync(c => c.Status == courseStatus);
             }

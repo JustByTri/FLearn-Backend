@@ -2,6 +2,7 @@
 using BLL.IServices.Admin;
 using BLL.IServices.AI;
 using BLL.IServices.Auth;
+using BLL.IServices.CourseTemplate;
 using BLL.IServices.Survey;
 using BLL.IServices.Teacher;
 using BLL.IServices.Topic;
@@ -9,6 +10,7 @@ using BLL.IServices.Upload;
 using BLL.Services.Admin;
 using BLL.Services.AI;
 using BLL.Services.Auth;
+using BLL.Services.CourseTemplate;
 using BLL.Services.Survey;
 using BLL.Services.Teacher;
 using BLL.Services.Topic;
@@ -36,6 +38,7 @@ namespace BLL
             services.Configure<GeminiSettings>(configuration.GetSection("GeminiSettings"));
             services.AddScoped<ITeacherApplicationService, TeacherApplicationService>();
             services.AddScoped<ITopicService, TopicService>();
+            services.AddScoped<ICourseTemplateService, CourseTemplateService>();
             return services;
         }
     }

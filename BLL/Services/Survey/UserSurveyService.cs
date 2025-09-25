@@ -2,14 +2,10 @@
 using BLL.IServices.Survey;
 using Common.DTO.Learner;
 using DAL.Models;
+using DAL.Type;
 using DAL.UnitOfWork;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace BLL.Services.Survey
 {
@@ -40,28 +36,28 @@ namespace BLL.Services.Survey
                     throw new InvalidOperationException("Bạn đã hoàn thành khảo sát trước đó. Bạn có thể cập nhật thông tin trong phần cài đặt.");
                 }
 
-         
+
                 var language = await _unitOfWork.Languages.GetByIdAsync(surveyDto.PreferredLanguageID);
                 if (language == null)
                 {
                     throw new ArgumentException("Ngôn ngữ được chọn không tồn tại");
                 }
 
-              
+
                 var supportedLanguages = new[] { "EN", "ZH", "JP" }; // English, Chinese, Japanese
                 if (!supportedLanguages.Contains(language.LanguageCode))
                 {
                     throw new ArgumentException("Hiện tại chúng tôi chỉ hỗ trợ học speaking tiếng Anh, tiếng Trung và tiếng Nhật");
                 }
 
-         
+
                 var survey = new UserSurvey
                 {
                     SurveyID = Guid.NewGuid(),
                     UserID = userId,
                     CurrentLevel = surveyDto.CurrentLevel,
                     PreferredLanguageID = surveyDto.PreferredLanguageID,
-                
+
                     LearningReason = surveyDto.LearningReason,
                     PreviousExperience = surveyDto.PreviousExperience,
                     PreferredLearningStyle = surveyDto.PreferredLearningStyle,
@@ -69,7 +65,7 @@ namespace BLL.Services.Survey
                     PrioritySkills = string.IsNullOrEmpty(surveyDto.PrioritySkills) ? "Speaking" : surveyDto.PrioritySkills,
                     TargetTimeline = surveyDto.TargetTimeline,
 
-                  
+
                     SpeakingChallenges = surveyDto.SpeakingChallenges ?? string.Empty,
                     ConfidenceLevel = surveyDto.ConfidenceLevel,
                     PreferredAccent = surveyDto.PreferredAccent ?? "No Preference",
@@ -82,10 +78,10 @@ namespace BLL.Services.Survey
 
                 await _unitOfWork.UserSurveys.CreateAsync(survey);
 
-          
+
                 await EnsureUserLanguageTrackingAsync(userId, surveyDto.PreferredLanguageID);
 
-          
+
                 try
                 {
                     var recommendations = await GenerateRecommendationsAsync(userId);
@@ -97,7 +93,7 @@ namespace BLL.Services.Survey
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to generate AI recommendations for user {UserId}", userId);
-                  
+
                 }
 
                 await _unitOfWork.SaveChangesAsync();
@@ -151,17 +147,17 @@ namespace BLL.Services.Survey
                     throw new InvalidOperationException("Bạn cần hoàn thành khảo sát để nhận gợi ý khóa học speaking");
                 }
 
-             
+
                 var courses = await _unitOfWork.Courses.GetCoursesByLanguageAsync(survey.PreferredLanguageID);
 
-               
-                var publishedCourses = courses.Where(c => c.Status == Course.CourseStatus.Published).ToList();
+
+                var publishedCourses = courses.Where(c => c.Status == CourseStatus.Published).ToList();
 
                 var courseInfos = new List<CourseInfoDto>();
 
                 foreach (var course in publishedCourses)
                 {
-                   
+
                     var courseTopics = await GetCourseTopicsAsync(course.CourseID);
 
                     var courseSkills = GetSpeakingCourseSkills(course.SkillFocus, course.Level, survey.PrioritySkills);
@@ -182,7 +178,7 @@ namespace BLL.Services.Survey
                     });
                 }
 
-            
+
                 if (!courseInfos.Any())
                 {
                     _logger.LogWarning("No published speaking courses found for language {LanguageId}", survey.PreferredLanguageID);
@@ -199,10 +195,10 @@ namespace BLL.Services.Survey
             }
         }
 
-       
+
         public async Task<List<string>> GetLearningGoalOptionsAsync()
         {
-           
+
             return await Task.FromResult(new List<string>());
         }
 
@@ -266,7 +262,7 @@ namespace BLL.Services.Survey
             });
         }
 
-        
+
         public async Task<List<string>> GetSpeakingChallengesOptionsAsync()
         {
             return await Task.FromResult(new List<string>
@@ -300,7 +296,7 @@ namespace BLL.Services.Survey
             });
         }
 
-  
+
 
         private async Task EnsureUserLanguageTrackingAsync(Guid userId, Guid languageId)
         {
@@ -322,7 +318,7 @@ namespace BLL.Services.Survey
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error ensuring user language tracking for user {UserId}", userId);
-       
+
             }
         }
 
@@ -330,7 +326,7 @@ namespace BLL.Services.Survey
         {
             try
             {
-       
+
                 var courseTopics = await _unitOfWork.CourseTopics.GetAllAsync();
                 var topics = await _unitOfWork.Topics.GetAllAsync();
 
@@ -355,39 +351,39 @@ namespace BLL.Services.Survey
                 var course = await _unitOfWork.Courses.GetCourseWithUnitsAsync(courseId);
                 if (course?.CourseUnits?.Any() == true)
                 {
-                    
+
                     var totalLessons = course.NumLessons > 0 ? course.NumLessons :
-                                     course.CourseUnits.Count * 4; 
+                                     course.CourseUnits.Count * 4;
 
                     return Math.Max(totalLessons * 25 / 60, 1);
                 }
 
-                return 15; 
+                return 15;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error calculating duration for course {CourseId}", courseId);
-                return 15; 
+                return 15;
             }
         }
 
         private List<string> GetSpeakingCourseSkills(string? skillFocus, string? level, string? prioritySkills)
         {
-            var skills = new List<string> { "Speaking" }; 
+            var skills = new List<string> { "Speaking" };
 
-        
+
             if (!string.IsNullOrEmpty(skillFocus))
             {
                 skills.Add(skillFocus);
             }
 
-          
+
             if (!string.IsNullOrEmpty(prioritySkills) && prioritySkills != "Speaking")
             {
                 skills.Add(prioritySkills);
             }
 
-           
+
             switch (level?.ToLower())
             {
                 case "complete beginner":
@@ -488,7 +484,7 @@ namespace BLL.Services.Survey
                 "Sử dụng ứng dụng speaking để luyện tập hàng ngày"
             };
 
-        
+
             if (!string.IsNullOrEmpty(prioritySkills))
             {
                 switch (prioritySkills.ToLower())
@@ -541,7 +537,7 @@ namespace BLL.Services.Survey
                 CurrentLevel = survey.CurrentLevel,
                 PreferredLanguageID = survey.PreferredLanguageID,
                 PreferredLanguageName = language?.LanguageName ?? "",
-         
+
                 LearningReason = survey.LearningReason,
                 PreviousExperience = survey.PreviousExperience,
                 PreferredLearningStyle = survey.PreferredLearningStyle,
@@ -549,7 +545,7 @@ namespace BLL.Services.Survey
                 PrioritySkills = survey.PrioritySkills,
                 TargetTimeline = survey.TargetTimeline,
 
-     
+
                 SpeakingChallenges = survey.SpeakingChallenges,
                 ConfidenceLevel = survey.ConfidenceLevel,
                 PreferredAccent = survey.PreferredAccent,
