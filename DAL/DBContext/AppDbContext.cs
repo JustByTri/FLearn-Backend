@@ -44,6 +44,7 @@ namespace DAL.DBContext
         public DbSet<UserSurvey> UserSurveys { get; set; }
         public DbSet<CourseTemplate> CourseTemplates { get; set; }
         public DbSet<Goal> Goals { get; set; }
+        public DbSet<ExerciseOption> ExerciseOptions { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

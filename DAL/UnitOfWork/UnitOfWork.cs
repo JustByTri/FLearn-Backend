@@ -46,6 +46,7 @@ namespace DAL.UnitOfWork
             UserSurveys = new UserSurveyRepository(_context);
             Goals = new GoalRepository(_context);
             CourseTemplates = new CourseTemplateRepository(_context);
+            ExerciseOptions = new ExerciseOptionRepository(_context);
         }
 
         public IUserRepository Users { get; private set; }
@@ -81,6 +82,7 @@ namespace DAL.UnitOfWork
         public IUserSurveyRepository UserSurveys { get; private set; }
         public IGoalRepository Goals { get; private set; }
         public ICourseTemplateRepository CourseTemplates { get; private set; }
+        public IExerciseOptionRepository ExerciseOptions { get; private set; }
         public int SaveChanges()
         {
             return _context.SaveChanges();
