@@ -79,6 +79,7 @@ namespace BLL.Services.CourseTemplate
                 .Select(t => new CourseTemplateResponse
                 {
                     Id = t.Id,
+                    Name = t.Name,
                     Description = t.Description,
                     RequireGoal = t.RequireGoal,
                     RequireLevel = t.RequireLevel,

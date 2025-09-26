@@ -134,5 +134,24 @@ namespace DAL.Basic
         {
             return Task.FromResult(_context.Set<T>().AsNoTracking().AsQueryable());
         }
+        public void RemoveRange(IEnumerable<T> entities)
+        {
+            _context.Set<T>().RemoveRange(entities);
+        }
+
+        public async Task<bool> RemoveRangeAsync(IEnumerable<T> entities)
+        {
+            _context.Set<T>().RemoveRange(entities);
+            return await SaveAsync() > 0;
+        }
+        public void AddRange(IEnumerable<T> entities)
+        {
+            _context.Set<T>().AddRange(entities);
+        }
+        public async Task<int> AddRangeAsync(IEnumerable<T> entities)
+        {
+            await _context.Set<T>().AddRangeAsync(entities);
+            return await _context.SaveChangesAsync();
+        }
     }
 }
