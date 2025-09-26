@@ -160,5 +160,38 @@ namespace Presentation.Controllers.Course
 
             return StatusCode(response.Code, response);
         }
+        /// <summary>
+        /// Retrieves all courses created by a specific teacher.
+        /// </summary>
+        /// <param name="request">The paging request containing page number and page size.</param>
+        /// <returns>
+        /// A paged response containing a list of courses created by the given teacher. 
+        /// If the teacher is not found or does not have the "Teacher" role, 
+        /// an error will be returned.
+        /// </returns>
+        /// <response code="200">Returns the list of courses for the teacher.</response>
+        /// <response code="401">If the user does not have the Teacher role.</response>
+        /// <response code="404">If the teacher with the given ID does not exist.</response>
+        [HttpGet("by-teacher")]
+        [Authorize(Roles = "Teacher")]
+        [ProducesResponseType(typeof(PagedResponse<IEnumerable<CourseResponse>>), 200)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> GetAllCoursesByTeacherId([FromQuery] PagingRequest request)
+        {
+            var teacherId = User.FindFirstValue("user_id")
+                    ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(teacherId))
+            {
+                return Unauthorized("Teacher ID not found in token.");
+            }
+
+            Guid teacherGuid = Guid.Parse(teacherId);
+
+            var response = await _courseService.GetAllCoursesByTeacherIdAsync(teacherGuid, request);
+
+            return StatusCode(response.Code, response);
+        }
     }
 }

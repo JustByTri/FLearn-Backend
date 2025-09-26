@@ -25,5 +25,7 @@
         Task<IQueryable<T>> QueryAsync();
         void RemoveRange(IEnumerable<T> entities);
         Task<bool> RemoveRangeAsync(IEnumerable<T> entities);
+        void AddRange(IEnumerable<T> entities);
+        Task<int> AddRangeAsync(IEnumerable<T> entities);
     }
 }

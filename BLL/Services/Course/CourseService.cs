@@ -36,18 +36,37 @@ namespace BLL.Services.Courses
                 return BaseResponse<CourseResponse>.Fail("Invalid TeacherID. Teacher not found or does not have role 'Teacher'.");
             }
 
-            try
-            {
-                var template = await _unit.CourseTemplates.Query()
+            var template = await _unit.CourseTemplates.Query()
                     .FirstOrDefaultAsync(t => t.Id == request.TemplateId);
 
-                if (template == null)
-                {
-                    return BaseResponse<CourseResponse>.Fail("Selected template not found.");
-                }
+            if (template == null)
+            {
+                return BaseResponse<CourseResponse>.Fail("Selected template not found.");
+            }
 
+            var language = await _unit.Languages.Query()
+                .Where(l => l.LanguageID == request.LanguageID)
+                .Select(l => new { l.LanguageID, l.LanguageName, l.LanguageCode })
+                .FirstOrDefaultAsync();
+
+            if (language == null)
+            {
+                return BaseResponse<CourseResponse>.Fail("Selected language not found.");
+            }
+
+            var goal = await _unit.Goals.Query()
+                .Where(g => g.Id == request.GoalId)
+                .Select(g => new { g.Id, g.Name, g.Description })
+                .FirstOrDefaultAsync();
+
+            if (goal == null)
+            {
+                return BaseResponse<CourseResponse>.Fail("Selected goal not found.");
+            }
+
+            try
+            {
                 var missing = new List<string>();
-
                 if (template.RequireGoal && request.GoalId == 0)
                     missing.Add("Course Goal is required by the template.");
 
@@ -70,11 +89,6 @@ namespace BLL.Services.Courses
                     return BaseResponse<CourseResponse>.Fail(msg);
                 }
 
-                // 4. Price rules:
-                //    - If Free => price must be 0
-                //    - If Paid => price >= 20,000 VND
-                //    - If DiscountPrice exists => must be <= Price
-                // NOTE: assumes enum CourseType has a Free value; adjust if the name differs.
                 if (request.CourseType == DAL.Type.CourseType.Free)
                 {
                     if (request.Price > 0)
@@ -84,13 +98,11 @@ namespace BLL.Services.Courses
                 }
                 else
                 {
-                    // Paid
                     if (request.Price < 20000)
                         return BaseResponse<CourseResponse>.Fail("Paid course must have a price >= 20,000 VND.");
                     if (request.DiscountPrice.HasValue && request.DiscountPrice.Value >= request.Price)
                         return BaseResponse<CourseResponse>.Fail("DiscountPrice must be less than Price.");
                 }
-
 
                 var result = await _cloudinaryService.UploadImageAsync(request.Image);
 
@@ -152,15 +164,6 @@ namespace BLL.Services.Courses
                 {
                     return BaseResponse<CourseResponse>.Fail("Unable to save the course. Please try again.");
                 }
-                var language = await _unit.Languages.Query()
-                    .Where(l => l.LanguageID == newCourse.LanguageID)
-                    .Select(l => new { l.LanguageID, l.LanguageName, l.LanguageCode })
-                    .FirstOrDefaultAsync();
-
-                var goal = await _unit.Goals.Query()
-                    .Where(g => g.Id == newCourse.GoalId)
-                    .Select(g => new { g.Id, g.Name, g.Description })
-                    .FirstOrDefaultAsync();
 
                 var templateDto = new TemplateInfo
                 {
@@ -396,6 +399,44 @@ namespace BLL.Services.Courses
 
         public async Task<BaseResponse<CourseResponse>> UpdateCourseAsync(Guid teacherId, Guid courseId, UpdateCourseRequest request)
         {
+            var teacher = await _unit.Users.Query()
+                .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.UserID == teacherId);
+
+            if (teacher == null || !teacher.UserRoles.Any(ur => ur.Role.Name == "Teacher"))
+            {
+                return BaseResponse<CourseResponse>.Fail("Invalid TeacherID. Teacher not found or does not have role 'Teacher'.");
+            }
+
+            var template = await _unit.CourseTemplates.Query()
+                    .FirstOrDefaultAsync(t => t.Id == request.TemplateId);
+
+            if (template == null)
+            {
+                return BaseResponse<CourseResponse>.Fail("Selected template not found.");
+            }
+
+            var language = await _unit.Languages.Query()
+                .Where(l => l.LanguageID == request.LanguageID)
+                .Select(l => new { l.LanguageID, l.LanguageName, l.LanguageCode })
+                .FirstOrDefaultAsync();
+
+            if (language == null)
+            {
+                return BaseResponse<CourseResponse>.Fail("Selected language not found.");
+            }
+
+            var goal = await _unit.Goals.Query()
+                .Where(g => g.Id == request.GoalId)
+                .Select(g => new { g.Id, g.Name, g.Description })
+                .FirstOrDefaultAsync();
+
+            if (goal == null)
+            {
+                return BaseResponse<CourseResponse>.Fail("Selected goal not found.");
+            }
+
             try
             {
                 var course = await _unit.Courses.Query()
@@ -412,16 +453,7 @@ namespace BLL.Services.Courses
                     return BaseResponse<CourseResponse>.Fail("Only Draft or Rejected courses can be updated.");
                 }
 
-                var template = await _unit.CourseTemplates.Query()
-                    .FirstOrDefaultAsync(t => t.Id == request.TemplateId);
-
-                if (template == null)
-                {
-                    return BaseResponse<CourseResponse>.Fail("Selected template not found.");
-                }
-
                 var missing = new List<string>();
-
                 if (template.RequireGoal && request.GoalId == 0)
                     missing.Add("Course Goal is required by the template.");
 
@@ -443,7 +475,6 @@ namespace BLL.Services.Courses
                     return BaseResponse<CourseResponse>.Fail(msg);
                 }
 
-                // Price rules
                 if (request.CourseType == DAL.Type.CourseType.Free)
                 {
                     if (request.Price > 0)
@@ -459,7 +490,6 @@ namespace BLL.Services.Courses
                         return BaseResponse<CourseResponse>.Fail("DiscountPrice must be less than Price.");
                 }
 
-                // Upload image if provided
                 if (request.Image != null)
                 {
                     if (!string.IsNullOrEmpty(course.PublicId))
@@ -476,12 +506,15 @@ namespace BLL.Services.Courses
                 }
 
 
-                if (course.CourseTopics.Any())
-                {
-                    _unit.CourseTopics.RemoveRange(course.CourseTopics);
-                    course.CourseTopics.Clear();
-                }
+                var existingTopics = await _unit.CourseTopics.Query()
+                    .Where(ct => ct.CourseID == course.CourseID)
+                    .ToListAsync();
 
+                if (existingTopics.Any())
+                {
+                    _unit.CourseTopics.RemoveRange(existingTopics);
+                    await _unit.SaveChangesAsync();
+                }
 
                 if (request.TopicIds != null && request.TopicIds.Any())
                 {
@@ -492,18 +525,19 @@ namespace BLL.Services.Courses
                     var missingTopicIds = request.TopicIds.Except(topicEntities.Select(t => t.TopicID)).ToList();
                     if (missingTopicIds.Any())
                     {
-                        return BaseResponse<CourseResponse>.Fail($"Topic(s) with id: {string.Join(',', missingTopicIds)} not found.");
+                        return BaseResponse<CourseResponse>.Fail(
+                            $"Topic(s) with id: {string.Join(',', missingTopicIds)} not found.");
                     }
 
-                    foreach (var t in topicEntities)
+                    var newCourseTopics = topicEntities.Select(t => new DAL.Models.CourseTopic
                     {
-                        course.CourseTopics.Add(new DAL.Models.CourseTopic
-                        {
-                            CourseTopicID = Guid.NewGuid(),
-                            CourseID = course.CourseID,
-                            TopicID = t.TopicID
-                        });
-                    }
+                        CourseTopicID = Guid.NewGuid(),
+                        CourseID = course.CourseID,
+                        TopicID = t.TopicID
+                    });
+
+                    await _unit.CourseTopics.AddRangeAsync(newCourseTopics);
+                    await _unit.SaveChangesAsync();
                 }
 
                 course.Title = request.Title;
@@ -524,21 +558,6 @@ namespace BLL.Services.Courses
                 {
                     return BaseResponse<CourseResponse>.Fail("Unable to update the course. Please try again.");
                 }
-
-                // Load dto info
-                var teacher = await _unit.Users.Query()
-                    .Where(u => u.UserID == teacherId)
-                    .FirstOrDefaultAsync();
-
-                var language = await _unit.Languages.Query()
-                    .Where(l => l.LanguageID == course.LanguageID)
-                    .Select(l => new { l.LanguageID, l.LanguageName, l.LanguageCode })
-                    .FirstOrDefaultAsync();
-
-                var goal = await _unit.Goals.Query()
-                    .Where(g => g.Id == course.GoalId)
-                    .Select(g => new { g.Id, g.Name, g.Description })
-                    .FirstOrDefaultAsync();
 
                 var templateDto = new TemplateInfo { Id = template.Id, Name = template.Name };
                 var teacherDto = new TeacherInfo
