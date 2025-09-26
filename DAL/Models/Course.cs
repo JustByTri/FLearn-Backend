@@ -1,5 +1,6 @@
 ﻿using DAL.Type;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DAL.Models
 {
@@ -13,25 +14,31 @@ namespace DAL.Models
         [Required]
         [StringLength(1000)]
         public string? Description { get; set; }
-        [StringLength(300)]
+        [StringLength(500)]
         public required string ImageUrl { get; set; }
+        [StringLength(200)]
+        public string? PublicId { get; set; }
         [Required]
-        public Guid CourseTemplateId { get; set; }
-        public required CourseTemplate CourseTemplate { get; set; }
+        public Guid TemplateId { get; set; }
+        [ForeignKey(nameof(TemplateId))]
+        public CourseTemplate CourseTemplate { get; set; }
         [Required]
         [Range(0, 100000)]
         public decimal Price { get; set; }
         public decimal? DiscountPrice { get; set; }
-        public required CourseType CourseType { get; set; }
+        public CourseType CourseType { get; set; }
         [Required]
         public Guid TeacherID { get; set; }
-        public required User Teacher { get; set; }
+        [ForeignKey(nameof(TeacherID))]
+        public User Teacher { get; set; }
         [Required]
         public Guid LanguageID { get; set; }
-        public required Language Language { get; set; }
+        [ForeignKey(nameof(LanguageID))]
+        public Language Language { get; set; }
         [Required]
         public int GoalId { get; set; }
-        public required Goal Goal { get; set; }
+        [ForeignKey(nameof(GoalId))]
+        public Goal Goal { get; set; }
         [StringLength(50)]
         public string? Level { get; set; }
         public required LevelType CourseLevel { get; set; }
@@ -42,6 +49,7 @@ namespace DAL.Models
         [Range(0, 100)]
         public int NumLessons { get; } = 0;
         public Guid? ApprovedByID { get; set; }
+        [ForeignKey(nameof(ApprovedByID))]
         public User? Staff { get; set; }
         public CourseStatus Status { get; set; } = CourseStatus.Draft;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

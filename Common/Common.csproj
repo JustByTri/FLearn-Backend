@@ -24,8 +24,4 @@
     <ProjectReference Include="..\DAL\DAL.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="DTO\Course\Response\" />
-  </ItemGroup>
-
 </Project>

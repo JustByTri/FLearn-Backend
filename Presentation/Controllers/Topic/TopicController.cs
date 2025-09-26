@@ -89,7 +89,9 @@ namespace Presentation.Controllers.Topic
                 if (result.Data == null)
                     return BadRequest(result);
 
-                return CreatedAtAction(nameof(GetTopicById), new { id = result.Data.TopicId }, result);
+                return CreatedAtAction(nameof(GetTopicById),
+                       new { topicId = result.Data.TopicId },
+                       result);
             }
             catch (Exception ex)
             {
