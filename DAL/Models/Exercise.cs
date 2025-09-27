@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using DAL.Type;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DAL.Models
 {
@@ -11,47 +8,43 @@ namespace DAL.Models
     {
         [Key]
         public Guid ExerciseID { get; set; }
-
-        [StringLength(500)]
-        public string Hints { get; set; }
-
-        [Range(1, 10, ErrorMessage = "Value for {0} must be between {1} and {2}.")]
-        public int Position { get; set; }
-
-        [StringLength(1000)]
-        public string Materials { get; set; }
-
-        [StringLength(1000)]
-        public string ExpectedAnswer { get; set; }
-
-        [StringLength(1000)]
-        public string Prompt { get; set; }
-
         [Required]
-        public Guid LessonID { get; set; }
-
-        public Lesson? Lesson { get; set; }
-
-        public enum ExerciseType
-        {
-            None,
-            MultipleChoice,
-            FillInTheBlank,
-            Speaking
-        }
-
+        [StringLength(200, ErrorMessage = "Title must not exceed 200 characters.")]
+        public required string Title { get; set; }
+        [StringLength(1000, ErrorMessage = "Prompt must not exceed 1000 characters.")]
+        public string? Prompt { get; set; }
+        [StringLength(500, ErrorMessage = "Hints must not exceed 500 characters.")]
+        public string? Hints { get; set; }
+        [StringLength(2000, ErrorMessage = "Content must not exceed 2000 characters.")]
+        public string? Content { get; set; }
+        [StringLength(1000, ErrorMessage = "Expected answer must not exceed 1000 characters.")]
+        public string? ExpectedAnswer { get; set; }
+        // Media (audio/video/image/pdf/docx…)
+        public string? MediaUrl { get; set; }
+        public string? MediaPublicId { get; set; }
+        [Range(1, 100, ErrorMessage = "Position must be between {1} and {2}.")]
+        public int Position { get; set; }
         [Required]
         public ExerciseType Type { get; set; }
-
+        public SkillType? SkillType { get; set; }
         [Required]
-        public DateTime CreatedAt { get; set; }
-
+        public DifficultyLevel Difficulty { get; set; } = DifficultyLevel.Easy;
+        public int MaxScore { get; set; } = 100;
+        public int PassScore { get; set; } = 60;
+        [StringLength(1000)]
+        public string? FeedbackCorrect { get; set; }
+        [StringLength(1000)]
+        public string? FeedbackIncorrect { get; set; }
+        // Điều kiện tiên quyết (1 bài tập phải pass trước)
+        public Guid? PrerequisiteExerciseID { get; set; }
+        [ForeignKey(nameof(PrerequisiteExerciseID))]
+        public Exercise? PrerequisiteExercise { get; set; }
         [Required]
-        public DateTime UpdatedAt { get; set; }
-
-        [Required]
-        public string Title { get; set; }
-
-        public string Content { get; set; }
+        public Guid LessonID { get; set; }
+        [ForeignKey(nameof(LessonID))]
+        public Lesson? Lesson { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public virtual ICollection<ExerciseOption> Options { get; set; } = new List<ExerciseOption>();
     }
 }

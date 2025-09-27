@@ -547,6 +547,99 @@
     ]
   },
   {
+    "ContainingType": "Presentation.Controllers.CourseUnit.CourseUnitController",
+    "Method": "CreateUnitAsync",
+    "RelativePath": "api/courses/{courseId}/units",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "courseId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "Common.DTO.CourseUnit.Request.UnitRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.CourseUnit.CourseUnitController",
+    "Method": "UpdateUnitAsync",
+    "RelativePath": "api/courses/{courseId}/units",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "courseId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "unitId",
+        "Type": "System.Guid",
+        "IsRequired": false
+      },
+      {
+        "Name": "request",
+        "Type": "Common.DTO.CourseUnit.Request.UnitRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "Common.DTO.ApiResponse.BaseResponse\u00601[[Common.DTO.CourseUnit.Response.UnitResponse, Common, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "Presentation.Controllers.CourseUnit.CourseUnitController",
+    "Method": "GetUnitsByCourseIdAsync",
+    "RelativePath": "api/courses/{courseId}/units",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "courseId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "Page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "PageSize",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "Common.DTO.Paging.Response.PagedResponse\u00601[[System.Collections.Generic.IEnumerable\u00601[[Common.DTO.CourseUnit.Response.UnitResponse, Common, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
     "ContainingType": "Presentation.Controllers.Course.CourseController",
     "Method": "GetAllCoursesByTeacherId",
     "RelativePath": "api/courses/by-teacher",
@@ -1431,6 +1524,63 @@
           "text/json"
         ],
         "StatusCode": 500
+      }
+    ]
+  },
+  {
+    "ContainingType": "Presentation.Controllers.CourseUnit.CourseUnitController",
+    "Method": "GetUnitsAsync",
+    "RelativePath": "api/units",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "Page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "PageSize",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "Common.DTO.Paging.Response.PagedResponse\u00601[[System.Collections.Generic.IEnumerable\u00601[[Common.DTO.CourseUnit.Response.UnitResponse, Common, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "Presentation.Controllers.CourseUnit.CourseUnitController",
+    "Method": "GetUnitByIdAsync",
+    "RelativePath": "api/units/{unitId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "unitId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "Common.DTO.ApiResponse.BaseResponse\u00601[[Common.DTO.CourseUnit.Response.UnitResponse, Common, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
       }
     ]
   },

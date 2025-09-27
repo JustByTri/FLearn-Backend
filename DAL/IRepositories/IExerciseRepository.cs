@@ -1,10 +1,6 @@
 ﻿using DAL.Basic;
 using DAL.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using DAL.Type;
 
 namespace DAL.IRepositories
 {
@@ -12,7 +8,7 @@ namespace DAL.IRepositories
     {
         Task<List<Exercise>> GetExercisesByLessonAsync(Guid lessonId);
         Task<Exercise> GetExerciseByPositionAsync(Guid lessonId, int position);
-        Task<List<Exercise>> GetExercisesByTypeAsync(Exercise.ExerciseType type);
+        Task<List<Exercise>> GetExercisesByTypeAsync(ExerciseType type);
         Task<Exercise> GetNextExerciseAsync(Guid lessonId, int currentPosition);
         Task<Exercise> GetPreviousExerciseAsync(Guid lessonId, int currentPosition);
     }

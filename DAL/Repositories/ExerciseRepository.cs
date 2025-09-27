@@ -2,12 +2,8 @@
 using DAL.DBContext;
 using DAL.IRepositories;
 using DAL.Models;
+using DAL.Type;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DAL.Repositories
 {
@@ -31,7 +27,7 @@ namespace DAL.Repositories
                 .FirstOrDefaultAsync(e => e.LessonID == lessonId && e.Position == position);
         }
 
-        public async Task<List<Exercise>> GetExercisesByTypeAsync(Exercise.ExerciseType type)
+        public async Task<List<Exercise>> GetExercisesByTypeAsync(ExerciseType type)
         {
             return await _context.Exercises
                 .Include(e => e.Lesson)

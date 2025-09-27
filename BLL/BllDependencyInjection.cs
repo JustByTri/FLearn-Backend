@@ -4,6 +4,7 @@ using BLL.IServices.AI;
 using BLL.IServices.Auth;
 using BLL.IServices.Course;
 using BLL.IServices.CourseTemplate;
+using BLL.IServices.CourseUnit;
 using BLL.IServices.Goal;
 using BLL.IServices.Language;
 using BLL.IServices.Survey;
@@ -15,6 +16,7 @@ using BLL.Services.AI;
 using BLL.Services.Auth;
 using BLL.Services.Courses;
 using BLL.Services.CourseTemplate;
+using BLL.Services.CourseUnits;
 using BLL.Services.Goal;
 using BLL.Services.Languages;
 using BLL.Services.Survey;
@@ -48,6 +50,7 @@ namespace BLL
             services.AddScoped<IGoalService, GoalService>();
             services.AddScoped<ILanguageService, LanguageService>();
             services.AddScoped<ICourseService, CourseService>();
+            services.AddScoped<ICourseUnitService, CourseUnitService>();
             return services;
         }
     }
