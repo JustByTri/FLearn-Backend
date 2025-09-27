@@ -1,12 +1,11 @@
 {
   "Version": 1,
-  "Hash": "jBw1RQn0dlHHDa987bmd1lfxVfG9eXqQJ7i7l1GfSAI=",
+  "Hash": "vd8qr1Db+r6CRu8/6k4cXX33vVKm5hco+mhU6Tkbv4s=",
   "Source": "Presentation",
   "BasePath": "_content/Presentation",
   "Mode": "Default",
   "ManifestType": "Publish",
   "ReferencedProjectsConfiguration": [],
   "DiscoveryPatterns": [],
-  "Assets": [],
-  "Endpoints": []
+  "Assets": []
 }
