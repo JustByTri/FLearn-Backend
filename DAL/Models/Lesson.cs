@@ -28,6 +28,7 @@ namespace DAL.Models
         [Url(ErrorMessage = "Invalid document URL format")]
         public string? DocumentUrl { get; set; }
         public string? DocumentPublicId { get; set; }
+        public int? TotalExercises { get; set; } = 0;
         [Required]
         public Guid CourseUnitID { get; set; }
         [ForeignKey(nameof(CourseUnitID))]
