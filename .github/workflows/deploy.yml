@@ -1,0 +1,45 @@
+name: Deploy FLearn Backend to VPS
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET 8.0
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build project
+      run: dotnet build --configuration Release --no-restore
+      
+    - name: Publish project  
+      run: dotnet publish -c Release -o ./publish
+      
+    - name: Deploy to VPS via SSH
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        script: |
+          echo "Starting deployment..."
+          systemctl stop flearn-backend
+          cd /root/FLearn-Backend
+          git pull origin main
+          dotnet publish -c Release -o /var/www/flearn-backend-published
+          systemctl start flearn-backend
+          systemctl status flearn-backend --no-pager
+          echo "Deployment completed!"
