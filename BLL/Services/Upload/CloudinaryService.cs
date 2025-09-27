@@ -5,11 +5,6 @@ using CloudinaryDotNet.Actions;
 using Common.DTO.Upload;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace BLL.Services.Upload
 {
@@ -193,6 +188,43 @@ namespace BLL.Services.Upload
                     Folder = folder
                 };
             }
+        }
+        public async Task<UploadResultDto> UploadVideoAsync(IFormFile file, string folder = "videos")
+        {
+            if (file == null || file.Length == 0)
+                throw new ArgumentException("Invalid video file");
+
+            // check extension
+            var allowedExtensions = new[] { ".mp4", ".mov", ".avi", ".mkv", ".webm" };
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(ext))
+                throw new ArgumentException("Only support MP4, MOV, AVI, MKV, WEBM");
+
+            using var stream = file.OpenReadStream();
+            var uploadParams = new VideoUploadParams
+            {
+                File = new FileDescription(file.FileName, stream),
+                Folder = folder,
+                UseFilename = true,
+                UniqueFilename = true,
+                Overwrite = false,
+            };
+
+            var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+
+            if (uploadResult.Error != null)
+                throw new Exception($"Lỗi upload file: {uploadResult.Error.Message}");
+
+            return new UploadResultDto
+            {
+                Url = uploadResult.SecureUrl.ToString(),
+                PublicId = uploadResult.PublicId,
+                OriginalFileName = file.FileName,
+                FileSize = file.Length,
+                FileType = file.ContentType,
+                UploadedAt = DateTime.UtcNow,
+                Folder = folder
+            };
         }
     }
 }

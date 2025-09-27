@@ -127,12 +127,12 @@ namespace DAL.Basic
 
         public IQueryable<T> Query()
         {
-            return _context.Set<T>().AsNoTracking().AsQueryable();
+            return _context.Set<T>().AsQueryable();
         }
 
         public Task<IQueryable<T>> QueryAsync()
         {
-            return Task.FromResult(_context.Set<T>().AsNoTracking().AsQueryable());
+            return Task.FromResult(_context.Set<T>().AsQueryable());
         }
         public void RemoveRange(IEnumerable<T> entities)
         {
