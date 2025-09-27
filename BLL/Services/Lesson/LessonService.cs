@@ -153,19 +153,125 @@ namespace BLL.Services.Lessons
             }
         }
 
-        public Task<BaseResponse<LessonResponse>> GetLessonByIdAsync(Guid lessonId)
+        public async Task<BaseResponse<LessonResponse>> GetLessonByIdAsync(Guid lessonId)
         {
-            throw new NotImplementedException();
+            var lesson = await _unit.Lessons.Query()
+                .Include(l => l.CourseUnit)
+                .ThenInclude(u => u.Course)
+                .FirstOrDefaultAsync(l => l.LessonID == lessonId);
+
+            if (lesson == null)
+            {
+                return BaseResponse<LessonResponse>.Fail("Lesson not found.");
+            }
+
+            var response = new LessonResponse
+            {
+                LessonID = lesson.LessonID,
+                Title = lesson.Title,
+                Content = lesson.Content,
+                Position = lesson.Position,
+                SkillFocus = lesson.SkillFocus.ToString(),
+                Description = lesson.Description,
+                VideoUrl = lesson.VideoUrl,
+                DocumentUrl = lesson.DocumentUrl,
+                CourseID = lesson.CourseUnit?.Course?.CourseID ?? Guid.Empty,
+                CourseTitle = lesson.CourseUnit?.Course?.Title,
+                CourseUnitID = lesson.CourseUnitID,
+                UnitTitle = lesson.CourseUnit?.Title,
+                CreatedAt = lesson.CreatedAt,
+                UpdatedAt = lesson.UpdatedAt
+            };
+
+            return BaseResponse<LessonResponse>.Success(response);
         }
 
-        public Task<PagedResponse<IEnumerable<LessonResponse>>> GetLessonsByCourseIdAsync(Guid courseId)
+        public async Task<PagedResponse<IEnumerable<LessonResponse>>> GetLessonsByCourseIdAsync(
+            Guid courseId,
+            PagingRequest request)
         {
-            throw new NotImplementedException();
+            var page = request.Page <= 0 ? 1 : request.Page;
+            var pageSize = request.PageSize <= 0 ? 10 : request.PageSize;
+
+            var query = _unit.Lessons.Query()
+                .Include(l => l.CourseUnit)
+                .ThenInclude(u => u.Course)
+                .Where(l => l.CourseUnit!.CourseID == courseId)
+                .OrderBy(l => l.Position);
+
+            var totalItems = await query.CountAsync();
+
+            var lessons = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var lessonResponses = lessons.Select(l => new LessonResponse
+            {
+                LessonID = l.LessonID,
+                Title = l.Title,
+                Content = l.Content,
+                Position = l.Position,
+                SkillFocus = l.SkillFocus.ToString(),
+                Description = l.Description,
+                VideoUrl = l.VideoUrl,
+                DocumentUrl = l.DocumentUrl,
+                CourseID = l.CourseUnit?.Course?.CourseID ?? Guid.Empty,
+                CourseTitle = l.CourseUnit?.Course?.Title,
+                CourseUnitID = l.CourseUnitID,
+                UnitTitle = l.CourseUnit?.Title,
+                CreatedAt = l.CreatedAt,
+                UpdatedAt = l.UpdatedAt
+            });
+
+            return PagedResponse<IEnumerable<LessonResponse>>.Success(
+                lessonResponses,
+                page: page,
+                pageSize: pageSize,
+                totalItems: totalItems
+            );
         }
 
-        public Task<PagedResponse<IEnumerable<LessonResponse>>> GetLessonsByUnitIdAsync(Guid unitId, PagingRequest request)
+
+        public async Task<PagedResponse<IEnumerable<LessonResponse>>> GetLessonsByUnitIdAsync(Guid unitId, PagingRequest request)
         {
-            throw new NotImplementedException();
+            var query = _unit.Lessons.Query()
+                .Include(l => l.CourseUnit)
+                .ThenInclude(u => u.Course)
+                .Where(l => l.CourseUnitID == unitId)
+                .OrderBy(l => l.Position);
+
+            var totalItems = await query.CountAsync();
+
+            var lessons = await query
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToListAsync();
+
+            var lessonResponses = lessons.Select(l => new LessonResponse
+            {
+                LessonID = l.LessonID,
+                Title = l.Title,
+                Content = l.Content,
+                Position = l.Position,
+                SkillFocus = l.SkillFocus.ToString(),
+                Description = l.Description,
+                VideoUrl = l.VideoUrl,
+                DocumentUrl = l.DocumentUrl,
+                CourseID = l.CourseUnit?.Course?.CourseID ?? Guid.Empty,
+                CourseTitle = l.CourseUnit?.Course?.Title,
+                CourseUnitID = l.CourseUnitID,
+                UnitTitle = l.CourseUnit?.Title,
+                CreatedAt = l.CreatedAt,
+                UpdatedAt = l.UpdatedAt
+            });
+
+            return PagedResponse<IEnumerable<LessonResponse>>.Success(
+                lessonResponses,
+                request.Page,
+                request.PageSize,
+                totalItems
+            );
         }
 
         public async Task<BaseResponse<LessonResponse>> UpdateLessonAsync(
