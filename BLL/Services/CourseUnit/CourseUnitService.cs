@@ -39,6 +39,11 @@ namespace BLL.Services.CourseUnits
                 return BaseResponse<UnitResponse>.Fail("Selected course not found.");
             }
 
+            if (selectedCourse.Status != CourseStatus.Draft && selectedCourse.Status != CourseStatus.Rejected)
+            {
+                return BaseResponse<UnitResponse>.Fail("Only Draft or Rejected courses can be updated.");
+            }
+
             int nextPosition = 1;
             if (selectedCourse.CourseUnits.Any())
             {

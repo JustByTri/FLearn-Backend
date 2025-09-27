@@ -18,7 +18,7 @@ namespace DAL.Models
         public Guid CourseID { get; set; }
         [ForeignKey(nameof(CourseID))]
         public Course? Course { get; set; }
-        public int? TotalLessons { get; } = 0;
+        public int? TotalLessons { get; set; } = 0;
         public bool? IsPreview { get; set; } = false;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

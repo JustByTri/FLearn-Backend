@@ -47,7 +47,7 @@ namespace DAL.Models
         public required SkillType CourseSkill { get; set; }
         public DateTime? PublishedAt { get; set; }
         [Range(0, 100)]
-        public int NumLessons { get; } = 0;
+        public int NumLessons { get; set; } = 0;
         public Guid? ApprovedByID { get; set; }
         [ForeignKey(nameof(ApprovedByID))]
         public User? Staff { get; set; }
