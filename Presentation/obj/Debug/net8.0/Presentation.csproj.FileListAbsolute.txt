@@ -450,6 +450,7 @@ E:\SEP\be\FLearn-Backend\Presentation\bin\Debug\net8.0\DAL.dll
 E:\SEP\be\FLearn-Backend\Presentation\bin\Debug\net8.0\BLL.pdb
 E:\SEP\be\FLearn-Backend\Presentation\bin\Debug\net8.0\Common.pdb
 E:\SEP\be\FLearn-Backend\Presentation\bin\Debug\net8.0\DAL.pdb
+E:\SEP\be\FLearn-Backend\Presentation\obj\Debug\net8.0\Presentation.MvcApplicationPartsAssemblyInfo.cs
 E:\SEP\be\FLearn-Backend\Presentation\obj\Debug\net8.0\rjimswa.dswa.cache.json
 E:\SEP\be\FLearn-Backend\Presentation\obj\Debug\net8.0\rjsmrazor.dswa.cache.json
 E:\SEP\be\FLearn-Backend\Presentation\obj\Debug\net8.0\rjsmcshtml.dswa.cache.json
@@ -465,4 +466,3 @@ E:\SEP\be\FLearn-Backend\Presentation\obj\Debug\net8.0\refint\Presentation.dll
 E:\SEP\be\FLearn-Backend\Presentation\obj\Debug\net8.0\Presentation.pdb
 E:\SEP\be\FLearn-Backend\Presentation\obj\Debug\net8.0\Presentation.genruntimeconfig.cache
 E:\SEP\be\FLearn-Backend\Presentation\obj\Debug\net8.0\ref\Presentation.dll
-E:\SEP\be\FLearn-Backend\Presentation\obj\Debug\net8.0\Presentation.MvcApplicationPartsAssemblyInfo.cs

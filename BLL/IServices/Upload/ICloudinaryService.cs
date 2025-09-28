@@ -14,5 +14,6 @@ namespace BLL.IServices.Upload
         Task<UploadResultDto> UploadDocumentAsync(IFormFile file, string folder = "documents");
         Task<List<UploadResultDto>> UploadMultipleFilesAsync(IList<IFormFile> files, string folder = "general");
         Task<UploadResultDto> UploadVideoAsync(IFormFile file, string folder = "videos");
+        Task<UploadResultDto> UploadAudioAsync(IFormFile file, string folder = "audios");
     }
 }

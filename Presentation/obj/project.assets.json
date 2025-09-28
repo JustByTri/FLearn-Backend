@@ -2614,6 +2614,7 @@
           "DAL": "1.0.0",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "8.0.20",
           "Microsoft.EntityFrameworkCore": "8.0.5",
+          "Newtonsoft.Json": "13.0.1",
           "System.Text.Json": "8.0.5"
         },
         "compile": {

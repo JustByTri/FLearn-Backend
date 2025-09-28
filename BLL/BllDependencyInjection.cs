@@ -5,6 +5,7 @@ using BLL.IServices.Auth;
 using BLL.IServices.Course;
 using BLL.IServices.CourseTemplate;
 using BLL.IServices.CourseUnit;
+using BLL.IServices.Exercise;
 using BLL.IServices.Goal;
 using BLL.IServices.Language;
 using BLL.IServices.Lesson;
@@ -18,6 +19,7 @@ using BLL.Services.Auth;
 using BLL.Services.Courses;
 using BLL.Services.CourseTemplate;
 using BLL.Services.CourseUnits;
+using BLL.Services.Exercise;
 using BLL.Services.Goal;
 using BLL.Services.Languages;
 using BLL.Services.Lessons;
@@ -54,6 +56,7 @@ namespace BLL
             services.AddScoped<ICourseService, CourseService>();
             services.AddScoped<ICourseUnitService, CourseUnitService>();
             services.AddScoped<ILessonService, LessonService>();
+            services.AddScoped<IExerciseService, ExerciseService>();
             return services;
         }
     }

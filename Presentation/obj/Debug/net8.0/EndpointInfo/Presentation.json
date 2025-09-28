@@ -1028,6 +1028,210 @@
         }
       }
     },
+    "/api/courses/{courseId}/units/{unitId}/lessons/{lessonId}/exercises": {
+      "post": {
+        "tags": [
+          "CourseExercise"
+        ],
+        "parameters": [
+          {
+            "name": "courseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "unitId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "lessonId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "Difficulty",
+                  "Title",
+                  "Type"
+                ],
+                "type": "object",
+                "properties": {
+                  "Title": {
+                    "maxLength": 200,
+                    "minLength": 0,
+                    "type": "string"
+                  },
+                  "Prompt": {
+                    "maxLength": 1000,
+                    "minLength": 0,
+                    "type": "string"
+                  },
+                  "Hints": {
+                    "maxLength": 500,
+                    "minLength": 0,
+                    "type": "string"
+                  },
+                  "Content": {
+                    "maxLength": 2000,
+                    "minLength": 0,
+                    "type": "string"
+                  },
+                  "ExpectedAnswer": {
+                    "maxLength": 1000,
+                    "minLength": 0,
+                    "type": "string"
+                  },
+                  "MediaFile": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "Type": {
+                    "$ref": "#/components/schemas/ExerciseType"
+                  },
+                  "SkillType": {
+                    "$ref": "#/components/schemas/SkillType"
+                  },
+                  "Difficulty": {
+                    "$ref": "#/components/schemas/DifficultyLevel"
+                  },
+                  "MaxScore": {
+                    "maximum": 1000,
+                    "minimum": 1,
+                    "type": "integer",
+                    "format": "int32"
+                  },
+                  "PassScore": {
+                    "maximum": 1000,
+                    "minimum": 1,
+                    "type": "integer",
+                    "format": "int32"
+                  },
+                  "FeedbackCorrect": {
+                    "maxLength": 1000,
+                    "minLength": 0,
+                    "type": "string"
+                  },
+                  "FeedbackIncorrect": {
+                    "maxLength": 1000,
+                    "minLength": 0,
+                    "type": "string"
+                  },
+                  "Options": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ExerciseOptionRequest"
+                    }
+                  }
+                }
+              },
+              "encoding": {
+                "Title": {
+                  "style": "form"
+                },
+                "Prompt": {
+                  "style": "form"
+                },
+                "Hints": {
+                  "style": "form"
+                },
+                "Content": {
+                  "style": "form"
+                },
+                "ExpectedAnswer": {
+                  "style": "form"
+                },
+                "MediaFile": {
+                  "style": "form"
+                },
+                "Type": {
+                  "style": "form"
+                },
+                "SkillType": {
+                  "style": "form"
+                },
+                "Difficulty": {
+                  "style": "form"
+                },
+                "MaxScore": {
+                  "style": "form"
+                },
+                "PassScore": {
+                  "style": "form"
+                },
+                "FeedbackCorrect": {
+                  "style": "form"
+                },
+                "FeedbackIncorrect": {
+                  "style": "form"
+                },
+                "Options": {
+                  "style": "form"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/courses/{courseId}/units/{unitId}/lessons": {
       "post": {
         "tags": [
@@ -3526,6 +3730,203 @@
         "enum": [
           0,
           1
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "DifficultyLevel": {
+        "enum": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "ExerciseOptionRequest": {
+        "required": [
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": "string"
+          },
+          "isCorrect": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ExerciseOptionResponse": {
+        "type": "object",
+        "properties": {
+          "optionID": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          },
+          "isCorrect": {
+            "type": "boolean"
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ExerciseResponse": {
+        "type": "object",
+        "properties": {
+          "exerciseID": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string",
+            "nullable": true
+          },
+          "hints": {
+            "type": "string",
+            "nullable": true
+          },
+          "content": {
+            "type": "string",
+            "nullable": true
+          },
+          "expectedAnswer": {
+            "type": "string",
+            "nullable": true
+          },
+          "mediaUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "mediaPublicId": {
+            "type": "string",
+            "nullable": true
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "exerciseType": {
+            "type": "string",
+            "nullable": true
+          },
+          "skillType": {
+            "type": "string",
+            "nullable": true
+          },
+          "difficulty": {
+            "type": "string",
+            "nullable": true
+          },
+          "maxScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "passScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "feedbackCorrect": {
+            "type": "string",
+            "nullable": true
+          },
+          "feedbackIncorrect": {
+            "type": "string",
+            "nullable": true
+          },
+          "prerequisiteExerciseID": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "courseID": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "courseTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "unitID": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "unitTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "lessonID": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lessonTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExerciseOptionResponse"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ExerciseResponseBaseResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ExerciseResponse"
+          },
+          "errors": { },
+          "meta": { }
+        },
+        "additionalProperties": false
+      },
+      "ExerciseType": {
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
         ],
         "type": "integer",
         "format": "int32"

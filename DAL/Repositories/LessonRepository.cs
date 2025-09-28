@@ -3,11 +3,6 @@ using DAL.DBContext;
 using DAL.IRepositories;
 using DAL.Models;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DAL.Repositories
 {
@@ -28,7 +23,7 @@ namespace DAL.Repositories
         {
             return await _context.Lessons
                 .Include(l => l.CourseUnit)
-                .Include(l => l.Exerices.OrderBy(e => e.Position))
+                .Include(l => l.Exercises.OrderBy(e => e.Position))
                 .FirstOrDefaultAsync(l => l.LessonID == lessonId);
         }
 
