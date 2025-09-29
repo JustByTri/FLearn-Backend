@@ -10,83 +10,47 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Deploy to Production Server
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.VPS_HOST }}          # ✅ Match your secret name
-        username: ${{ secrets.VPS_USERNAME }}  # ✅ Match your secret name  
-        key: ${{ secrets.VPS_SSH_KEY }}        # ✅ Match your secret name
-        script: |
-          echo "🚀 Starting FLearn Backend Deployment..."
+    - name: Deploy via Direct SSH
+      run: |
+        # Install SSH client
+        sudo apt-get update
+        sudo apt-get install -y openssh-client
+        
+        # Setup SSH key
+        mkdir -p ~/.ssh
+        echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        
+        # Add server to known hosts
+        ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+        
+        # Execute deployment commands
+        ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} << 'EOF'
+          echo "🚀 Direct SSH Deployment - No Docker!"
           echo "Time: $(date)"
-          echo "Host: ${{ secrets.VPS_HOST }}"
-          echo "User: ${{ secrets.VPS_USERNAME }}"
           
-          # Stop the service
+          # Stop service
           systemctl stop flearn-backend
           
-          # Navigate to project directory
+          # Update code
           cd /root/FLearn-Backend
-          
-          # Pull latest changes
           git pull origin main
           
-          # Build and publish the Presentation project
-          echo "Building Presentation project..."
+          # Build and publish
           cd Presentation
-          
-          # Clean previous build
-          if [ -d "/var/www/flearn-backend-published" ]; then
-              rm -rf /var/www/flearn-backend-published/*
-          fi
-          
-          # Restore and publish
           dotnet restore --verbosity minimal
           dotnet publish -c Release -o /var/www/flearn-backend-published --verbosity minimal
           
-          # Verify build success
-          if [ -f "/var/www/flearn-backend-published/Presentation.dll" ]; then
-              echo "✅ Build successful"
-              
-              # Set proper permissions
-              chown -R www-data:www-data /var/www/flearn-backend-published
-              chmod +x /var/www/flearn-backend-published/Presentation.dll
-              
-              # Start the service
-              systemctl start flearn-backend
-              
-              # Wait and check status
-              sleep 15
-              
-              if systemctl is-active --quiet flearn-backend; then
-                  echo "✅ FLearn Backend service started successfully"
-                  
-                  # Test API
-                  API_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 http://localhost:5000/ || echo "000")
-                  echo "API Status: HTTP $API_STATUS"
-                  
-                  # Test Swagger
-                  SWAGGER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 http://localhost:5000/swagger/index.html || echo "000")
-                  echo "Swagger Status: HTTP $SWAGGER_STATUS"
-                  
-                  if [ "$API_STATUS" != "000" ] && [ "$SWAGGER_STATUS" != "000" ]; then
-                      echo "✅ API endpoints are responding"
-                      echo "🌐 Platform: https://f-learn.app"
-                  else
-                      echo "⚠️ API starting up - may need more time"
-                  fi
-              else
-                  echo "❌ Service failed to start"
-                  systemctl status flearn-backend --no-pager
-                  exit 1
-              fi
-              
-          else
-              echo "❌ Build failed - Presentation.dll not found"
-              exit 1
-          fi
+          # Set permissions
+          chown -R www-data:www-data /var/www/flearn-backend-published
+          chmod +x /var/www/flearn-backend-published/Presentation.dll
           
-          # Final status
+          # Start service
+          systemctl start flearn-backend
+          sleep 10
+          
+          # Check status
           systemctl status flearn-backend --no-pager
           
-          echo "🎉 FLearn Education Platform Deployment Completed!"
+          echo "✅ Deployment completed!"
+        EOF
