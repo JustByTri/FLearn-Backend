@@ -13,12 +13,14 @@ jobs:
     - name: Deploy to Production Server
       uses: appleboy/ssh-action@v1.0.0
       with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
-        key: ${{ secrets.KEY }}
+        host: ${{ secrets.VPS_HOST }}          # ✅ Match your secret name
+        username: ${{ secrets.VPS_USERNAME }}  # ✅ Match your secret name  
+        key: ${{ secrets.VPS_SSH_KEY }}        # ✅ Match your secret name
         script: |
           echo "🚀 Starting FLearn Backend Deployment..."
           echo "Time: $(date)"
+          echo "Host: ${{ secrets.VPS_HOST }}"
+          echo "User: ${{ secrets.VPS_USERNAME }}"
           
           # Stop the service
           systemctl stop flearn-backend
@@ -29,24 +31,22 @@ jobs:
           # Pull latest changes
           git pull origin main
           
-          # Clear any previous build artifacts
-          if [ -d "/var/www/flearn-backend-published" ]; then
-              rm -rf /var/www/flearn-backend-published/*
-          fi
-          
           # Build and publish the Presentation project
           echo "Building Presentation project..."
           cd Presentation
           
-          # Restore packages first
-          dotnet restore --verbosity minimal
+          # Clean previous build
+          if [ -d "/var/www/flearn-backend-published" ]; then
+              rm -rf /var/www/flearn-backend-published/*
+          fi
           
-          # Publish the application
+          # Restore and publish
+          dotnet restore --verbosity minimal
           dotnet publish -c Release -o /var/www/flearn-backend-published --verbosity minimal
           
-          # Verify the build output
+          # Verify build success
           if [ -f "/var/www/flearn-backend-published/Presentation.dll" ]; then
-              echo "✅ Build successful - Presentation.dll found"
+              echo "✅ Build successful"
               
               # Set proper permissions
               chown -R www-data:www-data /var/www/flearn-backend-published
@@ -55,21 +55,25 @@ jobs:
               # Start the service
               systemctl start flearn-backend
               
-              # Wait for service to start
+              # Wait and check status
               sleep 15
               
-              # Check service status
               if systemctl is-active --quiet flearn-backend; then
                   echo "✅ FLearn Backend service started successfully"
                   
-                  # Test API endpoint
-                  API_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 20 http://localhost:5000/ || echo "000")
+                  # Test API
+                  API_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 http://localhost:5000/ || echo "000")
                   echo "API Status: HTTP $API_STATUS"
                   
-                  if [ "$API_STATUS" != "000" ]; then
-                      echo "✅ API is responding"
+                  # Test Swagger
+                  SWAGGER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 http://localhost:5000/swagger/index.html || echo "000")
+                  echo "Swagger Status: HTTP $SWAGGER_STATUS"
+                  
+                  if [ "$API_STATUS" != "000" ] && [ "$SWAGGER_STATUS" != "000" ]; then
+                      echo "✅ API endpoints are responding"
+                      echo "🌐 Platform: https://f-learn.app"
                   else
-                      echo "⚠️ API not responding yet (may need more startup time)"
+                      echo "⚠️ API starting up - may need more time"
                   fi
               else
                   echo "❌ Service failed to start"
@@ -82,7 +86,7 @@ jobs:
               exit 1
           fi
           
-          # Final status check
+          # Final status
           systemctl status flearn-backend --no-pager
           
-          echo "🎉 FLearn Backend Deployment Completed Successfully!"
+          echo "🎉 FLearn Education Platform Deployment Completed!"
