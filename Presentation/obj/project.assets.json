@@ -7836,32 +7836,39 @@
     ]
   },
   "packageFolders": {
-    "/root/.nuget/packages/": {}
+    "C:\\Users\\User\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/root/FLearn-Backend/Presentation/Presentation.csproj",
+      "projectUniqueName": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\Presentation\\Presentation.csproj",
       "projectName": "Presentation",
-      "projectPath": "/root/FLearn-Backend/Presentation/Presentation.csproj",
-      "packagesPath": "/root/.nuget/packages/",
-      "outputPath": "/root/FLearn-Backend/Presentation/obj/",
+      "projectPath": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\Presentation\\Presentation.csproj",
+      "packagesPath": "C:\\Users\\User\\.nuget\\packages\\",
+      "outputPath": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\Presentation\\obj\\",
       "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+      ],
       "configFilePaths": [
-        "/root/.nuget/NuGet/NuGet.Config"
+        "C:\\Users\\User\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net8.0"
       ],
       "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
           "projectReferences": {
-            "/root/FLearn-Backend/BLL/BLL.csproj": {
-              "projectPath": "/root/FLearn-Backend/BLL/BLL.csproj"
+            "E:\\SEP\\flearn-language-api\\FLearn-Backend\\BLL\\BLL.csproj": {
+              "projectPath": "E:\\SEP\\flearn-language-api\\FLearn-Backend\\BLL\\BLL.csproj"
             }
           }
         }
@@ -7875,7 +7882,8 @@
         "enableAudit": "true",
         "auditLevel": "low",
         "auditMode": "direct"
-      }
+      },
+      "SdkAnalysisLevel": "9.0.300"
     },
     "frameworks": {
       "net8.0": {
@@ -7929,7 +7937,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/8.0.414/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

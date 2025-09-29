@@ -36,11 +36,11 @@ namespace BLL.Services.Lessons
 
             var selectedCourse = await _unit.Courses.Query()
                 .Include(c => c.CourseUnits)
-                .FirstOrDefaultAsync(c => c.CourseID == courseId);
+                .FirstOrDefaultAsync(c => c.CourseID == courseId && c.TeacherID == teacherId);
 
             if (selectedCourse == null)
             {
-                return BaseResponse<LessonResponse>.Fail("Selected course not found.");
+                return BaseResponse<LessonResponse>.Fail("Selected course not found or you are not the owner of this course.");
             }
 
             if (selectedCourse.Status != CourseStatus.Draft && selectedCourse.Status != CourseStatus.Rejected)
@@ -291,10 +291,10 @@ namespace BLL.Services.Lessons
 
             var selectedCourse = await _unit.Courses.Query()
                 .Include(c => c.CourseUnits)
-                .FirstOrDefaultAsync(c => c.CourseID == courseId);
+                .FirstOrDefaultAsync(c => c.CourseID == courseId && c.TeacherID == teacherId);
 
             if (selectedCourse == null)
-                return BaseResponse<LessonResponse>.Fail("Selected course not found.");
+                return BaseResponse<LessonResponse>.Fail("Selected course not found or you are not the owner of this course.");
 
             if (selectedCourse.Status != CourseStatus.Draft && selectedCourse.Status != CourseStatus.Rejected)
                 return BaseResponse<LessonResponse>.Fail("Only Draft or Rejected courses can be updated.");

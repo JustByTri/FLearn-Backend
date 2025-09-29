@@ -35,6 +35,6 @@ namespace DAL.Models
         public CourseUnit? CourseUnit { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-        public virtual ICollection<Exercise> Exerices { get; set; } = new List<Exercise>();
+        public virtual ICollection<Exercise> Exercises { get; set; } = new List<Exercise>();
     }
 }
