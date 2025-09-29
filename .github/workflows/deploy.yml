@@ -1,45 +1,88 @@
-name: Deploy FLearn Backend to VPS
+name: Deploy FLearn Backend
 
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup .NET 8.0
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '8.0.x'
-        
-    - name: Restore dependencies
-      run: dotnet restore
-      
-    - name: Build project
-      run: dotnet build --configuration Release --no-restore
-      
-    - name: Publish project  
-      run: dotnet publish -c Release -o ./publish
-      
-    - name: Deploy to VPS via SSH
+    - name: Deploy to Production Server
       uses: appleboy/ssh-action@v1.0.0
       with:
-        host: ${{ secrets.VPS_HOST }}
-        username: ${{ secrets.VPS_USERNAME }}
-        key: ${{ secrets.VPS_SSH_KEY }}
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.KEY }}
         script: |
-          echo "Starting deployment..."
+          echo "🚀 Starting FLearn Backend Deployment..."
+          echo "Time: $(date)"
+          
+          # Stop the service
           systemctl stop flearn-backend
+          
+          # Navigate to project directory
           cd /root/FLearn-Backend
+          
+          # Pull latest changes
           git pull origin main
-          dotnet publish -c Release -o /var/www/flearn-backend-published
-          systemctl start flearn-backend
+          
+          # Clear any previous build artifacts
+          if [ -d "/var/www/flearn-backend-published" ]; then
+              rm -rf /var/www/flearn-backend-published/*
+          fi
+          
+          # Build and publish the Presentation project
+          echo "Building Presentation project..."
+          cd Presentation
+          
+          # Restore packages first
+          dotnet restore --verbosity minimal
+          
+          # Publish the application
+          dotnet publish -c Release -o /var/www/flearn-backend-published --verbosity minimal
+          
+          # Verify the build output
+          if [ -f "/var/www/flearn-backend-published/Presentation.dll" ]; then
+              echo "✅ Build successful - Presentation.dll found"
+              
+              # Set proper permissions
+              chown -R www-data:www-data /var/www/flearn-backend-published
+              chmod +x /var/www/flearn-backend-published/Presentation.dll
+              
+              # Start the service
+              systemctl start flearn-backend
+              
+              # Wait for service to start
+              sleep 15
+              
+              # Check service status
+              if systemctl is-active --quiet flearn-backend; then
+                  echo "✅ FLearn Backend service started successfully"
+                  
+                  # Test API endpoint
+                  API_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 20 http://localhost:5000/ || echo "000")
+                  echo "API Status: HTTP $API_STATUS"
+                  
+                  if [ "$API_STATUS" != "000" ]; then
+                      echo "✅ API is responding"
+                  else
+                      echo "⚠️ API not responding yet (may need more startup time)"
+                  fi
+              else
+                  echo "❌ Service failed to start"
+                  systemctl status flearn-backend --no-pager
+                  exit 1
+              fi
+              
+          else
+              echo "❌ Build failed - Presentation.dll not found"
+              exit 1
+          fi
+          
+          # Final status check
           systemctl status flearn-backend --no-pager
-          echo "Deployment completed!"
+          
+          echo "🎉 FLearn Backend Deployment Completed Successfully!"
