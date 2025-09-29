@@ -226,6 +226,46 @@ namespace BLL.Services.Upload
                 Folder = folder
             };
         }
+        public async Task<UploadResultDto> UploadAudioAsync(IFormFile file, string folder = "audios")
+        {
+            if (file == null || file.Length == 0)
+                throw new ArgumentException("File âm thanh không hợp lệ");
+
+            const long maxAudioSize = 20 * 1024 * 1024;
+            if (file.Length > maxAudioSize)
+                throw new ArgumentException($"File âm thanh không được vượt quá {maxAudioSize / (1024 * 1024)} MB");
+
+            var allowedExtensions = new[] { ".mp3", ".wav", ".ogg", ".flac", ".aac", ".m4a" };
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(ext))
+                throw new ArgumentException("Chỉ hỗ trợ file âm thanh: MP3, WAV, OGG, FLAC, AAC, M4A");
+
+            using var stream = file.OpenReadStream();
+
+            var uploadParams = new VideoUploadParams()
+            {
+                File = new FileDescription(file.FileName, stream),
+                Folder = folder,
+                UseFilename = true,
+                UniqueFilename = true,
+                Overwrite = false,
+            };
+
+            var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+            if (uploadResult.Error != null)
+                throw new Exception($"Lỗi upload audio: {uploadResult.Error.Message}");
+
+            return new UploadResultDto
+            {
+                Url = uploadResult.SecureUrl.ToString(),
+                PublicId = uploadResult.PublicId,
+                OriginalFileName = file.FileName,
+                FileSize = file.Length,
+                FileType = file.ContentType,
+                UploadedAt = DateTime.UtcNow,
+                Folder = folder
+            };
+        }
     }
 }
 
