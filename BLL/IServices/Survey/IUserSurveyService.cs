@@ -19,6 +19,10 @@ namespace BLL.IServices.Survey
   
         Task<List<string>> GetSpeakingChallengesOptionsAsync();
         Task<List<string>> GetPreferredAccentOptionsAsync();
+        /// <summary>
+        /// Cập nhật ngôn ngữ ưa thích khi user đổi ngôn ngữ
+        /// </summary>
+        Task UpdatePreferredLanguageAsync(Guid userId, Guid newLanguageId);
     }
 }
 

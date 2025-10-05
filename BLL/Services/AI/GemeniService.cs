@@ -1,7 +1,9 @@
 ﻿using BLL.IServices.AI;
 using BLL.Settings;
+using Common.DTO.Assement;
 using Common.DTO.Learner;
 using Common.DTO.Teacher;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
@@ -42,7 +44,7 @@ namespace BLL.Services.AI
             {
                 _logger.LogError(ex, "Error generating course recommendations for user survey {SurveyId}", survey.SurveyID);
 
-                // Return fallback response instead of throwing
+               
                 return new AiCourseRecommendationDto
                 {
                     RecommendedCourses = new List<CourseRecommendationDto>(),
@@ -81,7 +83,7 @@ namespace BLL.Services.AI
             {
                 _logger.LogError(ex, "Error generating study tips for user survey {SurveyId}", survey.SurveyID);
 
-                // Return fallback tips
+           
                 return new List<string>
                 {
                     "Học đều đặn mỗi ngày, dù chỉ 15-30 phút",
@@ -242,10 +244,10 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
             {
                 _logger.LogDebug("Parsing AI response: {Response}", response);
 
-                // Clean the response - remove markdown code blocks if present
+              
                 var cleanedResponse = response.Trim();
 
-                // Handle different markdown formats
+               
                 if (cleanedResponse.StartsWith("```json"))
                 {
                     cleanedResponse = cleanedResponse.Replace("```json", "").Replace("```", "").Trim();
@@ -255,10 +257,10 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
                     cleanedResponse = cleanedResponse.Replace("```", "").Trim();
                 }
 
-                // Remove any other markdown artifacts
+              
                 cleanedResponse = cleanedResponse.Replace("**", "").Replace("*", "");
 
-                // Find JSON boundaries
+                
                 var jsonStart = cleanedResponse.IndexOf('{');
                 var jsonEnd = cleanedResponse.LastIndexOf('}') + 1;
 
@@ -362,7 +364,7 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
             return CreateFallbackRecommendation(availableCourses);
         }
 
-        // Helper method to sanitize text from AI
+
         private string? SanitizeText(string? text)
         {
             if (string.IsNullOrEmpty(text))
@@ -378,7 +380,7 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
             return sanitized.Length > 10 ? sanitized : null;
         }
 
-        // Helper method to sanitize study tips
+       
         private List<string>? SanitizeStudyTips(List<string>? tips)
         {
             if (tips == null || !tips.Any())
@@ -398,7 +400,7 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
             return sanitizedTips.Any() ? sanitizedTips : null;
         }
 
-        // Helper method to get default study tips
+      
         private List<string> GetDefaultStudyTips()
         {
             return new List<string>
@@ -413,7 +415,7 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
     };
         }
 
-        // Helper method to create fallback recommendation
+     
         private AiCourseRecommendationDto CreateFallbackRecommendation(List<CourseInfoDto> availableCourses)
         {
             var fallbackRecommendations = new List<CourseRecommendationDto>();
@@ -701,8 +703,1895 @@ Trả lời bằng tiếng Việt, chi tiết và có căn cứ rõ ràng.";
                 AnalyzedAt = DateTime.UtcNow
             };
         }
+        public async Task<VoiceEvaluationResult> EvaluateVoiceResponseDirectlyAsync(VoiceAssessmentQuestion question, IFormFile audioFile, string languageCode)
+        {
+            try
+            {
+          
+                var audioBase64 = await ConvertAudioToBase64Async(audioFile);
+                var prompt = BuildVoiceEvaluationPromptWithAudio(question, languageCode);
 
-    
+                
+                var response = await CallGeminiApiWithAudioAsync(prompt, audioBase64, audioFile.ContentType);
+                return ParseVoiceEvaluationResponse(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error evaluating voice response directly for question {QuestionNumber}", question.QuestionNumber);
+                return CreateFallbackVoiceEvaluation();
+            }
+        }
+
+      
+        private async Task<string> ConvertAudioToBase64Async(IFormFile audioFile)
+        {
+            try
+            {
+                // Validate audio file
+                var allowedTypes = new[] { "audio/mp3", "audio/wav", "audio/m4a", "audio/webm", "audio/mpeg" };
+                if (!allowedTypes.Contains(audioFile.ContentType.ToLower()))
+                    throw new ArgumentException("Chỉ hỗ trợ file âm thanh MP3, WAV, M4A, WebM");
+
+                // Max file size: 10MB
+                if (audioFile.Length > 10 * 1024 * 1024)
+                    throw new ArgumentException("File âm thanh không được vượt quá 10MB");
+
+                using var memoryStream = new MemoryStream();
+                await audioFile.CopyToAsync(memoryStream);
+                var audioBytes = memoryStream.ToArray();
+                return Convert.ToBase64String(audioBytes);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error converting audio to base64");
+                throw;
+            }
+        }
+
+   
+        private string BuildVoiceEvaluationPromptWithAudio(VoiceAssessmentQuestion question, string languageCode)
+        {
+            var languageStandards = GetLanguageStandards(languageCode);
+            var languageName = GetLanguageName(languageCode);
+
+            return $@"# 🌍 ĐÁNH GIÁ GIỌNG NÓI {languageName.ToUpper()} TỪ FILE ÂM THANH
+
+## ⚠️ QUAN TRỌNG: LANGUAGE VALIDATION
+**NGÔN NGỮ ĐÁNH GIÁ**: {languageName} ({languageCode})
+**FRAMEWORK**: {GetStandardName(languageCode)}
+
+🚨 **CRITICAL**: Audio PHẢI là {languageName}. Nếu phát hiện ngôn ngữ khác, báo lỗi ngay!
+
+## Thông tin câu hỏi:
+**Cấp độ**: {question.Difficulty}
+**Loại**: {question.QuestionType}
+**Câu hỏi**: {question.Question}
+**Yêu cầu**: {question.PromptText}
+
+## Tiêu chuẩn đánh giá {languageName}:
+{languageStandards}
+
+## 🔍 BƯỚC 1: LANGUAGE DETECTION
+Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
+- Nếu audio là {languageName} → Tiếp tục đánh giá
+- Nếu audio KHÔNG phải {languageName} → Trả về lỗi ngay lập tức
+
+## 🎯 BƯỚC 2: ĐÁNH GIÁ (chỉ khi audio đúng ngôn ngữ)
+
+### 1. Phát âm (Pronunciation) - 30%
+- Độ chính xác phát âm từng từ
+- Ngữ điệu và trọng âm đúng
+- Âm thanh rõ ràng, dễ hiểu
+- Phát âm các âm vị khó
+
+### 2. Độ lưu loát (Fluency) - 25%
+- Tốc độ nói phù hợp với cấp độ
+- Ít ngập ngừng, lặp từ
+- Kết nối tự nhiên giữa các từ/câu
+- Nhịp điệu tự nhiên
+
+### 3. Ngữ pháp (Grammar) - 25%
+- Cấu trúc câu đúng ngữ pháp
+- Sử dụng thì và dạng từ chính xác
+- Trật tự từ phù hợp với ngôn ngữ
+- Độ phức tạp phù hợp với cấp độ
+
+### 4. Từ vựng (Vocabulary) - 20%
+- Phạm vi từ vựng phong phú
+- Sử dụng từ chính xác trong ngữ cảnh
+- Đa dạng trong cách diễn đạt
+- Từ vựng phù hợp với chủ đề
+
+## Yêu cầu đặc biệt cho {languageName}:
+{GetLanguageSpecificCriteria(languageCode)}
+
+## Format trả về:
+
+### Nếu ĐÚNG ngôn ngữ {languageName}:
+{{
+    ""languageDetected"": ""{languageCode}"",
+    ""isCorrectLanguage"": true,
+    ""overallScore"": 85,
+    ""pronunciation"": {{
+        ""score"": 80,
+        ""level"": ""Good"",
+        ""mispronuncedWords"": [""từ phát âm sai""],
+        ""feedback"": ""Phân tích chi tiết về phát âm""
+    }},
+    ""fluency"": {{
+        ""score"": 90,
+        ""speakingRate"": 150,
+        ""pauseCount"": 3,
+        ""rhythm"": ""Natural"",
+        ""feedback"": ""Đánh giá về độ lưu loát""
+    }},
+    ""grammar"": {{
+        ""score"": 85,
+        ""grammarErrors"": [""lỗi ngữ pháp cụ thể""],
+        ""structureAssessment"": ""Đánh giá cấu trúc câu"",
+        ""feedback"": ""Phân tích ngữ pháp chi tiết""
+    }},
+    ""vocabulary"": {{
+        ""score"": 80,
+        ""rangeAssessment"": ""Good"",
+        ""accuracyAssessment"": ""Mostly accurate"",
+        ""feedback"": ""Đánh giá từ vựng""
+    }},
+    ""detailedFeedback"": ""Đánh giá tổng quan chi tiết về khả năng nói..."",
+    ""strengths"": [""Điểm mạnh 1"", ""Điểm mạnh 2""],
+    ""areasForImprovement"": [""Cần cải thiện 1"", ""Cần cải thiện 2""]
+}}
+
+### Nếu SAI ngôn ngữ:
+{{
+    ""languageDetected"": ""detected_language_code"",
+    ""isCorrectLanguage"": false,
+    ""error"": ""LANGUAGE_MISMATCH"",
+    ""message"": ""Audio được phát hiện là [detected_language] nhưng assessment yêu cầu {languageName}"",
+    ""expectedLanguage"": ""{languageCode}"",
+    ""detectedLanguage"": ""detected_language_code"",
+    ""overallScore"": 0,
+    ""pronunciation"": {{
+        ""score"": 0,
+        ""level"": ""Language Error"",
+        ""feedback"": ""❌ Sai ngôn ngữ: Expected {languageName}, detected [detected_language]""
+    }},
+    ""detailedFeedback"": ""🚨 **Lỗi ngôn ngữ**: Bạn đã gửi audio [detected_language] nhưng bài test này yêu cầu {languageName}. Vui lòng ghi âm lại bằng {languageName}.""
+}}
+
+**🚨 LƯU Ý CRITICAL**: 
+- LUÔN LUÔN kiểm tra ngôn ngữ trước khi đánh giá
+- Nếu sai ngôn ngữ, PHẢI trả về error format
+- Không bao giờ đánh giá tiếng Anh theo JLPT hay tiếng Nhật theo CEFR!";
+        }
+
+     
+        private string GetLanguageSpecificCriteria(string languageCode)
+        {
+            return languageCode.ToUpper() switch
+            {
+                "EN" => @"
+- **Stress patterns**: Đánh giá trọng âm từ và câu
+- **Intonation**: Ngữ điệu lên xuống tự nhiên
+- **Connected speech**: Liên kết âm giữa các từ
+- **Vowel sounds**: Đặc biệt chú ý các nguyên âm khó",
+
+                "ZH" => @"
+- **Tones**: Đánh giá 4 thanh điệu chính xác
+- **Initials & Finals**: Âm đầu và âm cuối chuẩn
+- **Tone changes**: Biến điệu thanh trong từ ghép
+- **Rhythm**: Nhịp điệu đặc trưng tiếng Trung",
+
+                "JP" => @"
+- **Pitch accent**: Trọng âm cao thấp đúng
+- **Mora timing**: Nhịp điệu đều đặn
+- **Long vowels**: Nguyên âm dài chính xác
+- **Consonant clusters**: Cụm phụ âm đúng",
+
+                _ => "Đánh giá theo tiêu chuẩn chung của ngôn ngữ"
+            };
+        }
+
+
+        private async Task<string> CallGeminiApiWithAudioAsync(string prompt, string audioBase64, string mimeType)
+        {
+            try
+            {
+                var requestBody = new
+                {
+                    contents = new[]
+                    {
+                new
+                {
+                    parts = new object[]
+                    {
+                        new { text = prompt },
+                        new
+                        {
+                            inline_data = new
+                            {
+                                mime_type = mimeType,
+                                data = audioBase64
+                            }
+                        }
+                    }
+                }
+            },
+                    generationConfig = new
+                    {
+                        temperature = 0.4,
+                        maxOutputTokens = _settings.MaxTokens,
+                        topP = 0.8,
+                        topK = 10
+                    }
+                };
+
+                var jsonContent = JsonSerializer.Serialize(requestBody, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                });
+
+                var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+             
+                var model = "gemini-2.5-flash-lite"; 
+                var url = $"{_settings.BaseUrl}/models/{model}:generateContent?key={_settings.ApiKey}";
+
+                _logger.LogInformation("Calling Gemini API with audio: {Url}", url);
+                _logger.LogInformation("Request size: {Size} bytes", jsonContent.Length);
+
+                var response = await _httpClient.PostAsync(url, content);
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                _logger.LogInformation("Response status: {Status}, Content length: {Length}",
+                    response.StatusCode, responseContent.Length);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("Gemini API error: {StatusCode} - {Content}", response.StatusCode, responseContent);
+                    throw new HttpRequestException($"Gemini API returned {response.StatusCode}: {responseContent}");
+                }
+
+           
+                if (string.IsNullOrEmpty(responseContent))
+                {
+                    _logger.LogError("Gemini API returned empty response");
+                    throw new HttpRequestException("Gemini API returned empty response");
+                }
+
+                var geminiResponse = JsonSerializer.Deserialize<GeminiResponse>(responseContent, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                });
+
+                var result = geminiResponse?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text ?? "";
+
+             
+                if (string.IsNullOrEmpty(result))
+                {
+                    _logger.LogError("Gemini API returned valid JSON but empty text content");
+                    throw new HttpRequestException("Gemini API returned empty text content");
+                }
+
+                _logger.LogInformation("Gemini API audio response received: {Length} characters", result.Length);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling Gemini API with audio");
+                throw;
+            }
+        }
+
+
+        public async Task<VoiceAssessmentResultDto> GenerateVoiceAssessmentResultAsync(
+    string languageCode,
+    string languageName,
+    List<VoiceAssessmentQuestion> questions,
+    string? goalName = null)
+        {
+            try
+            {
+                var prompt = BuildVoiceAssessmentResultPrompt(languageCode, languageName, questions, goalName);
+                var response = await CallGeminiApiAsync(prompt);
+                return ParseVoiceAssessmentResult(response, languageName, questions);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating voice assessment result");
+                return CreateFallbackVoiceAssessmentResult(languageName, questions);
+            }
+        }
+
+        private string BuildVoiceAssessmentResultPrompt(
+            string languageCode,
+            string languageName,
+            List<VoiceAssessmentQuestion> questions,
+            string? goalName = null)
+        {
+            var completedQuestions = questions.Where(q => !q.IsSkipped && q.EvaluationResult != null).ToList();
+            var completedCount = completedQuestions.Count;
+            var totalQuestions = questions.Count;
+
+            var questionsJson = JsonSerializer.Serialize(completedQuestions.Select(q => new {
+                q.QuestionNumber,
+                q.Difficulty,
+                OverallScore = q.EvaluationResult?.OverallScore ?? 0,
+                PronunciationScore = q.EvaluationResult?.Pronunciation?.Score ?? 0,
+                FluencyScore = q.EvaluationResult?.Fluency?.Score ?? 0,
+                GrammarScore = q.EvaluationResult?.Grammar?.Score ?? 0,
+                VocabularyScore = q.EvaluationResult?.Vocabulary?.Score ?? 0
+            }), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+            var goalContext = !string.IsNullOrEmpty(goalName)
+                ? $"\n\n## Mục tiêu học tập:\n**Goal**: {goalName}\n\n*Lưu ý: Roadmap và gợi ý cần phù hợp với mục tiêu '{goalName}'*"
+                : "";
+
+            var standardFramework = GetStandardFramework(languageCode);
+
+            return $@"# Phân tích kết quả đánh giá giọng nói {languageName}
+
+## Thông tin bài test:
+- **Số câu hoàn thành**: {completedCount}/{totalQuestions}
+- **Độ tin cậy đánh giá**: {GetConfidenceLevel(completedCount, totalQuestions)}%
+{goalContext}
+
+## Dữ liệu điểm chi tiết:
+{questionsJson}
+
+## Khung chuẩn {GetStandardName(languageCode)}:
+{standardFramework}
+
+## YÊU CẦU ĐÁNH GIÁ:
+
+### 1. Đánh giá CHÍNH XÁC dựa trên {completedCount} câu đã làm:
+- KHÔNG tự động cho điểm 70 hay bất kỳ điểm mặc định nào
+- Tính điểm dựa 100% trên câu đã hoàn thành
+- Nêu rõ giới hạn nếu completedCount < {totalQuestions}
+
+### 2. Xác định Level theo khung chuẩn {GetStandardName(languageCode)}:
+{GetLevelDeterminationRules(languageCode)}
+
+### 3. Cung cấp Roadmap phù hợp với Goal:
+{(!string.IsNullOrEmpty(goalName) ? $"- Roadmap phải hướng tới mục tiêu '{goalName}'" : "")}
+- Các phase phải cụ thể và thực tế
+- Thời gian ước tính hợp lý
+
+## Format JSON trả về:
+{{
+    ""determinedLevel"": ""{GetExampleLevel(languageCode)}"",
+    ""levelConfidence"": {GetConfidenceLevel(completedCount, totalQuestions)},
+    ""assessmentCompleteness"": ""{completedCount}/{totalQuestions} câu"",
+    ""overallScore"": <điểm trung bình từ {completedCount} câu>,
+    ""pronunciationScore"": <điểm trung bình pronunciation>,
+    ""fluencyScore"": <điểm trung bình fluency>,
+    ""grammarScore"": <điểm trung bình grammar>,
+    ""vocabularyScore"": <điểm trung bình vocabulary>,
+    ""detailedFeedback"": ""Dựa trên {completedCount}/{totalQuestions} câu đã hoàn thành...\n\n{(completedCount < totalQuestions ? $"⚠️ **Lưu ý**: Kết quả này có độ tin cậy {GetConfidenceLevel(completedCount, totalQuestions)}%. Để có đánh giá chính xác hơn, vui lòng hoàn thành đủ {totalQuestions} câu." : "")}"",
+    ""keyStrengths"": [""Điểm mạnh từ {completedCount} câu""],
+    ""improvementAreas"": [""Cần cải thiện""{(completedCount < totalQuestions ? $", \"Hoàn thành thêm {totalQuestions - completedCount} câu\"" : "")}],
+    ""nextLevelRequirements"": ""Để đạt level [{GetNextLevel(languageCode)}], cần..."",
+    ""roadmap"": {{
+        ""currentLevel"": ""{GetExampleLevel(languageCode)}"",
+        ""targetLevel"": ""{GetNextLevel(languageCode)}"",
+        ""phases"": [
+            {{
+                ""phaseNumber"": 1,
+                ""title"": ""Phase phù hợp với mục tiêu {goalName ?? "học tập"}"",
+                ""duration"": ""4-8 tuần"",
+                ""goals"": [""Mục tiêu cụ thể""],
+                ""practiceActivities"": [""Hoạt động luyện tập""]
+            }}
+        ]
+    }}
+}}
+
+**LƯU Ý QUAN TRỌNG**:
+- Điểm số = average của {completedCount} câu thực tế (KHÔNG phải điểm giả định)
+- Level = xác định theo khung {GetStandardName(languageCode)} chính thức
+- Confidence = {GetConfidenceLevel(completedCount, totalQuestions)}% (giảm nếu thiếu câu)";
+        }
+
+        private int GetConfidenceLevel(int completed, int total)
+        {
+            return completed switch
+            {
+                0 => 0,
+                1 => 40,
+                2 => 60,
+                3 => 80,
+                _ when completed >= total => 95,
+                _ => 50
+            };
+        }
+        private string BuildVoiceAssessmentResultPrompt(string languageCode, string languageName, List<VoiceAssessmentQuestion> questions)
+        {
+            var completedQuestions = questions.Where(q => !q.IsSkipped && q.EvaluationResult != null).ToList();
+            var totalQuestions = questions.Count;
+            var completedCount = completedQuestions.Count;
+
+            var questionsJson = JsonSerializer.Serialize(completedQuestions.Select(q => new {
+                q.QuestionNumber,
+                q.Question,
+                q.Difficulty,
+                q.QuestionType,
+                OverallScore = q.EvaluationResult?.OverallScore ?? 0,
+                PronunciationScore = q.EvaluationResult?.Pronunciation?.Score ?? 0,
+                FluencyScore = q.EvaluationResult?.Fluency?.Score ?? 0,
+                GrammarScore = q.EvaluationResult?.Grammar?.Score ?? 0,
+                VocabularyScore = q.EvaluationResult?.Vocabulary?.Score ?? 0
+            }), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+            var standardFramework = GetStandardFramework(languageCode);
+
+            return $@"# Phân tích kết quả đánh giá giọng nói {languageName}
+
+## Thông tin bài test:
+- **Tổng số câu**: {totalQuestions}
+- **Số câu đã hoàn thành**: {completedCount}
+- **Số câu bỏ qua**: {totalQuestions - completedCount}
+
+## Dữ liệu câu hỏi và điểm chi tiết:
+{questionsJson}
+
+## Khung chuẩn đánh giá {languageName}:
+{standardFramework}
+
+## YÊU CẦU QUAN TRỌNG:
+
+### 1. Đánh giá dựa trên số câu thực tế:
+- Nếu làm 1/4 câu: Đánh giá dựa trên 1 câu đó, không extrapolate
+- Nếu làm 2/4 câu: Đánh giá dựa trên 2 câu đó
+- Nếu làm 3/4 câu: Đánh giá dựa trên 3 câu đó
+- Nếu làm đủ 4/4 câu: Đánh giá toàn diện
+
+### 2. Xác định cấp độ CHÍNH XÁC theo khung chuẩn:
+{GetLevelDeterminationRules(languageCode)}
+
+### 3. Điểm số phải phản ánh chính xác khả năng:
+- Không tự động cho điểm trung bình nếu thiếu dữ liệu
+- Nêu rõ giới hạn đánh giá do số câu ít
+- Đề xuất làm thêm câu nếu cần đánh giá chính xác hơn
+
+## Format trả về (JSON):
+{{
+    ""determinedLevel"": ""{GetExampleLevel(languageCode)}"",
+    ""levelConfidence"": 85,
+    ""assessmentCompleteness"": ""{completedCount}/{totalQuestions} câu"",
+    ""overallScore"": 75,
+    ""pronunciationScore"": 80,
+    ""fluencyScore"": 70,
+    ""grammarScore"": 75,
+    ""vocabularyScore"": 75,
+    ""detailedFeedback"": ""Dựa trên {completedCount} câu đã hoàn thành, khả năng speaking của bạn...\n\n⚠️ Lưu ý: Đánh giá này dựa trên {completedCount}/{totalQuestions} câu. Để có kết quả chính xác hơn, bạn nên hoàn thành tất cả câu hỏi."",
+    ""keyStrengths"": [""Điểm mạnh cụ thể từ {completedCount} câu""],
+    ""improvementAreas"": [""Cần cải thiện cụ thể""],
+    ""nextLevelRequirements"": ""Để đạt cấp độ tiếp theo [{GetNextLevel(languageCode)}], bạn cần..."",
+    ""roadmap"": {{
+        ""currentLevel"": ""{GetExampleLevel(languageCode)}"",
+        ""targetLevel"": ""{GetNextLevel(languageCode)}"",
+        ""estimatedTimeToNextLevel"": ""3-6 tháng với luyện tập đều đặn"",
+        ""phases"": [...]
+    }}
+}}
+
+**LƯU Ý**: 
+- Đánh giá phải dựa 100% trên {completedCount} câu đã hoàn thành
+- Trả về cấp độ CHÍNH XÁC theo khung {GetStandardName(languageCode)}
+- Không đoán mò hay extrapolate nếu thiếu dữ liệu
+- Nêu rõ giới hạn của đánh giá nếu số câu < 4";
+        }
+
+        // Helper methods cho khung chuẩn
+
+        private string GetStandardFramework(string languageCode)
+        {
+            return languageCode.ToUpper() switch
+            {
+                "EN" => @"
+### CEFR Framework (Common European Framework of Reference)
+
+**A1 (Beginner):**
+- Pronunciation: Basic sounds, heavy accent acceptable
+- Fluency: Slow, frequent pauses (60-80 words/min)
+- Grammar: Simple present, basic sentences
+- Vocabulary: 500-800 words
+- Can handle: Greetings, basic personal info
+
+**A2 (Elementary):**
+- Pronunciation: Clearer, some mistakes okay
+- Fluency: Still slow but smoother (80-100 words/min)
+- Grammar: Present/past tenses, simple connectors
+- Vocabulary: 1000-1500 words
+- Can handle: Daily routines, simple descriptions
+
+**B1 (Intermediate):**
+- Pronunciation: Generally clear, minor accent
+- Fluency: Natural pace (100-120 words/min)
+- Grammar: Most tenses, complex sentences
+- Vocabulary: 2000-3000 words
+- Can handle: Opinions, experiences, explanations
+
+**B2 (Upper-Intermediate):**
+- Pronunciation: Clear, natural intonation
+- Fluency: Smooth, confident (120-140 words/min)
+- Grammar: Advanced structures, conditionals
+- Vocabulary: 3500-5000 words
+- Can handle: Abstract topics, arguments
+
+**C1 (Advanced):**
+- Pronunciation: Near-native, subtle errors
+- Fluency: Effortless (140-160 words/min)
+- Grammar: Complex, sophisticated structures
+- Vocabulary: 6000-8000 words
+- Can handle: Complex discussions, nuanced ideas
+
+**C2 (Proficient):**
+- Pronunciation: Native-like
+- Fluency: Natural, idiomatic (160+ words/min)
+- Grammar: Flawless, stylistic variety
+- Vocabulary: 10000+ words
+- Can handle: Any topic with precision",
+
+                "ZH" => @"
+### HSK Framework (Hanyu Shuiping Kaoshi)
+
+**HSK 1 (Beginner):**
+- Tones: Can produce 4 tones but inconsistent
+- Pronunciation: Basic initials/finals, many errors
+- Fluency: Very slow, word-by-word
+- Vocabulary: 150-300 characters
+- Can handle: Self-introduction, very basic phrases
+
+**HSK 2 (Elementary):**
+- Tones: More consistent, occasional errors
+- Pronunciation: Clearer but still learning
+- Fluency: Slow, short sentences
+- Vocabulary: 300-600 characters
+- Can handle: Simple daily conversations
+
+**HSK 3 (Pre-Intermediate):**
+- Tones: Generally accurate (80%+)
+- Pronunciation: Clear enough to understand
+- Fluency: Can speak in paragraphs
+- Vocabulary: 600-1200 characters
+- Can handle: Daily life, work, study topics
+
+**HSK 4 (Intermediate):**
+- Tones: Accurate (90%+), natural tone changes
+- Pronunciation: Clear, proper rhythm
+- Fluency: Smooth, few hesitations
+- Vocabulary: 1200-2500 characters
+- Can handle: Complex topics, discussions
+
+**HSK 5 (Upper-Intermediate):**
+- Tones: Highly accurate, natural flow
+- Pronunciation: Clear, proper stress patterns
+- Fluency: Natural pace, good coherence
+- Vocabulary: 2500-5000 characters
+- Can handle: Abstract topics, Chinese media
+
+**HSK 6 (Advanced):**
+- Tones: Native-like accuracy and variation
+- Pronunciation: Excellent, subtle nuances
+- Fluency: Effortless, idiomatic expressions
+- Vocabulary: 5000+ characters, chengyu usage
+- Can handle: Professional, academic discussions",
+
+                "JP" => @"
+### JLPT Framework (Japanese Language Proficiency Test)
+
+**N5 (Beginner):**
+- Pitch Accent: Learning basic patterns
+- Pronunciation: Can produce hiragana sounds
+- Fluency: Very slow, word-by-word
+- Grammar: Basic particles, verb forms
+- Vocabulary: 800 words, 100 kanji
+- Can handle: Self-introduction, basic needs
+
+**N4 (Elementary):**
+- Pitch Accent: Improving, still inconsistent
+- Pronunciation: Clearer, proper long vowels
+- Fluency: Short sentences, hesitations
+- Grammar: Basic verb conjugations, て-form
+- Vocabulary: 1500 words, 300 kanji
+- Can handle: Daily conversations, simple requests
+
+**N3 (Intermediate):**
+- Pitch Accent: More natural, most words correct
+- Pronunciation: Clear, proper mora timing
+- Fluency: Can maintain conversation
+- Grammar: -tai, -たら, potential form
+- Vocabulary: 3750 words, 650 kanji
+- Can handle: Work situations, explanations
+
+**N2 (Upper-Intermediate):**
+- Pitch Accent: Natural, compound words correct
+- Pronunciation: Clear, natural rhythm
+- Fluency: Smooth, appropriate pauses
+- Grammar: Keigo basics, complex sentences
+- Vocabulary: 6000 words, 1000 kanji
+- Can handle: Abstract topics, business Japanese
+
+**N1 (Advanced):**
+- Pitch Accent: Native-like precision
+- Pronunciation: Excellent, natural assimilation
+- Fluency: Effortless, idiomatic usage
+- Grammar: Advanced keigo, literary forms
+- Vocabulary: 10000 words, 2000+ kanji
+- Can handle: Professional, academic contexts",
+
+                _ => "Standard language proficiency framework"
+            };
+        }
+
+        private string GetLevelDeterminationRules(string languageCode)
+        {
+            return languageCode.ToUpper() switch
+            {
+                "EN" => @"
+**Quy tắc xác định CEFR Level:**
+- A1: Overall 20-40, can produce basic sounds
+- A2: Overall 40-55, simple sentences with errors
+- B1: Overall 55-70, understandable with some effort
+- B2: Overall 70-85, clear and relatively fluent
+- C1: Overall 85-95, sophisticated and natural
+- C2: Overall 95-100, near-native proficiency
+
+**Thang đo chi tiết:**
+- Pronunciation score trọng số 30%
+- Fluency score trọng số 25%
+- Grammar score trọng số 25%
+- Vocabulary score trọng số 20%",
+
+                "ZH" => @"
+**Quy tắc xác định HSK Level:**
+- HSK 1: Overall 20-35, basic tone production
+- HSK 2: Overall 35-50, simple phrases clear
+- HSK 3: Overall 50-65, understandable Chinese
+- HSK 4: Overall 65-80, good fluency and accuracy
+- HSK 5: Overall 80-90, near-native fluency
+- HSK 6: Overall 90-100, native-like proficiency
+
+**Đặc biệt chú trọng Tones (40% trọng số):**
+- Tones accurate < 70%: Max HSK 2
+- Tones accurate 70-85%: HSK 3-4
+- Tones accurate > 85%: HSK 5-6",
+
+                "JP" => @"
+**Quy tắc xác định JLPT Level:**
+- N5: Overall 20-35, basic hiragana pronunciation
+- N4: Overall 35-50, simple Japanese understandable
+- N3: Overall 50-70, daily conversation capable
+- N2: Overall 70-85, business Japanese capable
+- N1: Overall 85-100, native-like proficiency
+
+**Đặc biệt chú trọng Pitch Accent (35% trọng số):**
+- Pitch errors > 50%: Max N4
+- Pitch errors 30-50%: N3-N2
+- Pitch errors < 30%: N2-N1",
+
+                _ => "Standard proficiency determination rules"
+            };
+        }
+
+        private string GetExampleLevel(string languageCode)
+        {
+            return languageCode.ToUpper() switch
+            {
+                "EN" => "B1",
+                "ZH" => "HSK 3",
+                "JP" => "N3",
+                _ => "Intermediate"
+            };
+        }
+
+        private string GetNextLevel(string languageCode)
+        {
+            return languageCode.ToUpper() switch
+            {
+                "EN" => "B2",
+                "ZH" => "HSK 4",
+                "JP" => "N2",
+                _ => "Advanced"
+            };
+        }
+
+        private string GetStandardName(string languageCode)
+        {
+            return languageCode.ToUpper() switch
+            {
+                "EN" => "CEFR",
+                "ZH" => "HSK",
+                "JP" => "JLPT",
+                _ => "Standard"
+            };
+        }
+
+        // Helper methods for parsing and fallback
+        private VoiceAssessmentResultDto ParseVoiceAssessmentResult(string response, string languageName, List<VoiceAssessmentQuestion> questions)
+        {
+            try
+            {
+                var cleanedResponse = CleanJsonResponse(response);
+                var result = JsonSerializer.Deserialize<VoiceAssessmentResultDto>(cleanedResponse, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (result != null)
+                {
+                    result.LanguageName = languageName;
+                    result.CompletedAt = DateTime.UtcNow;
+                    return result;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error parsing voice assessment result");
+            }
+
+            return CreateFallbackVoiceAssessmentResult(languageName, questions);
+        }
+
+        private VoiceAssessmentResultDto CreateFallbackVoiceAssessmentResult(string languageName, List<VoiceAssessmentQuestion> questions)
+        {
+            var completedQuestions = questions.Where(q => !q.IsSkipped && q.EvaluationResult != null).ToList();
+            var totalQuestions = questions.Count;
+            var completedCount = completedQuestions.Count;
+
+            // ⚠️ KHÔNG CHO ĐIỂM MẶC ĐỊNH - Đánh giá dựa trên câu thực tế
+            if (completedCount == 0)
+            {
+                return new VoiceAssessmentResultDto
+                {
+                    LanguageName = languageName,
+                    DeterminedLevel = "Unassessed",
+                    LevelConfidence = 0,
+                    AssessmentCompleteness = $"0/{totalQuestions} câu",
+                    OverallScore = 0,
+                    PronunciationScore = 0,
+                    FluencyScore = 0,
+                    GrammarScore = 0,
+                    VocabularyScore = 0,
+                    DetailedFeedback = $"⚠️ Không thể đánh giá vì chưa hoàn thành câu nào.\n\nVui lòng hoàn thành ít nhất 2-3 câu để có kết quả đánh giá chính xác.",
+                    KeyStrengths = new List<string> { "Đã tham gia bài test" },
+                    ImprovementAreas = new List<string> {
+                "Cần hoàn thành các câu hỏi để được đánh giá",
+                $"Còn {totalQuestions} câu chưa làm"
+            },
+                    NextLevelRequirements = "Hoàn thành bài test để biết yêu cầu cấp độ tiếp theo",
+                    CompletedAt = DateTime.UtcNow
+                };
+            }
+
+            // Tính điểm dựa trên câu đã hoàn thành
+            var avgPronunciation = (int)completedQuestions.Average(q => q.EvaluationResult!.Pronunciation.Score);
+            var avgFluency = (int)completedQuestions.Average(q => q.EvaluationResult!.Fluency.Score);
+            var avgGrammar = (int)completedQuestions.Average(q => q.EvaluationResult!.Grammar.Score);
+            var avgVocabulary = (int)completedQuestions.Average(q => q.EvaluationResult!.Vocabulary.Score);
+            var avgOverall = (int)completedQuestions.Average(q => q.EvaluationResult!.OverallScore);
+
+            // Giảm confidence nếu thiếu dữ liệu
+            var confidence = completedCount switch
+            {
+                1 => 40, // 1/4 câu - confidence thấp
+                2 => 60, // 2/4 câu - confidence trung bình
+                3 => 80, // 3/4 câu - confidence khá
+                4 => 95, // 4/4 câu - confidence cao
+                _ => 50
+            };
+
+            var level = DetermineLevelFromScore(avgOverall, languageName);
+            var completenessWarning = completedCount < totalQuestions
+                ? $"\n\n⚠️ **Giới hạn đánh giá**: Kết quả này dựa trên {completedCount}/{totalQuestions} câu. Độ tin cậy: {confidence}%. Để có đánh giá chính xác hơn, vui lòng hoàn thành tất cả {totalQuestions} câu."
+                : "";
+
+            return new VoiceAssessmentResultDto
+            {
+                LanguageName = languageName,
+                DeterminedLevel = level,
+                LevelConfidence = confidence,
+                AssessmentCompleteness = $"{completedCount}/{totalQuestions} câu",
+                OverallScore = avgOverall,
+                PronunciationScore = avgPronunciation,
+                FluencyScore = avgFluency,
+                GrammarScore = avgGrammar,
+                VocabularyScore = avgVocabulary,
+                DetailedFeedback = $"Dựa trên {completedCount} câu đã hoàn thành:\n\n" +
+                                  $"Khả năng speaking {languageName} của bạn được đánh giá ở cấp độ **{level}** với điểm tổng thể {avgOverall}/100." +
+                                  completenessWarning,
+                KeyStrengths = ExtractStrengths(completedQuestions, completedCount),
+                ImprovementAreas = ExtractImprovements(completedQuestions, completedCount, totalQuestions),
+                NextLevelRequirements = GetNextLevelRequirement(level, languageName),
+                Roadmap = new VoiceLearningRoadmapDto
+                {
+                    CurrentLevel = level,
+                    TargetLevel = GetNextLevelForLanguage(level, languageName),
+                    VocalPracticeTips = GetDefaultVocalTips(languageName)
+                },
+                CompletedAt = DateTime.UtcNow
+            };
+        }
+
+        // Helper method - Xác định level từ điểm số
+        private string DetermineLevelFromScore(int overallScore, string languageName)
+        {
+            // Xác định dựa trên ngôn ngữ
+            if (languageName.Contains("Anh") || languageName.Contains("English"))
+            {
+                return overallScore switch
+                {
+                    >= 95 => "C2",
+                    >= 85 => "C1",
+                    >= 70 => "B2",
+                    >= 55 => "B1",
+                    >= 40 => "A2",
+                    >= 20 => "A1",
+                    _ => "Below A1"
+                };
+            }
+            else if (languageName.Contains("Trung") || languageName.Contains("Chinese"))
+            {
+                return overallScore switch
+                {
+                    >= 90 => "HSK 6",
+                    >= 80 => "HSK 5",
+                    >= 65 => "HSK 4",
+                    >= 50 => "HSK 3",
+                    >= 35 => "HSK 2",
+                    >= 20 => "HSK 1",
+                    _ => "Below HSK 1"
+                };
+            }
+            else if (languageName.Contains("Nhật") || languageName.Contains("Japanese"))
+            {
+                return overallScore switch
+                {
+                    >= 85 => "N1",
+                    >= 70 => "N2",
+                    >= 50 => "N3",
+                    >= 35 => "N4",
+                    >= 20 => "N5",
+                    _ => "Below N5"
+                };
+            }
+
+            return overallScore >= 70 ? "Advanced" : overallScore >= 50 ? "Intermediate" : "Beginner";
+        }
+
+        private List<string> ExtractStrengths(List<VoiceAssessmentQuestion> questions, int count)
+        {
+            var strengths = new List<string>();
+            foreach (var q in questions)
+            {
+                if (q.EvaluationResult?.Strengths != null)
+                    strengths.AddRange(q.EvaluationResult.Strengths);
+            }
+
+            var distinct = strengths.Distinct().Take(5).ToList();
+            if (!distinct.Any())
+            {
+                distinct.Add($"Đã hoàn thành {count} câu hỏi");
+            }
+            return distinct;
+        }
+
+        private List<string> ExtractImprovements(List<VoiceAssessmentQuestion> questions, int completed, int total)
+        {
+            var improvements = new List<string>();
+            foreach (var q in questions)
+            {
+                if (q.EvaluationResult?.AreasForImprovement != null)
+                    improvements.AddRange(q.EvaluationResult.AreasForImprovement);
+            }
+
+            var distinct = improvements.Distinct().Take(5).ToList();
+
+            if (completed < total)
+            {
+                distinct.Insert(0, $"Hoàn thành thêm {total - completed} câu để có đánh giá chính xác hơn");
+            }
+
+            return distinct.Any() ? distinct : new List<string> { "Luyện tập thêm để cải thiện" };
+        }
+
+        private string GetNextLevelRequirement(string currentLevel, string languageName)
+        {
+            if (languageName.Contains("Anh"))
+            {
+                return currentLevel switch
+                {
+                    "A1" => "Để đạt A2: Học 500-700 từ mới, luyện past tense, cải thiện fluency lên 80-100 wpm",
+                    "A2" => "Để đạt B1: Học 1000+ từ, master all tenses, luyện speaking 100-120 wpm",
+                    "B1" => "Để đạt B2: Vocabulary 3500+, advanced grammar, fluency 120-140 wpm",
+                    "B2" => "Để đạt C1: Sophisticated vocabulary, complex structures, near-native fluency",
+                    "C1" => "Để đạt C2: Native-like proficiency in all aspects",
+                    _ => "Hoàn thành đánh giá đầy đủ để biết yêu cầu cụ thể"
+                };
+            }
+            else if (languageName.Contains("Trung"))
+            {
+                return currentLevel switch
+                {
+                    "HSK 1" => "Để đạt HSK 2: Học thêm 300 từ, master 4 thanh, luyện tập hội thoại đơn giản",
+                    "HSK 2" => "Để đạt HSK 3: Học 600+ từ mới, cải thiện độ chính xác thanh điệu lên 80%+",
+                    "HSK 3" => "Để đạt HSK 4: Vocabulary 1200-2500 từ, chengyu cơ bản, fluency tốt",
+                    "HSK 4" => "Để đạt HSK 5: 2500+ từ, chengyu nâng cao, đọc báo Trung Quốc",
+                    "HSK 5" => "Để đạt HSK 6: 5000+ từ, văn học cổ điển, thành ngữ native",
+                    _ => "Hoàn thành đánh giá đầy đủ để biết yêu cầu cụ thể"
+                };
+            }
+            else if (languageName.Contains("Nhật"))
+            {
+                return currentLevel switch
+                {
+                    "N5" => "Để đạt N4: Học 700+ từ mới, 200 kanji, master て-form và basic conjugations",
+                    "N4" => "Để đạt N3: 1500+ từ mới, 350 kanji, cải thiện pitch accent, keigo cơ bản",
+                    "N3" => "Để đạt N2: 3000+ từ, 650 kanji, business Japanese, advanced grammar",
+                    "N2" => "Để đạt N1: 6000+ từ, 1000+ kanji, literary forms, native-like keigo",
+                    _ => "Hoàn thành đánh giá đầy đủ để biết yêu cầu cụ thể"
+                };
+            }
+
+            return "Hoàn thành bài test để nhận lộ trình học tập chi tiết";
+        }
+
+        private string GetNextLevelForLanguage(string currentLevel, string languageName)
+        {
+            if (languageName.Contains("Anh"))
+            {
+                return currentLevel switch
+                {
+                    "A1" => "A2",
+                    "A2" => "B1",
+                    "B1" => "B2",
+                    "B2" => "C1",
+                    "C1" => "C2",
+                    _ => "A2"
+                };
+            }
+            else if (languageName.Contains("Trung"))
+            {
+                return currentLevel switch
+                {
+                    "HSK 1" => "HSK 2",
+                    "HSK 2" => "HSK 3",
+                    "HSK 3" => "HSK 4",
+                    "HSK 4" => "HSK 5",
+                    "HSK 5" => "HSK 6",
+                    _ => "HSK 2"
+                };
+            }
+            else if (languageName.Contains("Nhật"))
+            {
+                return currentLevel switch
+                {
+                    "N5" => "N4",
+                    "N4" => "N3",
+                    "N3" => "N2",
+                    "N2" => "N1",
+                    _ => "N4"
+                };
+            }
+
+            return "Intermediate";
+        }
+
+        private List<string> GetDefaultVocalTips(string languageName)
+        {
+            return new List<string>
+    {
+        $"Luyện phát âm {languageName} 15-20 phút mỗi ngày",
+        "Ghi âm giọng nói để tự đánh giá",
+        "Bắt chước phát âm của người bản ngữ",
+        "Thực hành đọc to với tốc độ phù hợp",
+        "Tham gia các nhóm speaking practice online"
+    };
+        }
+        private string CleanJsonResponse(string response)
+        {
+            var cleaned = response.Trim();
+
+            // Remove markdown code blocks
+            if (cleaned.StartsWith("```json"))
+            {
+                cleaned = cleaned.Replace("```json", "").Replace("```", "").Trim();
+            }
+            else if (cleaned.StartsWith("```"))
+            {
+                cleaned = cleaned.Replace("```", "").Trim();
+            }
+
+            // Find JSON boundaries
+            var jsonStart = cleaned.IndexOf('{');
+            var jsonEnd = cleaned.LastIndexOf('}') + 1;
+
+            if (jsonStart >= 0 && jsonEnd > jsonStart)
+            {
+                return cleaned.Substring(jsonStart, jsonEnd - jsonStart);
+            }
+
+            return cleaned;
+        }
+        public async Task<List<VoiceAssessmentQuestion>> GenerateVoiceAssessmentQuestionsAsync(
+            string languageCode,
+            string languageName)
+        {
+            try
+            {
+                _logger.LogInformation("🚀 Starting GenerateVoiceAssessmentQuestionsAsync for {LanguageCode}", languageCode);
+
+             
+                _logger.LogInformation("🇻🇳 Using Vietnamese-supported fallback questions for {LanguageCode}", languageCode);
+
+                var questions = GetFallbackVoiceQuestionsWithVietnamese(languageCode, languageName);
+
+             
+                foreach (var question in questions)
+                {
+                    _logger.LogInformation("✅ Question {Number}: Vietnamese={HasVietnamese}, WordGuides={WordCount}",
+                        question.QuestionNumber,
+                        !string.IsNullOrEmpty(question.VietnameseTranslation),
+                        question.WordGuides?.Count ?? 0);
+                }
+
+                return questions;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error in GenerateVoiceAssessmentQuestionsAsync");
+                return GetFallbackVoiceQuestionsWithVietnamese(languageCode, languageName);
+            }
+        }
+
+       
+        private string GetLanguageName(string languageCode)
+        {
+            return languageCode.ToUpper() switch
+            {
+                "EN" => "tiếng Anh",
+                "ZH" => "tiếng Trung",
+                "JP" => "tiếng Nhật",
+                _ => "ngôn ngữ"
+            };
+        }
+
+        private string GetLanguageStandards(string languageCode)
+        {
+            return languageCode.ToUpper() switch
+            {
+                "EN" => @"
+**English Standards (CEFR):**
+- **Beginner (A1)**: Basic phrases, simple present tense, 500-1000 words
+- **Elementary (A2)**: Simple conversations, past tense, 1000-2000 words
+- **Intermediate (B1-B2)**: Complex sentences, all tenses, 2000-4000 words  
+- **Advanced (C1-C2)**: Native-like fluency, complex grammar, 8000+ words
+
+**Speaking Assessment Criteria:**
+- Clear pronunciation and word stress
+- Natural intonation patterns
+- Appropriate speaking pace
+- Grammar accuracy in speech
+- Vocabulary range and precision",
+
+                "ZH" => @"
+**Chinese Standards (HSK):**
+- **Beginner (HSK 1-2)**: Pinyin mastery, 300-600 characters, basic tones
+- **Elementary (HSK 3)**: 600-900 characters, simple conversations
+- **Intermediate (HSK 4-5)**: 1200-2500 characters, complex sentences
+- **Advanced (HSK 6)**: 2500+ characters, idioms, cultural expressions
+
+**Speaking Assessment Criteria:**
+- Accurate tone production (4 tones + neutral)
+- Clear initials and finals pronunciation
+- Natural rhythm and flow
+- Proper use of measure words
+- Cultural appropriateness",
+
+                "JP" => @"
+**Japanese Standards (JLPT):**
+- **Beginner (N5-N4)**: Hiragana/Katakana, 300-600 kanji, basic grammar
+- **Elementary (N3)**: 650-1000 kanji, intermediate grammar patterns
+- **Intermediate (N2)**: 1000+ kanji, advanced grammar, keigo basics
+- **Advanced (N1)**: 2000+ kanji, native-level expressions, complex keigo
+
+**Speaking Assessment Criteria:**
+- Correct pitch accent patterns
+- Proper mora timing
+- Accurate long vowel pronunciation
+- Appropriate politeness levels (keigo)
+- Natural sentence endings",
+
+                _ => "Standard language proficiency levels: Beginner, Elementary, Intermediate, Advanced"
+            };
+        }
+
+        private VoiceEvaluationResult CreateFallbackVoiceEvaluation()
+        {
+            return new VoiceEvaluationResult
+            {
+                OverallScore = 70,
+                Pronunciation = new PronunciationScore
+                {
+                    Score = 70,
+                    Level = "Fair",
+                    Feedback = "Cần đánh giá thủ công để có kết quả chính xác hơn",
+                    MispronuncedWords = new List<string>()
+                },
+                Fluency = new FluencyScore
+                {
+                    Score = 70,
+                    SpeakingRate = 120,
+                    PauseCount = 5,
+                    Rhythm = "Average",
+                    Feedback = "Cần đánh giá thủ công để có kết quả chính xác hơn"
+                },
+                Grammar = new GrammarScore
+                {
+                    Score = 70,
+                    GrammarErrors = new List<string>(),
+                    StructureAssessment = "Average",
+                    Feedback = "Cần đánh giá thủ công để có kết quả chính xác hơn"
+                },
+                Vocabulary = new VocabularyScore
+                {
+                    Score = 70,
+                    RangeAssessment = "Good",
+                    AccuracyAssessment = "Fair",
+                    Feedback = "Cần đánh giá thủ công để có kết quả chính xác hơn"
+                },
+                DetailedFeedback = "Không thể đánh giá tự động bằng AI. Vui lòng thử lại hoặc liên hệ support.",
+                Strengths = new List<string> { "Đã hoàn thành bài test voice", "Tích cực tham gia đánh giá" },
+                AreasForImprovement = new List<string> { "Cần đánh giá chi tiết hơn từ AI", "Thử lại với file audio chất lượng tốt hơn" }
+            };
+        }
+
+        private VoiceEvaluationResult ParseVoiceEvaluationResponse(string response)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(response))
+                {
+                    _logger.LogWarning("Received empty response from Gemini API - using fallback");
+                    return CreateFallbackVoiceEvaluation();
+                }
+
+                var cleanedResponse = CleanJsonResponse(response);
+                if (string.IsNullOrWhiteSpace(cleanedResponse))
+                {
+                    _logger.LogWarning("Cleaned response is empty - using fallback");
+                    return CreateFallbackVoiceEvaluation();
+                }
+
+                var jsonDoc = JsonDocument.Parse(cleanedResponse);
+                
+
+              
+                if (jsonDoc.RootElement.TryGetProperty("isCorrectLanguage", out var isCorrectLang) &&
+                    !isCorrectLang.GetBoolean())
+                {
+                    var detectedLang = jsonDoc.RootElement.TryGetProperty("detectedLanguage", out var detectedProp)
+                        ? detectedProp.GetString() : "Unknown";
+                    var expectedLang = jsonDoc.RootElement.TryGetProperty("expectedLanguage", out var expectedProp)
+                        ? expectedProp.GetString() : "Unknown";
+                    var errorMessage = jsonDoc.RootElement.TryGetProperty("message", out var msgProp)
+                        ? msgProp.GetString() : "Ngôn ngữ không đúng";
+
+                    _logger.LogError("🌍 LANGUAGE MISMATCH: Expected {Expected}, Detected {Detected}",
+                        expectedLang, detectedLang);
+
+                    return new VoiceEvaluationResult
+                    {
+                        OverallScore = 0,
+                        Pronunciation = new PronunciationScore
+                        {
+                            Score = 0,
+                            Level = "Language Error",
+                            Feedback = $"❌ Ngôn ngữ không đúng: {errorMessage}",
+                            MispronuncedWords = new List<string>()
+                        },
+                        Fluency = new FluencyScore
+                        {
+                            Score = 0,
+                            SpeakingRate = 0,
+                            PauseCount = 0,
+                            Rhythm = "Error",
+                            Feedback = "Ngôn ngữ audio không khớp với assessment"
+                        },
+                        Grammar = new GrammarScore
+                        {
+                            Score = 0,
+                            GrammarErrors = new List<string>(),
+                            StructureAssessment = "Error",
+                            Feedback = "Không thể đánh giá - sai ngôn ngữ"
+                        },
+                        Vocabulary = new VocabularyScore
+                        {
+                            Score = 0,
+                            RangeAssessment = "Error",
+                            AccuracyAssessment = "Error",
+                            Feedback = "Không thể đánh giá - sai ngôn ngữ"
+                        },
+                        DetailedFeedback = $"🚨 **Lỗi ngôn ngữ**: {errorMessage}\n\n" +
+                                         $"**Phát hiện**: {detectedLang}\n" +
+                                         $"**Yêu cầu**: {expectedLang}\n\n" +
+                                         $"Vui lòng ghi âm lại bằng đúng ngôn ngữ của bài test.",
+                        Strengths = new List<string>(),
+                        AreasForImprovement = new List<string>
+                {
+                    $"Ghi âm bằng đúng ngôn ngữ ({expectedLang})",
+                    "Kiểm tra lại ngôn ngữ assessment trước khi ghi âm",
+                    $"Bài test này yêu cầu {expectedLang}, không phải {detectedLang}"
+                }
+                    };
+                }
+
+                
+                var evaluation = JsonSerializer.Deserialize<VoiceEvaluationResult>(cleanedResponse, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    PropertyNameCaseInsensitive = true
+                });
+
+                return evaluation ?? CreateFallbackVoiceEvaluation();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error parsing voice evaluation response");
+                return CreateFallbackVoiceEvaluation();
+            }
+        }
+       
+
+        private List<VoiceAssessmentQuestion> GetFallbackVoiceQuestionsWithVietnamese(string languageCode, string languageName)
+        {
+            return languageCode.ToUpper() switch
+            {
+                "EN" => new List<VoiceAssessmentQuestion>
+        {
+            new() {
+                QuestionNumber = 1,
+                Question = "Hãy đọc to các từ sau với phát âm rõ ràng:",
+                PromptText = "Hello - World - Beautiful",
+                VietnameseTranslation = "Xin chào - Thế giới - Đẹp",
+                WordGuides = new List<WordWithGuide>
+                {
+                    new() {
+                        Word = "Hello",
+                        Pronunciation = "/həˈloʊ/ (hơ-lô)",
+                        VietnameseMeaning = "Xin chào",
+                        Example = "Hello, how are you?"
+                    },
+                    new() {
+                        Word = "World",
+                        Pronunciation = "/wɜːrld/ (uớt)",
+                        VietnameseMeaning = "Thế giới",
+                        Example = "Welcome to the world"
+                    },
+                    new() {
+                        Word = "Beautiful",
+                        Pronunciation = "/ˈbjuːtɪfl/ (bíu-ti-fồ)",
+                        VietnameseMeaning = "Đẹp, xinh đẹp",
+                        Example = "What a beautiful day!"
+                    }
+                },
+                QuestionType = "pronunciation",
+                Difficulty = "beginner",
+                MaxRecordingSeconds = 30
+            },
+            new() {
+                QuestionNumber = 2,
+                Question = "Hãy giới thiệu bản thân trong 60 giây:",
+                PromptText = "Please introduce yourself. Tell me your name, age, where you're from, what you do, and what you like to do in your free time.",
+                VietnameseTranslation = "Vui lòng giới thiệu bản thân. Nói cho tôi biết tên, tuổi, quê quán, nghề nghiệp và sở thích của bạn.",
+                WordGuides = new List<WordWithGuide>
+                {
+                    new() {
+                        Word = "introduce",
+                        Pronunciation = "/ˌɪntrəˈduːs/ (in-trơ-diúc)",
+                        VietnameseMeaning = "Giới thiệu",
+                        Example = "Let me introduce myself"
+                    },
+                    new() {
+                        Word = "free time",
+                        Pronunciation = "/friː taɪm/ (fri taim)",
+                        VietnameseMeaning = "Thời gian rảnh",
+                        Example = "In my free time, I read books"
+                    },
+                    new() {
+                        Word = "yourself",
+                        Pronunciation = "/jɔːrˈself/ (doa-xen-fồ)",
+                        VietnameseMeaning = "Bản thân bạn",
+                        Example = "Tell me about yourself"
+                    }
+                },
+                QuestionType = "speaking",
+                Difficulty = "elementary",
+                MaxRecordingSeconds = 60
+            },
+            new() {
+                QuestionNumber = 3,
+                Question = "Mô tả một ngày làm việc/học tập điển hình của bạn:",
+                PromptText = "Describe your typical workday or study day from morning to evening. What time do you wake up? What do you do? How do you feel about your daily routine?",
+                VietnameseTranslation = "Mô tả một ngày làm việc hoặc học tập thông thường từ sáng đến tối. Bạn thức dậy lúc mấy giờ? Bạn làm gì? Bạn cảm thấy thế nào về thói quen hàng ngày?",
+                WordGuides = new List<WordWithGuide>
+                {
+                    new() {
+                        Word = "typical",
+                        Pronunciation = "/ˈtɪpɪkl/ (típ-pi-cồ)",
+                        VietnameseMeaning = "Điển hình, thông thường",
+                        Example = "A typical day starts at 7 AM"
+                    },
+                    new() {
+                        Word = "routine",
+                        Pronunciation = "/ruːˈtiːn/ (ru-tin)",
+                        VietnameseMeaning = "Thói quen, công việc hàng ngày",
+                        Example = "My daily routine is simple"
+                    },
+                    new() {
+                        Word = "describe",
+                        Pronunciation = "/dɪˈskraɪb/ (đi-xợ-crai-bờ)",
+                        VietnameseMeaning = "Mô tả, diễn tả",
+                        Example = "Can you describe your house?"
+                    }
+                },
+                QuestionType = "speaking",
+                Difficulty = "intermediate",
+                MaxRecordingSeconds = 90
+            },
+            new() {
+                QuestionNumber = 4,
+                Question = "Thảo luận về tác động của công nghệ đối với giáo dục:",
+                PromptText = "What do you think about the impact of technology on education? Discuss both positive and negative effects. Give specific examples and explain your personal opinion.",
+                VietnameseTranslation = "Bạn nghĩ gì về tác động của công nghệ đối với giáo dục? Thảo luận cả mặt tích cực và tiêu cực. Đưa ra ví dụ cụ thể và giải thích quan điểm cá nhân.",
+                WordGuides = new List<WordWithGuide>
+                {
+                    new() {
+                        Word = "impact",
+                        Pronunciation = "/ˈɪmpækt/ (ím-pạc-tờ)",
+                        VietnameseMeaning = "Tác động, ảnh hưởng",
+                        Example = "Technology has a huge impact on our lives"
+                    },
+                    new() {
+                        Word = "positive",
+                        Pronunciation = "/ˈpɑːzətɪv/ (pá-zi-tiv)",
+                        VietnameseMeaning = "Tích cực, thuận lợi",
+                        Example = "There are many positive effects"
+                    },
+                    new() {
+                        Word = "negative",
+                        Pronunciation = "/ˈneɡətɪv/ (né-ga-tiv)",
+                        VietnameseMeaning = "Tiêu cực, bất lợi",
+                        Example = "We should also consider negative aspects"
+                    },
+                    new() {
+                        Word = "education",
+                        Pronunciation = "/ˌedʒuˈkeɪʃn/ (é-diu-kây-sần)",
+                        VietnameseMeaning = "Giáo dục",
+                        Example = "Education is very important"
+                    }
+                },
+                QuestionType = "speaking",
+                Difficulty = "advanced",
+                MaxRecordingSeconds = 120
+            }
+        },
+
+                "ZH" => new List<VoiceAssessmentQuestion>
+        {
+            new() {
+                QuestionNumber = 1,
+                Question = "请读出下列词语，注意发音和声调:",
+                PromptText = "你好 - 世界 - 美丽",
+                VietnameseTranslation = "Xin chào - Thế giới - Đẹp",
+                WordGuides = new List<WordWithGuide>
+                {
+                    new() {
+                        Word = "你好",
+                        Pronunciation = "nǐ hǎo (ni hảo - thanh 3+3)",
+                        VietnameseMeaning = "Xin chào",
+                        Example = "你好！很高兴认识你。(Xin chào! Rất vui được gặp bạn)"
+                    },
+                    new() {
+                        Word = "世界",
+                        Pronunciation = "shì jiè (sự giế - thanh 4+4)",
+                        VietnameseMeaning = "Thế giới",
+                        Example = "世界很大。(Thế giới rất rộng lớn)"
+                    },
+                    new() {
+                        Word = "美丽",
+                        Pronunciation = "měi lì (mẻi li - thanh 3+4)",
+                        VietnameseMeaning = "Đẹp, xinh đẹp",
+                        Example = "这里的风景很美丽。(Phong cảnh ở đây rất đẹp)"
+                    }
+                },
+                QuestionType = "pronunciation",
+                Difficulty = "beginner",
+                MaxRecordingSeconds = 30
+            },
+            new() {
+                QuestionNumber = 2,
+                Question = "请用中文介绍一下你自己:",
+                PromptText = "请介绍你的姓名、年龄、来自哪里、职业以及你的兴趣爱好。请说得清楚一些。",
+                VietnameseTranslation = "Vui lòng giới thiệu tên, tuổi, quê quán, nghề nghiệp và sở thích của bạn. Hãy nói rõ ràng.",
+                WordGuides = new List<WordWithGuide>
+                {
+                    new() {
+                        Word = "介绍",
+                        Pronunciation = "jiè shào (giế sảo - thanh 4+4)",
+                        VietnameseMeaning = "Giới thiệu",
+                        Example = "让我介绍一下自己。(Để tôi giới thiệu bản thân)"
+                    },
+                    new() {
+                        Word = "姓名",
+                        Pronunciation = "xìng míng (sing míng - thanh 4+2)",
+                        VietnameseMeaning = "Họ tên",
+                        Example = "我的姓名是王明。(Tên tôi là Vương Minh)"
+                    },
+                    new() {
+                        Word = "兴趣爱好",
+                        Pronunciation = "xìng qù ài hào (sing chui ái hảo - 4+4+4+4)",
+                        VietnameseMeaning = "Sở thích",
+                        Example = "我的兴趣爱好是看书。(Sở thích của tôi là đọc sách)"
+                    }
+                },
+                QuestionType = "speaking",
+                Difficulty = "elementary",
+                MaxRecordingSeconds = 60
+            },
+            new() {
+                QuestionNumber = 3,
+                Question = "描述一下你的家乡和那里的文化:",
+                PromptText = "请描述你家乡的天气、食物、文化和你最喜欢的地方。你觉得你的家乡有什么特色？",
+                VietnameseTranslation = "Hãy mô tả thời tiết, đồ ăn, văn hóa và địa điểm yêu thích ở quê bạn. Bạn nghĩ quê bạn có đặc điểm gì?",
+                WordGuides = new List<WordWithGuide>
+                {
+                    new() {
+                        Word = "家乡",
+                        Pronunciation = "jiā xiāng (gia hương - thanh 1+1)",
+                        VietnameseMeaning = "Quê hương, quê nhà",
+                        Example = "我的家乡在越南。(Quê tôi ở Việt Nam)"
+                    },
+                    new() {
+                        Word = "文化",
+                        Pronunciation = "wén huà (vờn hoá - thanh 2+4)",
+                        VietnameseMeaning = "Văn hóa",
+                        Example = "中国文化很丰富。(Văn hóa Trung Quốc rất phong phú)"
+                    },
+                    new() {
+                        Word = "特色",
+                        Pronunciation = "tè sè (tơ xắc - thanh 4+4)",
+                        VietnameseMeaning = "Đặc sắc, nét đặc trưng",
+                        Example = "这个城市有很多特色。(Thành phố này có nhiều nét đặc trưng)"
+                    }
+                },
+                QuestionType = "speaking",
+                Difficulty = "intermediate",
+                MaxRecordingSeconds = 90
+            },
+            new() {
+                QuestionNumber = 4,
+                Question = "谈谈你对现代科技的看法:",
+                PromptText = "请谈谈现代科技对我们生活的影响，包括好处和坏处。你认为科技发展对教育有什么影响？请举例说明。",
+                VietnameseTranslation = "Hãy nói về ảnh hưởng của công nghệ hiện đại đến cuộc sống, bao gồm ưu và nhược điểm. Bạn nghĩ phát triển công nghệ ảnh hưởng gì đến giáo dục? Cho ví dụ cụ thể.",
+                WordGuides = new List<WordWithGuide>
+                {
+                    new() {
+                        Word = "现代科技",
+                        Pronunciation = "xiàn dài kē jì (hiến đại kơ gi - 4+4+1+4)",
+                        VietnameseMeaning = "Công nghệ hiện đại",
+                        Example = "现代科技改变了我们的生活。(Công nghệ hiện đại thay đổi cuộc sống)"
+                    },
+                    new() {
+                        Word = "影响",
+                        Pronunciation = "yǐng xiǎng (ỉnh hưởng - thanh 3+3)",
+                        VietnameseMeaning = "Ảnh hưởng, tác động",
+                        Example = "这个决定影响很大。(Quyết định này ảnh hưởng lớn)"
+                    },
+                    new() {
+                        Word = "教育",
+                        Pronunciation = "jiào yù (giáo dục - thanh 4+4)",
+                        VietnameseMeaning = "Giáo dục",
+                        Example = "教育很重要。(Giáo dục rất quan trọng)"
+                    },
+                    new() {
+                        Word = "发展",
+                        Pronunciation = "fā zhǎn (pha chản - thanh 1+3)",
+                        VietnameseMeaning = "Phát triển",
+                        Example = "经济发展很快。(Kinh tế phát triển nhanh)"
+                    }
+                },
+                QuestionType = "speaking",
+                Difficulty = "advanced",
+                MaxRecordingSeconds = 120
+            }
+        },
+
+                "JP" => new List<VoiceAssessmentQuestion>
+        {
+            new() {
+                QuestionNumber = 1,
+                Question = "次の単語を読んでください:",
+                PromptText = "こんにちは - せかい - うつくしい",
+                VietnameseTranslation = "Xin chào - Thế giới - Đẹp",
+                WordGuides = new List<WordWithGuide>
+                {
+                    new() {
+                        Word = "こんにちは",
+                        Pronunciation = "konnichiwa (kon-ni-chi-oa)",
+                        VietnameseMeaning = "Xin chào (ban ngày)",
+                        Example = "こんにちは、元気ですか。(Xin chào, bạn khỏe không?)"
+                    },
+                    new() {
+                        Word = "せかい (世界)",
+                        Pronunciation = "sekai (xê-kai)",
+                        VietnameseMeaning = "Thế giới",
+                        Example = "世界は広いです。(Thế giới rộng lớn)"
+                    },
+                    new() {
+                        Word = "うつくしい (美しい)",
+                        Pronunciation = "utsukushii (u-xu-ku-xì-i)",
+                        VietnameseMeaning = "Đẹp",
+                        Example = "桜はとても美しいです。(Hoa anh đào rất đẹp)"
+                    }
+                },
+                QuestionType = "pronunciation",
+                Difficulty = "beginner",
+                MaxRecordingSeconds = 30
+            },
+            new() {
+                QuestionNumber = 2,
+                Question = "自己紹介をしてください:",
+                PromptText = "お名前、年齢、出身地、お仕事、趣味について話してください。はっきりと話してください。",
+                VietnameseTranslation = "Hãy giới thiệu tên, tuổi, quê quán, công việc và sở thích của bạn. Hãy nói rõ ràng.",
+                WordGuides = new List<WordWithGuide>
+                {
+                    new() {
+                        Word = "自己紹介 (じこしょうかい)",
+                        Pronunciation = "jikoshoukai (gi-ko-sô-kai)",
+                        VietnameseMeaning = "Tự giới thiệu",
+                        Example = "自己紹介をします。(Tôi xin tự giới thiệu)"
+                    },
+                    new() {
+                        Word = "名前 (なまえ)",
+                        Pronunciation = "namae (na-ma-e)",
+                        VietnameseMeaning = "Tên",
+                        Example = "私の名前は田中です。(Tên tôi là Tanaka)"
+                    },
+                    new() {
+                        Word = "趣味 (しゅみ)",
+                        Pronunciation = "shumi (xu-mi)",
+                        VietnameseMeaning = "Sở thích",
+                        Example = "私の趣味は読書です。(Sở thích của tôi là đọc sách)"
+                    }
+                },
+                QuestionType = "speaking",
+                Difficulty = "elementary",
+                MaxRecordingSeconds = 60
+            },
+            new() {
+                QuestionNumber = 3,
+                Question = "好きな季節について話してください:",
+                PromptText = "好きな季節とその理由、その季節にすること、季節の食べ物などについて説明してください。",
+                VietnameseTranslation = "Hãy nói về mùa yêu thích và lý do, những việc làm trong mùa đó, món ăn theo mùa.",
+                WordGuides = new List<WordWithGuide>
+                {
+                    new() {
+                        Word = "季節 (きせつ)",
+                        Pronunciation = "kisetsu (ki-xe-xu)",
+                        VietnameseMeaning = "Mùa, mùa trong năm",
+                        Example = "日本には四つの季節があります。(Nhật Bản có 4 mùa)"
+                    },
+                    new() {
+                        Word = "好き (すき)",
+                        Pronunciation = "suki (xu-ki)",
+                        VietnameseMeaning = "Thích",
+                        Example = "私は春が好きです。(Tôi thích mùa xuân)"
+                    },
+                    new() {
+                        Word = "理由 (りゆう)",
+                        Pronunciation = "riyuu (ri-yû)",
+                        VietnameseMeaning = "Lý do",
+                        Example = "理由を説明します。(Tôi giải thích lý do)"
+                    }
+                },
+                QuestionType = "speaking",
+                Difficulty = "intermediate",
+                MaxRecordingSeconds = 90
+            },
+            new() {
+                QuestionNumber = 4,
+                Question = "日本の文化について意見を述べてください:",
+                PromptText = "日本の文化で興味深いと思うことについて、具体例を挙げて説明してください。他の国の文化と比較してもいいです。",
+                VietnameseTranslation = "Hãy nêu ý kiến về văn hóa Nhật Bản, những điều bạn thấy thú vị với ví dụ cụ thể. Có thể so sánh với văn hóa nước khác.",
+                WordGuides = new List<WordWithGuide>
+                {
+                    new() {
+                        Word = "文化 (ぶんか)",
+                        Pronunciation = "bunka (bun-ka)",
+                        VietnameseMeaning = "Văn hóa",
+                        Example = "日本の文化は面白いです。(Văn hóa Nhật rất thú vị)"
+                    },
+                    new() {
+                        Word = "興味深い (きょうみぶかい)",
+                        Pronunciation = "kyoumibukai (kyô-mi-bu-kai)",
+                        VietnameseMeaning = "Thú vị, hấp dẫn",
+                        Example = "この話は興味深いです。(Câu chuyện này thú vị)"
+                    },
+                    new() {
+                        Word = "意見 (いけん)",
+                        Pronunciation = "iken (i-ken)",
+                        VietnameseMeaning = "Ý kiến",
+                        Example = "あなたの意見を聞きたいです。(Tôi muốn nghe ý kiến bạn)"
+                    },
+                    new() {
+                        Word = "比較 (ひかく)",
+                        Pronunciation = "hikaku (hi-ka-ku)",
+                        VietnameseMeaning = "So sánh",
+                        Example = "二つの国を比較します。(So sánh hai nước)"
+                    }
+                },
+                QuestionType = "speaking",
+                Difficulty = "advanced",
+                MaxRecordingSeconds = 120
+            }
+        },
+
+                _ => new List<VoiceAssessmentQuestion>()
+            };
+        }
+        private List<VoiceAssessmentQuestion> GetFallbackVoiceQuestions(string languageCode, string languageName)
+        {
+            return languageCode.ToUpper() switch
+            {
+                "EN" => new List<VoiceAssessmentQuestion>
+        {
+            new() {
+                QuestionNumber = 1,
+                Question = "Hãy đọc to các từ sau với phát âm rõ ràng:",
+                PromptText = "Hello - World - Beautiful",
+                QuestionType = "pronunciation",
+                Difficulty = "beginner",
+                MaxRecordingSeconds = 30
+            },
+            new() {
+                QuestionNumber = 2,
+                Question = "Hãy giới thiệu bản thân trong 60 giây:",
+                PromptText = "Please introduce yourself. Tell me your name, age, where you're from, what you do, and what you like to do in your free time. Speak clearly and naturally.",
+                QuestionType = "speaking",
+                Difficulty = "elementary",
+                MaxRecordingSeconds = 60
+            },
+            new() {
+                QuestionNumber = 3,
+                Question = "Mô tả một ngày làm việc/học tập điển hình của bạn:",
+                PromptText = "Describe your typical workday or study day from morning to evening. What time do you wake up? What do you do? How do you feel about your daily routine?",
+                QuestionType = "speaking",
+                Difficulty = "intermediate",
+                MaxRecordingSeconds = 90
+            },
+            new() {
+                QuestionNumber = 4,
+                Question = "Thảo luận về tác động của công nghệ đối với giáo dục:",
+                PromptText = "What do you think about the impact of technology on education? Discuss both positive and negative effects. Give specific examples and explain your personal opinion.",
+                QuestionType = "speaking",
+                Difficulty = "advanced",
+                MaxRecordingSeconds = 120
+            }
+        },
+                "ZH" => new List<VoiceAssessmentQuestion>
+        {
+            new() {
+                QuestionNumber = 1,
+                Question = "请读出下列词语，注意发音和声调:",
+                PromptText = "你好 - 世界 - 美丽 ",
+                QuestionType = "pronunciation",
+                Difficulty = "beginner",
+                MaxRecordingSeconds = 30
+            },
+            new() {
+                QuestionNumber = 2,
+                Question = "请用中文介绍一下你自己:",
+                PromptText = "请介绍你的姓名、年龄、来自哪里、职业以及你的兴趣爱好。请说得清楚一些。",
+                QuestionType = "speaking",
+                Difficulty = "elementary",
+                MaxRecordingSeconds = 60
+            },
+            new() {
+                QuestionNumber = 3,
+                Question = "描述一下你的家乡和那里的文化:",
+                PromptText = "请描述你家乡的天气、食物、文化和你最喜欢的地方。你觉得你的家乡有什么特色？",
+                QuestionType = "speaking",
+                Difficulty = "intermediate",
+                MaxRecordingSeconds = 90
+            },
+            new() {
+                QuestionNumber = 4,
+                Question = "谈谈你对现代科技的看法:",
+                PromptText = "请谈谈现代科技对我们生活的影响，包括好处和坏处。你认为科技发展对教育有什么影响？",
+                QuestionType = "speaking",
+                Difficulty = "advanced",
+                MaxRecordingSeconds = 120
+            }
+        },
+                "JP" => new List<VoiceAssessmentQuestion>
+        {
+            new() {
+                QuestionNumber = 1,
+                Question = "次の単語を読んでください:",
+                PromptText = "こんにちは - せかい - うつくしい ",
+                QuestionType = "pronunciation",
+                Difficulty = "beginner",
+                MaxRecordingSeconds = 30
+            },
+            new() {
+                QuestionNumber = 2,
+                Question = "自己紹介をしてください:",
+                PromptText = "お名前、年齢、出身地、お仕事、趣味について話してください。はっきりと話してください。",
+                QuestionType = "speaking",
+                Difficulty = "elementary",
+                MaxRecordingSeconds = 60
+            },
+            new() {
+                QuestionNumber = 3,
+                Question = "好きな季節について話してください:",
+                PromptText = "好きな季節とその理由、その季節にすること、季節の食べ物などについて説明してください。",
+                QuestionType = "speaking",
+                Difficulty = "intermediate",
+                MaxRecordingSeconds = 90
+            },
+            new() {
+                QuestionNumber = 4,
+                Question = "日本の文化について意見を述べてください:",
+                PromptText = "日本の文化で興味深いと思うことについて、具体例を挙げて説明してください。他の国の文化と比較してもいいです。",
+                QuestionType = "speaking",
+                Difficulty = "advanced",
+                MaxRecordingSeconds = 120
+            }
+        },
+                _ => new List<VoiceAssessmentQuestion>()
+            };
+        }
+
+        private string BuildVoiceAssessmentPrompt(string languageCode, string languageName)
+        {
+            var standardFramework = GetStandardFramework(languageCode);
+            var vietnameseGuidelines = GetVietnameseGuidelinesByLanguage(languageCode);
+
+            return $@"# Tạo bộ câu hỏi đánh giá giọng nói {languageName} với hướng dẫn tiếng Việt
+
+## Yêu cầu:
+Tạo 4 câu hỏi đánh giá khả năng nói {languageName}, độ khó tăng dần.
+
+## Tiêu chuẩn {languageName}:
+{standardFramework}
+
+## YÊU CẦU BẮT BUỘC - Vietnamese Support:
+{vietnameseGuidelines}
+
+## Format trả về (JSON):
+{{
+    ""questions"": [
+        {{
+            ""questionNumber"": 1,
+            ""question"": ""Hãy đọc to các từ sau với phát âm rõ ràng:"",
+            ""promptText"": ""Hello - World - Beautiful"",
+            ""vietnameseTranslation"": ""Xin chào - Thế giới - Đẹp"",
+            ""wordGuides"": [
+                {{
+                    ""word"": ""Hello"",
+                    ""pronunciation"": ""/həˈloʊ/ (hơ-lô)"",
+                    ""vietnameseMeaning"": ""Xin chào"",
+                    ""example"": ""Hello, how are you?""
+                }},
+                {{
+                    ""word"": ""World"",
+                    ""pronunciation"": ""/wɜːrld/ (uớt)"",
+                    ""vietnameseMeaning"": ""Thế giới"",
+                    ""example"": ""Welcome to the world""
+                }},
+                {{
+                    ""word"": ""Beautiful"",
+                    ""pronunciation"": ""/ˈbjuːtɪfl/ (bíu-ti-fồ)"",
+                    ""vietnameseMeaning"": ""Đẹp, xinh đẹp"",
+                    ""example"": ""What a beautiful day!""
+                }}
+            ],
+            ""questionType"": ""pronunciation"",
+            ""difficulty"": ""beginner"",
+            ""maxRecordingSeconds"": 30
+        }},
+        {{
+            ""questionNumber"": 2,
+            ""question"": ""Hãy giới thiệu bản thân trong 60 giây:"",
+            ""promptText"": ""Please introduce yourself. Tell me your name, age, where you're from, and your hobbies."",
+            ""vietnameseTranslation"": ""Vui lòng giới thiệu bản thân. Nói cho tôi biết tên, tuổi, quê quán và sở thích của bạn."",
+            ""wordGuides"": [
+                {{
+                    ""word"": ""introduce"",
+                    ""pronunciation"": ""/ˌɪntrəˈduːs/ (in-trơ-diúc)"",
+                    ""vietnameseMeaning"": ""Giới thiệu"",
+                    ""example"": ""Let me introduce myself""
+                }},
+                {{
+                    ""word"": ""hobbies"",
+                    ""pronunciation"": ""/ˈhɑːbiz/ (há-biz)"",
+                    ""vietnameseMeaning"": ""Sở thích"",
+                    ""example"": ""My hobbies are reading and swimming""
+                }}
+            ],
+            ""questionType"": ""speaking"",
+            ""difficulty"": ""elementary"",
+            ""maxRecordingSeconds"": 60
+        }}
+    ]
+}}
+
+**LƯU Ý QUAN TRỌNG**:
+- LUÔN LUÔN cung cấp wordGuides cho tất cả từ quan trọng
+- Phiên âm gồm cả IPA và phiên âm dễ đọc bằng tiếng Việt (trong ngoặc)
+- Ví dụ phải đơn giản, dễ hiểu
+- vietnameseTranslation phải chính xác và tự nhiên";
+        }
+        private string GetVietnameseGuidelinesByLanguage(string languageCode)
+        {
+            return languageCode.ToUpper() switch
+            {
+                "EN" => @"
+### Hướng dẫn tiếng Việt cho English:
+1. **Phiên âm**: IPA + phiên âm Việt hóa dễ đọc
+   - VD: /həˈloʊ/ (hơ-lô)
+   - Chú ý: th (thờ), r (rờ/ờ), w (u), v (vờ)
+
+2. **Từ vựng cần có wordGuides**:
+   - Câu 1 (Beginner): Tất cả các từ trong promptText
+   - Câu 2 (Elementary): Từ khóa quan trọng (5-8 từ)
+   - Câu 3 (Intermediate): Từ khó, cụm từ (3-5 từ)
+   - Câu 4 (Advanced): Từ vựng academic, idioms (3-5 từ)
+
+3. **Ví dụ**: Câu ngắn, thực tế, dễ nhớ",
+
+                "ZH" => @"
+### Hướng dẫn tiếng Việt cho Chinese:
+1. **Phiên âm**: Pinyin + cách đọc Việt hóa
+   - VD: nǐ hǎo (ni hảo) - thanh 3 = giọng hỏi
+   - Chú ý 4 thanh: 1-ngang, 2-sắc, 3-hỏi, 4-nặng
+
+2. **Hán tự + Pinyin + Nghĩa**:
+   - 你好 (nǐ hǎo / ni hảo) - Xin chào
+   - 世界 (shì jiè / sự giế) - Thế giới
+
+3. **Giải thích thanh điệu**: 
+   - Thanh 1 (¯): Giọng ngang, cao
+   - Thanh 2 (´): Giọng đi lên (như hỏi ""hả?"")
+   - Thanh 3 (ˇ): Giọng hỏi, xuống rồi lên
+   - Thanh 4 (`): Giọng nặng, đi xuống mạnh",
+
+                "JP" => @"
+### Hướng dẫn tiếng Việt cho Japanese:
+1. **Phiên âm**: Romaji + cách đọc Việt hóa
+   - VD: こんにちは (konnichiwa / kon-ni-chi-oa) - Xin chào
+   - Chú ý: chi (chi không phải ki), tsu (xu), fu (fu không phải hu)
+
+2. **Kanji + Hiragana/Katakana + Romaji + Nghĩa**:
+   - 世界 (せかい / sekai / xê-kai) - Thế giới
+   - 美しい (うつくしい / utsukushii / u-xu-ku-xì-i) - Đẹp
+
+3. **Pitch accent** (optional cho advanced):
+   - ⓪ Low-High: Âm đầu thấp, sau cao
+   - ① High-Low: Âm đầu cao, sau thấp",
+
+                _ => "Cung cấp phiên âm và nghĩa tiếng Việt cho tất cả từ khóa"
+            };
+        }
+
+        private class VoiceQuestionsResponse
+        {
+            public List<VoiceAssessmentQuestion>? Questions { get; set; }
+        }
         private class TeacherQualificationAiResponse
         {
             public List<string>? SuggestedTeachingLevels { get; set; }

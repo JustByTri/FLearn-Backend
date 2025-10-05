@@ -1,5 +1,7 @@
-﻿using Common.DTO.Learner;
+﻿using Common.DTO.Assement;
+using Common.DTO.Learner;
 using Common.DTO.Teacher;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,14 +12,27 @@ namespace BLL.IServices.AI
 {
     public interface IGeminiService
     {
+       
         Task<AiCourseRecommendationDto> GenerateCourseRecommendationsAsync(
             UserSurveyResponseDto survey,
             List<CourseInfoDto> availableCourses);
+
         Task<string> GenerateStudyPlanAsync(UserSurveyResponseDto survey);
         Task<List<string>> GenerateStudyTipsAsync(UserSurveyResponseDto survey);
+
+     
         Task<TeacherQualificationAnalysisDto> AnalyzeTeacherQualificationsAsync(
-        TeacherApplicationDto application,
-        List<TeacherCredentialDto> credentials);
+            TeacherApplicationDto application,
+            List<TeacherCredentialDto> credentials);
+
+        
+        Task<List<VoiceAssessmentQuestion>> GenerateVoiceAssessmentQuestionsAsync(string languageCode, string languageName);
+        Task<VoiceEvaluationResult> EvaluateVoiceResponseDirectlyAsync(VoiceAssessmentQuestion question, IFormFile audioFile, string languageCode);
+        Task<VoiceAssessmentResultDto> GenerateVoiceAssessmentResultAsync(
+     string languageCode,
+     string languageName,
+     List<VoiceAssessmentQuestion> questions,
+     string? goalName = null);
     }
 
     public class CourseInfoDto
