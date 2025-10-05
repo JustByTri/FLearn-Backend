@@ -1,10 +1,8 @@
 name: Deploy FLearn Backend
-
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -34,7 +32,9 @@ jobs:
           
           # Update code
           cd /root/FLearn-Backend
-          git pull origin main
+          git fetch --all
+          git reset --hard origin/main
+          git clean -fdx
           
           # Build and publish
           cd Presentation
