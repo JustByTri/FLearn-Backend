@@ -303,7 +303,7 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
                                     CourseName = course.Title,
                                     CourseDescription = course.Description,
                                     Level = course.Level,
-                                    MatchScore = Math.Min(100, Math.Max(0, rec.MatchScore)), // Ensure 0-100 range
+                                    MatchScore = Math.Min(100, Math.Max(0, rec.MatchScore)),
                                     MatchReason = rec.MatchReason ?? "Phù hợp với mục tiêu học tập",
                                     EstimatedDuration = course.Duration,
                                     Skills = course.Skills ?? new List<string>()
@@ -315,7 +315,7 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
                             {
                                 _logger.LogWarning("Course not found for ID: {CourseId}", rec.CourseId);
 
-                                // Create a fallback recommendation if we have course info
+                               
                                 if (!string.IsNullOrEmpty(rec.CourseId) && availableCourses.Any())
                                 {
                                     var fallbackCourse = availableCourses.First();
@@ -407,11 +407,7 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
     {
         "Học đều đặn mỗi ngày, dù chỉ 15-30 phút",
         "Luyện tập các kỹ năng nghe, nói, đọc, viết một cách cân bằng",
-        "Sử dụng flashcard để ghi nhớ từ vựng mới",
-        "Xem phim, nghe nhạc bằng ngôn ngữ đang học",
-        "Tìm partner để luyện tập hội thoại",
-        "Đặt mục tiêu học tập rõ ràng cho từng tuần",
-        "Ôn tập kiến thức cũ thường xuyên"
+       
     };
         }
 
@@ -461,12 +457,12 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
             {
                 var trimmed = line.Trim();
 
-                // Handle bullet points
+            
                 if (trimmed.StartsWith("- ") || trimmed.StartsWith("• ") || trimmed.StartsWith("* "))
                 {
                     tips.Add(trimmed.Substring(2).Trim());
                 }
-                // Handle numbered lists
+             
                 else if (System.Text.RegularExpressions.Regex.IsMatch(trimmed, @"^\d+\.\s"))
                 {
                     var dotIndex = trimmed.IndexOf('.');
@@ -475,7 +471,7 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
                         tips.Add(trimmed.Substring(dotIndex + 1).Trim());
                     }
                 }
-                // Handle regular sentences that look like tips
+               
                 else if (trimmed.Length > 10 &&
                          !trimmed.Contains("mẹo", StringComparison.OrdinalIgnoreCase) &&
                          !trimmed.Contains("sau đây", StringComparison.OrdinalIgnoreCase) &&
@@ -1944,7 +1940,7 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
                 return CreateFallbackVoiceEvaluation();
             }
         }
-       
+
 
         private List<VoiceAssessmentQuestion> GetFallbackVoiceQuestionsWithVietnamese(string languageCode, string languageName)
         {
@@ -1952,271 +1948,232 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
             {
                 "EN" => new List<VoiceAssessmentQuestion>
         {
+          
             new() {
                 QuestionNumber = 1,
-                Question = "Hãy đọc to các từ sau với phát âm rõ ràng:",
-                PromptText = "Hello - World - Beautiful",
-                VietnameseTranslation = "Xin chào - Thế giới - Đẹp",
+                Question = "Hãy phát âm rõ ràng từ cơ bản sau:",
+                PromptText = "Hello",
+                VietnameseTranslation = "Xin chào",
                 WordGuides = new List<WordWithGuide>
                 {
                     new() {
                         Word = "Hello",
                         Pronunciation = "/həˈloʊ/ (hơ-lô)",
                         VietnameseMeaning = "Xin chào",
-                        Example = "Hello, how are you?"
-                    },
-                    new() {
-                        Word = "World",
-                        Pronunciation = "/wɜːrld/ (uớt)",
-                        VietnameseMeaning = "Thế giới",
-                        Example = "Welcome to the world"
-                    },
+                        Example = "Hello! Nice to meet you."
+                    }
+                },
+                QuestionType = "single_word",
+                Difficulty = "beginner",
+                MaxRecordingSeconds = 15
+            },
+         
+            new() {
+                QuestionNumber = 2,
+                Question = "Hãy phát âm rõ ràng 2 từ trung bình sau:",
+                PromptText = "Beautiful - Important",
+                VietnameseTranslation = "Đẹp - Quan trọng",
+                WordGuides = new List<WordWithGuide>
+                {
                     new() {
                         Word = "Beautiful",
                         Pronunciation = "/ˈbjuːtɪfl/ (bíu-ti-fồ)",
-                        VietnameseMeaning = "Đẹp, xinh đẹp",
+                        VietnameseMeaning = "Đẹp",
                         Example = "What a beautiful day!"
-                    }
-                },
-                QuestionType = "pronunciation",
-                Difficulty = "beginner",
-                MaxRecordingSeconds = 30
-            },
-            new() {
-                QuestionNumber = 2,
-                Question = "Hãy giới thiệu bản thân trong 60 giây:",
-                PromptText = "Please introduce yourself. Tell me your name, age, where you're from, what you do, and what you like to do in your free time.",
-                VietnameseTranslation = "Vui lòng giới thiệu bản thân. Nói cho tôi biết tên, tuổi, quê quán, nghề nghiệp và sở thích của bạn.",
-                WordGuides = new List<WordWithGuide>
-                {
-                    new() {
-                        Word = "introduce",
-                        Pronunciation = "/ˌɪntrəˈduːs/ (in-trơ-diúc)",
-                        VietnameseMeaning = "Giới thiệu",
-                        Example = "Let me introduce myself"
                     },
                     new() {
-                        Word = "free time",
-                        Pronunciation = "/friː taɪm/ (fri taim)",
-                        VietnameseMeaning = "Thời gian rảnh",
-                        Example = "In my free time, I read books"
-                    },
-                    new() {
-                        Word = "yourself",
-                        Pronunciation = "/jɔːrˈself/ (doa-xen-fồ)",
-                        VietnameseMeaning = "Bản thân bạn",
-                        Example = "Tell me about yourself"
+                        Word = "Important",
+                        Pronunciation = "/ɪmˈpɔːrtnt/ (im-pót-tờnt)",
+                        VietnameseMeaning = "Quan trọng",
+                        Example = "Education is very important."
                     }
                 },
-                QuestionType = "speaking",
-                Difficulty = "elementary",
-                MaxRecordingSeconds = 60
+                QuestionType = "two_words",
+                Difficulty = "intermediate",
+                MaxRecordingSeconds = 20
             },
+         
             new() {
                 QuestionNumber = 3,
-                Question = "Mô tả một ngày làm việc/học tập điển hình của bạn:",
-                PromptText = "Describe your typical workday or study day from morning to evening. What time do you wake up? What do you do? How do you feel about your daily routine?",
-                VietnameseTranslation = "Mô tả một ngày làm việc hoặc học tập thông thường từ sáng đến tối. Bạn thức dậy lúc mấy giờ? Bạn làm gì? Bạn cảm thấy thế nào về thói quen hàng ngày?",
+                Question = "Hãy phát âm rõ ràng 3 từ khó sau:",
+                PromptText = "Pronunciation - Magnificent - Extraordinary",
+                VietnameseTranslation = "Phát âm - Tráng lệ - Phi thường",
                 WordGuides = new List<WordWithGuide>
                 {
                     new() {
-                        Word = "typical",
-                        Pronunciation = "/ˈtɪpɪkl/ (típ-pi-cồ)",
-                        VietnameseMeaning = "Điển hình, thông thường",
-                        Example = "A typical day starts at 7 AM"
+                        Word = "Pronunciation",
+                        Pronunciation = "/prəˌnʌnsiˈeɪʃn/ (prơ-nần-si-ây-sần)",
+                        VietnameseMeaning = "Phát âm",
+                        Example = "Good pronunciation is essential."
                     },
                     new() {
-                        Word = "routine",
-                        Pronunciation = "/ruːˈtiːn/ (ru-tin)",
-                        VietnameseMeaning = "Thói quen, công việc hàng ngày",
-                        Example = "My daily routine is simple"
+                        Word = "Magnificent",
+                        Pronunciation = "/mæɡˈnɪfɪsnt/ (mạg-ní-fi-sờnt)",
+                        VietnameseMeaning = "Tráng lệ, lộng lẫy",
+                        Example = "The view is absolutely magnificent."
                     },
                     new() {
-                        Word = "describe",
-                        Pronunciation = "/dɪˈskraɪb/ (đi-xợ-crai-bờ)",
-                        VietnameseMeaning = "Mô tả, diễn tả",
-                        Example = "Can you describe your house?"
+                        Word = "Extraordinary",
+                        Pronunciation = "/ɪkˈstrɔːrdneri/ (ik-xờ-trờ-đi-ne-ri)",
+                        VietnameseMeaning = "Phi thường, đặc biệt",
+                        Example = "She has extraordinary talent."
                     }
                 },
-                QuestionType = "speaking",
-                Difficulty = "intermediate",
-                MaxRecordingSeconds = 90
+                QuestionType = "three_words",
+                Difficulty = "advanced",
+                MaxRecordingSeconds = 30
             },
+           
             new() {
                 QuestionNumber = 4,
-                Question = "Thảo luận về tác động của công nghệ đối với giáo dục:",
-                PromptText = "What do you think about the impact of technology on education? Discuss both positive and negative effects. Give specific examples and explain your personal opinion.",
-                VietnameseTranslation = "Bạn nghĩ gì về tác động của công nghệ đối với giáo dục? Thảo luận cả mặt tích cực và tiêu cực. Đưa ra ví dụ cụ thể và giải thích quan điểm cá nhân.",
+                Question = "Hãy đọc câu dài sau với ngữ điệu và nhịp điệu tự nhiên:",
+                PromptText = "Technology has revolutionized the way we communicate and learn in the modern world.",
+                VietnameseTranslation = "Công nghệ đã cách mạng hóa cách chúng ta giao tiếp và học tập trong thế giới hiện đại.",
                 WordGuides = new List<WordWithGuide>
                 {
                     new() {
-                        Word = "impact",
-                        Pronunciation = "/ˈɪmpækt/ (ím-pạc-tờ)",
-                        VietnameseMeaning = "Tác động, ảnh hưởng",
-                        Example = "Technology has a huge impact on our lives"
+                        Word = "revolutionized",
+                        Pronunciation = "/ˌrevəˈluːʃənaɪzd/ (re-vơ-lú-sần-naizd)",
+                        VietnameseMeaning = "Cách mạng hóa",
+                        Example = "The internet revolutionized communication."
                     },
                     new() {
-                        Word = "positive",
-                        Pronunciation = "/ˈpɑːzətɪv/ (pá-zi-tiv)",
-                        VietnameseMeaning = "Tích cực, thuận lợi",
-                        Example = "There are many positive effects"
+                        Word = "communicate",
+                        Pronunciation = "/kəˈmjuːnɪkeɪt/ (kơ-miu-ni-kết)",
+                        VietnameseMeaning = "Giao tiếp",
+                        Example = "We communicate through various channels."
                     },
                     new() {
-                        Word = "negative",
-                        Pronunciation = "/ˈneɡətɪv/ (né-ga-tiv)",
-                        VietnameseMeaning = "Tiêu cực, bất lợi",
-                        Example = "We should also consider negative aspects"
-                    },
-                    new() {
-                        Word = "education",
-                        Pronunciation = "/ˌedʒuˈkeɪʃn/ (é-diu-kây-sần)",
-                        VietnameseMeaning = "Giáo dục",
-                        Example = "Education is very important"
+                        Word = "modern",
+                        Pronunciation = "/ˈmɑːdərn/ (mó-đờn)",
+                        VietnameseMeaning = "Hiện đại",
+                        Example = "We live in a modern society."
                     }
                 },
-                QuestionType = "speaking",
+                QuestionType = "long_sentence",
                 Difficulty = "advanced",
-                MaxRecordingSeconds = 120
+                MaxRecordingSeconds = 45
             }
         },
 
                 "ZH" => new List<VoiceAssessmentQuestion>
         {
+        
             new() {
                 QuestionNumber = 1,
-                Question = "请读出下列词语，注意发音和声调:",
-                PromptText = "你好 - 世界 - 美丽",
-                VietnameseTranslation = "Xin chào - Thế giới - Đẹp",
+                Question = "请准确发音下列基础词汇:",
+                PromptText = "你好",
+                VietnameseTranslation = "Xin chào",
                 WordGuides = new List<WordWithGuide>
                 {
                     new() {
                         Word = "你好",
-                        Pronunciation = "nǐ hǎo (ni hảo - thanh 3+3)",
+                        Pronunciation = "nǐ hǎo (ni hảo )",
                         VietnameseMeaning = "Xin chào",
-                        Example = "你好！很高兴认识你。(Xin chào! Rất vui được gặp bạn)"
-                    },
-                    new() {
-                        Word = "世界",
-                        Pronunciation = "shì jiè (sự giế - thanh 4+4)",
-                        VietnameseMeaning = "Thế giới",
-                        Example = "世界很大。(Thế giới rất rộng lớn)"
-                    },
-                    new() {
-                        Word = "美丽",
-                        Pronunciation = "měi lì (mẻi li - thanh 3+4)",
-                        VietnameseMeaning = "Đẹp, xinh đẹp",
-                        Example = "这里的风景很美丽。(Phong cảnh ở đây rất đẹp)"
+                        Example = "你好！很高兴见到你。(Xin chào! Rất vui được gặp bạn)"
                     }
                 },
-                QuestionType = "pronunciation",
+                QuestionType = "single_word",
                 Difficulty = "beginner",
-                MaxRecordingSeconds = 30
+                MaxRecordingSeconds = 15
             },
+           
             new() {
                 QuestionNumber = 2,
-                Question = "请用中文介绍一下你自己:",
-                PromptText = "请介绍你的姓名、年龄、来自哪里、职业以及你的兴趣爱好。请说得清楚一些。",
-                VietnameseTranslation = "Vui lòng giới thiệu tên, tuổi, quê quán, nghề nghiệp và sở thích của bạn. Hãy nói rõ ràng.",
+                Question = "请准确发音下列中等词汇:",
+                PromptText = "美丽 - 重要",
+                VietnameseTranslation = "Đẹp - Quan trọng",
                 WordGuides = new List<WordWithGuide>
                 {
                     new() {
-                        Word = "介绍",
-                        Pronunciation = "jiè shào (giế sảo - thanh 4+4)",
-                        VietnameseMeaning = "Giới thiệu",
-                        Example = "让我介绍一下自己。(Để tôi giới thiệu bản thân)"
+                        Word = "美丽",
+                        Pronunciation = "měi lì (mẻi li )",
+                        VietnameseMeaning = "Đẹp",
+                        Example = "这里的风景很美丽。(Phong cảnh ở đây rất đẹp)"
                     },
                     new() {
-                        Word = "姓名",
-                        Pronunciation = "xìng míng (sing míng - thanh 4+2)",
-                        VietnameseMeaning = "Họ tên",
-                        Example = "我的姓名是王明。(Tên tôi là Vương Minh)"
-                    },
-                    new() {
-                        Word = "兴趣爱好",
-                        Pronunciation = "xìng qù ài hào (sing chui ái hảo - 4+4+4+4)",
-                        VietnameseMeaning = "Sở thích",
-                        Example = "我的兴趣爱好是看书。(Sở thích của tôi là đọc sách)"
+                        Word = "重要",
+                        Pronunciation = "zhòng yào (trọng diệu )",
+                        VietnameseMeaning = "Quan trọng",
+                        Example = "教育非常重要。(Giáo dục rất quan trọng)"
                     }
                 },
-                QuestionType = "speaking",
-                Difficulty = "elementary",
-                MaxRecordingSeconds = 60
+                QuestionType = "two_words",
+                Difficulty = "intermediate",
+                MaxRecordingSeconds = 20
             },
+       
             new() {
                 QuestionNumber = 3,
-                Question = "描述一下你的家乡和那里的文化:",
-                PromptText = "请描述你家乡的天气、食物、文化和你最喜欢的地方。你觉得你的家乡有什么特色？",
-                VietnameseTranslation = "Hãy mô tả thời tiết, đồ ăn, văn hóa và địa điểm yêu thích ở quê bạn. Bạn nghĩ quê bạn có đặc điểm gì?",
+                Question = "请准确发音下列高难度词汇:",
+                PromptText = "发音 - 壮丽 - 非凡",
+                VietnameseTranslation = "Phát âm - Tráng lệ - Phi thường",
                 WordGuides = new List<WordWithGuide>
                 {
                     new() {
-                        Word = "家乡",
-                        Pronunciation = "jiā xiāng (gia hương - thanh 1+1)",
-                        VietnameseMeaning = "Quê hương, quê nhà",
-                        Example = "我的家乡在越南。(Quê tôi ở Việt Nam)"
+                        Word = "发音",
+                        Pronunciation = "fā yīn (pha in )",
+                        VietnameseMeaning = "Phát âm",
+                        Example = "正确的发音很重要。(Phát âm đúng rất quan trọng)"
                     },
                     new() {
-                        Word = "文化",
-                        Pronunciation = "wén huà (vờn hoá - thanh 2+4)",
-                        VietnameseMeaning = "Văn hóa",
-                        Example = "中国文化很丰富。(Văn hóa Trung Quốc rất phong phú)"
+                        Word = "壮丽",
+                        Pronunciation = "zhuàng lì (tráng lệ)",
+                        VietnameseMeaning = "Tráng lệ",
+                        Example = "山景非常壮丽。(Cảnh núi rất tráng lệ)"
                     },
                     new() {
-                        Word = "特色",
-                        Pronunciation = "tè sè (tơ xắc - thanh 4+4)",
-                        VietnameseMeaning = "Đặc sắc, nét đặc trưng",
-                        Example = "这个城市有很多特色。(Thành phố này có nhiều nét đặc trưng)"
+                        Word = "非凡",
+                        Pronunciation = "fēi fán (phi phàm )",
+                        VietnameseMeaning = "Phi thường",
+                        Example = "她有非凡的才能。(Cô ấy có tài năng phi thường)"
                     }
                 },
-                QuestionType = "speaking",
-                Difficulty = "intermediate",
-                MaxRecordingSeconds = 90
+                QuestionType = "three_words",
+                Difficulty = "advanced",
+                MaxRecordingSeconds = 30
             },
+          
             new() {
                 QuestionNumber = 4,
-                Question = "谈谈你对现代科技的看法:",
-                PromptText = "请谈谈现代科技对我们生活的影响，包括好处和坏处。你认为科技发展对教育有什么影响？请举例说明。",
-                VietnameseTranslation = "Hãy nói về ảnh hưởng của công nghệ hiện đại đến cuộc sống, bao gồm ưu và nhược điểm. Bạn nghĩ phát triển công nghệ ảnh hưởng gì đến giáo dục? Cho ví dụ cụ thể.",
+                Question = "请以自然的语调和节奏朗读下列长句:",
+                PromptText = "科技已经彻底改变了我们在现代世界中交流和学习的方式。",
+                VietnameseTranslation = "Công nghệ đã cách mạng hóa cách chúng ta giao tiếp và học tập trong thế giới hiện đại.",
                 WordGuides = new List<WordWithGuide>
                 {
                     new() {
-                        Word = "现代科技",
-                        Pronunciation = "xiàn dài kē jì (hiến đại kơ gi - 4+4+1+4)",
-                        VietnameseMeaning = "Công nghệ hiện đại",
-                        Example = "现代科技改变了我们的生活。(Công nghệ hiện đại thay đổi cuộc sống)"
+                        Word = "彻底改变",
+                        Pronunciation = "chè dǐ gǎi biàn (triệt để cải biến ",
+                        VietnameseMeaning = "Thay đổi hoàn toàn",
+                        Example = "这个发明彻底改变了生活。(Phát minh này thay đổi hoàn toàn cuộc sống)"
                     },
                     new() {
-                        Word = "影响",
-                        Pronunciation = "yǐng xiǎng (ỉnh hưởng - thanh 3+3)",
-                        VietnameseMeaning = "Ảnh hưởng, tác động",
-                        Example = "这个决定影响很大。(Quyết định này ảnh hưởng lớn)"
+                        Word = "交流",
+                        Pronunciation = "jiāo liú (giao lưu )",
+                        VietnameseMeaning = "Giao tiếp",
+                        Example = "我们需要更多交流。(Chúng ta cần giao tiếp nhiều hơn)"
                     },
                     new() {
-                        Word = "教育",
-                        Pronunciation = "jiào yù (giáo dục - thanh 4+4)",
-                        VietnameseMeaning = "Giáo dục",
-                        Example = "教育很重要。(Giáo dục rất quan trọng)"
-                    },
-                    new() {
-                        Word = "发展",
-                        Pronunciation = "fā zhǎn (pha chản - thanh 1+3)",
-                        VietnameseMeaning = "Phát triển",
-                        Example = "经济发展很快。(Kinh tế phát triển nhanh)"
+                        Word = "现代世界",
+                        Pronunciation = "xiàn dài shì jiè (hiện đại thế giới)",
+                        VietnameseMeaning = "Thế giới hiện đại",
+                        Example = "现代世界变化很快。(Thế giới hiện đại thay đổi rất nhanh)"
                     }
                 },
-                QuestionType = "speaking",
+                QuestionType = "long_sentence",
                 Difficulty = "advanced",
-                MaxRecordingSeconds = 120
+                MaxRecordingSeconds = 45
             }
         },
 
                 "JP" => new List<VoiceAssessmentQuestion>
         {
+          
             new() {
                 QuestionNumber = 1,
-                Question = "次の単語を読んでください:",
-                PromptText = "こんにちは - せかい - うつくしい",
-                VietnameseTranslation = "Xin chào - Thế giới - Đẹp",
+                Question = "次の基本的な単語を正確に発音してください:",
+                PromptText = "こんにちは",
+                VietnameseTranslation = "Xin chào",
                 WordGuides = new List<WordWithGuide>
                 {
                     new() {
@@ -2224,119 +2181,208 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
                         Pronunciation = "konnichiwa (kon-ni-chi-oa)",
                         VietnameseMeaning = "Xin chào (ban ngày)",
                         Example = "こんにちは、元気ですか。(Xin chào, bạn khỏe không?)"
-                    },
+                    }
+                },
+                QuestionType = "single_word",
+                Difficulty = "beginner",
+                MaxRecordingSeconds = 15
+            },
+  
+            new() {
+                QuestionNumber = 2,
+                Question = "次の中級レベルの単語を正確に発音してください:",
+                PromptText = "美しい - 大切",
+                VietnameseTranslation = "Đẹp - Quan trọng",
+                WordGuides = new List<WordWithGuide>
+                {
                     new() {
-                        Word = "せかい (世界)",
-                        Pronunciation = "sekai (xê-kai)",
-                        VietnameseMeaning = "Thế giới",
-                        Example = "世界は広いです。(Thế giới rộng lớn)"
-                    },
-                    new() {
-                        Word = "うつくしい (美しい)",
+                        Word = "美しい (うつくしい)",
                         Pronunciation = "utsukushii (u-xu-ku-xì-i)",
                         VietnameseMeaning = "Đẹp",
                         Example = "桜はとても美しいです。(Hoa anh đào rất đẹp)"
-                    }
-                },
-                QuestionType = "pronunciation",
-                Difficulty = "beginner",
-                MaxRecordingSeconds = 30
-            },
-            new() {
-                QuestionNumber = 2,
-                Question = "自己紹介をしてください:",
-                PromptText = "お名前、年齢、出身地、お仕事、趣味について話してください。はっきりと話してください。",
-                VietnameseTranslation = "Hãy giới thiệu tên, tuổi, quê quán, công việc và sở thích của bạn. Hãy nói rõ ràng.",
-                WordGuides = new List<WordWithGuide>
-                {
-                    new() {
-                        Word = "自己紹介 (じこしょうかい)",
-                        Pronunciation = "jikoshoukai (gi-ko-sô-kai)",
-                        VietnameseMeaning = "Tự giới thiệu",
-                        Example = "自己紹介をします。(Tôi xin tự giới thiệu)"
                     },
                     new() {
-                        Word = "名前 (なまえ)",
-                        Pronunciation = "namae (na-ma-e)",
-                        VietnameseMeaning = "Tên",
-                        Example = "私の名前は田中です。(Tên tôi là Tanaka)"
-                    },
-                    new() {
-                        Word = "趣味 (しゅみ)",
-                        Pronunciation = "shumi (xu-mi)",
-                        VietnameseMeaning = "Sở thích",
-                        Example = "私の趣味は読書です。(Sở thích của tôi là đọc sách)"
+                        Word = "大切 (たいせつ)",
+                        Pronunciation = "taisetsu (tai-xe-xu)",
+                        VietnameseMeaning = "Quan trọng",
+                        Example = "家族はとても大切です。(Gia đình rất quan trọng)"
                     }
                 },
-                QuestionType = "speaking",
-                Difficulty = "elementary",
-                MaxRecordingSeconds = 60
+                QuestionType = "two_words",
+                Difficulty = "intermediate",
+                MaxRecordingSeconds = 20
             },
+          
             new() {
                 QuestionNumber = 3,
-                Question = "好きな季節について話してください:",
-                PromptText = "好きな季節とその理由、その季節にすること、季節の食べ物などについて説明してください。",
-                VietnameseTranslation = "Hãy nói về mùa yêu thích và lý do, những việc làm trong mùa đó, món ăn theo mùa.",
+                Question = "次の上級レベルの単語を正確に発音してください:",
+                PromptText = "発音 - 素晴らしい - 特別",
+                VietnameseTranslation = "Phát âm - Tuyệt vời - Đặc biệt",
                 WordGuides = new List<WordWithGuide>
                 {
                     new() {
-                        Word = "季節 (きせつ)",
-                        Pronunciation = "kisetsu (ki-xe-xu)",
-                        VietnameseMeaning = "Mùa, mùa trong năm",
-                        Example = "日本には四つの季節があります。(Nhật Bản có 4 mùa)"
+                        Word = "発音 (はつおん)",
+                        Pronunciation = "hatsuon (ha-xu-on)",
+                        VietnameseMeaning = "Phát âm",
+                        Example = "正しい発音は大切です。(Phát âm đúng rất quan trọng)"
                     },
                     new() {
-                        Word = "好き (すき)",
-                        Pronunciation = "suki (xu-ki)",
-                        VietnameseMeaning = "Thích",
-                        Example = "私は春が好きです。(Tôi thích mùa xuân)"
+                        Word = "素晴らしい (すばらしい)",
+                        Pronunciation = "subarashii (xu-ba-ra-xì-i)",
+                        VietnameseMeaning = "Tuyệt vời",
+                        Example = "素晴らしい景色ですね。(Cảnh này tuyệt vời nhỉ)"
                     },
                     new() {
-                        Word = "理由 (りゆう)",
-                        Pronunciation = "riyuu (ri-yû)",
-                        VietnameseMeaning = "Lý do",
-                        Example = "理由を説明します。(Tôi giải thích lý do)"
+                        Word = "特別 (とくべつ)",
+                        Pronunciation = "tokubetsu (to-ku-be-xu)",
+                        VietnameseMeaning = "Đặc biệt",
+                        Example = "今日は特別な日です。(Hôm nay là ngày đặc biệt)"
                     }
                 },
-                QuestionType = "speaking",
-                Difficulty = "intermediate",
-                MaxRecordingSeconds = 90
+                QuestionType = "three_words",
+                Difficulty = "advanced",
+                MaxRecordingSeconds = 30
             },
+        
             new() {
                 QuestionNumber = 4,
-                Question = "日本の文化について意見を述べてください:",
-                PromptText = "日本の文化で興味深いと思うことについて、具体例を挙げて説明してください。他の国の文化と比較してもいいです。",
-                VietnameseTranslation = "Hãy nêu ý kiến về văn hóa Nhật Bản, những điều bạn thấy thú vị với ví dụ cụ thể. Có thể so sánh với văn hóa nước khác.",
+                Question = "次の長い文を自然なイントネーションとリズムで読んでください:",
+                PromptText = "技術は現代世界における私たちのコミュニケーションと学習の方法を革命的に変えました。",
+                VietnameseTranslation = "Công nghệ đã cách mạng hóa cách chúng ta giao tiếp và học tập trong thế giới hiện đại.",
                 WordGuides = new List<WordWithGuide>
                 {
                     new() {
-                        Word = "文化 (ぶんか)",
-                        Pronunciation = "bunka (bun-ka)",
-                        VietnameseMeaning = "Văn hóa",
-                        Example = "日本の文化は面白いです。(Văn hóa Nhật rất thú vị)"
+                        Word = "革命的 (かくめいてき)",
+                        Pronunciation = "kakumeiteki (ka-ku-mei-te-ki)",
+                        VietnameseMeaning = "Mang tính cách mạng",
+                        Example = "革命的な変化が起きました。(Đã xảy ra thay đổi mang tính cách mạng)"
                     },
                     new() {
-                        Word = "興味深い (きょうみぶかい)",
-                        Pronunciation = "kyoumibukai (kyô-mi-bu-kai)",
-                        VietnameseMeaning = "Thú vị, hấp dẫn",
-                        Example = "この話は興味深いです。(Câu chuyện này thú vị)"
+                        Word = "コミュニケーション",
+                        Pronunciation = "komyunikeeshon (ko-myu-ni-kê-syon)",
+                        VietnameseMeaning = "Giao tiếp",
+                        Example = "コミュニケーションは重要です。(Giao tiếp rất quan trọng)"
                     },
                     new() {
-                        Word = "意見 (いけん)",
-                        Pronunciation = "iken (i-ken)",
-                        VietnameseMeaning = "Ý kiến",
-                        Example = "あなたの意見を聞きたいです。(Tôi muốn nghe ý kiến bạn)"
-                    },
-                    new() {
-                        Word = "比較 (ひかく)",
-                        Pronunciation = "hikaku (hi-ka-ku)",
-                        VietnameseMeaning = "So sánh",
-                        Example = "二つの国を比較します。(So sánh hai nước)"
+                        Word = "現代世界 (げんだいせかい)",
+                        Pronunciation = "gendai sekai (gen-dai xe-kai)",
+                        VietnameseMeaning = "Thế giới hiện đại",
+                        Example = "現代世界は複雑です。(Thế giới hiện đại rất phức tạp)"
                     }
                 },
-                QuestionType = "speaking",
+                QuestionType = "long_sentence",
                 Difficulty = "advanced",
-                MaxRecordingSeconds = 120
+                MaxRecordingSeconds = 45
+            }
+        },
+
+                "VI" => new List<VoiceAssessmentQuestion>
+        {
+            // 📍 Câu 1: NÓI 1 TỪ CỞ BẢN  
+            new() {
+                QuestionNumber = 1,
+                Question = "Hãy phát âm rõ ràng từ cơ bản sau:",
+                PromptText = "Xin chào",
+                VietnameseTranslation = "Xin chào",
+                WordGuides = new List<WordWithGuide>
+                {
+                    new() {
+                        Word = "Xin chào",
+                        Pronunciation = "sin tʂàːw (sin chào)",
+                        VietnameseMeaning = "Lời chào hỏi",
+                        Example = "Xin chào! Rất vui được gặp bạn."
+                    }
+                },
+                QuestionType = "single_word",
+                Difficulty = "beginner",
+                MaxRecordingSeconds = 15
+            },
+            // 📍 Câu 2: NÓI 2 TỪ TRUNG BÌNH
+            new() {
+                QuestionNumber = 2,
+                Question = "Hãy phát âm rõ ràng 2 từ trung bình sau:",
+                PromptText = "Xinh đẹp - Quan trọng",
+                VietnameseTranslation = "Xinh đẹp - Quan trọng",
+                WordGuides = new List<WordWithGuide>
+                {
+                    new() {
+                        Word = "Xinh đẹp",
+                        Pronunciation = "siɲ ɗɛ́p (sinh đếp)",
+                        VietnameseMeaning = "Có vẻ đẹp hấp dẫn",
+                        Example = "Cô ấy rất xinh đẹp."
+                    },
+                    new() {
+                        Word = "Quan trọng",
+                        Pronunciation = "kwaːn ʈɔ̀ŋ (quan trọng)",
+                        VietnameseMeaning = "Có ý nghĩa lớn",
+                        Example = "Giáo dục rất quan trọng."
+                    }
+                },
+                QuestionType = "two_words",
+                Difficulty = "intermediate",
+                MaxRecordingSeconds = 20
+            },
+            // 📍 Câu 3: NÓI 3 TỪ KHÓ
+            new() {
+                QuestionNumber = 3,
+                Question = "Hãy phát âm rõ ràng 3 từ khó sau:",
+                PromptText = "Phát âm - Tráng lệ - Phi thường",
+                VietnameseTranslation = "Phát âm - Tráng lệ - Phi thường",
+                WordGuides = new List<WordWithGuide>
+                {
+                    new() {
+                        Word = "Phát âm",
+                        Pronunciation = "faːt ʔaːm (phát âm)",
+                        VietnameseMeaning = "Cách nói ra âm thanh",
+                        Example = "Phát âm chuẩn rất quan trọng."
+                    },
+                    new() {
+                        Word = "Tráng lệ",
+                        Pronunciation = "ʈaːŋ lɛ̂ (tráng lệ)",
+                        VietnameseMeaning = "Hùng vĩ, lộng lẫy",
+                        Example = "Cung điện rất tráng lệ."
+                    },
+                    new() {
+                        Word = "Phi thường",
+                        Pronunciation = "fi tʰɨ̀ːəŋ (phi thường)",
+                        VietnameseMeaning = "Khác thường, đặc biệt",
+                        Example = "Cậu ấy có tài năng phi thường."
+                    }
+                },
+                QuestionType = "three_words",
+                Difficulty = "advanced",
+                MaxRecordingSeconds = 30
+            },
+            // 📍 Câu 4: NÓI 1 CÂU DÀI
+            new() {
+                QuestionNumber = 4,
+                Question = "Hãy đọc câu dài sau với ngữ điệu và nhịp điệu tự nhiên:",
+                PromptText = "Công nghệ đã cách mạng hóa cách chúng ta giao tiếp và học tập trong thế giới hiện đại.",
+                VietnameseTranslation = "Công nghệ đã cách mạng hóa cách chúng ta giao tiếp và học tập trong thế giới hiện đại.",
+                WordGuides = new List<WordWithGuide>
+                {
+                    new() {
+                        Word = "Cách mạng hóa",
+                        Pronunciation = "kaːk maːŋ hoaː (cách mạng hóa)",
+                        VietnameseMeaning = "Thay đổi một cách căn bản",
+                        Example = "Internet đã cách mạng hóa truyền thông."
+                    },
+                    new() {
+                        Word = "Giao tiếp",
+                        Pronunciation = "zaːw tiɛ́p (giao tiếp)",
+                        VietnameseMeaning = "Trao đổi thông tin",
+                        Example = "Giao tiếp hiệu quả rất cần thiết."
+                    },
+                    new() {
+                        Word = "Hiện đại",
+                        Pronunciation = "hiɛ̂n ɗaːj (hiện đại)",
+                        VietnameseMeaning = "Thuộc về thời đại bây giờ",
+                        Example = "Chúng ta sống trong xã hội hiện đại."
+                    }
+                },
+                QuestionType = "long_sentence",
+                Difficulty = "advanced",
+                MaxRecordingSeconds = 45
             }
         },
 
