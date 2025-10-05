@@ -4,6 +4,7 @@ using BLL.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Presentation.Filter;
 using System.Reflection;
 using System.Text;
 
@@ -20,7 +21,7 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "Flearn API",
         Version = "v1",
-        Description = "API cho nền tảng học ngôn ngữ Flearn",
+        Description = "API cho nền tảng học ngôn ngữ Flearn với Voice Assessment",
         Contact = new OpenApiContact
         {
             Name = "Flearn Support",
@@ -28,7 +29,9 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 
-    // Add XML comments if available
+    // ✅ Apply custom filter first
+    c.OperationFilter<FileUploadOperationFilter>();
+
     var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
     if (File.Exists(xmlPath))
@@ -39,11 +42,12 @@ builder.Services.AddSwaggerGen(c =>
     // Support for nullable reference types
     c.SupportNonNullableReferenceTypes();
 
-    // Simple file upload mapping - this is the key fix
+    // ✅ ENHANCED: Better file upload mapping
     c.MapType<IFormFile>(() => new OpenApiSchema
     {
         Type = "string",
-        Format = "binary"
+        Format = "binary",
+        Description = "Upload file (multipart/form-data)"
     });
 
     c.MapType<IList<IFormFile>>(() => new OpenApiSchema
@@ -52,11 +56,15 @@ builder.Services.AddSwaggerGen(c =>
         Items = new OpenApiSchema
         {
             Type = "string",
-            Format = "binary"
+            Format = "binary",
+            Description = "Upload multiple files"
         }
     });
 
-    // Add JWT Authentication to Swagger
+    // ✅ Add schema filters for better documentation
+    c.SchemaFilter<FormFileSchemaFilter>();
+
+    // JWT Authentication setup...
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = @"Nhập JWT token (chỉ cần token, không cần 'Bearer ')",
@@ -84,6 +92,8 @@ builder.Services.AddSwaggerGen(c =>
             new List<string>()
         }
     });
+
+    // Exclude Upload controller from docs if needed
     c.DocInclusionPredicate((docName, apiDesc) =>
     {
         var controllerName = apiDesc.ActionDescriptor.RouteValues["controller"];
@@ -132,7 +142,7 @@ if (jwtSettings != null && !string.IsNullOrEmpty(jwtSettings.SecretKey))
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero,
             RequireExpirationTime = true,
-            // ✅ Thêm claims validation
+ 
             RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role",
             NameClaimType = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
         };
@@ -141,7 +151,7 @@ if (jwtSettings != null && !string.IsNullOrEmpty(jwtSettings.SecretKey))
         {
             OnAuthenticationFailed = context =>
             {
-                // ✅ Detailed logging for debugging
+               
                 Console.WriteLine($"Authentication failed: {context.Exception.Message}");
 
                 if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
@@ -161,7 +171,7 @@ if (jwtSettings != null && !string.IsNullOrEmpty(jwtSettings.SecretKey))
             },
             OnTokenValidated = context =>
             {
-                // ✅ Log successful validation
+              
                 Console.WriteLine($"Token validated for user: {context.Principal?.Identity?.Name}");
                 return Task.CompletedTask;
             }

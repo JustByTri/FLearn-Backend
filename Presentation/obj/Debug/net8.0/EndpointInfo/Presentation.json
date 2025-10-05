@@ -2,7 +2,7 @@
   "openapi": "3.0.1",
   "info": {
     "title": "Flearn API",
-    "description": "API cho nền tảng học ngôn ngữ Flearn",
+    "description": "API cho nền tảng học ngôn ngữ Flearn với Voice Assessment",
     "contact": {
       "name": "Flearn Support",
       "email": "support@flearn.com"
@@ -563,27 +563,12 @@
           "content": {
             "multipart/form-data": {
               "schema": {
-                "required": [
-                  "CourseType",
-                  "Description",
-                  "GoalId",
-                  "Image",
-                  "LanguageID",
-                  "Price",
-                  "TemplateId",
-                  "Title",
-                  "TopicIds"
-                ],
                 "type": "object",
                 "properties": {
                   "Title": {
-                    "maxLength": 200,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "Description": {
-                    "maxLength": 1000,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "Image": {
@@ -591,88 +576,37 @@
                     "format": "binary"
                   },
                   "TemplateId": {
-                    "type": "string",
-                    "format": "uuid"
+                    "type": "string"
                   },
                   "TopicIds": {
-                    "minItems": 1,
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "format": "uuid"
-                    }
+                    "type": "string"
                   },
                   "Price": {
-                    "maximum": 100000,
-                    "minimum": 0,
-                    "type": "number",
-                    "format": "double"
+                    "type": "string"
                   },
                   "DiscountPrice": {
-                    "maximum": 100000,
-                    "minimum": 0,
-                    "type": "number",
-                    "format": "double"
+                    "type": "string"
                   },
                   "CourseType": {
-                    "$ref": "#/components/schemas/CourseType"
+                    "type": "string"
                   },
                   "LanguageID": {
-                    "type": "string",
-                    "format": "uuid"
+                    "type": "string"
                   },
                   "GoalId": {
-                    "type": "integer",
-                    "format": "int32"
+                    "type": "integer"
                   },
                   "CourseLevel": {
-                    "$ref": "#/components/schemas/LevelType"
+                    "type": "string"
                   },
                   "CourseSkill": {
-                    "$ref": "#/components/schemas/SkillType"
+                    "type": "string"
                   }
-                }
-              },
-              "encoding": {
-                "Title": {
-                  "style": "form"
-                },
-                "Description": {
-                  "style": "form"
-                },
-                "Image": {
-                  "style": "form"
-                },
-                "TemplateId": {
-                  "style": "form"
-                },
-                "TopicIds": {
-                  "style": "form"
-                },
-                "Price": {
-                  "style": "form"
-                },
-                "DiscountPrice": {
-                  "style": "form"
-                },
-                "CourseType": {
-                  "style": "form"
-                },
-                "LanguageID": {
-                  "style": "form"
-                },
-                "GoalId": {
-                  "style": "form"
-                },
-                "CourseLevel": {
-                  "style": "form"
-                },
-                "CourseSkill": {
-                  "style": "form"
                 }
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -767,26 +701,12 @@
           "content": {
             "multipart/form-data": {
               "schema": {
-                "required": [
-                  "CourseType",
-                  "Description",
-                  "GoalId",
-                  "LanguageID",
-                  "Price",
-                  "TemplateId",
-                  "Title",
-                  "TopicIds"
-                ],
                 "type": "object",
                 "properties": {
                   "Title": {
-                    "maxLength": 200,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "Description": {
-                    "maxLength": 1000,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "Image": {
@@ -794,88 +714,37 @@
                     "format": "binary"
                   },
                   "TemplateId": {
-                    "type": "string",
-                    "format": "uuid"
+                    "type": "string"
                   },
                   "TopicIds": {
-                    "minItems": 1,
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "format": "uuid"
-                    }
+                    "type": "string"
                   },
                   "Price": {
-                    "maximum": 100000,
-                    "minimum": 0,
-                    "type": "number",
-                    "format": "double"
+                    "type": "string"
                   },
                   "DiscountPrice": {
-                    "maximum": 100000,
-                    "minimum": 0,
-                    "type": "number",
-                    "format": "double"
+                    "type": "string"
                   },
                   "CourseType": {
-                    "$ref": "#/components/schemas/CourseType"
+                    "type": "string"
                   },
                   "LanguageID": {
-                    "type": "string",
-                    "format": "uuid"
+                    "type": "string"
                   },
                   "GoalId": {
-                    "type": "integer",
-                    "format": "int32"
+                    "type": "integer"
                   },
                   "CourseLevel": {
-                    "$ref": "#/components/schemas/LevelType"
+                    "type": "string"
                   },
                   "CourseSkill": {
-                    "$ref": "#/components/schemas/SkillType"
+                    "type": "string"
                   }
-                }
-              },
-              "encoding": {
-                "Title": {
-                  "style": "form"
-                },
-                "Description": {
-                  "style": "form"
-                },
-                "Image": {
-                  "style": "form"
-                },
-                "TemplateId": {
-                  "style": "form"
-                },
-                "TopicIds": {
-                  "style": "form"
-                },
-                "Price": {
-                  "style": "form"
-                },
-                "DiscountPrice": {
-                  "style": "form"
-                },
-                "CourseType": {
-                  "style": "form"
-                },
-                "LanguageID": {
-                  "style": "form"
-                },
-                "GoalId": {
-                  "style": "form"
-                },
-                "CourseLevel": {
-                  "style": "form"
-                },
-                "CourseSkill": {
-                  "style": "form"
                 }
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -1066,36 +935,21 @@
           "content": {
             "multipart/form-data": {
               "schema": {
-                "required": [
-                  "Difficulty",
-                  "Title",
-                  "Type"
-                ],
                 "type": "object",
                 "properties": {
                   "Title": {
-                    "maxLength": 200,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "Prompt": {
-                    "maxLength": 1000,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "Hints": {
-                    "maxLength": 500,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "Content": {
-                    "maxLength": 2000,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "ExpectedAnswer": {
-                    "maxLength": 1000,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "MediaFile": {
@@ -1103,90 +957,34 @@
                     "format": "binary"
                   },
                   "Type": {
-                    "$ref": "#/components/schemas/ExerciseType"
+                    "type": "string"
                   },
                   "SkillType": {
-                    "$ref": "#/components/schemas/SkillType"
+                    "type": "string"
                   },
                   "Difficulty": {
-                    "$ref": "#/components/schemas/DifficultyLevel"
+                    "type": "string"
                   },
                   "MaxScore": {
-                    "maximum": 1000,
-                    "minimum": 1,
-                    "type": "integer",
-                    "format": "int32"
+                    "type": "integer"
                   },
                   "PassScore": {
-                    "maximum": 1000,
-                    "minimum": 1,
-                    "type": "integer",
-                    "format": "int32"
+                    "type": "integer"
                   },
                   "FeedbackCorrect": {
-                    "maxLength": 1000,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "FeedbackIncorrect": {
-                    "maxLength": 1000,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "Options": {
-                    "type": "array",
-                    "items": {
-                      "$ref": "#/components/schemas/ExerciseOptionRequest"
-                    }
+                    "type": "string"
                   }
-                }
-              },
-              "encoding": {
-                "Title": {
-                  "style": "form"
-                },
-                "Prompt": {
-                  "style": "form"
-                },
-                "Hints": {
-                  "style": "form"
-                },
-                "Content": {
-                  "style": "form"
-                },
-                "ExpectedAnswer": {
-                  "style": "form"
-                },
-                "MediaFile": {
-                  "style": "form"
-                },
-                "Type": {
-                  "style": "form"
-                },
-                "SkillType": {
-                  "style": "form"
-                },
-                "Difficulty": {
-                  "style": "form"
-                },
-                "MaxScore": {
-                  "style": "form"
-                },
-                "PassScore": {
-                  "style": "form"
-                },
-                "FeedbackCorrect": {
-                  "style": "form"
-                },
-                "FeedbackIncorrect": {
-                  "style": "form"
-                },
-                "Options": {
-                  "style": "form"
                 }
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -1279,36 +1077,21 @@
           "content": {
             "multipart/form-data": {
               "schema": {
-                "required": [
-                  "Difficulty",
-                  "Title",
-                  "Type"
-                ],
                 "type": "object",
                 "properties": {
                   "Title": {
-                    "maxLength": 200,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "Prompt": {
-                    "maxLength": 1000,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "Hints": {
-                    "maxLength": 500,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "Content": {
-                    "maxLength": 2000,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "ExpectedAnswer": {
-                    "maxLength": 1000,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "MediaFile": {
@@ -1316,90 +1099,34 @@
                     "format": "binary"
                   },
                   "Type": {
-                    "$ref": "#/components/schemas/ExerciseType"
+                    "type": "string"
                   },
                   "SkillType": {
-                    "$ref": "#/components/schemas/SkillType"
+                    "type": "string"
                   },
                   "Difficulty": {
-                    "$ref": "#/components/schemas/DifficultyLevel"
+                    "type": "string"
                   },
                   "MaxScore": {
-                    "maximum": 1000,
-                    "minimum": 1,
-                    "type": "integer",
-                    "format": "int32"
+                    "type": "integer"
                   },
                   "PassScore": {
-                    "maximum": 1000,
-                    "minimum": 1,
-                    "type": "integer",
-                    "format": "int32"
+                    "type": "integer"
                   },
                   "FeedbackCorrect": {
-                    "maxLength": 1000,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "FeedbackIncorrect": {
-                    "maxLength": 1000,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "Options": {
-                    "type": "array",
-                    "items": {
-                      "$ref": "#/components/schemas/ExerciseOptionRequest"
-                    }
+                    "type": "string"
                   }
-                }
-              },
-              "encoding": {
-                "Title": {
-                  "style": "form"
-                },
-                "Prompt": {
-                  "style": "form"
-                },
-                "Hints": {
-                  "style": "form"
-                },
-                "Content": {
-                  "style": "form"
-                },
-                "ExpectedAnswer": {
-                  "style": "form"
-                },
-                "MediaFile": {
-                  "style": "form"
-                },
-                "Type": {
-                  "style": "form"
-                },
-                "SkillType": {
-                  "style": "form"
-                },
-                "Difficulty": {
-                  "style": "form"
-                },
-                "MaxScore": {
-                  "style": "form"
-                },
-                "PassScore": {
-                  "style": "form"
-                },
-                "FeedbackCorrect": {
-                  "style": "form"
-                },
-                "FeedbackIncorrect": {
-                  "style": "form"
-                },
-                "Options": {
-                  "style": "form"
                 }
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -1615,28 +1342,18 @@
           "content": {
             "multipart/form-data": {
               "schema": {
-                "required": [
-                  "SkillFocus",
-                  "Title"
-                ],
                 "type": "object",
                 "properties": {
                   "Title": {
-                    "maxLength": 200,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "Content": {
-                    "maxLength": 2147483647,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "SkillFocus": {
-                    "$ref": "#/components/schemas/SkillType"
+                    "type": "string"
                   },
                   "Description": {
-                    "maxLength": 500,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "VideoFile": {
@@ -1648,29 +1365,10 @@
                     "format": "binary"
                   }
                 }
-              },
-              "encoding": {
-                "Title": {
-                  "style": "form"
-                },
-                "Content": {
-                  "style": "form"
-                },
-                "SkillFocus": {
-                  "style": "form"
-                },
-                "Description": {
-                  "style": "form"
-                },
-                "VideoFile": {
-                  "style": "form"
-                },
-                "DocumentFile": {
-                  "style": "form"
-                }
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -1754,28 +1452,18 @@
           "content": {
             "multipart/form-data": {
               "schema": {
-                "required": [
-                  "SkillFocus",
-                  "Title"
-                ],
                 "type": "object",
                 "properties": {
                   "Title": {
-                    "maxLength": 200,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "Content": {
-                    "maxLength": 2147483647,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "SkillFocus": {
-                    "$ref": "#/components/schemas/SkillType"
+                    "type": "string"
                   },
                   "Description": {
-                    "maxLength": 500,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "VideoFile": {
@@ -1787,29 +1475,10 @@
                     "format": "binary"
                   }
                 }
-              },
-              "encoding": {
-                "Title": {
-                  "style": "form"
-                },
-                "Content": {
-                  "style": "form"
-                },
-                "SkillFocus": {
-                  "style": "form"
-                },
-                "Description": {
-                  "style": "form"
-                },
-                "VideoFile": {
-                  "style": "form"
-                },
-                "DocumentFile": {
-                  "style": "form"
-                }
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -3161,6 +2830,7 @@
                     "type": "array",
                     "items": {
                       "type": "string",
+                      "description": "File upload (binary data)",
                       "format": "binary"
                     }
                   },
@@ -3484,20 +3154,12 @@
           "content": {
             "multipart/form-data": {
               "schema": {
-                "required": [
-                  "Image",
-                  "Name"
-                ],
                 "type": "object",
                 "properties": {
                   "Name": {
-                    "maxLength": 100,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "Description": {
-                    "maxLength": 500,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "Image": {
@@ -3505,20 +3167,10 @@
                     "format": "binary"
                   }
                 }
-              },
-              "encoding": {
-                "Name": {
-                  "style": "form"
-                },
-                "Description": {
-                  "style": "form"
-                },
-                "Image": {
-                  "style": "form"
-                }
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "201": {
@@ -3662,20 +3314,12 @@
           "content": {
             "multipart/form-data": {
               "schema": {
-                "required": [
-                  "Image",
-                  "Name"
-                ],
                 "type": "object",
                 "properties": {
                   "Name": {
-                    "maxLength": 100,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "Description": {
-                    "maxLength": 500,
-                    "minLength": 0,
                     "type": "string"
                   },
                   "Image": {
@@ -3683,20 +3327,10 @@
                     "format": "binary"
                   }
                 }
-              },
-              "encoding": {
-                "Name": {
-                  "style": "form"
-                },
-                "Description": {
-                  "style": "form"
-                },
-                "Image": {
-                  "style": "form"
-                }
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -3758,6 +3392,231 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/start/{languageId}": {
+      "post": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "parameters": [
+          {
+            "name": "languageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "goalId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/{assessmentId}/current-question": {
+      "get": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "parameters": [
+          {
+            "name": "assessmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/{assessmentId}/submit-voice": {
+      "post": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "parameters": [
+          {
+            "name": "assessmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "questionNumber",
+                  "isSkipped"
+                ],
+                "type": "object",
+                "properties": {
+                  "questionNumber": {
+                    "type": "integer",
+                    "description": "Số thứ tự câu hỏi",
+                    "example": 1
+                  },
+                  "isSkipped": {
+                    "type": "boolean",
+                    "description": "Có bỏ qua câu hỏi không",
+                    "example": false
+                  },
+                  "audioFile": {
+                    "type": "string",
+                    "description": "File âm thanh (MP3, WAV, M4A, WebM - Max 10MB)",
+                    "format": "binary"
+                  },
+                  "recordingDurationSeconds": {
+                    "type": "integer",
+                    "description": "Thời lượng ghi âm (giây)",
+                    "example": 0
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/smart-start/{languageId}": {
+      "post": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "parameters": [
+          {
+            "name": "languageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "goalId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/{assessmentId}/complete": {
+      "post": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "parameters": [
+          {
+            "name": "assessmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/result/{languageId}": {
+      "get": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "parameters": [
+          {
+            "name": "languageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/status/{languageId}": {
+      "get": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "parameters": [
+          {
+            "name": "languageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/test-redis": {
+      "get": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }

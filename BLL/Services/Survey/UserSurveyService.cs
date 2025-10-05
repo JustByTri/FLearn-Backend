@@ -105,7 +105,38 @@ namespace BLL.Services.Survey
                 throw;
             }
         }
+        public async Task UpdatePreferredLanguageAsync(Guid userId, Guid newLanguageId)
+        {
+            try
+            {
+                var survey = await _unitOfWork.UserSurveys.GetByUserIdAsync(userId);
+                if (survey == null)
+                {
+                    throw new InvalidOperationException("Người dùng chưa hoàn thành khảo sát");
+                }
 
+                var newLanguage = await _unitOfWork.Languages.GetByIdAsync(newLanguageId);
+                if (newLanguage == null)
+                {
+                    throw new ArgumentException("Ngôn ngữ không tồn tại");
+                }
+
+               
+                survey.PreferredLanguageID = newLanguageId;
+              
+
+                await _unitOfWork.UserSurveys.UpdateAsync(survey);
+                await _unitOfWork.SaveChangesAsync();
+
+                _logger.LogInformation("✅ Updated user {UserId} preferred language to {NewLanguage}",
+                    userId, newLanguage.LanguageName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating preferred language for user {UserId}", userId);
+                throw;
+            }
+        }
         public async Task<UserSurveyResponseDto?> GetUserSurveyAsync(Guid userId)
         {
             try

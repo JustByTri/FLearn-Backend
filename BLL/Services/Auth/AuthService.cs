@@ -249,7 +249,11 @@ namespace BLL.Services.Auth
                 Roles = user.UserRoles?.Select(ur => ur.Role.Name).ToList() ?? new List<string>()
             };
         }
-
+        private DateTime ConvertToVietnamTime(DateTime utcTime)
+        {
+            TimeZoneInfo vietnamZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            return TimeZoneInfo.ConvertTimeFromUtc(utcTime, vietnamZone);
+        }
         public async Task<bool> LogoutAsync(string refreshToken)
         {
             return await _unitOfWork.RefreshTokens.RevokeTokenAsync(refreshToken);
@@ -290,17 +294,17 @@ namespace BLL.Services.Auth
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
-                new Claim(ClaimTypes.Name, user.UserName),
-                new Claim(ClaimTypes.Email, user.Email),
+    {
+        new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
+        new Claim(ClaimTypes.Name, user.UserName),
+        new Claim(ClaimTypes.Email, user.Email),
 
-                new Claim("user_id", user.UserID.ToString()),
-                new Claim("username", user.UserName),
-                new Claim("email", user.Email),
+        new Claim("user_id", user.UserID.ToString()),
+        new Claim("username", user.UserName),
+        new Claim("email", user.Email),
 
-                new Claim("created_at", user.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"))
-            };
+        new Claim("created_at", user.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"))
+    };
 
             if (user.UserRoles != null)
             {
@@ -310,20 +314,24 @@ namespace BLL.Services.Auth
                 }
             }
 
-            var expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
+            var expiresAtUtc = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
 
             var token = new JwtSecurityToken(
                 issuer: _jwtSettings.Issuer,
                 audience: _jwtSettings.Audience,
                 claims: claims,
-                expires: expiresAt,
+                expires: expiresAtUtc,
                 signingCredentials: credentials
             );
+
+            // Convert sang giờ Việt Nam
+            var expiresAtVietnam = TimeZoneInfo.ConvertTimeFromUtc(expiresAtUtc,
+                TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
 
             return new TokenInfo
             {
                 Token = new JwtSecurityTokenHandler().WriteToken(token),
-                ExpiresAt = expiresAt
+                ExpiresAt = expiresAtVietnam 
             };
         }
 
