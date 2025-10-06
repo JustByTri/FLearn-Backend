@@ -25,14 +25,13 @@ namespace BLL.IServices.AI
             TeacherApplicationDto application,
             List<TeacherCredentialDto> credentials);
 
-        
+        Task<BatchVoiceEvaluationResult> EvaluateBatchVoiceResponsesAsync(
+   List<VoiceAssessmentQuestion> questions,
+   string languageCode,
+   string languageName);
         Task<List<VoiceAssessmentQuestion>> GenerateVoiceAssessmentQuestionsAsync(string languageCode, string languageName);
         Task<VoiceEvaluationResult> EvaluateVoiceResponseDirectlyAsync(VoiceAssessmentQuestion question, IFormFile audioFile, string languageCode);
-        Task<VoiceAssessmentResultDto> GenerateVoiceAssessmentResultAsync(
-     string languageCode,
-     string languageName,
-     List<VoiceAssessmentQuestion> questions,
-     string? goalName = null);
+            
     }
 
     public class CourseInfoDto

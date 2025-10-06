@@ -7,7 +7,7 @@ namespace BLL.IServices.Assessment
         Task<VoiceAssessmentDto> StartVoiceAssessmentAsync(Guid userId, Guid languageId, int? goalId = null);
         Task<VoiceAssessmentQuestion> GetCurrentQuestionAsync(Guid assessmentId);
         Task SubmitVoiceResponseAsync(Guid assessmentId, VoiceAssessmentResponseDto response);
-        Task<VoiceAssessmentResultDto> CompleteVoiceAssessmentAsync(Guid assessmentId);
+        Task<BatchVoiceEvaluationResult> CompleteVoiceAssessmentAsync(Guid assessmentId);
         Task<VoiceAssessmentResultDto?> GetVoiceAssessmentResultAsync(Guid userId, Guid languageId);
         Task<bool> HasCompletedVoiceAssessmentAsync(Guid userId, Guid languageId);
 

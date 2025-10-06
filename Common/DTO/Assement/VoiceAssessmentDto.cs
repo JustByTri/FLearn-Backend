@@ -17,5 +17,6 @@ namespace Common.DTO.Assement
         public List<VoiceAssessmentQuestion> Questions { get; set; } = new();
         public DateTime CreatedAt { get; set; }
         public int CurrentQuestionIndex { get; set; } = 0;
+        public List<string> SubmittedAudioPaths { get; set; } = new();
     }
 }

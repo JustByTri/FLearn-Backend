@@ -45,6 +45,7 @@ namespace DAL.DBContext
         public DbSet<CourseTemplate> CourseTemplates { get; set; }
         public DbSet<Goal> Goals { get; set; }
         public DbSet<ExerciseOption> ExerciseOptions { get; set; }
+        public DbSet<UserGoal> UserGoals { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -95,8 +96,40 @@ namespace DAL.DBContext
                       .HasForeignKey(e => e.RoadmapID)
                       .OnDelete(DeleteBehavior.Cascade);
             });
+            modelBuilder.Entity<UserGoal>(entity =>
+            {
+                entity.HasKey(ug => ug.UserGoalID);
+
+                entity.HasOne(ug => ug.User)
+                      .WithMany()
+                      .HasForeignKey(ug => ug.UserID)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(ug => ug.Language)
+                      .WithMany()
+                      .HasForeignKey(ug => ug.LanguageID)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(ug => ug.Goal)
+                      .WithMany()
+                      .HasForeignKey(ug => ug.GoalId)
+                      .OnDelete(DeleteBehavior.SetNull);
+
+
+                entity.HasIndex(ug => new { ug.UserID, ug.LanguageID, ug.IsActive })
+                      .HasFilter("IsActive = 1")
+                      .IsUnique();
+
+
+                entity.Property(ug => ug.UpdatedAt)
+                      .HasDefaultValueSql("CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)");
+
+                entity.Property(ug => ug.CreatedAt)
+                      .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            });
             SeedData(modelBuilder);
         }
+
         private void SeedData(ModelBuilder modelBuilder)
         {
             var now = DateTime.UtcNow;
@@ -126,7 +159,32 @@ namespace DAL.DBContext
                 new Role { RoleID = teacherRoleId, Name = "Teacher", Description = "Teacher who can create and manage courses", CreatedAt = now },
                 new Role { RoleID = learnerRoleId, Name = "Learner", Description = "Student learning languages", CreatedAt = now }
             );
-
+            modelBuilder.Entity<Goal>().HasData(
+       new Goal
+       {
+           Id = 1,
+           Name = "Học cơ bản",
+           Description = "Xây dựng nền tảng giao tiếp tiếng Anh cơ bản, làm quen với cách phát âm và các mẫu câu thông dụng trong đời sống hàng ngày.",
+           CreatedDate = now,
+           UpdatedDate = now
+       },
+new Goal
+{
+    Id = 2,
+    Name = "Học vừa vặn",
+    Description = "Nâng cao khả năng phản xạ và diễn đạt tự nhiên trong các tình huống giao tiếp hàng ngày, rèn luyện kỹ năng nghe – nói linh hoạt hơn.",
+    CreatedDate = now,
+    UpdatedDate = now
+},
+new Goal
+{
+    Id = 3,
+    Name = "Học nâng cao",
+    Description = "Phát triển kỹ năng giao tiếp chuyên sâu, sử dụng ngôn ngữ tự tin và chuyên nghiệp trong công việc, học tập hoặc thuyết trình.",
+    CreatedDate = now,
+    UpdatedDate = now
+}
+    );
 
             modelBuilder.Entity<Language>().HasData(
                 new Language { LanguageID = englishId, LanguageName = "English", LanguageCode = "EN", CreateAt = now },
@@ -217,7 +275,7 @@ namespace DAL.DBContext
                     BirthDate = new DateTime(1993, 12, 8)
                 }
             );
-
+            
 
             modelBuilder.Entity<UserRole>().HasData(
                 new UserRole { UserRoleID = Guid.NewGuid(), UserID = adminUserId, RoleID = adminRoleId },

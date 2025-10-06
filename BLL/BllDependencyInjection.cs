@@ -36,6 +36,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Caching.Distributed;  
 using StackExchange.Redis;
+using BLL.IServices.UserGoal;
+using BLL.Services.UserGoal;
 
 namespace BLL
 {
@@ -112,6 +114,7 @@ namespace BLL
             services.AddScoped<ILessonService, LessonService>();
             services.AddScoped<IExerciseService, ExerciseService>();
             services.AddScoped<IVoiceAssessmentService, VoiceAssessmentService>();
+            services.AddScoped<IUserGoalService, UserGoalService>();
 
             return services;
         }

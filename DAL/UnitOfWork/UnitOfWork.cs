@@ -47,8 +47,9 @@ namespace DAL.UnitOfWork
             Goals = new GoalRepository(_context);
             CourseTemplates = new CourseTemplateRepository(_context);
             ExerciseOptions = new ExerciseOptionRepository(_context);
+            UserGoals = new UserGoalRepository(_context);
         }
-
+        public IUserGoalRepository UserGoals { get; private set; }
         public IUserRepository Users { get; private set; }
         public IRoleRepository Roles { get; private set; }
         public IUserRoleRepository UserRoles { get; private set; }

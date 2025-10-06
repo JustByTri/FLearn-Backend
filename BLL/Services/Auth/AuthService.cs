@@ -324,14 +324,14 @@ namespace BLL.Services.Auth
                 signingCredentials: credentials
             );
 
-            // Convert sang giờ Việt Nam
+       
             var expiresAtVietnam = TimeZoneInfo.ConvertTimeFromUtc(expiresAtUtc,
                 TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
 
             return new TokenInfo
             {
                 Token = new JwtSecurityTokenHandler().WriteToken(token),
-                ExpiresAt = expiresAtVietnam 
+                ExpiresAt = expiresAtUtc
             };
         }
 

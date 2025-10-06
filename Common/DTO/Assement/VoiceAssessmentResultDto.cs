@@ -10,8 +10,8 @@ namespace Common.DTO.Assement
     {
         public Guid AssessmentId { get; set; }
         public string LanguageName { get; set; } = string.Empty;
+        public Guid LaguageID { get; set; }
 
-     
         public string DeterminedLevel { get; set; } = string.Empty; // CEFR/HSK/JLPT
         public int LevelConfidence { get; set; } 
         public string AssessmentCompleteness { get; set; } = string.Empty; // "3/4 câu"

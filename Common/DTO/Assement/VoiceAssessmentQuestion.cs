@@ -20,7 +20,9 @@ namespace Common.DTO.Assement
         public string Difficulty { get; set; } = string.Empty;
         public int MaxRecordingSeconds { get; set; }
         public bool IsSkipped { get; set; }
-        public VoiceEvaluationResult? EvaluationResult { get; set; }
+        public string? AudioFilePath { get; set; }
+    
+
     }
 
  

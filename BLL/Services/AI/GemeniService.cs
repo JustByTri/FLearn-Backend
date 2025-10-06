@@ -981,113 +981,113 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
         }
 
 
-        public async Task<VoiceAssessmentResultDto> GenerateVoiceAssessmentResultAsync(
-    string languageCode,
-    string languageName,
-    List<VoiceAssessmentQuestion> questions,
-    string? goalName = null)
-        {
-            try
-            {
-                var prompt = BuildVoiceAssessmentResultPrompt(languageCode, languageName, questions, goalName);
-                var response = await CallGeminiApiAsync(prompt);
-                return ParseVoiceAssessmentResult(response, languageName, questions);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error generating voice assessment result");
-                return CreateFallbackVoiceAssessmentResult(languageName, questions);
-            }
-        }
+//        public async Task<VoiceAssessmentResultDto> GenerateVoiceAssessmentResultAsync(
+//    string languageCode,
+//    string languageName,
+//    List<VoiceAssessmentQuestion> questions,
+//    string? goalName = null)
+//        {
+//            try
+//            {
+//                var prompt = BuildVoiceAssessmentResultPrompt(languageCode, languageName, questions, goalName);
+//                var response = await CallGeminiApiAsync(prompt);
+//                return ParseVoiceAssessmentResult(response, languageName, questions);
+//            }
+//            catch (Exception ex)
+//            {
+//                _logger.LogError(ex, "Error generating voice assessment result");
+//                return CreateFallbackVoiceAssessmentResult(languageName, questions);
+//            }
+//        }
 
-        private string BuildVoiceAssessmentResultPrompt(
-            string languageCode,
-            string languageName,
-            List<VoiceAssessmentQuestion> questions,
-            string? goalName = null)
-        {
-            var completedQuestions = questions.Where(q => !q.IsSkipped && q.EvaluationResult != null).ToList();
-            var completedCount = completedQuestions.Count;
-            var totalQuestions = questions.Count;
+//        private string BuildVoiceAssessmentResultPrompt(
+//            string languageCode,
+//            string languageName,
+//            List<VoiceAssessmentQuestion> questions,
+//            string? goalName = null)
+//        {
+//            var completedQuestions = questions.Where(q => !q.IsSkipped && q.EvaluationResult != null).ToList();
+//            var completedCount = completedQuestions.Count;
+//            var totalQuestions = questions.Count;
 
-            var questionsJson = JsonSerializer.Serialize(completedQuestions.Select(q => new {
-                q.QuestionNumber,
-                q.Difficulty,
-                OverallScore = q.EvaluationResult?.OverallScore ?? 0,
-                PronunciationScore = q.EvaluationResult?.Pronunciation?.Score ?? 0,
-                FluencyScore = q.EvaluationResult?.Fluency?.Score ?? 0,
-                GrammarScore = q.EvaluationResult?.Grammar?.Score ?? 0,
-                VocabularyScore = q.EvaluationResult?.Vocabulary?.Score ?? 0
-            }), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+//            var questionsJson = JsonSerializer.Serialize(completedQuestions.Select(q => new {
+//                q.QuestionNumber,
+//                q.Difficulty,
+//                OverallScore = q.EvaluationResult?.OverallScore ?? 0,
+//                PronunciationScore = q.EvaluationResult?.Pronunciation?.Score ?? 0,
+//                FluencyScore = q.EvaluationResult?.Fluency?.Score ?? 0,
+//                GrammarScore = q.EvaluationResult?.Grammar?.Score ?? 0,
+//                VocabularyScore = q.EvaluationResult?.Vocabulary?.Score ?? 0
+//            }), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
-            var goalContext = !string.IsNullOrEmpty(goalName)
-                ? $"\n\n## Mục tiêu học tập:\n**Goal**: {goalName}\n\n*Lưu ý: Roadmap và gợi ý cần phù hợp với mục tiêu '{goalName}'*"
-                : "";
+//            var goalContext = !string.IsNullOrEmpty(goalName)
+//                ? $"\n\n## Mục tiêu học tập:\n**Goal**: {goalName}\n\n*Lưu ý: Roadmap và gợi ý cần phù hợp với mục tiêu '{goalName}'*"
+//                : "";
 
-            var standardFramework = GetStandardFramework(languageCode);
+//            var standardFramework = GetStandardFramework(languageCode);
 
-            return $@"# Phân tích kết quả đánh giá giọng nói {languageName}
+//            return $@"# Phân tích kết quả đánh giá giọng nói {languageName}
 
-## Thông tin bài test:
-- **Số câu hoàn thành**: {completedCount}/{totalQuestions}
-- **Độ tin cậy đánh giá**: {GetConfidenceLevel(completedCount, totalQuestions)}%
-{goalContext}
+//## Thông tin bài test:
+//- **Số câu hoàn thành**: {completedCount}/{totalQuestions}
+//- **Độ tin cậy đánh giá**: {GetConfidenceLevel(completedCount, totalQuestions)}%
+//{goalContext}
 
-## Dữ liệu điểm chi tiết:
-{questionsJson}
+//## Dữ liệu điểm chi tiết:
+//{questionsJson}
 
-## Khung chuẩn {GetStandardName(languageCode)}:
-{standardFramework}
+//## Khung chuẩn {GetStandardName(languageCode)}:
+//{standardFramework}
 
-## YÊU CẦU ĐÁNH GIÁ:
+//## YÊU CẦU ĐÁNH GIÁ:
 
-### 1. Đánh giá CHÍNH XÁC dựa trên {completedCount} câu đã làm:
-- KHÔNG tự động cho điểm 70 hay bất kỳ điểm mặc định nào
-- Tính điểm dựa 100% trên câu đã hoàn thành
-- Nêu rõ giới hạn nếu completedCount < {totalQuestions}
+//### 1. Đánh giá CHÍNH XÁC dựa trên {completedCount} câu đã làm:
+//- KHÔNG tự động cho điểm 70 hay bất kỳ điểm mặc định nào
+//- Tính điểm dựa 100% trên câu đã hoàn thành
+//- Nêu rõ giới hạn nếu completedCount < {totalQuestions}
 
-### 2. Xác định Level theo khung chuẩn {GetStandardName(languageCode)}:
-{GetLevelDeterminationRules(languageCode)}
+//### 2. Xác định Level theo khung chuẩn {GetStandardName(languageCode)}:
+//{GetLevelDeterminationRules(languageCode)}
 
-### 3. Cung cấp Roadmap phù hợp với Goal:
-{(!string.IsNullOrEmpty(goalName) ? $"- Roadmap phải hướng tới mục tiêu '{goalName}'" : "")}
-- Các phase phải cụ thể và thực tế
-- Thời gian ước tính hợp lý
+//### 3. Cung cấp Roadmap phù hợp với Goal:
+//{(!string.IsNullOrEmpty(goalName) ? $"- Roadmap phải hướng tới mục tiêu '{goalName}'" : "")}
+//- Các phase phải cụ thể và thực tế
+//- Thời gian ước tính hợp lý
 
-## Format JSON trả về:
-{{
-    ""determinedLevel"": ""{GetExampleLevel(languageCode)}"",
-    ""levelConfidence"": {GetConfidenceLevel(completedCount, totalQuestions)},
-    ""assessmentCompleteness"": ""{completedCount}/{totalQuestions} câu"",
-    ""overallScore"": <điểm trung bình từ {completedCount} câu>,
-    ""pronunciationScore"": <điểm trung bình pronunciation>,
-    ""fluencyScore"": <điểm trung bình fluency>,
-    ""grammarScore"": <điểm trung bình grammar>,
-    ""vocabularyScore"": <điểm trung bình vocabulary>,
-    ""detailedFeedback"": ""Dựa trên {completedCount}/{totalQuestions} câu đã hoàn thành...\n\n{(completedCount < totalQuestions ? $"⚠️ **Lưu ý**: Kết quả này có độ tin cậy {GetConfidenceLevel(completedCount, totalQuestions)}%. Để có đánh giá chính xác hơn, vui lòng hoàn thành đủ {totalQuestions} câu." : "")}"",
-    ""keyStrengths"": [""Điểm mạnh từ {completedCount} câu""],
-    ""improvementAreas"": [""Cần cải thiện""{(completedCount < totalQuestions ? $", \"Hoàn thành thêm {totalQuestions - completedCount} câu\"" : "")}],
-    ""nextLevelRequirements"": ""Để đạt level [{GetNextLevel(languageCode)}], cần..."",
-    ""roadmap"": {{
-        ""currentLevel"": ""{GetExampleLevel(languageCode)}"",
-        ""targetLevel"": ""{GetNextLevel(languageCode)}"",
-        ""phases"": [
-            {{
-                ""phaseNumber"": 1,
-                ""title"": ""Phase phù hợp với mục tiêu {goalName ?? "học tập"}"",
-                ""duration"": ""4-8 tuần"",
-                ""goals"": [""Mục tiêu cụ thể""],
-                ""practiceActivities"": [""Hoạt động luyện tập""]
-            }}
-        ]
-    }}
-}}
+//## Format JSON trả về:
+//{{
+//    ""determinedLevel"": ""{GetExampleLevel(languageCode)}"",
+//    ""levelConfidence"": {GetConfidenceLevel(completedCount, totalQuestions)},
+//    ""assessmentCompleteness"": ""{completedCount}/{totalQuestions} câu"",
+//    ""overallScore"": <điểm trung bình từ {completedCount} câu>,
+//    ""pronunciationScore"": <điểm trung bình pronunciation>,
+//    ""fluencyScore"": <điểm trung bình fluency>,
+//    ""grammarScore"": <điểm trung bình grammar>,
+//    ""vocabularyScore"": <điểm trung bình vocabulary>,
+//    ""detailedFeedback"": ""Dựa trên {completedCount}/{totalQuestions} câu đã hoàn thành...\n\n{(completedCount < totalQuestions ? $"⚠️ **Lưu ý**: Kết quả này có độ tin cậy {GetConfidenceLevel(completedCount, totalQuestions)}%. Để có đánh giá chính xác hơn, vui lòng hoàn thành đủ {totalQuestions} câu." : "")}"",
+//    ""keyStrengths"": [""Điểm mạnh từ {completedCount} câu""],
+//    ""improvementAreas"": [""Cần cải thiện""{(completedCount < totalQuestions ? $", \"Hoàn thành thêm {totalQuestions - completedCount} câu\"" : "")}],
+//    ""nextLevelRequirements"": ""Để đạt level [{GetNextLevel(languageCode)}], cần..."",
+//    ""roadmap"": {{
+//        ""currentLevel"": ""{GetExampleLevel(languageCode)}"",
+//        ""targetLevel"": ""{GetNextLevel(languageCode)}"",
+//        ""phases"": [
+//            {{
+//                ""phaseNumber"": 1,
+//                ""title"": ""Phase phù hợp với mục tiêu {goalName ?? "học tập"}"",
+//                ""duration"": ""4-8 tuần"",
+//                ""goals"": [""Mục tiêu cụ thể""],
+//                ""practiceActivities"": [""Hoạt động luyện tập""]
+//            }}
+//        ]
+//    }}
+//}}
 
-**LƯU Ý QUAN TRỌNG**:
-- Điểm số = average của {completedCount} câu thực tế (KHÔNG phải điểm giả định)
-- Level = xác định theo khung {GetStandardName(languageCode)} chính thức
-- Confidence = {GetConfidenceLevel(completedCount, totalQuestions)}% (giảm nếu thiếu câu)";
-        }
+//**LƯU Ý QUAN TRỌNG**:
+//- Điểm số = average của {completedCount} câu thực tế (KHÔNG phải điểm giả định)
+//- Level = xác định theo khung {GetStandardName(languageCode)} chính thức
+//- Confidence = {GetConfidenceLevel(completedCount, totalQuestions)}% (giảm nếu thiếu câu)";
+//        }
 
         private int GetConfidenceLevel(int completed, int total)
         {
@@ -1101,85 +1101,85 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
                 _ => 50
             };
         }
-        private string BuildVoiceAssessmentResultPrompt(string languageCode, string languageName, List<VoiceAssessmentQuestion> questions)
-        {
-            var completedQuestions = questions.Where(q => !q.IsSkipped && q.EvaluationResult != null).ToList();
-            var totalQuestions = questions.Count;
-            var completedCount = completedQuestions.Count;
+//        private string BuildVoiceAssessmentResultPrompt(string languageCode, string languageName, List<VoiceAssessmentQuestion> questions)
+//        {
+//            var completedQuestions = questions.Where(q => !q.IsSkipped && q.EvaluationResult != null).ToList();
+//            var totalQuestions = questions.Count;
+//            var completedCount = completedQuestions.Count;
 
-            var questionsJson = JsonSerializer.Serialize(completedQuestions.Select(q => new {
-                q.QuestionNumber,
-                q.Question,
-                q.Difficulty,
-                q.QuestionType,
-                OverallScore = q.EvaluationResult?.OverallScore ?? 0,
-                PronunciationScore = q.EvaluationResult?.Pronunciation?.Score ?? 0,
-                FluencyScore = q.EvaluationResult?.Fluency?.Score ?? 0,
-                GrammarScore = q.EvaluationResult?.Grammar?.Score ?? 0,
-                VocabularyScore = q.EvaluationResult?.Vocabulary?.Score ?? 0
-            }), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+//            var questionsJson = JsonSerializer.Serialize(completedQuestions.Select(q => new {
+//                q.QuestionNumber,
+//                q.Question,
+//                q.Difficulty,
+//                q.QuestionType,
+//                OverallScore = q.EvaluationResult?.OverallScore ?? 0,
+//                PronunciationScore = q.EvaluationResult?.Pronunciation?.Score ?? 0,
+//                FluencyScore = q.EvaluationResult?.Fluency?.Score ?? 0,
+//                GrammarScore = q.EvaluationResult?.Grammar?.Score ?? 0,
+//                VocabularyScore = q.EvaluationResult?.Vocabulary?.Score ?? 0
+//            }), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
-            var standardFramework = GetStandardFramework(languageCode);
+//            var standardFramework = GetStandardFramework(languageCode);
 
-            return $@"# Phân tích kết quả đánh giá giọng nói {languageName}
+//            return $@"# Phân tích kết quả đánh giá giọng nói {languageName}
 
-## Thông tin bài test:
-- **Tổng số câu**: {totalQuestions}
-- **Số câu đã hoàn thành**: {completedCount}
-- **Số câu bỏ qua**: {totalQuestions - completedCount}
+//## Thông tin bài test:
+//- **Tổng số câu**: {totalQuestions}
+//- **Số câu đã hoàn thành**: {completedCount}
+//- **Số câu bỏ qua**: {totalQuestions - completedCount}
 
-## Dữ liệu câu hỏi và điểm chi tiết:
-{questionsJson}
+//## Dữ liệu câu hỏi và điểm chi tiết:
+//{questionsJson}
 
-## Khung chuẩn đánh giá {languageName}:
-{standardFramework}
+//## Khung chuẩn đánh giá {languageName}:
+//{standardFramework}
 
-## YÊU CẦU QUAN TRỌNG:
+//## YÊU CẦU QUAN TRỌNG:
 
-### 1. Đánh giá dựa trên số câu thực tế:
-- Nếu làm 1/4 câu: Đánh giá dựa trên 1 câu đó, không extrapolate
-- Nếu làm 2/4 câu: Đánh giá dựa trên 2 câu đó
-- Nếu làm 3/4 câu: Đánh giá dựa trên 3 câu đó
-- Nếu làm đủ 4/4 câu: Đánh giá toàn diện
+//### 1. Đánh giá dựa trên số câu thực tế:
+//- Nếu làm 1/4 câu: Đánh giá dựa trên 1 câu đó, không extrapolate
+//- Nếu làm 2/4 câu: Đánh giá dựa trên 2 câu đó
+//- Nếu làm 3/4 câu: Đánh giá dựa trên 3 câu đó
+//- Nếu làm đủ 4/4 câu: Đánh giá toàn diện
 
-### 2. Xác định cấp độ CHÍNH XÁC theo khung chuẩn:
-{GetLevelDeterminationRules(languageCode)}
+//### 2. Xác định cấp độ CHÍNH XÁC theo khung chuẩn:
+//{GetLevelDeterminationRules(languageCode)}
 
-### 3. Điểm số phải phản ánh chính xác khả năng:
-- Không tự động cho điểm trung bình nếu thiếu dữ liệu
-- Nêu rõ giới hạn đánh giá do số câu ít
-- Đề xuất làm thêm câu nếu cần đánh giá chính xác hơn
+//### 3. Điểm số phải phản ánh chính xác khả năng:
+//- Không tự động cho điểm trung bình nếu thiếu dữ liệu
+//- Nêu rõ giới hạn đánh giá do số câu ít
+//- Đề xuất làm thêm câu nếu cần đánh giá chính xác hơn
 
-## Format trả về (JSON):
-{{
-    ""determinedLevel"": ""{GetExampleLevel(languageCode)}"",
-    ""levelConfidence"": 85,
-    ""assessmentCompleteness"": ""{completedCount}/{totalQuestions} câu"",
-    ""overallScore"": 75,
-    ""pronunciationScore"": 80,
-    ""fluencyScore"": 70,
-    ""grammarScore"": 75,
-    ""vocabularyScore"": 75,
-    ""detailedFeedback"": ""Dựa trên {completedCount} câu đã hoàn thành, khả năng speaking của bạn...\n\n⚠️ Lưu ý: Đánh giá này dựa trên {completedCount}/{totalQuestions} câu. Để có kết quả chính xác hơn, bạn nên hoàn thành tất cả câu hỏi."",
-    ""keyStrengths"": [""Điểm mạnh cụ thể từ {completedCount} câu""],
-    ""improvementAreas"": [""Cần cải thiện cụ thể""],
-    ""nextLevelRequirements"": ""Để đạt cấp độ tiếp theo [{GetNextLevel(languageCode)}], bạn cần..."",
-    ""roadmap"": {{
-        ""currentLevel"": ""{GetExampleLevel(languageCode)}"",
-        ""targetLevel"": ""{GetNextLevel(languageCode)}"",
-        ""estimatedTimeToNextLevel"": ""3-6 tháng với luyện tập đều đặn"",
-        ""phases"": [...]
-    }}
-}}
+//## Format trả về (JSON):
+//{{
+//    ""determinedLevel"": ""{GetExampleLevel(languageCode)}"",
+//    ""levelConfidence"": 85,
+//    ""assessmentCompleteness"": ""{completedCount}/{totalQuestions} câu"",
+//    ""overallScore"": 75,
+//    ""pronunciationScore"": 80,
+//    ""fluencyScore"": 70,
+//    ""grammarScore"": 75,
+//    ""vocabularyScore"": 75,
+//    ""detailedFeedback"": ""Dựa trên {completedCount} câu đã hoàn thành, khả năng speaking của bạn...\n\n⚠️ Lưu ý: Đánh giá này dựa trên {completedCount}/{totalQuestions} câu. Để có kết quả chính xác hơn, bạn nên hoàn thành tất cả câu hỏi."",
+//    ""keyStrengths"": [""Điểm mạnh cụ thể từ {completedCount} câu""],
+//    ""improvementAreas"": [""Cần cải thiện cụ thể""],
+//    ""nextLevelRequirements"": ""Để đạt cấp độ tiếp theo [{GetNextLevel(languageCode)}], bạn cần..."",
+//    ""roadmap"": {{
+//        ""currentLevel"": ""{GetExampleLevel(languageCode)}"",
+//        ""targetLevel"": ""{GetNextLevel(languageCode)}"",
+//        ""estimatedTimeToNextLevel"": ""3-6 tháng với luyện tập đều đặn"",
+//        ""phases"": [...]
+//    }}
+//}}
 
-**LƯU Ý**: 
-- Đánh giá phải dựa 100% trên {completedCount} câu đã hoàn thành
-- Trả về cấp độ CHÍNH XÁC theo khung {GetStandardName(languageCode)}
-- Không đoán mò hay extrapolate nếu thiếu dữ liệu
-- Nêu rõ giới hạn của đánh giá nếu số câu < 4";
-        }
+//**LƯU Ý**: 
+//- Đánh giá phải dựa 100% trên {completedCount} câu đã hoàn thành
+//- Trả về cấp độ CHÍNH XÁC theo khung {GetStandardName(languageCode)}
+//- Không đoán mò hay extrapolate nếu thiếu dữ liệu
+//- Nêu rõ giới hạn của đánh giá nếu số câu < 4";
+//        }
 
-        // Helper methods cho khung chuẩn
+     
 
         private string GetStandardFramework(string languageCode)
         {
@@ -1431,86 +1431,112 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
 
             return CreateFallbackVoiceAssessmentResult(languageName, questions);
         }
-
         private VoiceAssessmentResultDto CreateFallbackVoiceAssessmentResult(string languageName, List<VoiceAssessmentQuestion> questions)
         {
-            var completedQuestions = questions.Where(q => !q.IsSkipped && q.EvaluationResult != null).ToList();
             var totalQuestions = questions.Count;
-            var completedCount = completedQuestions.Count;
-
-            // ⚠️ KHÔNG CHO ĐIỂM MẶC ĐỊNH - Đánh giá dựa trên câu thực tế
-            if (completedCount == 0)
-            {
-                return new VoiceAssessmentResultDto
-                {
-                    LanguageName = languageName,
-                    DeterminedLevel = "Unassessed",
-                    LevelConfidence = 0,
-                    AssessmentCompleteness = $"0/{totalQuestions} câu",
-                    OverallScore = 0,
-                    PronunciationScore = 0,
-                    FluencyScore = 0,
-                    GrammarScore = 0,
-                    VocabularyScore = 0,
-                    DetailedFeedback = $"⚠️ Không thể đánh giá vì chưa hoàn thành câu nào.\n\nVui lòng hoàn thành ít nhất 2-3 câu để có kết quả đánh giá chính xác.",
-                    KeyStrengths = new List<string> { "Đã tham gia bài test" },
-                    ImprovementAreas = new List<string> {
-                "Cần hoàn thành các câu hỏi để được đánh giá",
-                $"Còn {totalQuestions} câu chưa làm"
-            },
-                    NextLevelRequirements = "Hoàn thành bài test để biết yêu cầu cấp độ tiếp theo",
-                    CompletedAt = DateTime.UtcNow
-                };
-            }
-
-            // Tính điểm dựa trên câu đã hoàn thành
-            var avgPronunciation = (int)completedQuestions.Average(q => q.EvaluationResult!.Pronunciation.Score);
-            var avgFluency = (int)completedQuestions.Average(q => q.EvaluationResult!.Fluency.Score);
-            var avgGrammar = (int)completedQuestions.Average(q => q.EvaluationResult!.Grammar.Score);
-            var avgVocabulary = (int)completedQuestions.Average(q => q.EvaluationResult!.Vocabulary.Score);
-            var avgOverall = (int)completedQuestions.Average(q => q.EvaluationResult!.OverallScore);
-
-            // Giảm confidence nếu thiếu dữ liệu
-            var confidence = completedCount switch
-            {
-                1 => 40, // 1/4 câu - confidence thấp
-                2 => 60, // 2/4 câu - confidence trung bình
-                3 => 80, // 3/4 câu - confidence khá
-                4 => 95, // 4/4 câu - confidence cao
-                _ => 50
-            };
-
-            var level = DetermineLevelFromScore(avgOverall, languageName);
-            var completenessWarning = completedCount < totalQuestions
-                ? $"\n\n⚠️ **Giới hạn đánh giá**: Kết quả này dựa trên {completedCount}/{totalQuestions} câu. Độ tin cậy: {confidence}%. Để có đánh giá chính xác hơn, vui lòng hoàn thành tất cả {totalQuestions} câu."
-                : "";
 
             return new VoiceAssessmentResultDto
             {
                 LanguageName = languageName,
-                DeterminedLevel = level,
-                LevelConfidence = confidence,
-                AssessmentCompleteness = $"{completedCount}/{totalQuestions} câu",
-                OverallScore = avgOverall,
-                PronunciationScore = avgPronunciation,
-                FluencyScore = avgFluency,
-                GrammarScore = avgGrammar,
-                VocabularyScore = avgVocabulary,
-                DetailedFeedback = $"Dựa trên {completedCount} câu đã hoàn thành:\n\n" +
-                                  $"Khả năng speaking {languageName} của bạn được đánh giá ở cấp độ **{level}** với điểm tổng thể {avgOverall}/100." +
-                                  completenessWarning,
-                KeyStrengths = ExtractStrengths(completedQuestions, completedCount),
-                ImprovementAreas = ExtractImprovements(completedQuestions, completedCount, totalQuestions),
-                NextLevelRequirements = GetNextLevelRequirement(level, languageName),
-                Roadmap = new VoiceLearningRoadmapDto
-                {
-                    CurrentLevel = level,
-                    TargetLevel = GetNextLevelForLanguage(level, languageName),
-                    VocalPracticeTips = GetDefaultVocalTips(languageName)
-                },
+                DeterminedLevel = "Unassessed",
+                LevelConfidence = 0,
+                AssessmentCompleteness = $"0/{totalQuestions} câu",
+                OverallScore = 0,
+                PronunciationScore = 0,
+                FluencyScore = 0,
+                GrammarScore = 0,
+                VocabularyScore = 0,
+                DetailedFeedback = $"⚠️ Không thể đánh giá do lỗi xử lý AI.\n\nVui lòng thử lại hoặc liên hệ support.",
+                KeyStrengths = new List<string> { "Đã tham gia bài test" },
+                ImprovementAreas = new List<string>
+        {
+            "Cần hoàn thành bài đánh giá lại",
+            "Liên hệ support nếu vấn đề tiếp diễn"
+        },
+                NextLevelRequirements = "Hoàn thành bài test để biết yêu cầu cấp độ tiếp theo",
+                RecommendedCourses = new List<RecommendedCourseDto>(),
                 CompletedAt = DateTime.UtcNow
             };
         }
+        //private VoiceAssessmentResultDto CreateFallbackVoiceAssessmentResult(string languageName, List<VoiceAssessmentQuestion> questions)
+        //{
+        //    var completedQuestions = questions.Where(q => !q.IsSkipped && q.EvaluationResult != null).ToList();
+        //    var totalQuestions = questions.Count;
+        //    var completedCount = completedQuestions.Count;
+
+        //    // ⚠️ KHÔNG CHO ĐIỂM MẶC ĐỊNH - Đánh giá dựa trên câu thực tế
+        //    if (completedCount == 0)
+        //    {
+        //        return new VoiceAssessmentResultDto
+        //        {
+        //            LanguageName = languageName,
+        //            DeterminedLevel = "Unassessed",
+        //            LevelConfidence = 0,
+        //            AssessmentCompleteness = $"0/{totalQuestions} câu",
+        //            OverallScore = 0,
+        //            PronunciationScore = 0,
+        //            FluencyScore = 0,
+        //            GrammarScore = 0,
+        //            VocabularyScore = 0,
+        //            DetailedFeedback = $"⚠️ Không thể đánh giá vì chưa hoàn thành câu nào.\n\nVui lòng hoàn thành ít nhất 2-3 câu để có kết quả đánh giá chính xác.",
+        //            KeyStrengths = new List<string> { "Đã tham gia bài test" },
+        //            ImprovementAreas = new List<string> {
+        //        "Cần hoàn thành các câu hỏi để được đánh giá",
+        //        $"Còn {totalQuestions} câu chưa làm"
+        //    },
+        //            NextLevelRequirements = "Hoàn thành bài test để biết yêu cầu cấp độ tiếp theo",
+        //            CompletedAt = DateTime.UtcNow
+        //        };
+        //    }
+
+        //    // Tính điểm dựa trên câu đã hoàn thành
+        //    var avgPronunciation = (int)completedQuestions.Average(q => q.EvaluationResult!.Pronunciation.Score);
+        //    var avgFluency = (int)completedQuestions.Average(q => q.EvaluationResult!.Fluency.Score);
+        //    var avgGrammar = (int)completedQuestions.Average(q => q.EvaluationResult!.Grammar.Score);
+        //    var avgVocabulary = (int)completedQuestions.Average(q => q.EvaluationResult!.Vocabulary.Score);
+        //    var avgOverall = (int)completedQuestions.Average(q => q.EvaluationResult!.OverallScore);
+
+        //    // Giảm confidence nếu thiếu dữ liệu
+        //    var confidence = completedCount switch
+        //    {
+        //        1 => 40, // 1/4 câu - confidence thấp
+        //        2 => 60, // 2/4 câu - confidence trung bình
+        //        3 => 80, // 3/4 câu - confidence khá
+        //        4 => 95, // 4/4 câu - confidence cao
+        //        _ => 50
+        //    };
+
+        //    var level = DetermineLevelFromScore(avgOverall, languageName);
+        //    var completenessWarning = completedCount < totalQuestions
+        //        ? $"\n\n⚠️ **Giới hạn đánh giá**: Kết quả này dựa trên {completedCount}/{totalQuestions} câu. Độ tin cậy: {confidence}%. Để có đánh giá chính xác hơn, vui lòng hoàn thành tất cả {totalQuestions} câu."
+        //        : "";
+
+        //    return new VoiceAssessmentResultDto
+        //    {
+        //        LanguageName = languageName,
+        //        DeterminedLevel = level,
+        //        LevelConfidence = confidence,
+        //        AssessmentCompleteness = $"{completedCount}/{totalQuestions} câu",
+        //        OverallScore = avgOverall,
+        //        PronunciationScore = avgPronunciation,
+        //        FluencyScore = avgFluency,
+        //        GrammarScore = avgGrammar,
+        //        VocabularyScore = avgVocabulary,
+        //        DetailedFeedback = $"Dựa trên {completedCount} câu đã hoàn thành:\n\n" +
+        //                          $"Khả năng speaking {languageName} của bạn được đánh giá ở cấp độ **{level}** với điểm tổng thể {avgOverall}/100." +
+        //                          completenessWarning,
+        //        KeyStrengths = ExtractStrengths(completedQuestions, completedCount),
+        //        ImprovementAreas = ExtractImprovements(completedQuestions, completedCount, totalQuestions),
+        //        NextLevelRequirements = GetNextLevelRequirement(level, languageName),
+        //        Roadmap = new VoiceLearningRoadmapDto
+        //        {
+        //            CurrentLevel = level,
+        //            TargetLevel = GetNextLevelForLanguage(level, languageName),
+        //            VocalPracticeTips = GetDefaultVocalTips(languageName)
+        //        },
+        //        CompletedAt = DateTime.UtcNow
+        //    };
+        //}
 
         // Helper method - Xác định level từ điểm số
         private string DetermineLevelFromScore(int overallScore, string languageName)
@@ -1558,41 +1584,41 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
             return overallScore >= 70 ? "Advanced" : overallScore >= 50 ? "Intermediate" : "Beginner";
         }
 
-        private List<string> ExtractStrengths(List<VoiceAssessmentQuestion> questions, int count)
-        {
-            var strengths = new List<string>();
-            foreach (var q in questions)
-            {
-                if (q.EvaluationResult?.Strengths != null)
-                    strengths.AddRange(q.EvaluationResult.Strengths);
-            }
+        //private List<string> ExtractStrengths(List<VoiceAssessmentQuestion> questions, int count)
+        //{
+        //    var strengths = new List<string>();
+        //    foreach (var q in questions)
+        //    {
+        //        if (q.EvaluationResult?.Strengths != null)
+        //            strengths.AddRange(q.EvaluationResult.Strengths);
+        //    }
 
-            var distinct = strengths.Distinct().Take(5).ToList();
-            if (!distinct.Any())
-            {
-                distinct.Add($"Đã hoàn thành {count} câu hỏi");
-            }
-            return distinct;
-        }
+        //    var distinct = strengths.Distinct().Take(5).ToList();
+        //    if (!distinct.Any())
+        //    {
+        //        distinct.Add($"Đã hoàn thành {count} câu hỏi");
+        //    }
+        //    return distinct;
+        //}
 
-        private List<string> ExtractImprovements(List<VoiceAssessmentQuestion> questions, int completed, int total)
-        {
-            var improvements = new List<string>();
-            foreach (var q in questions)
-            {
-                if (q.EvaluationResult?.AreasForImprovement != null)
-                    improvements.AddRange(q.EvaluationResult.AreasForImprovement);
-            }
+        //private List<string> ExtractImprovements(List<VoiceAssessmentQuestion> questions, int completed, int total)
+        //{
+        //    var improvements = new List<string>();
+        //    foreach (var q in questions)
+        //    {
+        //        if (q.EvaluationResult?.AreasForImprovement != null)
+        //            improvements.AddRange(q.EvaluationResult.AreasForImprovement);
+        //    }
 
-            var distinct = improvements.Distinct().Take(5).ToList();
+        //    var distinct = improvements.Distinct().Take(5).ToList();
 
-            if (completed < total)
-            {
-                distinct.Insert(0, $"Hoàn thành thêm {total - completed} câu để có đánh giá chính xác hơn");
-            }
+        //    if (completed < total)
+        //    {
+        //        distinct.Insert(0, $"Hoàn thành thêm {total - completed} câu để có đánh giá chính xác hơn");
+        //    }
 
-            return distinct.Any() ? distinct : new List<string> { "Luyện tập thêm để cải thiện" };
-        }
+        //    return distinct.Any() ? distinct : new List<string> { "Luyện tập thêm để cải thiện" };
+        //}
 
         private string GetNextLevelRequirement(string currentLevel, string languageName)
         {
@@ -1742,8 +1768,251 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
                 return GetFallbackVoiceQuestionsWithVietnamese(languageCode, languageName);
             }
         }
+        public async Task<BatchVoiceEvaluationResult> EvaluateBatchVoiceResponsesAsync(
+    List<VoiceAssessmentQuestion> questions,
+    string languageCode,
+    string languageName)
+        {
+            try
+            {
+                _logger.LogInformation("🎯 Starting BATCH voice evaluation for {Count} questions in {Language}",
+                    questions.Count, languageName);
 
-       
+                var prompt = BuildBatchVoiceEvaluationPrompt(questions, languageCode, languageName);
+
+                // Prepare multipart request with multiple audio files
+                var parts = new List<object> { new { text = prompt } };
+
+                foreach (var question in questions.Where(q => !q.IsSkipped && !string.IsNullOrEmpty(q.AudioFilePath)))
+                {
+                    var audioBytes = await File.ReadAllBytesAsync(question.AudioFilePath);
+                    var base64Audio = Convert.ToBase64String(audioBytes);
+
+                    parts.Add(new
+                    {
+                        inline_data = new
+                        {
+                            mime_type = "audio/mp3",
+                            data = base64Audio
+                        }
+                    });
+
+                    // Add separator text
+                    parts.Add(new { text = $"[Audio for Question {question.QuestionNumber}]" });
+                }
+
+                var requestBody = new
+                {
+                    contents = new[]
+                    {
+                new { parts = parts.ToArray() }
+            },
+                    generationConfig = new
+                    {
+                        temperature = 0.3,
+                        maxOutputTokens = 4096,
+                        topP = 0.8,
+                        topK = 10,
+                        response_mime_type = "application/json"
+                    }
+                };
+
+                var jsonContent = JsonSerializer.Serialize(requestBody, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                });
+
+                var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+                var model = "gemini-2.0-flash-exp"; // Use latest model
+                var url = $"{_settings.BaseUrl}/models/{model}:generateContent?key={_settings.ApiKey}";
+
+                _logger.LogInformation("Calling Gemini API for batch evaluation...");
+
+                var response = await _httpClient.PostAsync(url, content);
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("Gemini API error: {StatusCode} - {Content}",
+                        response.StatusCode, responseContent);
+                    throw new HttpRequestException($"Gemini API returned {response.StatusCode}");
+                }
+
+                var geminiResponse = JsonSerializer.Deserialize<GeminiResponse>(responseContent,
+                    new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+                var resultText = geminiResponse?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text ?? "";
+
+                _logger.LogInformation("✅ Received batch evaluation response: {Length} characters", resultText.Length);
+
+                return ParseBatchEvaluationResponse(resultText, languageName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in batch voice evaluation");
+                return CreateFallbackBatchEvaluation(questions, languageName);
+            }
+        }
+
+        private string BuildBatchVoiceEvaluationPrompt(
+            List<VoiceAssessmentQuestion> questions,
+            string languageCode,
+            string languageName)
+        {
+            var completedQuestions = questions.Where(q => !q.IsSkipped).ToList();
+            var standardName = GetStandardName(languageCode);
+
+            var questionDetails = string.Join("\n", completedQuestions.Select(q => $@"
+### Câu {q.QuestionNumber}: {q.Difficulty.ToUpper()}
+**Yêu cầu**: {q.PromptText}
+**Từ bắt buộc phải nói**: {string.Join(", ", q.WordGuides.Select(w => w.Word))}
+**Nghĩa tiếng Việt**: {q.VietnameseTranslation}
+"));
+
+            return $@"# Đánh giá Speaking {languageName} - Batch Evaluation
+
+## Thông tin:
+- Tổng số câu: {completedQuestions.Count}/{questions.Count}
+- Tiêu chuẩn: {standardName}
+- Ngôn ngữ: {languageName} ({languageCode})
+
+## Danh sách câu hỏi:
+{questionDetails}
+
+## YÊU CẦU ĐÁNH GIÁ:
+
+### 1. ACCURACY (40%) - Quan trọng nhất
+- Kiểm tra người dùng có NÓI ĐỦ TẤT CẢ từ bắt buộc không?
+- Nếu thiếu từ → giảm điểm mạnh
+- Nếu nói sai từ → điểm 0 cho từ đó
+
+### 2. PRONUNCIATION (30%)
+- Phát âm từng từ chính xác
+- Trọng âm đúng vị trí
+- Ngữ điệu tự nhiên
+
+### 3. FLUENCY (20%)
+- Tốc độ nói phù hợp
+- Ít ngập ngừng
+- Liền mạch
+
+### 4. GRAMMAR (10%)
+- Cấu trúc câu đúng
+- Thì động từ chính xác
+
+## ĐỊNH DẠNG OUTPUT (JSON):
+
+{{
+  ""overallLevel"": ""{GetExampleLevel(languageCode)}"",
+  ""overallScore"": 75,
+  ""questionResults"": [
+    {{
+      ""questionNumber"": 1,
+      ""spokenWords"": [""hello"", ""world""],
+      ""missingWords"": [""beautiful""],
+      ""accuracyScore"": 67,
+      ""pronunciationScore"": 80,
+      ""fluencyScore"": 70,
+      ""grammarScore"": 75,
+      ""feedback"": ""Thiếu từ 'beautiful'. Phát âm 'hello' tốt nhưng 'world' cần cải thiện trọng âm.""
+    }}
+  ],
+  ""strengths"": [
+    ""Phát âm rõ ràng các nguyên âm"",
+    ""Tốc độ nói ổn định"",
+    ""Tự tin khi nói""
+  ],
+  ""weaknesses"": [
+    ""Thiếu 2/3 từ vựng yêu cầu ở câu 1"",
+    ""Ngữ pháp câu 3 sai thì quá khứ"",
+    ""Trọng âm từ 'important' chưa đúng""
+  ],
+  ""recommendedCourses"": [
+    {{
+      ""focus"": ""Vocabulary Building"",
+      ""reason"": ""Cần mở rộng vốn từ vựng cơ bản"",
+      ""level"": ""Beginner""
+    }},
+    {{
+      ""focus"": ""Pronunciation Practice"",
+      ""reason"": ""Cải thiện trọng âm và ngữ điệu"",
+      ""level"": ""Elementary""
+    }},
+    {{
+      ""focus"": ""Grammar Fundamentals"",
+      ""reason"": ""Ôn luyện các thì cơ bản"",
+      ""level"": ""Beginner""
+    }}
+  ]
+}}
+
+**LƯU Ý QUAN TRỌNG**:
+- ACCURACY là tiêu chí quan trọng nhất - phải check kỹ từng từ
+- spokenWords: chỉ list từ người dùng thực sự nói ra
+- missingWords: list từ bắt buộc nhưng người dùng không nói
+- Feedback phải cụ thể, chỉ ra từng lỗi rõ ràng
+- Strengths/Weaknesses phải dựa trên dữ liệu thực tế
+- recommendedCourses: 2-3 khóa học cụ thể, có lý do rõ ràng
+
+Chỉ trả về JSON, không thêm markdown hay giải thích.";
+        }
+
+        private BatchVoiceEvaluationResult ParseBatchEvaluationResponse(string response, string languageName)
+        {
+            try
+            {
+                var cleanedResponse = CleanJsonResponse(response);
+
+                var result = JsonSerializer.Deserialize<BatchVoiceEvaluationResult>(cleanedResponse,
+                    new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                        PropertyNameCaseInsensitive = true
+                    });
+
+                if (result != null)
+                {
+                    result.EvaluatedAt = DateTime.UtcNow;
+                    return result;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error parsing batch evaluation response");
+            }
+
+            return CreateFallbackBatchEvaluation(new List<VoiceAssessmentQuestion>(), languageName);
+        }
+
+        private BatchVoiceEvaluationResult CreateFallbackBatchEvaluation(
+            List<VoiceAssessmentQuestion> questions,
+            string languageName)
+        {
+            return new BatchVoiceEvaluationResult
+            {
+                OverallLevel = "Unassessed",
+                OverallScore = 0,
+                QuestionResults = questions.Select(q => new QuestionEvaluationResult
+                {
+                    QuestionNumber = q.QuestionNumber,
+                    SpokenWords = new List<string>(),
+                    MissingWords = q.WordGuides.Select(w => w.Word).ToList(),
+                    AccuracyScore = 0,
+                    PronunciationScore = 0,
+                    FluencyScore = 0,
+                    GrammarScore = 0,
+                    Feedback = "Không thể đánh giá bằng AI. Vui lòng thử lại."
+                }).ToList(),
+                Strengths = new List<string> { "Đã hoàn thành bài test" },
+                Weaknesses = new List<string> { "Cần đánh giá lại bằng AI" },
+                RecommendedCourses = new List<CourseRecommendation>
+        {
+            new() { Focus = "General Practice", Reason = "Luyện tập tổng quát", Level = "Beginner" }
+        },
+                EvaluatedAt = DateTime.UtcNow
+            };
+        }
+
         private string GetLanguageName(string languageCode)
         {
             return languageCode.ToUpper() switch
