@@ -1,4 +1,5 @@
 ﻿using Common.DTO.Assement;
+using DAL.Models;
 
 
 namespace BLL.IServices.UserGoal
@@ -27,5 +28,8 @@ namespace BLL.IServices.UserGoal
         Task AcceptVoiceAssessmentResultAsync(Guid userGoalId, Guid userId);
         Task RejectVoiceAssessmentResultAsync(Guid userGoalId, Guid userId);
         Task UpdateRoadmapAsync(Guid userGoalId, VoiceLearningRoadmapDto roadmap);
+        Task<DAL.Models.UserGoal?> GetUserGoalByLanguageAsync(Guid userId, Guid languageId);
+        Task<DAL.Models.UserGoal> CreateSkippedVoiceAssessmentAsync(Guid userId, Guid languageId, string languageName, int? goalId = null);
+
     }
 }
