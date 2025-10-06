@@ -37,6 +37,7 @@ namespace DAL.UnitOfWork
         IGoalRepository Goals { get; }
         ICourseTemplateRepository CourseTemplates { get; }
         IExerciseOptionRepository ExerciseOptions { get; }
+        IUserGoalRepository UserGoals { get; }
         int SaveChanges();
         Task<int> SaveChangesAsync();
         void BeginTransaction();

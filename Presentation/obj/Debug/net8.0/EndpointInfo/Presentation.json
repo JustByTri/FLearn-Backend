@@ -3609,6 +3609,68 @@
         }
       }
     },
+    "/api/VoiceAssessment/accept-voice-assessment": {
+      "post": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/reject-voice-assessment": {
+      "post": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/VoiceAssessment/test-redis": {
       "get": {
         "tags": [
@@ -3624,6 +3686,19 @@
   },
   "components": {
     "schemas": {
+      "AcceptVoiceAssessmentRequestDto": {
+        "type": "object",
+        "properties": {
+          "userGoalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isAccepted": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "BooleanBaseResponse": {
         "type": "object",
         "properties": {

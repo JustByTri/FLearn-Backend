@@ -1,8 +1,10 @@
 ﻿using BLL.IServices.AI;
 using BLL.IServices.Assessment;
 using BLL.IServices.Survey;
+using BLL.IServices.UserGoal;
 using Common.DTO.Assement;
 using Common.DTO.Learner;
+using DAL.Models;
 using DAL.UnitOfWork;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -22,18 +24,19 @@ namespace Presentation.Controllers.Assessment
         private readonly IUnitOfWork _unitOfWork; 
         private readonly ILogger<VoiceAssessmentController> _logger;
         private readonly IGeminiService _geminiService;
-
+        private readonly IUserGoalService _userGoalService;
         public VoiceAssessmentController(
             IVoiceAssessmentService voiceAssessmentService,
             IUserSurveyService userSurveyService,
             IUnitOfWork unitOfWork,
-            ILogger<VoiceAssessmentController> logger, IGeminiService geminiService) 
+            ILogger<VoiceAssessmentController> logger, IGeminiService geminiService, IUserGoalService userGoalService) 
         {
             _voiceAssessmentService = voiceAssessmentService;
             _userSurveyService = userSurveyService;
             _unitOfWork = unitOfWork;
             _logger = logger;
             _geminiService = geminiService;
+            _userGoalService = userGoalService;
         }
 
         /// <summary>
@@ -75,6 +78,9 @@ namespace Presentation.Controllers.Assessment
         /// <summary>
         /// 🎯 Lấy câu hỏi hiện tại CÓ VIETNAMESE SUPPORT
         /// </summary>
+        /// <summary>
+        /// 🎯 Lấy câu hỏi hiện tại CÓ VIETNAMESE SUPPORT
+        /// </summary>
         [HttpGet("{assessmentId:guid}/current-question")]
         public async Task<IActionResult> GetCurrentQuestion(Guid assessmentId)
         {
@@ -82,11 +88,16 @@ namespace Presentation.Controllers.Assessment
             {
                 var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-        
                 var isValid = await _voiceAssessmentService.ValidateAssessmentIdAsync(assessmentId, userId);
                 if (!isValid)
                 {
-                    return Forbid("Bạn không có quyền truy cập assessment này");
+                    
+                    return Unauthorized(new
+                    {
+                        success = false,
+                        message = "Bạn không có quyền truy cập assessment này",
+                        errorCode = "UNAUTHORIZED_ACCESS"
+                    });
                 }
 
                 var question = await _voiceAssessmentService.GetCurrentQuestionAsync(assessmentId);
@@ -99,7 +110,7 @@ namespace Presentation.Controllers.Assessment
                         questionNumber = question.QuestionNumber,
                         question = question.Question,
                         promptText = question.PromptText,
-                        vietnameseTranslation = question.VietnameseTranslation, 
+                        vietnameseTranslation = question.VietnameseTranslation,
                         wordGuides = question.WordGuides,
                         questionType = question.QuestionType,
                         difficulty = question.Difficulty,
@@ -124,117 +135,72 @@ namespace Presentation.Controllers.Assessment
         [HttpPost("{assessmentId:guid}/submit-voice")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> SubmitVoiceResponse(
-      [FromRoute] Guid assessmentId,
-      [FromForm] VoiceSubmissionFormDto formDto)
+     [FromRoute] Guid assessmentId,
+     [FromForm] VoiceSubmissionFormDto formDto)
         {
             try
             {
                 var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+                // Validate ownership
                 var isValid = await _voiceAssessmentService.ValidateAssessmentIdAsync(assessmentId, userId);
                 if (!isValid)
-                {
-                    return Forbid("Bạn không có quyền truy cập assessment này");
-                }
-
-                if (!formDto.IsSkipped && formDto.AudioFile == null)
-                {
-                    return BadRequest(new
+                    return Unauthorized(new
                     {
                         success = false,
-                        message = "Bạn phải gửi file âm thanh hoặc chọn bỏ qua câu hỏi",
-                        errorCode = "AUDIO_FILE_REQUIRED"
+                        message = "Bạn không có quyền truy cập assessment này",
+                        errorCode = "UNAUTHORIZED_ACCESS"
                     });
-                }
 
-                if (formDto.AudioFile != null)
+                // Validate audio file if not skipped
+                if (!formDto.IsSkipped)
                 {
+                    if (formDto.AudioFile == null)
+                        return BadRequest(new { success = false, message = "Cần gửi file âm thanh hoặc chọn bỏ qua" });
+
                     var allowedTypes = new[] { "audio/mp3", "audio/wav", "audio/m4a", "audio/webm", "audio/mpeg" };
                     if (!allowedTypes.Contains(formDto.AudioFile.ContentType.ToLower()))
-                    {
-                        return BadRequest(new
-                        {
-                            success = false,
-                            message = "Chỉ hỗ trợ file âm thanh: MP3, WAV, M4A, WebM",
-                            errorCode = "INVALID_AUDIO_FORMAT"
-                        });
-                    }
+                        return BadRequest(new { success = false, message = "Chỉ hỗ trợ MP3, WAV, M4A, WebM" });
 
                     if (formDto.AudioFile.Length > 10 * 1024 * 1024)
-                    {
-                        return BadRequest(new
-                        {
-                            success = false,
-                            message = "File âm thanh không được vượt quá 10MB",
-                            errorCode = "FILE_TOO_LARGE"
-                        });
-                    }
-
-                    // ✅ SỬA: Lấy LanguageCode từ assessment thông qua VoiceAssessmentService
-                    var question = await _voiceAssessmentService.GetCurrentQuestionAsync(assessmentId);
-                    var assessment = await _voiceAssessmentService.RestoreAssessmentFromIdAsync(assessmentId);
-
-                    // ✅ Lấy Language từ database qua LanguageId của assessment
-                    if (assessment == null)
-                    {
-                        return BadRequest(new { success = false, message = "Assessment không tồn tại" });
-                    }
-
-                    // Giả sử VoiceAssessmentDto có LanguageId, nếu không thì cần thêm property này
-                    var language = await _unitOfWork.Languages.GetByIdAsync(assessment.LanguageId);
-                    if (language == null)
-                    {
-                        return BadRequest(new { success = false, message = "Ngôn ngữ không tồn tại" });
-                    }
-
-                    var languageCode = language.LanguageCode; // EN, ZH, JP
-
-                    var aiResult = await _geminiService.EvaluateVoiceResponseDirectlyAsync(question, formDto.AudioFile, languageCode);
-
-                    // ✅ KIỂM TRA NGÔN NGỮ AUDIO
-                    if (aiResult.OverallScore == 0 &&
-                        aiResult.Pronunciation != null &&
-                        aiResult.Pronunciation.Level == "Language Error")
-                    {
-                        return BadRequest(new
-                        {
-                            success = false,
-                            error = "LANGUAGE_MISMATCH",
-                            message = aiResult.DetailedFeedback
-                        });
-                    }
+                        return BadRequest(new { success = false, message = "File không được vượt quá 10MB" });
                 }
 
+               
                 var response = new VoiceAssessmentResponseDto
                 {
                     AssessmentId = assessmentId,
                     QuestionNumber = formDto.QuestionNumber,
                     IsSkipped = formDto.IsSkipped,
-                    AudioFile = formDto.AudioFile,
-                    RecordingDurationSeconds = formDto.RecordingDurationSeconds
+                    AudioFile = formDto.AudioFile
                 };
 
                 await _voiceAssessmentService.SubmitVoiceResponseAsync(assessmentId, response);
 
+                // Check if completed
+                var assessment = await _voiceAssessmentService.RestoreAssessmentFromIdAsync(assessmentId);
+                var isCompleted = assessment?.CurrentQuestionIndex >= assessment?.Questions.Count;
+
                 return Ok(new
                 {
                     success = true,
-                    message = formDto.IsSkipped ? "Đã bỏ qua câu hỏi" : "Đã đánh giá giọng nói thành công",
+                    message = formDto.IsSkipped ? "Đã bỏ qua câu hỏi" : "Đã lưu câu trả lời",
                     data = new
                     {
-                        assessmentId = assessmentId,
                         questionNumber = formDto.QuestionNumber,
-                        processed = !formDto.IsSkipped,
-                        fileSize = formDto.AudioFile?.Length ?? 0,
-                        aiProcessed = !formDto.IsSkipped && formDto.AudioFile != null
+                        saved = !formDto.IsSkipped,
+                        isCompleted = isCompleted,
+                        nextQuestionIndex = assessment?.CurrentQuestionIndex
                     }
                 });
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error submitting voice response");
                 return BadRequest(new { success = false, message = ex.Message });
             }
         }
+
 
 
         [HttpPost("smart-start/{languageId:guid}")]
@@ -369,53 +335,101 @@ namespace Presentation.Controllers.Assessment
             {
                 var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+                var isValid = await _voiceAssessmentService.ValidateAssessmentIdAsync(assessmentId, userId);
+                if (!isValid)
+                    return Unauthorized(new
+                    {
+                        success = false,
+                        message = "Bạn không có quyền truy cập assessment này",
+                        errorCode = "UNAUTHORIZED_ACCESS"
+                    });
+
+            
+                var assessment = await _voiceAssessmentService.RestoreAssessmentFromIdAsync(assessmentId);
+
              
-                var result = await _voiceAssessmentService.CompleteVoiceAssessmentAsync(assessmentId);
+                if (assessment == null)
+                {
+                    
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = "Assessment không tồn tại hoặc đã hết hạn. Vui lòng bắt đầu lại.",
+                        errorCode = "ASSESSMENT_NOT_FOUND"
+                    });
+                }
 
          
-                AiCourseRecommendationDto? courseRecommendations = null;
-                try
-                {
-                    var userSurvey = await _userSurveyService.GetUserSurveyAsync(userId);
-                    if (userSurvey != null)
-                    {
-                        courseRecommendations = await _userSurveyService.GenerateRecommendationsAsync(userId);
+                //var existingResult = await _voiceAssessmentService.GetVoiceAssessmentResultAsync(
+                //    userId,
+                //    assessment.LanguageId
+                //);
 
-                        _logger.LogInformation("✅ Generated {Count} course recommendations for user {UserId}",
-                            courseRecommendations.RecommendedCourses?.Count ?? 0, userId);
-                    }
-                }
-                catch (Exception ex)
+                //if (existingResult != null)
+                //{
+                    
+                //    return Ok(new
+                //    {
+                //        success = true,
+                //        message = "Bạn đã hoàn thành assessment này rồi",
+                //        data = existingResult
+                //    });
+                //}
+
+                var result = await _voiceAssessmentService.CompleteVoiceAssessmentAsync(assessmentId);
+
+                
+                var resultDto = new VoiceAssessmentResultDto
                 {
-                    _logger.LogWarning(ex, "Could not generate course recommendations for user {UserId}", userId);
-                }
+                    AssessmentId = assessmentId,
+                    LanguageName = assessment.LanguageName,
+                    LaguageID = assessment.LanguageId,
+                    DeterminedLevel = result.OverallLevel,
+                    OverallScore = result.OverallScore,
+                    CompletedAt = result.EvaluatedAt,
+                };
+
+                var userGoal = await _userGoalService.CreatePendingVoiceAssessmentResultAsync(userId, resultDto);
 
                 return Ok(new
                 {
                     success = true,
-                    message = "Hoàn thành đánh giá giọng nói thành công!",
+                    message = "Hoàn thành đánh giá giọng nói! Vui lòng xem lại kết quả và xác nhận.",
                     data = new
                     {
-                       
-                        voiceResult = result,
-
-                 
-                        courseRecommendations = courseRecommendations,
-
-                    
-                        summary = new
+                        userGoalId = userGoal.UserGoalID,
+                        level = result.OverallLevel,
+                        score = result.OverallScore,
+                        questionResults = result.QuestionResults.Select(qr => new
                         {
-                            languageName = result.LanguageName,
-                            determinedLevel = result.DeterminedLevel,
-                            overallScore = result.OverallScore,
-                            hasRecommendations = courseRecommendations?.RecommendedCourses?.Any() == true,
-                            recommendedCoursesCount = courseRecommendations?.RecommendedCourses?.Count ?? 0
-                        }
+                            questionNumber = qr.QuestionNumber,
+                            spokenWords = qr.SpokenWords,
+                            missingWords = qr.MissingWords,
+                            accuracyScore = qr.AccuracyScore,
+                            pronunciationScore = qr.PronunciationScore,
+                            fluencyScore = qr.FluencyScore,
+                            grammarScore = qr.GrammarScore,
+                            feedback = qr.Feedback
+                        }),
+                        strengths = result.Strengths,
+                        weaknesses = result.Weaknesses,
+                        recommendedCourses = result.RecommendedCourses.Select(rc => new
+                        {
+                            focus = rc.Focus,
+                            reason = rc.Reason,
+                            level = rc.Level
+                        }),
+                        roadmap = userGoal.Roadmap,
+                        courseRecommendations = userGoal.RecommendedCourses,
+                        evaluatedAt = result.EvaluatedAt,
+                        isPending = userGoal.IsVoiceAssessmentPending,
+                        pendingAt = userGoal.VoiceAssessmentPendingAt
                     }
                 });
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error completing voice assessment");
                 return BadRequest(new { success = false, message = ex.Message });
             }
         }
@@ -483,7 +497,75 @@ namespace Presentation.Controllers.Assessment
         /// <summary>
         /// Debug endpoint - kiểm tra trạng thái active assessments (for mobile development)
         /// </summary>
-       
+        /// <summary>
+        /// Accept voice assessment result và lưu vào DB
+        /// </summary>
+        [HttpPost("accept-voice-assessment")]
+        public async Task<IActionResult> AcceptVoiceAssessmentResult([FromBody] AcceptVoiceAssessmentRequestDto request)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+                await _userGoalService.AcceptVoiceAssessmentResultAsync(request.UserGoalId, userId);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Đã chấp nhận và lưu kết quả voice assessment thành công! Roadmap của bạn đã được tạo.",
+                    data = new { userGoalId = request.UserGoalId }
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Đã xảy ra lỗi khi chấp nhận kết quả voice assessment"
+                });
+            }
+        }
+
+        /// <summary>
+        /// Reject voice assessment result và cho phép làm lại
+        /// </summary>
+        [HttpPost("reject-voice-assessment")]
+        public async Task<IActionResult> RejectVoiceAssessmentResult([FromBody] AcceptVoiceAssessmentRequestDto request)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+                await _userGoalService.RejectVoiceAssessmentResultAsync(request.UserGoalId, userId);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Đã từ chối kết quả. Bạn có thể làm lại voice assessment.",
+                    data = new
+                    {
+                        userGoalId = request.UserGoalId,
+                        canRetakeAssessment = true
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Đã xảy ra lỗi khi từ chối kết quả voice assessment"
+                });
+            }
+        }
         /// <summary>
         /// Test Redis connection
         /// </summary>

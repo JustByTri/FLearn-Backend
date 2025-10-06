@@ -10,12 +10,21 @@ namespace Common.DTO.Auth
     {
         public string AccessToken { get; set; }
         public string RefreshToken { get; set; }
-        public DateTime AccessTokenExpires { get; set; }
-        public DateTime RefreshTokenExpires { get; set; }
+        public DateTime AccessTokenExpires { get; set; } 
+        public DateTime RefreshTokenExpires { get; set; } 
         public UserInfoDto User { get; set; }
         public List<string> Roles { get; set; }
-    }
 
+        
+        public DateTime AccessTokenExpiresVN => ConvertToVietnamTime(AccessTokenExpires);
+        public DateTime RefreshTokenExpiresVN => ConvertToVietnamTime(RefreshTokenExpires);
+
+        private static DateTime ConvertToVietnamTime(DateTime utcTime)
+        {
+            var vietnamZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            return TimeZoneInfo.ConvertTimeFromUtc(utcTime, vietnamZone);
+        }
+    }
     public class UserInfoDto
     {
         public Guid UserID { get; set; }

@@ -2497,6 +2497,38 @@
   },
   {
     "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
+    "Method": "AcceptVoiceAssessmentResult",
+    "RelativePath": "api/VoiceAssessment/accept-voice-assessment",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "AcceptVoiceAssessmentRequestDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
+    "Method": "RejectVoiceAssessmentResult",
+    "RelativePath": "api/VoiceAssessment/reject-voice-assessment",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "AcceptVoiceAssessmentRequestDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
     "Method": "GetAssessmentResult",
     "RelativePath": "api/VoiceAssessment/result/{languageId}",
     "HttpMethod": "GET",

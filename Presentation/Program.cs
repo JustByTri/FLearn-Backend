@@ -61,10 +61,10 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 
-    // ✅ Add schema filters for better documentation
+
     c.SchemaFilter<FormFileSchemaFilter>();
 
-    // JWT Authentication setup...
+  
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = @"Nhập JWT token (chỉ cần token, không cần 'Bearer ')",
@@ -140,7 +140,7 @@ if (jwtSettings != null && !string.IsNullOrEmpty(jwtSettings.SecretKey))
             ValidateAudience = true,
             ValidAudience = jwtSettings.Audience,
             ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero,
+            ClockSkew = TimeSpan.FromMinutes(5),
             RequireExpirationTime = true,
  
             RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role",
