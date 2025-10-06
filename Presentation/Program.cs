@@ -7,21 +7,50 @@ using Microsoft.OpenApi.Models;
 using Presentation.Filter;
 using System.Reflection;
 using System.Text;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddControllers();
+
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.ValueLengthLimit = int.MaxValue;
+    options.MultipartBodyLengthLimit = 500_000_000; 
+    options.MultipartHeadersLengthLimit = int.MaxValue;
+    options.MemoryBufferThreshold = int.MaxValue;
+});
+
+
+builder.Services.Configure<KestrelServerOptions>(options =>
+{
+    options.Limits.MaxRequestBodySize = 500_000_000; 
+});
+
+
+builder.Services.Configure<IISServerOptions>(options =>
+{
+    options.MaxRequestBodySize = 500_000_000; 
+});
+
+
+builder.Services.AddControllers(options =>
+{
+  
+    options.Filters.Add(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(500_000_000)); 
+});
+
 builder.Services.AddEndpointsApiExplorer();
 
-// Configure Swagger/OpenAPI
+
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "Flearn API",
         Version = "v1",
-        Description = "API cho nền tảng học ngôn ngữ Flearn với Voice Assessment",
+        Description = "API cho nền tảng học ngôn ngữ Flearn với Voice Assessment" ,
+                    
         Contact = new OpenApiContact
         {
             Name = "Flearn Support",
@@ -29,7 +58,7 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 
-    // ✅ Apply custom filter first
+  
     c.OperationFilter<FileUploadOperationFilter>();
 
     var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
@@ -39,15 +68,14 @@ builder.Services.AddSwaggerGen(c =>
         c.IncludeXmlComments(xmlPath);
     }
 
-    // Support for nullable reference types
+
     c.SupportNonNullableReferenceTypes();
 
-    // ✅ ENHANCED: Better file upload mapping
     c.MapType<IFormFile>(() => new OpenApiSchema
     {
         Type = "string",
         Format = "binary",
-        Description = "Upload file (multipart/form-data)"
+        Description = "Upload file (multipart/form-data) - Max 500MB for videos"
     });
 
     c.MapType<IList<IFormFile>>(() => new OpenApiSchema
@@ -57,14 +85,13 @@ builder.Services.AddSwaggerGen(c =>
         {
             Type = "string",
             Format = "binary",
-            Description = "Upload multiple files"
+            Description = "Upload multiple files - Max 500MB per file"
         }
     });
 
-
     c.SchemaFilter<FormFileSchemaFilter>();
 
-  
+   
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = @"Nhập JWT token (chỉ cần token, không cần 'Bearer ')",
@@ -93,7 +120,7 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 
-    // Exclude Upload controller from docs if needed
+   
     c.DocInclusionPredicate((docName, apiDesc) =>
     {
         var controllerName = apiDesc.ActionDescriptor.RouteValues["controller"];
@@ -101,28 +128,42 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Configure JwtSettings from appsettings.json
+
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 
-// Add BLL, DAL, and Email services
+
 builder.Services.AddBllServices(builder.Configuration);
 
-// Add Background Services
+
 try
 {
     builder.Services.AddHostedService<TempRegistrationCleanupService>();
 }
 catch
 {
-    // Ignore if background service cannot be registered
+    
 }
 
-// Configure JWT Authentication
+
 var jwtSection = builder.Configuration.GetSection("JwtSettings");
 var jwtSettings = jwtSection.Get<JwtSettings>();
 
 if (jwtSettings != null && !string.IsNullOrEmpty(jwtSettings.SecretKey))
 {
+   
+    if (jwtSettings.SecretKey.Length < 32)
+    {
+        throw new InvalidOperationException("JWT SecretKey must be at least 32 characters");
+    }
+
+    if (jwtSettings.AccessTokenExpirationMinutes <= 0)
+    {
+        throw new InvalidOperationException("AccessTokenExpirationMinutes must be positive");
+    }
+
+    Console.WriteLine($"🔐 JWT configured: Issuer={jwtSettings.Issuer}, " +
+                     $"AccessExpiry={jwtSettings.AccessTokenExpirationMinutes}min");
+
     builder.Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -142,7 +183,7 @@ if (jwtSettings != null && !string.IsNullOrEmpty(jwtSettings.SecretKey))
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(5),
             RequireExpirationTime = true,
- 
+
             RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role",
             NameClaimType = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
         };
@@ -151,38 +192,54 @@ if (jwtSettings != null && !string.IsNullOrEmpty(jwtSettings.SecretKey))
         {
             OnAuthenticationFailed = context =>
             {
-               
-                Console.WriteLine($"Authentication failed: {context.Exception.Message}");
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+
+                logger.LogWarning("🚨 JWT Authentication failed: {Exception} at {Time}",
+                    context.Exception.Message, DateTime.UtcNow);
 
                 if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
                 {
                     context.Response.Headers.Add("Token-Expired", "true");
+                    logger.LogWarning("⏰ Token expired for user at {Time}", DateTime.UtcNow);
                 }
                 else if (context.Exception.GetType() == typeof(SecurityTokenInvalidIssuerException))
                 {
                     context.Response.Headers.Add("Token-Invalid-Issuer", "true");
+                    logger.LogError("🔒 Invalid issuer: Expected {Expected}", jwtSettings.Issuer);
                 }
                 else if (context.Exception.GetType() == typeof(SecurityTokenInvalidAudienceException))
                 {
                     context.Response.Headers.Add("Token-Invalid-Audience", "true");
+                    logger.LogError("🎯 Invalid audience: Expected {Expected}", jwtSettings.Audience);
                 }
 
                 return Task.CompletedTask;
             },
             OnTokenValidated = context =>
             {
-              
-                Console.WriteLine($"Token validated for user: {context.Principal?.Identity?.Name}");
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                var username = context.Principal?.Identity?.Name;
+                var expiry = context.SecurityToken.ValidTo;
+
+                logger.LogInformation("✅ Token validated for user: {Username}, expires: {Expiry}",
+                    username, expiry);
+
+                return Task.CompletedTask;
+            },
+            OnChallenge = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                logger.LogWarning("🔐 JWT Challenge triggered: {Error} - {Description}",
+                    context.Error, context.ErrorDescription);
                 return Task.CompletedTask;
             }
         };
     });
 
-
     builder.Services.AddAuthorization(options =>
     {
         options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-        options.AddPolicy("StaffOnly", policy => policy.RequireRole("Staff", "Admin")); // ✅ Admin có thể access Staff endpoints
+        options.AddPolicy("StaffOnly", policy => policy.RequireRole("Staff", "Admin"));
         options.AddPolicy("TeacherOnly", policy => policy.RequireRole("Teacher", "Admin"));
         options.AddPolicy("LearnerOnly", policy => policy.RequireRole("Learner", "Teacher", "Staff", "Admin"));
 
@@ -191,16 +248,15 @@ if (jwtSettings != null && !string.IsNullOrEmpty(jwtSettings.SecretKey))
 }
 else
 {
-    // Fallback authentication if JWT is not configured
+   
     builder.Services.AddAuthentication();
     builder.Services.AddAuthorization();
 }
 
-// Configure GoogleAuthSettings from appsettings.json
+
 var googleAuthSection = builder.Configuration.GetSection("Authentication:Google");
 builder.Services.Configure<GoogleAuthSettings>(googleAuthSection);
 
-// Add CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -213,7 +269,6 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -232,4 +287,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+
 app.Run();
+
