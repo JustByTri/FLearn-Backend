@@ -2429,22 +2429,6 @@
   },
   {
     "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
-    "Method": "CompleteVoiceAssessment",
-    "RelativePath": "api/VoiceAssessment/{assessmentId}/complete",
-    "HttpMethod": "POST",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "assessmentId",
-        "Type": "System.Guid",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
     "Method": "GetCurrentQuestion",
     "RelativePath": "api/VoiceAssessment/{assessmentId}/current-question",
     "HttpMethod": "GET",
@@ -2539,6 +2523,27 @@
         "Name": "languageId",
         "Type": "System.Guid",
         "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
+    "Method": "SkipVoiceAssessment",
+    "RelativePath": "api/VoiceAssessment/skip/{languageId}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "languageId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "goalId",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
       }
     ],
     "ReturnTypes": []

@@ -101,12 +101,8 @@ namespace Presentation.Controllers.Auth
                 {
                     success = true,
                     message = "Đăng nhập thành công! Chào mừng bạn quay trở lại.",
-                    data = result,
-                    onboarding = new
-                    {
-                        needsSurvey = !hasCompletedSurvey,
-                        isFirstLogin = !hasCompletedSurvey
-                    }
+                    data = result
+                   
                 });
             }
             catch (UnauthorizedAccessException ex)

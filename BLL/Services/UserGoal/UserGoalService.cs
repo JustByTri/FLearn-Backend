@@ -1,6 +1,6 @@
 ﻿using BLL.IServices.UserGoal;
 using Common.DTO.Assement;
-
+using DAL.Models;
 using DAL.UnitOfWork;
 using Microsoft.Extensions.Logging;
 using System;
@@ -469,6 +469,85 @@ namespace BLL.Services.UserGoal
             }
 
             return dto;
+        }
+        public async Task<DAL.Models.UserGoal?> GetUserGoalByLanguageAsync(Guid userId, Guid languageId)
+        {
+            try
+            {
+                var userGoals = await _unitOfWork.UserGoals.GetAllAsync();
+
+                return userGoals.FirstOrDefault(ug =>
+                    ug.UserID == userId &&
+                    ug.LanguageID == languageId &&
+                    ug.VoiceAssessmentPendingAt.HasValue
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting UserGoal by language for user {UserId}", userId);
+                return null;
+            }
+        }
+        public async Task<DAL.Models.UserGoal> CreateSkippedVoiceAssessmentAsync(
+         Guid userId,
+         Guid languageId,
+         string languageName,
+         int? goalId = null)
+        {
+            try
+            {
+                // Xóa UserGoal cũ nếu có
+                var existingUserGoal = await GetUserGoalByLanguageAsync(userId, languageId);
+                if (existingUserGoal != null)
+                {
+                    // ✅ Dùng RemoveAsync thay vì DeleteAsync
+                    await _unitOfWork.UserGoals.RemoveAsync(existingUserGoal);
+                }
+
+                var userGoal = new DAL.Models.UserGoal
+                {
+                    UserGoalID = Guid.NewGuid(),
+                    UserID = userId,
+                    GoalId = goalId,
+                    LanguageID = languageId,
+                    DeterminedLevel = "Not Assessed",
+                    UpdatedAt = DateTime.UtcNow,
+                    IsVoiceAssessmentPending = false,
+                    VoiceAssessmentPendingAt = null,
+                    RoadmapData = GenerateBasicRoadmap(languageName, "Not Assessed"),
+                    RecommendedCoursesData = "Bạn có thể bắt đầu với các khóa học cơ bản",
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                // ✅ Dùng CreateAsync thay vì AddAsync
+                await _unitOfWork.UserGoals.CreateAsync(userGoal);
+
+                // ❌ Không cần SaveChanges vì CreateAsync đã save rồi
+                // await _unitOfWork.SaveChangesAsync();
+
+                _logger.LogInformation("Created skipped voice assessment UserGoal for user {UserId}", userId);
+
+                return userGoal;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating skipped voice assessment");
+                throw;
+            }
+        }
+
+        private string GenerateBasicRoadmap(string languageName, string level)
+        {
+            return $@"# Lộ trình học {languageName}
+
+## Bạn đã bỏ qua đánh giá giọng nói
+
+Bạn có thể bắt đầu học với các khóa học cơ bản phù hợp với trình độ của mình.
+
+### Gợi ý:
+1. Bắt đầu với khóa học Beginner
+2. Luyện tập thường xuyên
+3. Có thể làm voice assessment sau để đánh giá chính xác hơn";
         }
     }
 }

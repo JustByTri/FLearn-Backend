@@ -3540,19 +3540,27 @@
         }
       }
     },
-    "/api/VoiceAssessment/{assessmentId}/complete": {
+    "/api/VoiceAssessment/skip/{languageId}": {
       "post": {
         "tags": [
           "VoiceAssessment"
         ],
         "parameters": [
           {
-            "name": "assessmentId",
+            "name": "languageId",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "goalId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
             }
           }
         ],
