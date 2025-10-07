@@ -182,6 +182,7 @@ namespace BLL.Services.CourseUnits
                     Description = u.Description,
                     IsPreview = u.IsPreview,
                     Position = u.Position,
+                    TotalLessons = u.TotalLessons ?? 0,
                     CourseID = selectedCourse.CourseID,
                     CourseTitle = selectedCourse.Title,
                     CreatedAt = selectedCourse.CreatedAt,

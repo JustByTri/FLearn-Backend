@@ -2,7 +2,7 @@
   "openapi": "3.0.1",
   "info": {
     "title": "Flearn API",
-    "description": "API cho nền tảng học ngôn ngữ Flearn với Voice Assessment\n\n📁 **File Upload Limits:**\n- Audio files: Max 10MB (MP3, WAV, M4A, WebM)\n- Video files: Max 500MB (MP4, AVI, MOV)\n- Images: Max 50MB (JPG, PNG, GIF)\n- Documents: Max 100MB (PDF, DOC, PPT)",
+    "description": "API cho nền tảng học ngôn ngữ Flearn với Voice Assessment",
     "contact": {
       "name": "Flearn Support",
       "email": "support@flearn.com"
