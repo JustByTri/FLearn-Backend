@@ -1,56 +1,103 @@
-name: Deploy FLearn Backend
+name: Deploy FLearn Backend (Stable)
+
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
+
+concurrency:
+  group: flearn-backend-deploy
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 30
+
+    env:
+      SERVICE_NAME: flearn-backend
+      REPO_DIR: /root/FLearn-Backend
+      PUBLISH_DIR: /var/www/flearn-backend-published
+
     steps:
-    - name: Deploy via Direct SSH
-      run: |
-        # Install SSH client
-        sudo apt-get update
-        sudo apt-get install -y openssh-client
-        
-        # Setup SSH key
-        mkdir -p ~/.ssh
-        echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        
-        # Add server to known hosts
-        ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
-        
-        # Execute deployment commands
-        ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} << 'EOF'
-          echo "🚀 Direct SSH Deployment - No Docker!"
-          echo "Time: $(date)"
-          
-          # Stop service
-          systemctl stop flearn-backend
-          
-          # Update code
-          cd /root/FLearn-Backend
-          git fetch --all
-          git reset --hard origin/main
-          git clean -fdx
-          
-          # Build and publish
-          cd Presentation
-          dotnet restore --verbosity minimal
-          dotnet publish -c Release -o /var/www/flearn-backend-published --verbosity minimal
-          
-          # Set permissions
-          chown -R www-data:www-data /var/www/flearn-backend-published
-          chmod +x /var/www/flearn-backend-published/Presentation.dll
-          
-          # Start service
-          systemctl start flearn-backend
-          sleep 10
-          
-          # Check status
-          systemctl status flearn-backend --no-pager
-          
-          echo "✅ Deployment completed!"
-        EOF
+      - name: Prepare SSH client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openssh-client
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+          {
+            echo "Host *"
+            echo "  ServerAliveInterval 25"
+            echo "  ServerAliveCountMax 4"
+          } >> ~/.ssh/config
+
+      - name: Deploy (Build on server)
+        run: |
+          set -euo pipefail
+          echo "==> Connecting to server..."
+          ssh -o StrictHostKeyChecking=yes "${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}" 'bash -seu' <<'EOF'
+            set -euo pipefail
+
+            SERVICE_NAME="flearn-backend"
+            REPO_DIR="/root/FLearn-Backend"
+            PUBLISH_DIR="/var/www/flearn-backend-published"
+
+            banner() { printf "\n===== %s =====\n" "$1"; }
+
+            banner "Environment Info"
+            echo "TIME: $(date -u)"
+            echo "USER: $(whoami)"
+            echo "PWD:  $(pwd)"
+            dotnet --info | head -n 20 || echo ".NET info unavailable"
+
+            banner "Stopping service (ignore if not running)"
+            systemctl stop "$SERVICE_NAME" || true
+
+            banner "Updating repository"
+            if [ ! -d "$REPO_DIR/.git" ]; then
+              echo "Repository folder missing: $REPO_DIR"
+              exit 1
+            fi
+            cd "$REPO_DIR"
+            git fetch --all --prune
+            git reset --hard origin/main
+            git clean -fdx
+
+            banner "Building & Publishing"
+            cd Presentation
+            dotnet restore --verbosity minimal
+            dotnet publish -c Release -o "$PUBLISH_DIR" --verbosity minimal
+
+            banner "Setting permissions"
+            chown -R www-data:www-data "$PUBLISH_DIR"
+
+            banner "Starting service"
+            systemctl start "$SERVICE_NAME"
+
+            banner "Waiting for service to become active"
+            for i in {1..12}; do
+              if systemctl is-active --quiet "$SERVICE_NAME"; then
+                echo "Service is active."
+                break
+              fi
+              echo "[$i] Waiting 5s..."
+              sleep 5
+            done
+
+            if ! systemctl is-active --quiet "$SERVICE_NAME"; then
+              echo "ERROR: Service failed to become active."
+              journalctl -u "$SERVICE_NAME" -n 120 --no-pager || true
+              exit 1
+            fi
+
+            banner "Last 40 log lines"
+            journalctl -u "$SERVICE_NAME" -n 40 --no-pager || true
+
+            echo "✅ Deployment completed successfully at $(date -u)"
+          EOF
+
+      - name: Done
+        run: echo "🎉 Deployment job finished ."
