@@ -9,6 +9,7 @@
         ListenAndRepeat = 4, // Nghe audio -> nhắc lại
         ListeningMultipleChoice = 5,
         ListeningFillInTheBlank = 6,
-        UnscrambleWords = 7,
+        ConversationWithAI = 7,
+        UnscrambleWords = 8,
     }
 }

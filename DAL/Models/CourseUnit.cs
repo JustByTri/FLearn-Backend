@@ -9,7 +9,7 @@ namespace DAL.Models
         public Guid CourseUnitID { get; set; }
         [Required]
         [StringLength(200)]
-        public required string Title { get; set; }
+        public string Title { get; set; }
         [StringLength(500)]
         public string? Description { get; set; }
         [Range(1, 100, ErrorMessage = "Value for {0} must be between {1} and {2}.")]
@@ -17,12 +17,11 @@ namespace DAL.Models
         [Required]
         public Guid CourseID { get; set; }
         [ForeignKey(nameof(CourseID))]
-        public Course? Course { get; set; }
+        public virtual Course? Course { get; set; }
         public int? TotalLessons { get; set; } = 0;
         public bool? IsPreview { get; set; } = false;
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
         public virtual ICollection<Lesson> Lessons { get; set; } = new List<Lesson>();
-
     }
 }

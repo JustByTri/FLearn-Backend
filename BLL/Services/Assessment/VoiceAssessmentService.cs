@@ -1,11 +1,7 @@
 ﻿using BLL.IServices.AI;
 using BLL.IServices.Assessment;
-
 using BLL.IServices.Redis;
-using BLL.Services.UserGoal;
 using Common.DTO.Assement;
-using Common.DTO.Learner;
-using DAL.Models;
 using DAL.UnitOfWork;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -213,7 +209,7 @@ namespace BLL.Services.Assessment
                     language.LanguageCode,
                     language.LanguageName);
 
-           
+
                 var resultDto = MapBatchResultToDto(result, assessment, language);
                 await _redisService.SetVoiceAssessmentResultAsync(assessment.UserId, assessment.LanguageId, resultDto);
 
@@ -231,24 +227,24 @@ namespace BLL.Services.Assessment
             }
         }
 
-        private async Task CreatePendingVoiceAssessmentAsync(Guid userId, VoiceAssessmentResultDto resultDto)
-        {
-            try
-            {
-                // ✅ Create logger with correct type
-                var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-                var userGoalLogger = loggerFactory.CreateLogger<UserGoalService>();
+        //private async Task CreatePendingVoiceAssessmentAsync(Guid userId, VoiceAssessmentResultDto resultDto)
+        //{
+        //    try
+        //    {
+        //        // ✅ Create logger with correct type
+        //        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+        //        var userGoalLogger = loggerFactory.CreateLogger<UserGoalService>();
 
-                var userGoalService = new UserGoalService(_unitOfWork, userGoalLogger);
-                await userGoalService.CreatePendingVoiceAssessmentResultAsync(userId, resultDto);
+        //        var userGoalService = new UserGoalService(_unitOfWork, userGoalLogger);
+        //        await userGoalService.CreatePendingVoiceAssessmentResultAsync(userId, resultDto);
 
-                _logger.LogInformation("✅ Created pending voice assessment result for user {UserId}", userId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating pending voice assessment for user {UserId}", userId);
-            }
-        }
+        //        _logger.LogInformation("✅ Created pending voice assessment result for user {UserId}", userId);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error creating pending voice assessment for user {UserId}", userId);
+        //    }
+        //}
         private VoiceAssessmentResultDto MapBatchResultToDto(
     BatchVoiceEvaluationResult batchResult,
     VoiceAssessmentDto assessment,
@@ -388,185 +384,185 @@ namespace BLL.Services.Assessment
             }
         }
 
-        private async Task EnrichWithCourseRecommendationsAsync(
-            Guid userId,
-            BatchVoiceEvaluationResult result,
-            Guid languageId)
-        {
-            try
-            {
-                // Get available courses based on weaknesses
-                var weaknessFoci = result.RecommendedCourses.Select(c => c.Focus).ToList();
-                var courses = await GetCoursesForWeaknessesAsync(languageId, weaknessFoci, result.OverallLevel);
+        //private async Task EnrichWithCourseRecommendationsAsync(
+        //    Guid userId,
+        //    BatchVoiceEvaluationResult result,
+        //    Guid languageId)
+        //{
+        //    try
+        //    {
+        //        // Get available courses based on weaknesses
+        //        var weaknessFoci = result.RecommendedCourses.Select(c => c.Focus).ToList();
+        //        var courses = await GetCoursesForWeaknessesAsync(languageId, weaknessFoci, result.OverallLevel);
 
-                // Map to result
-                result.RecommendedCourses = courses.Select(c => new CourseRecommendation
-                {
-                    Focus = c.Title,
-                    Reason = $"Khóa học này phù hợp với level {result.OverallLevel}",
-                    Level = c.Level
-                }).Take(3).ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Could not enrich with course recommendations");
-            }
-        }
+        //        // Map to result
+        //        result.RecommendedCourses = courses.Select(c => new CourseRecommendation
+        //        {
+        //            Focus = c.Title,
+        //            Reason = $"Khóa học này phù hợp với level {result.OverallLevel}",
+        //            Level = c.Level
+        //        }).Take(3).ToList();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogWarning(ex, "Could not enrich with course recommendations");
+        //    }
+        //}
 
-        private async Task<List<CourseInfoDto>> GetCoursesForWeaknessesAsync(
-            Guid languageId,
-            List<string> weaknessFoci,
-            string level)
-        {
-            var courses = await _unitOfWork.Courses.GetCoursesByLanguageAsync(languageId);
+        //private async Task<List<CourseInfoDto>> GetCoursesForWeaknessesAsync(
+        //    Guid languageId,
+        //    List<string> weaknessFoci,
+        //    string level)
+        //{
+        //    var courses = await _unitOfWork.Courses.GetCoursesByLanguageAsync(languageId);
 
-            // Filter by level and relevant topics
-            return courses
-                .Where(c => c.Level == level || c.Level == "All Levels")
-                .Take(3)
-                .Select(c => new CourseInfoDto
-                {
-                    CourseID = c.CourseID,
-                    Title = c.Title,
-                    Description = c.Description ?? "",
-                    Level = c.Level ?? level
-                })
-                .ToList();
-        }
+        //    // Filter by level and relevant topics
+        //    return courses
+        //        .Where(c => c.Level == level || c.Level == "All Levels")
+        //        .Take(3)
+        //        .Select(c => new CourseInfoDto
+        //        {
+        //            CourseID = c.CourseID,
+        //            Title = c.Title,
+        //            Description = c.Description ?? "",
+        //            Level = c.Level ?? level
+        //        })
+        //        .ToList();
+        //}
 
         /// <summary>
         /// ✅ THÊM METHOD MỚI: Generate course recommendations cho voice assessment result
         /// </summary>
-        private async Task GenerateCourseRecommendationsForResult(Guid userId, VoiceAssessmentResultDto result)
-        {
-            try
-            {
-              
-                var survey = await _unitOfWork.UserSurveys.GetByUserIdAsync(userId);
-                if (survey == null)
-                {
-                    _logger.LogInformation("User {UserId} has no survey - skipping course recommendations", userId);
-                    return;
-                }
+        //private async Task GenerateCourseRecommendationsForResult(Guid userId, VoiceAssessmentResultDto result)
+        //{
+        //    try
+        //    {
 
-             
-                var availableCourses = await GetAvailableCoursesForLanguage(result.LanguageName, result.DeterminedLevel);
+        //        var survey = await _unitOfWork.UserSurveys.GetByUserIdAsync(userId);
+        //        if (survey == null)
+        //        {
+        //            _logger.LogInformation("User {UserId} has no survey - skipping course recommendations", userId);
+        //            return;
+        //        }
 
-                if (!availableCourses.Any())
-                {
-                    _logger.LogWarning("No courses available for language {Language} and level {Level}",
-                        result.LanguageName, result.DeterminedLevel);
-                    return;
-                }
 
-            
-                var surveyDto = BuildUserSurveyDto(survey, result);
+        //        var availableCourses = await GetAvailableCoursesForLanguage(result.LanguageName, result.DeterminedLevel);
 
-         
-                var aiRecommendations = await _geminiService.GenerateCourseRecommendationsAsync(surveyDto, availableCourses);
+        //        if (!availableCourses.Any())
+        //        {
+        //            _logger.LogWarning("No courses available for language {Language} and level {Level}",
+        //                result.LanguageName, result.DeterminedLevel);
+        //            return;
+        //        }
 
-            
-                result.RecommendedCourses = aiRecommendations.RecommendedCourses?
-                    .Take(5) 
-                    .Select(c => new RecommendedCourseDto
-                    {
-                        CourseId = c.CourseID,
-                        CourseName = c.CourseName,
-                        Level = c.Level,
-                        MatchReason = c.MatchReason,
-                        GoalName = result.LanguageName 
-                    })
-                    .ToList();
 
-                _logger.LogInformation("Generated {Count} course recommendations based on survey + voice level {Level}",
-                    result.RecommendedCourses.Count, result.DeterminedLevel);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error generating course recommendations for user {UserId}", userId);
-                throw;
-            }
-        }
+        //        var surveyDto = BuildUserSurveyDto(survey, result);
 
-     
-        private async Task<List<CourseInfoDto>> GetAvailableCoursesForLanguage(string languageName, string determinedLevel)
-        {
-            try
-            {
-             
-                var language = await _unitOfWork.Languages.GetByNameAsync(languageName);
-                if (language == null) return new List<CourseInfoDto>();
 
-             
-                var courses = await _unitOfWork.Courses.GetCoursesByLanguageAsync(language.LanguageID);
+        //        var aiRecommendations = await _geminiService.GenerateCourseRecommendationsAsync(surveyDto, availableCourses);
 
-          
-                return courses.Select(c => new CourseInfoDto
-                {
-                    CourseID = c.CourseID,
-                    Title = c.Title,
-                    Description = c.Description ?? "",
-                    Level = MapVoiceLevelToCourseLevel(determinedLevel), 
-                    Language = languageName,
-                  
-                    Difficulty = c.Level ?? "Beginner",
-                    Skills = new List<string> { "Speaking", "Listening", "Grammar", "Vocabulary" }, 
-                    Topics = new List<string>()
-                }).ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting available courses for language {Language}", languageName);
-                return new List<CourseInfoDto>();
-            }
-        }
 
-     
+        //        result.RecommendedCourses = aiRecommendations.RecommendedCourses?
+        //            .Take(5) 
+        //            .Select(c => new RecommendedCourseDto
+        //            {
+        //                CourseId = c.CourseID,
+        //                CourseName = c.CourseName,
+        //                Level = c.Level,
+        //                MatchReason = c.MatchReason,
+        //                GoalName = result.LanguageName 
+        //            })
+        //            .ToList();
+
+        //        _logger.LogInformation("Generated {Count} course recommendations based on survey + voice level {Level}",
+        //            result.RecommendedCourses.Count, result.DeterminedLevel);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error generating course recommendations for user {UserId}", userId);
+        //        throw;
+        //    }
+        //}
+
+
+        //private async Task<List<CourseInfoDto>> GetAvailableCoursesForLanguage(string languageName, string determinedLevel)
+        //{
+        //    try
+        //    {
+
+        //        var language = await _unitOfWork.Languages.GetByNameAsync(languageName);
+        //        if (language == null) return new List<CourseInfoDto>();
+
+
+        //        var courses = await _unitOfWork.Courses.GetCoursesByLanguageAsync(language.LanguageID);
+
+
+        //        return courses.Select(c => new CourseInfoDto
+        //        {
+        //            CourseID = c.CourseID,
+        //            Title = c.Title,
+        //            Description = c.Description ?? "",
+        //            Level = MapVoiceLevelToCourseLevel(determinedLevel), 
+        //            Language = languageName,
+
+        //            Difficulty = c.Level ?? "Beginner",
+        //            Skills = new List<string> { "Speaking", "Listening", "Grammar", "Vocabulary" }, 
+        //            Topics = new List<string>()
+        //        }).ToList();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error getting available courses for language {Language}", languageName);
+        //        return new List<CourseInfoDto>();
+        //    }
+        //}
+
+
         private string MapVoiceLevelToCourseLevel(string voiceLevel)
         {
             return voiceLevel.ToUpper() switch
             {
-             
+
                 "A1" or "A2" => "Beginner",
                 "B1" => "Intermediate",
                 "B2" => "Upper-Intermediate",
                 "C1" or "C2" => "Advanced",
 
-              
+
                 "HSK 1" or "HSK 2" => "Beginner",
                 "HSK 3" or "HSK 4" => "Intermediate",
                 "HSK 5" or "HSK 6" => "Advanced",
 
-               
+
                 "N5" or "N4" => "Beginner",
                 "N3" or "N2" => "Intermediate",
                 "N1" => "Advanced",
 
-           
+
                 _ => "Beginner"
             };
         }
 
- 
-        private UserSurveyResponseDto BuildUserSurveyDto(UserSurvey survey, VoiceAssessmentResultDto voiceResult)
-        {
-            return new UserSurveyResponseDto
-            {
-                SurveyID = survey.SurveyID,
-                CurrentLevel = voiceResult.DeterminedLevel,
-                PreferredLanguageID = survey.PreferredLanguageID,
-                PreferredLanguageName = voiceResult.LanguageName,
-                LearningReason = survey.LearningReason,
-                PreviousExperience = survey.PreviousExperience,
-                PreferredLearningStyle = survey.PreferredLearningStyle,
-                InterestedTopics = survey.InterestedTopics,
-                PrioritySkills = survey.PrioritySkills + ", Speaking", 
-                TargetTimeline = survey.TargetTimeline,
-                SpeakingChallenges = survey.SpeakingChallenges,
-                PreferredAccent = survey.PreferredAccent,
-                CreatedAt = survey.CreatedAt
-            };
-        }
+
+        //private UserSurveyResponseDto BuildUserSurveyDto(UserSurvey survey, VoiceAssessmentResultDto voiceResult)
+        //{
+        //    return new UserSurveyResponseDto
+        //    {
+        //        SurveyID = survey.SurveyID,
+        //        CurrentLevel = voiceResult.DeterminedLevel,
+        //        PreferredLanguageID = survey.PreferredLanguageID,
+        //        PreferredLanguageName = voiceResult.LanguageName,
+        //        LearningReason = survey.LearningReason,
+        //        PreviousExperience = survey.PreviousExperience,
+        //        PreferredLearningStyle = survey.PreferredLearningStyle,
+        //        InterestedTopics = survey.InterestedTopics,
+        //        PrioritySkills = survey.PrioritySkills + ", Speaking", 
+        //        TargetTimeline = survey.TargetTimeline,
+        //        SpeakingChallenges = survey.SpeakingChallenges,
+        //        PreferredAccent = survey.PreferredAccent,
+        //        CreatedAt = survey.CreatedAt
+        //    };
+        //}
         public async Task<VoiceAssessmentResultDto?> GetVoiceAssessmentResultAsync(Guid userId, Guid languageId)
         {
             return await _redisService.GetVoiceAssessmentResultAsync(userId, languageId);
@@ -578,7 +574,7 @@ namespace BLL.Services.Assessment
             return result != null;
         }
 
-   
+
         public async Task<List<VoiceAssessmentDto>> GetActiveAssessmentsDebugAsync()
         {
             return await _redisService.GetActiveVoiceAssessmentsAsync();

@@ -25,12 +25,11 @@ namespace DAL.Models
         [Range(1, 100, ErrorMessage = "Position must be between {1} and {2}.")]
         public int Position { get; set; }
         [Required]
-        public ExerciseType Type { get; set; }
-        public SkillType? SkillType { get; set; }
+        public SpeakingExerciseType Type { get; set; }
         [Required]
         public DifficultyLevel Difficulty { get; set; } = DifficultyLevel.Easy;
-        public int MaxScore { get; set; } = 100;
-        public int PassScore { get; set; } = 60;
+        public int MaxScore { get; set; }
+        public int PassScore { get; set; }
         [StringLength(1000)]
         public string? FeedbackCorrect { get; set; }
         [StringLength(1000)]
@@ -38,13 +37,14 @@ namespace DAL.Models
         // Điều kiện tiên quyết (1 bài tập phải pass trước)
         public Guid? PrerequisiteExerciseID { get; set; }
         [ForeignKey(nameof(PrerequisiteExerciseID))]
-        public Exercise? PrerequisiteExercise { get; set; }
+        public virtual Exercise? PrerequisiteExercise { get; set; }
         [Required]
         public Guid LessonID { get; set; }
         [ForeignKey(nameof(LessonID))]
-        public Lesson? Lesson { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-        public virtual ICollection<ExerciseOption> Options { get; set; } = new List<ExerciseOption>();
+        public virtual Lesson? Lesson { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+        public virtual ICollection<ExerciseSubmission>? ExerciseSubmissions { get; set; } = new List<ExerciseSubmission>();
+        public virtual ICollection<ContentIssueReport>? ContentIssueReports { get; set; } = new List<ContentIssueReport>();
     }
 }

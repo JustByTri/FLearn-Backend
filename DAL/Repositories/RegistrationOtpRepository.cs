@@ -3,11 +3,6 @@ using DAL.DBContext;
 using DAL.IRepositories;
 using DAL.Models;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DAL.Repositories
 {
@@ -19,13 +14,13 @@ namespace DAL.Repositories
         {
             var normalizedEmail = email.Trim().ToLowerInvariant();
 
-       
+
             return await _context.Set<RegistrationOtp>()
-                .Where(x => x.Email.ToLower() == normalizedEmail &&  
-                           x.OtpCode == otpCode &&                
-                           !x.IsUsed &&                    
-                           x.ExpireAt > DateTime.UtcNow)            
-                .OrderByDescending(x => x.CreateAt)                 
+                .Where(x => x.Email.ToLower() == normalizedEmail &&
+                           x.OtpCode == otpCode &&
+                           !x.IsUsed &&
+                           x.ExpireAt > DateTime.UtcNow)
+                .OrderByDescending(x => x.CreateAt)
                 .FirstOrDefaultAsync();
         }
 

@@ -37,10 +37,9 @@ namespace BLL.Services.Auth
             if (!VerifyPassword(loginRequest.Password, user.PasswordHash, user.PasswordSalt))
                 throw new UnauthorizedAccessException("Tài khoản hoặc mật khẩu của bạn không đúng");
 
-            user.LastAcessAt = DateTime.UtcNow;
             await _unitOfWork.Users.UpdateAsync(user);
 
-           
+
             var refreshTokenExpirationDays = loginRequest.RememberMe ? 30 : _jwtSettings.RefreshTokenExpirationDays;
 
             var (accessToken, refreshToken) = await GenerateTokensAsync(user, refreshTokenExpirationDays);
@@ -56,7 +55,7 @@ namespace BLL.Services.Auth
             };
         }
 
-    
+
         private async Task<(TokenInfo accessToken, RefreshToken refreshToken)> GenerateTokensAsync(User user, int? customRefreshTokenDays = null)
         {
             var accessToken = GenerateAccessToken(user);
@@ -80,10 +79,10 @@ namespace BLL.Services.Auth
 
         public async Task<bool> RegisterAndSendOtpAsync(TempRegistrationDto registrationDto)
         {
-      
+
             var normalizedEmail = registrationDto.Email.Trim().ToLowerInvariant();
 
-         
+
             if (await _unitOfWork.Users.IsEmailExistsAsync(normalizedEmail))
                 throw new InvalidOperationException("Email đã được đăng ký bởi tài khoản khác, vui lòng dùng email khác");
 
@@ -92,10 +91,10 @@ namespace BLL.Services.Auth
 
             var (passwordHash, passwordSalt) = CreatePasswordHash(registrationDto.Password);
 
-       
+
             var otp = await GenerateSecureRegistrationOtpAsync(normalizedEmail);
 
-   
+
             await _unitOfWork.TempRegistrations.InvalidateTempRegistrationsAsync(normalizedEmail);
 
             var tempRegistration = new TempRegistration
@@ -122,7 +121,7 @@ namespace BLL.Services.Auth
 
             do
             {
-               
+
                 using (var rng = RandomNumberGenerator.Create())
                 {
                     var bytes = new byte[4];
@@ -131,7 +130,7 @@ namespace BLL.Services.Auth
                     otpCode = (randomNumber % 900000 + 100000).ToString();
                 }
 
-            
+
                 var allTempRegs = await _unitOfWork.TempRegistrations.GetAllAsync();
                 isUnique = !allTempRegs.Any(tr =>
                     tr.Email.ToLowerInvariant() == email.ToLowerInvariant() &&
@@ -171,17 +170,10 @@ namespace BLL.Services.Auth
                 Email = tempRegistration.Email,
                 PasswordHash = tempRegistration.PasswordHash,
                 PasswordSalt = tempRegistration.PasswordSalt,
-                JobTitle = "Learner",
-                Interests = string.Empty,
                 BirthDate = DateTime.Now.AddYears(-18),
-                ProfilePictureUrl = string.Empty,
                 Status = true,
                 CreatedAt = DateTime.UtcNow,
-                UpdateAt = DateTime.UtcNow,
-                LastAcessAt = DateTime.UtcNow,
                 IsEmailConfirmed = true,
-                MfaEnabled = false,
-                StreakDays = 0
             };
             await _unitOfWork.Users.CreateAsync(user);
 
@@ -324,7 +316,7 @@ namespace BLL.Services.Auth
                 signingCredentials: credentials
             );
 
-       
+
             var expiresAtVietnam = TimeZoneInfo.ConvertTimeFromUtc(expiresAtUtc,
                 TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
 
@@ -374,7 +366,6 @@ namespace BLL.Services.Auth
                 Email = user.Email,
                 IsEmailConfirmed = user.IsEmailConfirmed,
                 CreatedAt = user.CreatedAt,
-                LastAccessAt = user.LastAcessAt
             };
         }
         public async Task<bool> ChangeStaffPasswordAsync(Guid adminUserId, ChangeStaffPasswordDto changePasswordDto)
@@ -399,7 +390,6 @@ namespace BLL.Services.Auth
 
             staffUser.PasswordHash = newPasswordHash;
             staffUser.PasswordSalt = newPasswordSalt;
-            staffUser.UpdateAt = DateTime.UtcNow;
 
             await _unitOfWork.Users.UpdateAsync(staffUser);
 
@@ -487,7 +477,7 @@ namespace BLL.Services.Auth
 
         public async Task<bool> ResetPasswordAsync(ResetPasswordDto resetPasswordDto)
         {
-          
+
             var passwordResetOtp = await _unitOfWork.PasswordResetOtps.GetValidPasswordResetOtpAsync(
                 resetPasswordDto.Email, resetPasswordDto.OtpCode);
 
@@ -496,28 +486,27 @@ namespace BLL.Services.Auth
                 throw new InvalidOperationException("Mã OTP không hợp lệ hoặc đã hết hạn.");
             }
 
-         
+
             var user = await _unitOfWork.Users.GetByEmailAsync(resetPasswordDto.Email);
             if (user == null || !user.Status)
             {
                 throw new InvalidOperationException("Tài khoản không tồn tại hoặc đã bị khóa.");
             }
 
-       
+
             passwordResetOtp.IsUsed = true;
             await _unitOfWork.PasswordResetOtps.UpdateAsync(passwordResetOtp);
 
-     
+
             var (newPasswordHash, newPasswordSalt) = CreatePasswordHash(resetPasswordDto.NewPassword);
 
-     
+
             user.PasswordHash = newPasswordHash;
             user.PasswordSalt = newPasswordSalt;
-            user.UpdateAt = DateTime.UtcNow;
 
             await _unitOfWork.Users.UpdateAsync(user);
 
-      
+
             await _unitOfWork.RefreshTokens.RevokeAllUserTokensAsync(user.UserID);
 
             return true;
@@ -577,17 +566,11 @@ namespace BLL.Services.Auth
                         Email = userInfo.Email,
                         PasswordHash = string.Empty,
                         PasswordSalt = string.Empty,
-                        JobTitle = "Learner",
-                        Interests = string.Empty,
                         BirthDate = DateTime.Now.AddYears(-18),
-                        ProfilePictureUrl = userInfo.Picture,
+                        Avatar = userInfo.Picture,
                         Status = true,
                         CreatedAt = DateTime.UtcNow,
-                        UpdateAt = DateTime.UtcNow,
-                        LastAcessAt = DateTime.UtcNow,
                         IsEmailConfirmed = userInfo.EmailVerified,
-                        MfaEnabled = false,
-                        StreakDays = 0
                     };
 
                     // Save new user

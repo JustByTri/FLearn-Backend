@@ -6,13 +6,9 @@ using Common.DTO.Teacher;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
 namespace BLL.Services.AI
 {
@@ -44,7 +40,7 @@ namespace BLL.Services.AI
             {
                 _logger.LogError(ex, "Error generating course recommendations for user survey {SurveyId}", survey.SurveyID);
 
-               
+
                 return new AiCourseRecommendationDto
                 {
                     RecommendedCourses = new List<CourseRecommendationDto>(),
@@ -83,7 +79,7 @@ namespace BLL.Services.AI
             {
                 _logger.LogError(ex, "Error generating study tips for user survey {SurveyId}", survey.SurveyID);
 
-           
+
                 return new List<string>
                 {
                     "Học đều đặn mỗi ngày, dù chỉ 15-30 phút",
@@ -244,10 +240,10 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
             {
                 _logger.LogDebug("Parsing AI response: {Response}", response);
 
-              
+
                 var cleanedResponse = response.Trim();
 
-               
+
                 if (cleanedResponse.StartsWith("```json"))
                 {
                     cleanedResponse = cleanedResponse.Replace("```json", "").Replace("```", "").Trim();
@@ -257,10 +253,10 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
                     cleanedResponse = cleanedResponse.Replace("```", "").Trim();
                 }
 
-              
+
                 cleanedResponse = cleanedResponse.Replace("**", "").Replace("*", "");
 
-                
+
                 var jsonStart = cleanedResponse.IndexOf('{');
                 var jsonEnd = cleanedResponse.LastIndexOf('}') + 1;
 
@@ -315,7 +311,7 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
                             {
                                 _logger.LogWarning("Course not found for ID: {CourseId}", rec.CourseId);
 
-                               
+
                                 if (!string.IsNullOrEmpty(rec.CourseId) && availableCourses.Any())
                                 {
                                     var fallbackCourse = availableCourses.First();
@@ -380,7 +376,7 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
             return sanitized.Length > 10 ? sanitized : null;
         }
 
-       
+
         private List<string>? SanitizeStudyTips(List<string>? tips)
         {
             if (tips == null || !tips.Any())
@@ -400,18 +396,18 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
             return sanitizedTips.Any() ? sanitizedTips : null;
         }
 
-      
+
         private List<string> GetDefaultStudyTips()
         {
             return new List<string>
     {
         "Học đều đặn mỗi ngày, dù chỉ 15-30 phút",
         "Luyện tập các kỹ năng nghe, nói, đọc, viết một cách cân bằng",
-       
+
     };
         }
 
-     
+
         private AiCourseRecommendationDto CreateFallbackRecommendation(List<CourseInfoDto> availableCourses)
         {
             var fallbackRecommendations = new List<CourseRecommendationDto>();
@@ -457,12 +453,12 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
             {
                 var trimmed = line.Trim();
 
-            
+
                 if (trimmed.StartsWith("- ") || trimmed.StartsWith("• ") || trimmed.StartsWith("* "))
                 {
                     tips.Add(trimmed.Substring(2).Trim());
                 }
-             
+
                 else if (System.Text.RegularExpressions.Regex.IsMatch(trimmed, @"^\d+\.\s"))
                 {
                     var dotIndex = trimmed.IndexOf('.');
@@ -471,7 +467,7 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
                         tips.Add(trimmed.Substring(dotIndex + 1).Trim());
                     }
                 }
-               
+
                 else if (trimmed.Length > 10 &&
                          !trimmed.Contains("mẹo", StringComparison.OrdinalIgnoreCase) &&
                          !trimmed.Contains("sau đây", StringComparison.OrdinalIgnoreCase) &&
@@ -508,7 +504,6 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
             var credentialsInfo = credentials.Select(c => new
             {
                 name = c.CredentialName,
-                type = c.Type.ToString(),
                 url = c.CredentialFileUrl
             }).ToList();
 
@@ -690,7 +685,6 @@ Trả lời bằng tiếng Việt, chi tiết và có căn cứ rõ ràng.";
                 QualificationAssessments = credentials.Select(c => new QualificationAssessment
                 {
                     CredentialName = c.CredentialName,
-                    CredentialType = c.Type.ToString(),
                     RelevanceScore = 70,
                     Assessment = "Cần xem xét thủ công",
                     SupportedLevels = new List<string> { "Beginner" }
@@ -703,11 +697,11 @@ Trả lời bằng tiếng Việt, chi tiết và có căn cứ rõ ràng.";
         {
             try
             {
-          
+
                 var audioBase64 = await ConvertAudioToBase64Async(audioFile);
                 var prompt = BuildVoiceEvaluationPromptWithAudio(question, languageCode);
 
-                
+
                 var response = await CallGeminiApiWithAudioAsync(prompt, audioBase64, audioFile.ContentType);
                 return ParseVoiceEvaluationResponse(response);
             }
@@ -718,7 +712,7 @@ Trả lời bằng tiếng Việt, chi tiết và có căn cứ rõ ràng.";
             }
         }
 
-      
+
         private async Task<string> ConvertAudioToBase64Async(IFormFile audioFile)
         {
             try
@@ -744,7 +738,7 @@ Trả lời bằng tiếng Việt, chi tiết và có căn cứ rõ ràng.";
             }
         }
 
-   
+
         private string BuildVoiceEvaluationPromptWithAudio(VoiceAssessmentQuestion question, string languageCode)
         {
             var languageStandards = GetLanguageStandards(languageCode);
@@ -861,7 +855,7 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
 - Không bao giờ đánh giá tiếng Anh theo JLPT hay tiếng Nhật theo CEFR!";
         }
 
-     
+
         private string GetLanguageSpecificCriteria(string languageCode)
         {
             return languageCode.ToUpper() switch
@@ -929,8 +923,8 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
 
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-             
-                var model = "gemini-2.5-flash-lite"; 
+
+                var model = "gemini-2.5-flash-lite";
                 var url = $"{_settings.BaseUrl}/models/{model}:generateContent?key={_settings.ApiKey}";
 
                 _logger.LogInformation("Calling Gemini API with audio: {Url}", url);
@@ -948,7 +942,7 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
                     throw new HttpRequestException($"Gemini API returned {response.StatusCode}: {responseContent}");
                 }
 
-           
+
                 if (string.IsNullOrEmpty(responseContent))
                 {
                     _logger.LogError("Gemini API returned empty response");
@@ -962,7 +956,7 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
 
                 var result = geminiResponse?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text ?? "";
 
-             
+
                 if (string.IsNullOrEmpty(result))
                 {
                     _logger.LogError("Gemini API returned valid JSON but empty text content");
@@ -981,113 +975,113 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
         }
 
 
-//        public async Task<VoiceAssessmentResultDto> GenerateVoiceAssessmentResultAsync(
-//    string languageCode,
-//    string languageName,
-//    List<VoiceAssessmentQuestion> questions,
-//    string? goalName = null)
-//        {
-//            try
-//            {
-//                var prompt = BuildVoiceAssessmentResultPrompt(languageCode, languageName, questions, goalName);
-//                var response = await CallGeminiApiAsync(prompt);
-//                return ParseVoiceAssessmentResult(response, languageName, questions);
-//            }
-//            catch (Exception ex)
-//            {
-//                _logger.LogError(ex, "Error generating voice assessment result");
-//                return CreateFallbackVoiceAssessmentResult(languageName, questions);
-//            }
-//        }
+        //        public async Task<VoiceAssessmentResultDto> GenerateVoiceAssessmentResultAsync(
+        //    string languageCode,
+        //    string languageName,
+        //    List<VoiceAssessmentQuestion> questions,
+        //    string? goalName = null)
+        //        {
+        //            try
+        //            {
+        //                var prompt = BuildVoiceAssessmentResultPrompt(languageCode, languageName, questions, goalName);
+        //                var response = await CallGeminiApiAsync(prompt);
+        //                return ParseVoiceAssessmentResult(response, languageName, questions);
+        //            }
+        //            catch (Exception ex)
+        //            {
+        //                _logger.LogError(ex, "Error generating voice assessment result");
+        //                return CreateFallbackVoiceAssessmentResult(languageName, questions);
+        //            }
+        //        }
 
-//        private string BuildVoiceAssessmentResultPrompt(
-//            string languageCode,
-//            string languageName,
-//            List<VoiceAssessmentQuestion> questions,
-//            string? goalName = null)
-//        {
-//            var completedQuestions = questions.Where(q => !q.IsSkipped && q.EvaluationResult != null).ToList();
-//            var completedCount = completedQuestions.Count;
-//            var totalQuestions = questions.Count;
+        //        private string BuildVoiceAssessmentResultPrompt(
+        //            string languageCode,
+        //            string languageName,
+        //            List<VoiceAssessmentQuestion> questions,
+        //            string? goalName = null)
+        //        {
+        //            var completedQuestions = questions.Where(q => !q.IsSkipped && q.EvaluationResult != null).ToList();
+        //            var completedCount = completedQuestions.Count;
+        //            var totalQuestions = questions.Count;
 
-//            var questionsJson = JsonSerializer.Serialize(completedQuestions.Select(q => new {
-//                q.QuestionNumber,
-//                q.Difficulty,
-//                OverallScore = q.EvaluationResult?.OverallScore ?? 0,
-//                PronunciationScore = q.EvaluationResult?.Pronunciation?.Score ?? 0,
-//                FluencyScore = q.EvaluationResult?.Fluency?.Score ?? 0,
-//                GrammarScore = q.EvaluationResult?.Grammar?.Score ?? 0,
-//                VocabularyScore = q.EvaluationResult?.Vocabulary?.Score ?? 0
-//            }), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        //            var questionsJson = JsonSerializer.Serialize(completedQuestions.Select(q => new {
+        //                q.QuestionNumber,
+        //                q.Difficulty,
+        //                OverallScore = q.EvaluationResult?.OverallScore ?? 0,
+        //                PronunciationScore = q.EvaluationResult?.Pronunciation?.Score ?? 0,
+        //                FluencyScore = q.EvaluationResult?.Fluency?.Score ?? 0,
+        //                GrammarScore = q.EvaluationResult?.Grammar?.Score ?? 0,
+        //                VocabularyScore = q.EvaluationResult?.Vocabulary?.Score ?? 0
+        //            }), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
-//            var goalContext = !string.IsNullOrEmpty(goalName)
-//                ? $"\n\n## Mục tiêu học tập:\n**Goal**: {goalName}\n\n*Lưu ý: Roadmap và gợi ý cần phù hợp với mục tiêu '{goalName}'*"
-//                : "";
+        //            var goalContext = !string.IsNullOrEmpty(goalName)
+        //                ? $"\n\n## Mục tiêu học tập:\n**Goal**: {goalName}\n\n*Lưu ý: Roadmap và gợi ý cần phù hợp với mục tiêu '{goalName}'*"
+        //                : "";
 
-//            var standardFramework = GetStandardFramework(languageCode);
+        //            var standardFramework = GetStandardFramework(languageCode);
 
-//            return $@"# Phân tích kết quả đánh giá giọng nói {languageName}
+        //            return $@"# Phân tích kết quả đánh giá giọng nói {languageName}
 
-//## Thông tin bài test:
-//- **Số câu hoàn thành**: {completedCount}/{totalQuestions}
-//- **Độ tin cậy đánh giá**: {GetConfidenceLevel(completedCount, totalQuestions)}%
-//{goalContext}
+        //## Thông tin bài test:
+        //- **Số câu hoàn thành**: {completedCount}/{totalQuestions}
+        //- **Độ tin cậy đánh giá**: {GetConfidenceLevel(completedCount, totalQuestions)}%
+        //{goalContext}
 
-//## Dữ liệu điểm chi tiết:
-//{questionsJson}
+        //## Dữ liệu điểm chi tiết:
+        //{questionsJson}
 
-//## Khung chuẩn {GetStandardName(languageCode)}:
-//{standardFramework}
+        //## Khung chuẩn {GetStandardName(languageCode)}:
+        //{standardFramework}
 
-//## YÊU CẦU ĐÁNH GIÁ:
+        //## YÊU CẦU ĐÁNH GIÁ:
 
-//### 1. Đánh giá CHÍNH XÁC dựa trên {completedCount} câu đã làm:
-//- KHÔNG tự động cho điểm 70 hay bất kỳ điểm mặc định nào
-//- Tính điểm dựa 100% trên câu đã hoàn thành
-//- Nêu rõ giới hạn nếu completedCount < {totalQuestions}
+        //### 1. Đánh giá CHÍNH XÁC dựa trên {completedCount} câu đã làm:
+        //- KHÔNG tự động cho điểm 70 hay bất kỳ điểm mặc định nào
+        //- Tính điểm dựa 100% trên câu đã hoàn thành
+        //- Nêu rõ giới hạn nếu completedCount < {totalQuestions}
 
-//### 2. Xác định Level theo khung chuẩn {GetStandardName(languageCode)}:
-//{GetLevelDeterminationRules(languageCode)}
+        //### 2. Xác định Level theo khung chuẩn {GetStandardName(languageCode)}:
+        //{GetLevelDeterminationRules(languageCode)}
 
-//### 3. Cung cấp Roadmap phù hợp với Goal:
-//{(!string.IsNullOrEmpty(goalName) ? $"- Roadmap phải hướng tới mục tiêu '{goalName}'" : "")}
-//- Các phase phải cụ thể và thực tế
-//- Thời gian ước tính hợp lý
+        //### 3. Cung cấp Roadmap phù hợp với Goal:
+        //{(!string.IsNullOrEmpty(goalName) ? $"- Roadmap phải hướng tới mục tiêu '{goalName}'" : "")}
+        //- Các phase phải cụ thể và thực tế
+        //- Thời gian ước tính hợp lý
 
-//## Format JSON trả về:
-//{{
-//    ""determinedLevel"": ""{GetExampleLevel(languageCode)}"",
-//    ""levelConfidence"": {GetConfidenceLevel(completedCount, totalQuestions)},
-//    ""assessmentCompleteness"": ""{completedCount}/{totalQuestions} câu"",
-//    ""overallScore"": <điểm trung bình từ {completedCount} câu>,
-//    ""pronunciationScore"": <điểm trung bình pronunciation>,
-//    ""fluencyScore"": <điểm trung bình fluency>,
-//    ""grammarScore"": <điểm trung bình grammar>,
-//    ""vocabularyScore"": <điểm trung bình vocabulary>,
-//    ""detailedFeedback"": ""Dựa trên {completedCount}/{totalQuestions} câu đã hoàn thành...\n\n{(completedCount < totalQuestions ? $"⚠️ **Lưu ý**: Kết quả này có độ tin cậy {GetConfidenceLevel(completedCount, totalQuestions)}%. Để có đánh giá chính xác hơn, vui lòng hoàn thành đủ {totalQuestions} câu." : "")}"",
-//    ""keyStrengths"": [""Điểm mạnh từ {completedCount} câu""],
-//    ""improvementAreas"": [""Cần cải thiện""{(completedCount < totalQuestions ? $", \"Hoàn thành thêm {totalQuestions - completedCount} câu\"" : "")}],
-//    ""nextLevelRequirements"": ""Để đạt level [{GetNextLevel(languageCode)}], cần..."",
-//    ""roadmap"": {{
-//        ""currentLevel"": ""{GetExampleLevel(languageCode)}"",
-//        ""targetLevel"": ""{GetNextLevel(languageCode)}"",
-//        ""phases"": [
-//            {{
-//                ""phaseNumber"": 1,
-//                ""title"": ""Phase phù hợp với mục tiêu {goalName ?? "học tập"}"",
-//                ""duration"": ""4-8 tuần"",
-//                ""goals"": [""Mục tiêu cụ thể""],
-//                ""practiceActivities"": [""Hoạt động luyện tập""]
-//            }}
-//        ]
-//    }}
-//}}
+        //## Format JSON trả về:
+        //{{
+        //    ""determinedLevel"": ""{GetExampleLevel(languageCode)}"",
+        //    ""levelConfidence"": {GetConfidenceLevel(completedCount, totalQuestions)},
+        //    ""assessmentCompleteness"": ""{completedCount}/{totalQuestions} câu"",
+        //    ""overallScore"": <điểm trung bình từ {completedCount} câu>,
+        //    ""pronunciationScore"": <điểm trung bình pronunciation>,
+        //    ""fluencyScore"": <điểm trung bình fluency>,
+        //    ""grammarScore"": <điểm trung bình grammar>,
+        //    ""vocabularyScore"": <điểm trung bình vocabulary>,
+        //    ""detailedFeedback"": ""Dựa trên {completedCount}/{totalQuestions} câu đã hoàn thành...\n\n{(completedCount < totalQuestions ? $"⚠️ **Lưu ý**: Kết quả này có độ tin cậy {GetConfidenceLevel(completedCount, totalQuestions)}%. Để có đánh giá chính xác hơn, vui lòng hoàn thành đủ {totalQuestions} câu." : "")}"",
+        //    ""keyStrengths"": [""Điểm mạnh từ {completedCount} câu""],
+        //    ""improvementAreas"": [""Cần cải thiện""{(completedCount < totalQuestions ? $", \"Hoàn thành thêm {totalQuestions - completedCount} câu\"" : "")}],
+        //    ""nextLevelRequirements"": ""Để đạt level [{GetNextLevel(languageCode)}], cần..."",
+        //    ""roadmap"": {{
+        //        ""currentLevel"": ""{GetExampleLevel(languageCode)}"",
+        //        ""targetLevel"": ""{GetNextLevel(languageCode)}"",
+        //        ""phases"": [
+        //            {{
+        //                ""phaseNumber"": 1,
+        //                ""title"": ""Phase phù hợp với mục tiêu {goalName ?? "học tập"}"",
+        //                ""duration"": ""4-8 tuần"",
+        //                ""goals"": [""Mục tiêu cụ thể""],
+        //                ""practiceActivities"": [""Hoạt động luyện tập""]
+        //            }}
+        //        ]
+        //    }}
+        //}}
 
-//**LƯU Ý QUAN TRỌNG**:
-//- Điểm số = average của {completedCount} câu thực tế (KHÔNG phải điểm giả định)
-//- Level = xác định theo khung {GetStandardName(languageCode)} chính thức
-//- Confidence = {GetConfidenceLevel(completedCount, totalQuestions)}% (giảm nếu thiếu câu)";
-//        }
+        //**LƯU Ý QUAN TRỌNG**:
+        //- Điểm số = average của {completedCount} câu thực tế (KHÔNG phải điểm giả định)
+        //- Level = xác định theo khung {GetStandardName(languageCode)} chính thức
+        //- Confidence = {GetConfidenceLevel(completedCount, totalQuestions)}% (giảm nếu thiếu câu)";
+        //        }
 
         private int GetConfidenceLevel(int completed, int total)
         {
@@ -1101,85 +1095,85 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
                 _ => 50
             };
         }
-//        private string BuildVoiceAssessmentResultPrompt(string languageCode, string languageName, List<VoiceAssessmentQuestion> questions)
-//        {
-//            var completedQuestions = questions.Where(q => !q.IsSkipped && q.EvaluationResult != null).ToList();
-//            var totalQuestions = questions.Count;
-//            var completedCount = completedQuestions.Count;
+        //        private string BuildVoiceAssessmentResultPrompt(string languageCode, string languageName, List<VoiceAssessmentQuestion> questions)
+        //        {
+        //            var completedQuestions = questions.Where(q => !q.IsSkipped && q.EvaluationResult != null).ToList();
+        //            var totalQuestions = questions.Count;
+        //            var completedCount = completedQuestions.Count;
 
-//            var questionsJson = JsonSerializer.Serialize(completedQuestions.Select(q => new {
-//                q.QuestionNumber,
-//                q.Question,
-//                q.Difficulty,
-//                q.QuestionType,
-//                OverallScore = q.EvaluationResult?.OverallScore ?? 0,
-//                PronunciationScore = q.EvaluationResult?.Pronunciation?.Score ?? 0,
-//                FluencyScore = q.EvaluationResult?.Fluency?.Score ?? 0,
-//                GrammarScore = q.EvaluationResult?.Grammar?.Score ?? 0,
-//                VocabularyScore = q.EvaluationResult?.Vocabulary?.Score ?? 0
-//            }), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        //            var questionsJson = JsonSerializer.Serialize(completedQuestions.Select(q => new {
+        //                q.QuestionNumber,
+        //                q.Question,
+        //                q.Difficulty,
+        //                q.QuestionType,
+        //                OverallScore = q.EvaluationResult?.OverallScore ?? 0,
+        //                PronunciationScore = q.EvaluationResult?.Pronunciation?.Score ?? 0,
+        //                FluencyScore = q.EvaluationResult?.Fluency?.Score ?? 0,
+        //                GrammarScore = q.EvaluationResult?.Grammar?.Score ?? 0,
+        //                VocabularyScore = q.EvaluationResult?.Vocabulary?.Score ?? 0
+        //            }), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
-//            var standardFramework = GetStandardFramework(languageCode);
+        //            var standardFramework = GetStandardFramework(languageCode);
 
-//            return $@"# Phân tích kết quả đánh giá giọng nói {languageName}
+        //            return $@"# Phân tích kết quả đánh giá giọng nói {languageName}
 
-//## Thông tin bài test:
-//- **Tổng số câu**: {totalQuestions}
-//- **Số câu đã hoàn thành**: {completedCount}
-//- **Số câu bỏ qua**: {totalQuestions - completedCount}
+        //## Thông tin bài test:
+        //- **Tổng số câu**: {totalQuestions}
+        //- **Số câu đã hoàn thành**: {completedCount}
+        //- **Số câu bỏ qua**: {totalQuestions - completedCount}
 
-//## Dữ liệu câu hỏi và điểm chi tiết:
-//{questionsJson}
+        //## Dữ liệu câu hỏi và điểm chi tiết:
+        //{questionsJson}
 
-//## Khung chuẩn đánh giá {languageName}:
-//{standardFramework}
+        //## Khung chuẩn đánh giá {languageName}:
+        //{standardFramework}
 
-//## YÊU CẦU QUAN TRỌNG:
+        //## YÊU CẦU QUAN TRỌNG:
 
-//### 1. Đánh giá dựa trên số câu thực tế:
-//- Nếu làm 1/4 câu: Đánh giá dựa trên 1 câu đó, không extrapolate
-//- Nếu làm 2/4 câu: Đánh giá dựa trên 2 câu đó
-//- Nếu làm 3/4 câu: Đánh giá dựa trên 3 câu đó
-//- Nếu làm đủ 4/4 câu: Đánh giá toàn diện
+        //### 1. Đánh giá dựa trên số câu thực tế:
+        //- Nếu làm 1/4 câu: Đánh giá dựa trên 1 câu đó, không extrapolate
+        //- Nếu làm 2/4 câu: Đánh giá dựa trên 2 câu đó
+        //- Nếu làm 3/4 câu: Đánh giá dựa trên 3 câu đó
+        //- Nếu làm đủ 4/4 câu: Đánh giá toàn diện
 
-//### 2. Xác định cấp độ CHÍNH XÁC theo khung chuẩn:
-//{GetLevelDeterminationRules(languageCode)}
+        //### 2. Xác định cấp độ CHÍNH XÁC theo khung chuẩn:
+        //{GetLevelDeterminationRules(languageCode)}
 
-//### 3. Điểm số phải phản ánh chính xác khả năng:
-//- Không tự động cho điểm trung bình nếu thiếu dữ liệu
-//- Nêu rõ giới hạn đánh giá do số câu ít
-//- Đề xuất làm thêm câu nếu cần đánh giá chính xác hơn
+        //### 3. Điểm số phải phản ánh chính xác khả năng:
+        //- Không tự động cho điểm trung bình nếu thiếu dữ liệu
+        //- Nêu rõ giới hạn đánh giá do số câu ít
+        //- Đề xuất làm thêm câu nếu cần đánh giá chính xác hơn
 
-//## Format trả về (JSON):
-//{{
-//    ""determinedLevel"": ""{GetExampleLevel(languageCode)}"",
-//    ""levelConfidence"": 85,
-//    ""assessmentCompleteness"": ""{completedCount}/{totalQuestions} câu"",
-//    ""overallScore"": 75,
-//    ""pronunciationScore"": 80,
-//    ""fluencyScore"": 70,
-//    ""grammarScore"": 75,
-//    ""vocabularyScore"": 75,
-//    ""detailedFeedback"": ""Dựa trên {completedCount} câu đã hoàn thành, khả năng speaking của bạn...\n\n⚠️ Lưu ý: Đánh giá này dựa trên {completedCount}/{totalQuestions} câu. Để có kết quả chính xác hơn, bạn nên hoàn thành tất cả câu hỏi."",
-//    ""keyStrengths"": [""Điểm mạnh cụ thể từ {completedCount} câu""],
-//    ""improvementAreas"": [""Cần cải thiện cụ thể""],
-//    ""nextLevelRequirements"": ""Để đạt cấp độ tiếp theo [{GetNextLevel(languageCode)}], bạn cần..."",
-//    ""roadmap"": {{
-//        ""currentLevel"": ""{GetExampleLevel(languageCode)}"",
-//        ""targetLevel"": ""{GetNextLevel(languageCode)}"",
-//        ""estimatedTimeToNextLevel"": ""3-6 tháng với luyện tập đều đặn"",
-//        ""phases"": [...]
-//    }}
-//}}
+        //## Format trả về (JSON):
+        //{{
+        //    ""determinedLevel"": ""{GetExampleLevel(languageCode)}"",
+        //    ""levelConfidence"": 85,
+        //    ""assessmentCompleteness"": ""{completedCount}/{totalQuestions} câu"",
+        //    ""overallScore"": 75,
+        //    ""pronunciationScore"": 80,
+        //    ""fluencyScore"": 70,
+        //    ""grammarScore"": 75,
+        //    ""vocabularyScore"": 75,
+        //    ""detailedFeedback"": ""Dựa trên {completedCount} câu đã hoàn thành, khả năng speaking của bạn...\n\n⚠️ Lưu ý: Đánh giá này dựa trên {completedCount}/{totalQuestions} câu. Để có kết quả chính xác hơn, bạn nên hoàn thành tất cả câu hỏi."",
+        //    ""keyStrengths"": [""Điểm mạnh cụ thể từ {completedCount} câu""],
+        //    ""improvementAreas"": [""Cần cải thiện cụ thể""],
+        //    ""nextLevelRequirements"": ""Để đạt cấp độ tiếp theo [{GetNextLevel(languageCode)}], bạn cần..."",
+        //    ""roadmap"": {{
+        //        ""currentLevel"": ""{GetExampleLevel(languageCode)}"",
+        //        ""targetLevel"": ""{GetNextLevel(languageCode)}"",
+        //        ""estimatedTimeToNextLevel"": ""3-6 tháng với luyện tập đều đặn"",
+        //        ""phases"": [...]
+        //    }}
+        //}}
 
-//**LƯU Ý**: 
-//- Đánh giá phải dựa 100% trên {completedCount} câu đã hoàn thành
-//- Trả về cấp độ CHÍNH XÁC theo khung {GetStandardName(languageCode)}
-//- Không đoán mò hay extrapolate nếu thiếu dữ liệu
-//- Nêu rõ giới hạn của đánh giá nếu số câu < 4";
-//        }
+        //**LƯU Ý**: 
+        //- Đánh giá phải dựa 100% trên {completedCount} câu đã hoàn thành
+        //- Trả về cấp độ CHÍNH XÁC theo khung {GetStandardName(languageCode)}
+        //- Không đoán mò hay extrapolate nếu thiếu dữ liệu
+        //- Nêu rõ giới hạn của đánh giá nếu số câu < 4";
+        //        }
 
-     
+
 
         private string GetStandardFramework(string languageCode)
         {
@@ -1746,12 +1740,12 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
             {
                 _logger.LogInformation("🚀 Starting GenerateVoiceAssessmentQuestionsAsync for {LanguageCode}", languageCode);
 
-             
+
                 _logger.LogInformation("🇻🇳 Using Vietnamese-supported fallback questions for {LanguageCode}", languageCode);
 
                 var questions = GetFallbackVoiceQuestionsWithVietnamese(languageCode, languageName);
 
-             
+
                 foreach (var question in questions)
                 {
                     _logger.LogInformation("✅ Question {Number}: Vietnamese={HasVietnamese}, WordGuides={WordCount}",
@@ -2132,9 +2126,9 @@ Chỉ trả về JSON, không thêm markdown hay giải thích.";
                 }
 
                 var jsonDoc = JsonDocument.Parse(cleanedResponse);
-                
 
-              
+
+
                 if (jsonDoc.RootElement.TryGetProperty("isCorrectLanguage", out var isCorrectLang) &&
                     !isCorrectLang.GetBoolean())
                 {
@@ -2194,7 +2188,7 @@ Chỉ trả về JSON, không thêm markdown hay giải thích.";
                     };
                 }
 
-                
+
                 var evaluation = JsonSerializer.Deserialize<VoiceEvaluationResult>(cleanedResponse, new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -2217,7 +2211,7 @@ Chỉ trả về JSON, không thêm markdown hay giải thích.";
             {
                 "EN" => new List<VoiceAssessmentQuestion>
         {
-          
+
             new() {
                 QuestionNumber = 1,
                 Question = "Hãy phát âm rõ ràng từ cơ bản sau:",
@@ -2236,7 +2230,7 @@ Chỉ trả về JSON, không thêm markdown hay giải thích.";
                 Difficulty = "beginner",
                 MaxRecordingSeconds = 15
             },
-         
+
             new() {
                 QuestionNumber = 2,
                 Question = "Hãy phát âm rõ ràng 2 từ trung bình sau:",
@@ -2261,7 +2255,7 @@ Chỉ trả về JSON, không thêm markdown hay giải thích.";
                 Difficulty = "intermediate",
                 MaxRecordingSeconds = 20
             },
-         
+
             new() {
                 QuestionNumber = 3,
                 Question = "Hãy phát âm rõ ràng 3 từ khó sau:",
@@ -2292,7 +2286,7 @@ Chỉ trả về JSON, không thêm markdown hay giải thích.";
                 Difficulty = "advanced",
                 MaxRecordingSeconds = 30
             },
-           
+
             new() {
                 QuestionNumber = 4,
                 Question = "Hãy đọc câu dài sau với ngữ điệu và nhịp điệu tự nhiên:",
@@ -2327,7 +2321,7 @@ Chỉ trả về JSON, không thêm markdown hay giải thích.";
 
                 "ZH" => new List<VoiceAssessmentQuestion>
         {
-        
+
             new() {
                 QuestionNumber = 1,
                 Question = "请准确发音下列基础词汇:",
@@ -2346,7 +2340,7 @@ Chỉ trả về JSON, không thêm markdown hay giải thích.";
                 Difficulty = "beginner",
                 MaxRecordingSeconds = 15
             },
-           
+
             new() {
                 QuestionNumber = 2,
                 Question = "请准确发音下列中等词汇:",
@@ -2371,7 +2365,7 @@ Chỉ trả về JSON, không thêm markdown hay giải thích.";
                 Difficulty = "intermediate",
                 MaxRecordingSeconds = 20
             },
-       
+
             new() {
                 QuestionNumber = 3,
                 Question = "请准确发音下列高难度词汇:",
@@ -2402,7 +2396,7 @@ Chỉ trả về JSON, không thêm markdown hay giải thích.";
                 Difficulty = "advanced",
                 MaxRecordingSeconds = 30
             },
-          
+
             new() {
                 QuestionNumber = 4,
                 Question = "请以自然的语调和节奏朗读下列长句:",
@@ -2437,7 +2431,7 @@ Chỉ trả về JSON, không thêm markdown hay giải thích.";
 
                 "JP" => new List<VoiceAssessmentQuestion>
         {
-          
+
             new() {
                 QuestionNumber = 1,
                 Question = "次の基本的な単語を正確に発音してください:",
@@ -2456,7 +2450,7 @@ Chỉ trả về JSON, không thêm markdown hay giải thích.";
                 Difficulty = "beginner",
                 MaxRecordingSeconds = 15
             },
-  
+
             new() {
                 QuestionNumber = 2,
                 Question = "次の中級レベルの単語を正確に発音してください:",
@@ -2481,7 +2475,7 @@ Chỉ trả về JSON, không thêm markdown hay giải thích.";
                 Difficulty = "intermediate",
                 MaxRecordingSeconds = 20
             },
-          
+
             new() {
                 QuestionNumber = 3,
                 Question = "次の上級レベルの単語を正確に発音してください:",
@@ -2512,7 +2506,7 @@ Chỉ trả về JSON, không thêm markdown hay giải thích.";
                 Difficulty = "advanced",
                 MaxRecordingSeconds = 30
             },
-        
+
             new() {
                 QuestionNumber = 4,
                 Question = "次の長い文を自然なイントネーションとリズムで読んでください:",

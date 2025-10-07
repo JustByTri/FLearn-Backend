@@ -12,8 +12,10 @@ namespace DAL.Models
         [MaxLength(100)]
         public required string Name { get; set; }
         public string Description { get; set; } = string.Empty;
-        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedDate { get; set; } = DateTime.UtcNow;
-        public virtual ICollection<Course> Courses { get; set; } = new List<Course>();
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+        public bool Status { get; set; } = true; // Active by default or false for inactive
+        public virtual ICollection<Course>? Courses { get; set; } = new List<Course>();
+        public virtual ICollection<LearnerLanguage>? LearnerLanguages { get; set; } = new List<LearnerLanguage>();
     }
 }

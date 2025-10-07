@@ -16,7 +16,7 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `AIFeedBacks`
+-- Table structure for table `AIFeedBack`
 --
 
 DROP TABLE IF EXISTS `AIFeedBacks`;

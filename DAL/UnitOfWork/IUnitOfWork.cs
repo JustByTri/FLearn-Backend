@@ -4,44 +4,61 @@ namespace DAL.UnitOfWork
 {
     public interface IUnitOfWork : IDisposable
     {
-        IUserRepository Users { get; }
-        IRoleRepository Roles { get; }
-        IUserRoleRepository UserRoles { get; }
-        ILanguageRepository Languages { get; }
-        IUserLearningLanguageRepository UserLearningLanguages { get; }
         IAchievementRepository Achievements { get; }
-        IUserAchievementRepository UserAchievements { get; }
-        ICourseRepository Courses { get; }
-        ICourseUnitRepository CourseUnits { get; }
-        ILessonRepository Lessons { get; }
-        IExerciseRepository Exercises { get; }
-        IEnrollmentRepository Enrollments { get; }
-        IPurchasesRepository Purchases { get; }
-        IPurchasesDetailRepository PurchasesDetails { get; }
-        ICourseTopicRepository CourseTopics { get; }
-        ITopicRepository Topics { get; }
-        ICourseSubmissionRepository CourseSubmissions { get; }
-        ITeacherApplicationRepository TeacherApplications { get; }
-        ITeacherCredentialRepository TeacherCredentials { get; }
-        IRecordingRepository Recordings { get; }
-        IReportRepository Reports { get; }
         IAIFeedBackRepository AIFeedBacks { get; }
+        IApplicationCertTypeRepository ApplicationCertTypes { get; }
+        ICertificateTypeRepository CertificateTypes { get; }
+        IContentIssueReportRepository ContentIssueReports { get; }
         IConversationRepository Conversations { get; }
+        ICourseRepository Courses { get; }
+        ICourseReviewRepository CourseReviews { get; }
+        ICourseSubmissionRepository CourseSubmissions { get; }
+        ICourseTemplateRepository CourseTemplates { get; }
+        ICourseTopicRepository CourseTopics { get; }
+        ICourseUnitRepository CourseUnits { get; }
+        IEnrollmentRepository Enrollments { get; }
+        IExerciseRepository Exercises { get; }
+        IExerciseEvaluationDetailRepository ExerciseEvaluationDetails { get; }
+        IExerciseSubmissionRepository ExerciseSubmissions { get; }
+        IGoalRepository Goals { get; }
+        ILanguageRepository Languages { get; }
+        ILanguageLevelRepository LanguageLevels { get; }
+        ILearnerAchievementRepository LearnerAchievements { get; }
+        ILearnerLanguageRepository LearnerLanguages { get; }
+        ILearnerProgressRepository LearnerProgresses { get; }
+        ILearnerSlotBalanceRepository LearnerSlotBalances { get; }
+        ILessonRepository Lessons { get; }
+        ILessonBookingRepository LessonBookings { get; }
+        ILessonDisputeRepository LessonDisputes { get; }
+        ILessonReviewRepository LessonReviews { get; }
+        IMessageRepository Messages { get; }
+        IPasswordResetOtpRepository PasswordResetOtps { get; }
+        IPurchaseRepository Purchases { get; }
+        IPurchaseDetailRepository PurchaseDetails { get; }
         IRefreshTokenRepository RefreshTokens { get; }
+        IRegistrationOtpRepository RegistrationOtps { get; }
+        IReviewRepository Reviews { get; }
         IRoadmapRepository Roadmaps { get; }
         IRoadmapDetailRepository RoadmapDetails { get; }
-        IRegistrationOtpRepository RegistrationOtps { get; }
+        IRoleRepository Roles { get; }
+        ISlotPurchaseRepository SlotPurchases { get; }
+        IStaffLanguageRepository StaffLanguages { get; }
+        ITeacherApplicationRepository TeacherApplications { get; }
+        ITeacherPayoutRepository TeacherPayouts { get; }
+        ITeacherProfileRepository TeacherProfiles { get; }
+        ITeacherReviewRepository TeacherReviews { get; }
         ITempRegistrationRepository TempRegistrations { get; }
-        IPasswordResetOtpRepository PasswordResetOtps { get; }
-        IUserSurveyRepository UserSurveys { get; }
-        IGoalRepository Goals { get; }
-        ICourseTemplateRepository CourseTemplates { get; }
-        IExerciseOptionRepository ExerciseOptions { get; }
-        IUserGoalRepository UserGoals { get; }
+        ITopicRepository Topics { get; }
+        ITransactionRepository UserTransactions { get; }
+        IUserRepository Users { get; }
+        IUserRoleRepository UserRoles { get; }
         int SaveChanges();
         Task<int> SaveChangesAsync();
         void BeginTransaction();
         void CommitTransaction();
         void RollbackTransaction();
+        Task BeginTransactionAsync();
+        Task CommitTransactionAsync();
+        Task RollbackTransactionAsync();
     }
 }

@@ -2,12 +2,8 @@
 using DAL.Models;
 using DAL.UnitOfWork;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace BLL.Services.Auth
 {
@@ -147,7 +143,7 @@ namespace BLL.Services.Auth
                 // 5. Update user password
                 user.PasswordHash = newPasswordHash;
                 user.PasswordSalt = newPasswordSalt;
-                user.UpdateAt = DateTime.UtcNow;
+                user.UpdatedAt = DateTime.UtcNow;
 
                 await _unitOfWork.Users.UpdateAsync(user);
 
@@ -184,7 +180,7 @@ namespace BLL.Services.Auth
                     var bytes = new byte[4];
                     rng.GetBytes(bytes);
                     var randomNumber = Math.Abs(BitConverter.ToInt32(bytes, 0));
-                    otpCode = (randomNumber % 900000 + 100000).ToString(); 
+                    otpCode = (randomNumber % 900000 + 100000).ToString();
                 }
 
                 // Kiểm tra OTP unique cho email này
