@@ -32,7 +32,7 @@ namespace BLL.Services.CourseUnits
 
             var selectedCourse = await _unit.Courses.Query()
                 .Include(c => c.CourseUnits)
-                .FirstOrDefaultAsync(c => c.CourseID == courseId && c.TeacherID == teacherId);
+                .FirstOrDefaultAsync(c => c.CourseID == courseId && c.TeacherId == teacherId);
 
             if (selectedCourse == null)
             {
@@ -212,7 +212,7 @@ namespace BLL.Services.CourseUnits
 
             var selectedCourse = await _unit.Courses.Query()
                 .Include(c => c.CourseUnits)
-                .FirstOrDefaultAsync(c => c.CourseID == courseId && c.TeacherID == teacherId);
+                .FirstOrDefaultAsync(c => c.CourseID == courseId && c.TeacherId == teacherId);
 
             if (selectedCourse == null)
             {

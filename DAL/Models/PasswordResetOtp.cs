@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace DAL.Models
 {
@@ -17,7 +12,7 @@ namespace DAL.Models
         public string Email { get; set; } = string.Empty;
 
         [Required]
-        [StringLength(6)] 
+        [StringLength(6)]
         public string OtpCode { get; set; } = string.Empty;
 
         [Required]
@@ -27,18 +22,18 @@ namespace DAL.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-       
-        [StringLength(45)]  
+
+        [StringLength(45)]
         public string? IpAddress { get; set; }
 
-        
+
         [StringLength(500)]
         public string? UserAgent { get; set; }
 
-      
+
         public int FailedAttempts { get; set; } = 0;
 
-    
+
         public DateTime? UsedAt { get; set; }
     }
 }

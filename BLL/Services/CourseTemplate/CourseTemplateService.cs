@@ -27,7 +27,6 @@ namespace BLL.Services.CourseTemplate
                     Name = request.Name,
                     Description = request.Description,
                     RequireGoal = request.RequireGoal,
-                    RequireSkillFocus = request.RequireSkillFocus,
                     RequireTopic = request.RequireTopic,
                     RequireLang = request.RequireLang,
                     RequireLevel = request.RequireLevel,
@@ -45,7 +44,6 @@ namespace BLL.Services.CourseTemplate
                     Name = newTemplate.Name,
                     Description = newTemplate.Description,
                     RequireGoal = newTemplate.RequireGoal,
-                    RequireSkillFocus = newTemplate.RequireSkillFocus,
                     RequireTopic = newTemplate.RequireTopic,
                     RequireLang = newTemplate.RequireLang,
                     RequireLevel = newTemplate.RequireLevel,
@@ -83,7 +81,6 @@ namespace BLL.Services.CourseTemplate
                     Description = t.Description,
                     RequireGoal = t.RequireGoal,
                     RequireLevel = t.RequireLevel,
-                    RequireSkillFocus = t.RequireSkillFocus,
                     RequireTopic = t.RequireTopic,
                     RequireLang = t.RequireLang,
                     MinUnits = t.MinUnits,
@@ -129,7 +126,6 @@ namespace BLL.Services.CourseTemplate
                 Description = selectedTemplate.Description,
                 RequireGoal = selectedTemplate.RequireGoal,
                 RequireLevel = selectedTemplate.RequireLevel,
-                RequireSkillFocus = selectedTemplate.RequireSkillFocus,
                 RequireTopic = selectedTemplate.RequireTopic,
                 RequireLang = selectedTemplate.RequireLang,
                 MinUnits = selectedTemplate.MinUnits,
@@ -156,13 +152,12 @@ namespace BLL.Services.CourseTemplate
             selectedTemplate.Description = request.Description;
             selectedTemplate.RequireGoal = request.RequireGoal;
             selectedTemplate.RequireLevel = request.RequireLevel;
-            selectedTemplate.RequireSkillFocus = request.RequireSkillFocus;
             selectedTemplate.RequireTopic = request.RequireTopic;
             selectedTemplate.RequireLang = request.RequireLang;
             selectedTemplate.MinUnits = request.MinUnits;
             selectedTemplate.MinLessonsPerUnit = request.MinLessonsPerUnit;
             selectedTemplate.MinExercisesPerLesson = request.MinExercisesPerLesson;
-            selectedTemplate.ModifiedDate = DateTime.UtcNow;
+            selectedTemplate.ModifiedAt = DateTime.UtcNow;
 
             await _unit.SaveChangesAsync();
 
@@ -173,7 +168,6 @@ namespace BLL.Services.CourseTemplate
                 Description = selectedTemplate.Description,
                 RequireGoal = selectedTemplate.RequireGoal,
                 RequireLevel = selectedTemplate.RequireLevel,
-                RequireSkillFocus = selectedTemplate.RequireSkillFocus,
                 RequireTopic = selectedTemplate.RequireTopic,
                 RequireLang = selectedTemplate.RequireLang,
                 MinUnits = selectedTemplate.MinUnits,

@@ -1,31 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DAL.Models
 {
     public class AIFeedBack
     {
         [Key]
-        public Guid AIFeedBackID { get; set; }
-
-        public Guid ConversationID { get; set; }
-        public Conversation? Conversation { get; set; }
-
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int AIFeedbackId { get; set; }
+        public Guid? ConversationID { get; set; }
+        [ForeignKey(nameof(ConversationID))]
+        public virtual Conversation Conversation { get; set; }
         [Required]
-        [StringLength(1000)]
         public string Content { get; set; }
-
-        public string? FeedbackText { get; set; }
-        public int FluencyScore { get; set; }
-        public int PronunciationScore { get; set; }
-        public int GrammarScore { get; set; }
-        public int VocabularyScore { get; set; }
         public DateTime CreatedAt { get; set; }
-
-        public Guid? UserID { get; set; }
     }
 }

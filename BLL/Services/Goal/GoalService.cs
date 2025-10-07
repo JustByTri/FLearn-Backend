@@ -107,7 +107,7 @@ namespace BLL.Services.Goal
 
             selectedGoal.Name = request.Name;
             selectedGoal.Description = request.Description ?? "None";
-            selectedGoal.UpdatedDate = DateTime.Now;
+            selectedGoal.UpdatedAt = DateTime.Now;
 
             await _unit.SaveChangesAsync();
 

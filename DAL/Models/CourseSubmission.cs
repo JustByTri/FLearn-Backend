@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using DAL.Type;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DAL.Models
 {
@@ -11,34 +8,21 @@ namespace DAL.Models
     {
         [Key]
         public Guid CourseSubmissionID { get; set; }
-
-        [Required]
-        public Guid SubmittedBy { get; set; }
-
-        public User? Submitter { get; set; }
-
-        [Required]
-        public DateTime SubmittedAt { get; set; }
-
         [Required]
         public Guid CourseID { get; set; }
-
-        public Course? Course { get; set; }
-
-        public enum SubmissionStatus
-        {
-            Pending,
-            Approved,
-            Rejected
-        }
+        [ForeignKey(nameof(CourseID))]
+        public virtual Course Course { get; set; }
         [Required]
-        public SubmissionStatus Status { get; set; }
-
-        public Guid ReviewBy { get; set; }
-
-        [StringLength(1000)]
-        public string ReviewComment { get; set; }
-
+        public Guid SubmittedById { get; set; }
+        [ForeignKey(nameof(SubmittedById))]
+        public virtual TeacherProfile SubmittedBy { get; set; }
+        [Required]
+        public Guid ReviewedById { get; set; }
+        [ForeignKey(nameof(ReviewedById))]
+        public virtual StaffLanguage ReviewedBy { get; set; }
+        public SubmissionStatus Status { get; set; } = SubmissionStatus.Pending;
+        public string? Feedback { get; set; }
+        public DateTime? SubmittedAt { get; set; }
         public DateTime? ReviewedAt { get; set; }
     }
 }

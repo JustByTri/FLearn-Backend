@@ -3,11 +3,6 @@ using DAL.DBContext;
 using DAL.IRepositories;
 using DAL.Models;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DAL.Repositories
 {
@@ -28,7 +23,7 @@ namespace DAL.Repositories
         {
             return await _context.AIFeedBacks
                 .Include(f => f.Conversation)
-                .Where(f => f.UserID == userId)
+                .Where(f => f.Conversation.UserId == userId)
                 .OrderByDescending(f => f.CreatedAt)
                 .ToListAsync();
         }
@@ -46,7 +41,6 @@ namespace DAL.Repositories
         {
             return await _context.AIFeedBacks
                 .Include(f => f.Conversation)
-                .Where(f => f.FluencyScore >= minScore && f.FluencyScore <= maxScore)
                 .OrderByDescending(f => f.CreatedAt)
                 .ToListAsync();
         }

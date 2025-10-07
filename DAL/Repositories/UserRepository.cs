@@ -3,11 +3,6 @@ using DAL.DBContext;
 using DAL.IRepositories;
 using DAL.Models;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DAL.Repositories
 {
@@ -19,7 +14,6 @@ namespace DAL.Repositories
         {
             return await _context.Users
                 .Include(u => u.RefreshTokens)
-                .Include(u => u.Roadmaps)
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
                 .FirstOrDefaultAsync(u => u.Email == email);
@@ -29,7 +23,6 @@ namespace DAL.Repositories
         {
             return await _context.Users
                 .Include(u => u.RefreshTokens)
-                .Include(u => u.Roadmaps)
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
                 .FirstOrDefaultAsync(u => u.UserName == username);
@@ -60,7 +53,6 @@ namespace DAL.Repositories
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
                 .Include(u => u.RefreshTokens)
-                .Include(u => u.Roadmaps)
                 .FirstOrDefaultAsync(u => u.UserID == userId);
         }
 
@@ -79,7 +71,7 @@ namespace DAL.Repositories
             return await _context.Users
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
-                .Where(u => u.Industry == industry && u.Status == true)
+                .Where(u => u.Status == true)
                 .OrderBy(u => u.UserName)
                 .ToListAsync();
         }

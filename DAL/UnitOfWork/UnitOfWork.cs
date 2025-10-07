@@ -14,106 +14,130 @@ namespace DAL.UnitOfWork
         public UnitOfWork(AppDbContext context)
         {
             _context = context;
-            Users = new UserRepository(_context);
-            Roles = new RoleRepository(_context);
-            UserRoles = new UserRoleRepository(_context);
-            Languages = new LanguageRepository(_context);
-            UserLearningLanguages = new UserLearningLanguageRepository(_context);
+
             Achievements = new AchievementRepository(_context);
-            UserAchievements = new UserAchievementRepository(_context);
-            Courses = new CourseRepository(_context);
-            CourseUnits = new CourseUnitRepository(_context);
-            Lessons = new LessonRepository(_context);
-            Exercises = new ExerciseRepository(_context);
-            Enrollments = new EnrollmentRepository(_context);
-            Purchases = new PurchasesRepository(_context);
-            PurchasesDetails = new PurchasesDetailRepository(_context);
-            CourseTopics = new CourseTopicRepository(_context);
-            Topics = new TopicRepository(_context);
-            CourseSubmissions = new CourseSubmissionRepository(_context);
-            TeacherApplications = new TeacherApplicationRepository(_context);
-            TeacherCredentials = new TeacherCredentialRepository(_context);
-            Recordings = new RecordingRepository(_context);
-            Reports = new ReportRepository(_context);
             AIFeedBacks = new AIFeedBackRepository(_context);
+            ApplicationCertTypes = new ApplicationCertTypeRepository(_context);
+            CertificateTypes = new CertificateTypeRepository(_context);
+            ContentIssueReports = new ContentIssueReportRepository(_context);
             Conversations = new ConversationRepository(_context);
+            Courses = new CourseRepository(_context);
+            CourseReviews = new CourseReviewRepository(_context);
+            CourseSubmissions = new CourseSubmissionRepository(_context);
+            CourseTemplates = new CourseTemplateRepository(_context);
+            CourseTopics = new CourseTopicRepository(_context);
+            CourseUnits = new CourseUnitRepository(_context);
+            Enrollments = new EnrollmentRepository(_context);
+            Exercises = new ExerciseRepository(_context);
+            ExerciseEvaluationDetails = new ExerciseEvaluationDetailRepository(_context);
+            ExerciseSubmissions = new ExerciseSubmissionRepository(_context);
+            Goals = new GoalRepository(_context);
+            Languages = new LanguageRepository(_context);
+            LanguageLevels = new LanguageLevelRepository(_context);
+            LearnerAchievements = new LearnerAchievementRepository(_context);
+            LearnerLanguages = new LearnerLanguageRepository(_context);
+            LearnerProgresses = new LearnerProgressRepository(_context);
+            LearnerSlotBalances = new LearnerSlotBalanceRepository(_context);
+            Lessons = new LessonRepository(_context);
+            LessonBookings = new LessonBookingRepository(_context);
+            LessonDisputes = new LessonDisputeRepository(_context);
+            LessonReviews = new LessonReviewRepository(_context);
+            Messages = new MessageRepository(_context);
+            PasswordResetOtps = new PasswordResetOtpRepository(_context);
+            Purchases = new PurchaseRepository(_context);
+            PurchaseDetails = new PurchaseDetailRepository(_context);
             RefreshTokens = new RefreshTokenRepository(_context);
+            RegistrationOtps = new RegistrationOtpRepository(_context);
+            Reviews = new ReviewRepository(_context);
             Roadmaps = new RoadmapRepository(_context);
             RoadmapDetails = new RoadmapDetailRepository(_context);
-            RegistrationOtps = new RegistrationOtpRepository(_context);
+            Roles = new RoleRepository(_context);
+            SlotPurchases = new SlotPurchaseRepository(_context);
+            StaffLanguages = new StaffLanguageRepository(_context);
+            TeacherApplications = new TeacherApplicationRepository(_context);
+            TeacherPayouts = new TeacherPayoutRepository(_context);
+            TeacherProfiles = new TeacherProfileRepository(_context);
+            TeacherReviews = new TeacherReviewRepository(_context);
             TempRegistrations = new TempRegistrationRepository(_context);
-            PasswordResetOtps = new PasswordResetOtpRepository(_context);
-            UserSurveys = new UserSurveyRepository(_context);
-            Goals = new GoalRepository(_context);
-            CourseTemplates = new CourseTemplateRepository(_context);
-            ExerciseOptions = new ExerciseOptionRepository(_context);
-            UserGoals = new UserGoalRepository(_context);
+            Topics = new TopicRepository(_context);
+            UserTransactions = new TransactionRepository(_context);
+            Users = new UserRepository(_context);
+            UserRoles = new UserRoleRepository(_context);
         }
-        public IUserGoalRepository UserGoals { get; private set; }
-        public IUserRepository Users { get; private set; }
-        public IRoleRepository Roles { get; private set; }
-        public IUserRoleRepository UserRoles { get; private set; }
-        public ILanguageRepository Languages { get; private set; }
-        public IUserLearningLanguageRepository UserLearningLanguages { get; private set; }
+        #region Repository Properties
         public IAchievementRepository Achievements { get; private set; }
-        public IUserAchievementRepository UserAchievements { get; private set; }
-        public ICourseRepository Courses { get; private set; }
-        public ICourseUnitRepository CourseUnits { get; private set; }
-        public ILessonRepository Lessons { get; private set; }
-        public IExerciseRepository Exercises { get; private set; }
-        public IEnrollmentRepository Enrollments { get; private set; }
-        public IPurchasesRepository Purchases { get; private set; }
-        public IPurchasesDetailRepository PurchasesDetails { get; private set; }
-        public ICourseTopicRepository CourseTopics { get; private set; }
-        public ITopicRepository Topics { get; private set; }
-        public ICourseSubmissionRepository CourseSubmissions { get; private set; }
-        public ITeacherApplicationRepository TeacherApplications { get; private set; }
-        public ITeacherCredentialRepository TeacherCredentials { get; private set; }
-        public IRecordingRepository Recordings { get; private set; }
-        public IReportRepository Reports { get; private set; }
         public IAIFeedBackRepository AIFeedBacks { get; private set; }
+        public IApplicationCertTypeRepository ApplicationCertTypes { get; private set; }
+        public ICertificateTypeRepository CertificateTypes { get; private set; }
+        public IContentIssueReportRepository ContentIssueReports { get; private set; }
         public IConversationRepository Conversations { get; private set; }
+        public ICourseRepository Courses { get; private set; }
+        public ICourseReviewRepository CourseReviews { get; private set; }
+        public ICourseSubmissionRepository CourseSubmissions { get; private set; }
+        public ICourseTemplateRepository CourseTemplates { get; private set; }
+        public ICourseTopicRepository CourseTopics { get; private set; }
+        public ICourseUnitRepository CourseUnits { get; private set; }
+        public IEnrollmentRepository Enrollments { get; private set; }
+        public IExerciseRepository Exercises { get; private set; }
+        public IExerciseEvaluationDetailRepository ExerciseEvaluationDetails { get; private set; }
+        public IExerciseSubmissionRepository ExerciseSubmissions { get; private set; }
+        public IGoalRepository Goals { get; private set; }
+        public ILanguageRepository Languages { get; private set; }
+        public ILanguageLevelRepository LanguageLevels { get; private set; }
+        public ILearnerAchievementRepository LearnerAchievements { get; private set; }
+        public ILearnerLanguageRepository LearnerLanguages { get; private set; }
+        public ILearnerProgressRepository LearnerProgresses { get; private set; }
+        public ILearnerSlotBalanceRepository LearnerSlotBalances { get; private set; }
+        public ILessonRepository Lessons { get; private set; }
+        public ILessonBookingRepository LessonBookings { get; private set; }
+        public ILessonDisputeRepository LessonDisputes { get; private set; }
+        public ILessonReviewRepository LessonReviews { get; private set; }
+        public IMessageRepository Messages { get; private set; }
+        public IPasswordResetOtpRepository PasswordResetOtps { get; private set; }
+        public IPurchaseRepository Purchases { get; private set; }
+        public IPurchaseDetailRepository PurchaseDetails { get; private set; }
         public IRefreshTokenRepository RefreshTokens { get; private set; }
+        public IRegistrationOtpRepository RegistrationOtps { get; private set; }
+        public IReviewRepository Reviews { get; private set; }
         public IRoadmapRepository Roadmaps { get; private set; }
         public IRoadmapDetailRepository RoadmapDetails { get; private set; }
-
-        public IRegistrationOtpRepository RegistrationOtps { get; private set; }
+        public IRoleRepository Roles { get; private set; }
+        public ISlotPurchaseRepository SlotPurchases { get; private set; }
+        public IStaffLanguageRepository StaffLanguages { get; private set; }
+        public ITeacherApplicationRepository TeacherApplications { get; private set; }
+        public ITeacherPayoutRepository TeacherPayouts { get; private set; }
+        public ITeacherProfileRepository TeacherProfiles { get; private set; }
+        public ITeacherReviewRepository TeacherReviews { get; private set; }
         public ITempRegistrationRepository TempRegistrations { get; private set; }
-        public IPasswordResetOtpRepository PasswordResetOtps { get; private set; }
-        public IUserSurveyRepository UserSurveys { get; private set; }
-        public IGoalRepository Goals { get; private set; }
-        public ICourseTemplateRepository CourseTemplates { get; private set; }
-        public IExerciseOptionRepository ExerciseOptions { get; private set; }
-        public int SaveChanges()
-        {
-            return _context.SaveChanges();
-        }
-
-        public async Task<int> SaveChangesAsync()
-        {
-            return await _context.SaveChangesAsync();
-        }
-
+        public ITopicRepository Topics { get; private set; }
+        public ITransactionRepository UserTransactions { get; private set; }
+        public IUserRepository Users { get; private set; }
+        public IUserRoleRepository UserRoles { get; private set; }
+        #endregion
+        #region Transaction Methods
         public void BeginTransaction()
         {
             _transaction = _context.Database.BeginTransaction();
         }
 
+        public async Task BeginTransactionAsync()
+        {
+            _transaction = await _context.Database.BeginTransactionAsync();
+        }
+
         public void CommitTransaction()
         {
-            try
+            _transaction?.Commit();
+            _transaction?.Dispose();
+            _transaction = null;
+        }
+
+        public async Task CommitTransactionAsync()
+        {
+            if (_transaction != null)
             {
-                _context.SaveChanges();
-                _transaction?.Commit();
-            }
-            catch
-            {
-                _transaction?.Rollback();
-                throw;
-            }
-            finally
-            {
-                _transaction?.Dispose();
+                await _transaction.CommitAsync();
+                await _transaction.DisposeAsync();
                 _transaction = null;
             }
         }
@@ -125,10 +149,29 @@ namespace DAL.UnitOfWork
             _transaction = null;
         }
 
+        public async Task RollbackTransactionAsync()
+        {
+            if (_transaction != null)
+            {
+                await _transaction.RollbackAsync();
+                await _transaction.DisposeAsync();
+                _transaction = null;
+            }
+        }
+        #endregion
+
+        #region SaveChanges
+        public int SaveChanges() => _context.SaveChanges();
+        public async Task<int> SaveChangesAsync() => await _context.SaveChangesAsync();
+        #endregion
+
+        #region Dispose
         public void Dispose()
         {
             _transaction?.Dispose();
-            _context?.Dispose();
+            _context.Dispose();
+            GC.SuppressFinalize(this);
         }
+        #endregion
     }
 }
