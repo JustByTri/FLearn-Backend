@@ -398,6 +398,17 @@ namespace BLL.Services.Application
             if (teacherApp == null)
                 return BaseResponse<ApplicationResponse>.Fail("No application found for this user.");
 
+            User staff = null;
+            if (teacherApp.ReviewedBy.HasValue)
+            {
+                var staffLang = await _unit.StaffLanguages.Query()
+                    .Include(s => s.User)
+                    .Where(s => s.StaffLanguageId == teacherApp.ReviewedBy.Value)
+                    .FirstOrDefaultAsync();
+                staff = staffLang?.User;
+            }
+
+
             var response = new ApplicationResponse
             {
                 ApplicationID = teacherApp.ApplicationID,
@@ -411,6 +422,8 @@ namespace BLL.Services.Application
                 PhoneNumber = teacherApp.PhoneNumber,
                 TeachingExperience = teacherApp.TeachingExperience,
                 Status = teacherApp.Status.ToString(),
+                ReviewedBy = teacherApp.ReviewedBy,
+                ReviewedByName = staff?.UserName,
                 SubmittedAt = teacherApp.SubmittedAt,
                 ReviewedAt = teacherApp.ReviewedAt,
                 RejectionReason = teacherApp.RejectionReason,
@@ -528,13 +541,27 @@ namespace BLL.Services.Application
             return BaseResponse<ApplicationResponse>.Success(response, "Application rejected successfully.");
         }
 
-        public async Task<BaseResponse<ApplicationResponse>> UpdateApplicationAsync(Guid userId, ApplicationRequest applicationRequest)
+        public async Task<BaseResponse<ApplicationResponse>> UpdateApplicationAsync(Guid userId, ApplicationUpdateRequest applicationRequest)
         {
+            var selectedUser = await _unit.Users.GetByIdAsync(userId);
+            if (selectedUser == null)
+                return BaseResponse<ApplicationResponse>.Fail("User does not exist.");
+
             var existingApp = await _unit.TeacherApplications
-                .FindAsync(a => a.UserID == userId && a.Language.LanguageCode == applicationRequest.LangCode);
+                .FindAsync(a => a.UserID == userId);
 
             if (existingApp == null)
                 return BaseResponse<ApplicationResponse>.Fail("Application not found.");
+
+            User staff = null;
+            if (existingApp.ReviewedBy.HasValue)
+            {
+                var staffLang = await _unit.StaffLanguages.Query()
+                    .Include(s => s.User)
+                    .Where(s => s.StaffLanguageId == existingApp.ReviewedBy.Value)
+                    .FirstOrDefaultAsync();
+                staff = staffLang?.User;
+            }
 
             if (existingApp.Status != ApplicationStatus.Pending && existingApp.Status != ApplicationStatus.Rejected)
                 return BaseResponse<ApplicationResponse>.Fail("Only pending or rejected applications can be updated.");
@@ -543,87 +570,120 @@ namespace BLL.Services.Application
             if (selectedLang == null)
                 return BaseResponse<ApplicationResponse>.Fail("Language does not exist.");
 
+            existingApp.LanguageID = selectedLang.LanguageID;
 
-            var certificateTypeIds = applicationRequest.CertificateTypeIds
-                .SelectMany(x => x.Split(',', StringSplitOptions.RemoveEmptyEntries))
-                .Select(x => x.Trim())
-                .ToArray();
-
-            if (applicationRequest.CertificateImages.Length != certificateTypeIds.Length)
-                return BaseResponse<ApplicationResponse>.Fail("CertificateImages count must match CertificateTypeIds count.");
-
-            foreach (var idStr in certificateTypeIds)
-            {
-                if (!Guid.TryParse(idStr, out var certId))
-                    return BaseResponse<ApplicationResponse>.Fail($"Invalid CertificateTypeId: {idStr}");
-
-                var certType = await _unit.CertificateTypes.GetByIdAsync(certId);
-                if (certType == null)
-                    return BaseResponse<ApplicationResponse>.Fail($"CertificateTypeId {idStr} does not exist.");
-            }
-
-            // Update avatar if new one is provided
+            // Update Avatar if new one provided
             if (applicationRequest.Avatar != null)
             {
                 var avatarUpload = await _cloudinary.UploadImageAsync(applicationRequest.Avatar, "avatars");
                 if (avatarUpload == null)
                     return BaseResponse<ApplicationResponse>.Fail("Avatar upload failed.");
+
                 existingApp.Avatar = avatarUpload.Url;
             }
 
-            // Update basic info
-            existingApp.FullName = applicationRequest.FullName ?? existingApp.FullName;
-            if (applicationRequest.BirthDate != default)
-                existingApp.BirthDate = applicationRequest.BirthDate;
-            existingApp.Bio = applicationRequest.Bio ?? existingApp.Bio;
-            existingApp.Email = applicationRequest.Email ?? existingApp.Email;
-            existingApp.PhoneNumber = applicationRequest.PhoneNumber ?? existingApp.PhoneNumber;
-            existingApp.MeetingUrl = applicationRequest.MeetingUrl ?? existingApp.MeetingUrl;
-            existingApp.TeachingExperience = applicationRequest.TeachingExperience ?? existingApp.TeachingExperience;
-            existingApp.Status = ApplicationStatus.Pending; // Reset lại để staff review lại
+            // Update base info
+            if (!string.IsNullOrWhiteSpace(applicationRequest.FullName))
+                existingApp.FullName = applicationRequest.FullName;
+            if (applicationRequest.BirthDate.HasValue && applicationRequest.BirthDate.Value != default)
+                existingApp.BirthDate = applicationRequest.BirthDate.Value;
+            if (!string.IsNullOrWhiteSpace(applicationRequest.Bio))
+                existingApp.Bio = applicationRequest.Bio;
+            if (!string.IsNullOrWhiteSpace(applicationRequest.Email))
+                existingApp.Email = applicationRequest.Email;
+            if (!string.IsNullOrWhiteSpace(applicationRequest.PhoneNumber))
+                existingApp.PhoneNumber = applicationRequest.PhoneNumber;
+            if (!string.IsNullOrWhiteSpace(applicationRequest.MeetingUrl))
+                existingApp.MeetingUrl = applicationRequest.MeetingUrl;
+            if (!string.IsNullOrWhiteSpace(applicationRequest.TeachingExperience))
+                existingApp.TeachingExperience = applicationRequest.TeachingExperience;
+
+            existingApp.Status = ApplicationStatus.Pending;
             existingApp.SubmittedAt = TimeHelper.GetVietnamTime();
 
-            // Remove old certificates
-            var oldCerts = await _unit.ApplicationCertTypes.FindAllAsync(x => x.ApplicationId == existingApp.ApplicationID);
-
-            foreach (var cert in oldCerts)
+            // Handle certificates
+            if (applicationRequest.CertificateImages != null && applicationRequest.CertificateImages.Length > 0 && applicationRequest.CertificateTypeIds != null)
             {
-                if (!string.IsNullOrEmpty(cert.CertificateImagePublicId))
-                    await _cloudinary.DeleteFileAsync(cert.CertificateImagePublicId);
-            }
+                var certificateTypeIds = applicationRequest.CertificateTypeIds
+                .SelectMany(x => x.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                .Select(x => x.Trim())
+                .ToArray();
 
-            _unit.ApplicationCertTypes.DeleteRange(oldCerts);
-
-            // Add new certificates
-            var certificateList = new List<ApplicationCertType>();
-            for (int i = 0; i < applicationRequest.CertificateImages.Length; i++)
-            {
-                var certFile = applicationRequest.CertificateImages[i];
-                var certId = Guid.Parse(certificateTypeIds[i]);
-
-                UploadResultDto uploadResult;
-                if (certFile.ContentType.Contains("image"))
-                    uploadResult = await _cloudinary.UploadImageAsync(certFile, "certificates");
-                else
-                    uploadResult = await _cloudinary.UploadDocumentAsync(certFile, "certificates");
-
-                if (uploadResult == null)
-                    return BaseResponse<ApplicationResponse>.Fail($"Upload failed for certificate index {i + 1}.");
-
-                certificateList.Add(new ApplicationCertType
+                if (applicationRequest.CertificateImages.Length != certificateTypeIds.Length)
                 {
-                    ApplicationCertTypeId = Guid.NewGuid(),
-                    ApplicationId = existingApp.ApplicationID,
-                    CertificateTypeId = certId,
-                    CertificateImageUrl = uploadResult.Url,
-                    CertificateImagePublicId = uploadResult.PublicId,
-                    CreatedAt = TimeHelper.GetVietnamTime(),
-                    UpdatedAt = TimeHelper.GetVietnamTime()
-                });
+                    return BaseResponse<ApplicationResponse>.Fail("CertificateImages count must match CertificateTypeIds count.");
+                }
+
+                foreach (var idStr in certificateTypeIds)
+                {
+                    if (!Guid.TryParse(idStr, out var certId))
+                        return BaseResponse<ApplicationResponse>.Fail($"Invalid CertificateTypeId: {idStr}");
+
+                    var certType = await _unit.CertificateTypes.GetByIdAsync(certId);
+                    if (certType == null)
+                        return BaseResponse<ApplicationResponse>.Fail($"CertificateTypeId {idStr} does not exist.");
+                }
+
+                // Delete old certs (and Cloudinary files)
+                var oldCerts = await _unit.ApplicationCertTypes.FindAllAsync(x => x.ApplicationId == existingApp.ApplicationID);
+                foreach (var cert in oldCerts)
+                {
+                    if (!string.IsNullOrEmpty(cert.CertificateImagePublicId))
+                        await _cloudinary.DeleteFileAsync(cert.CertificateImagePublicId);
+                }
+                _unit.ApplicationCertTypes.DeleteRange(oldCerts);
+
+                // Upload new certs
+                var certificateList = new List<ApplicationCertType>();
+                for (int i = 0; i < applicationRequest.CertificateImages.Length; i++)
+                {
+                    var certFile = applicationRequest.CertificateImages[i];
+                    var certId = Guid.Parse(certificateTypeIds[i]);
+
+                    UploadResultDto uploadResult;
+                    if (certFile.ContentType.Contains("image"))
+                        uploadResult = await _cloudinary.UploadImageAsync(certFile, "certificates");
+                    else
+                        uploadResult = await _cloudinary.UploadDocumentAsync(certFile, "certificates");
+
+                    if (uploadResult == null)
+                        return BaseResponse<ApplicationResponse>.Fail($"Upload failed for certificate index {i + 1}.");
+
+                    certificateList.Add(new ApplicationCertType
+                    {
+                        ApplicationCertTypeId = Guid.NewGuid(),
+                        ApplicationId = existingApp.ApplicationID,
+                        CertificateTypeId = certId,
+                        CertificateImageUrl = uploadResult.Url,
+                        CertificateImagePublicId = uploadResult.PublicId,
+                        CreatedAt = TimeHelper.GetVietnamTime(),
+                        UpdatedAt = TimeHelper.GetVietnamTime()
+                    });
+                }
+
+                await _unit.ApplicationCertTypes.AddRangeAsync(certificateList);
             }
 
-            await _unit.ApplicationCertTypes.AddRangeAsync(certificateList);
             await _unit.SaveChangesAsync();
+
+            // Build response
+            var certificates = await _unit.ApplicationCertTypes.Query()
+                .Include(a => a.CertificateType)
+                .Where(a => a.ApplicationId == existingApp.ApplicationID)
+                .ToListAsync();
+
+            var certResponses = certificates.Select(cert => new ApplicationCertTypeResponse
+            {
+                ApplicationCertTypeId = cert.ApplicationCertTypeId,
+                CertificateTypeId = cert.CertificateTypeId,
+                CertificateImageUrl = cert.CertificateImageUrl,
+                CertificateType = cert.CertificateType != null ? new CertificateResponse
+                {
+                    CertificateId = cert.CertificateType.CertificateTypeId,
+                    Name = cert.CertificateType.Name,
+                    Description = cert.CertificateType.Description
+                } : null
+            }).ToList();
 
             var response = new ApplicationResponse
             {
@@ -636,38 +696,31 @@ namespace BLL.Services.Application
                 Avatar = existingApp.Avatar,
                 Email = existingApp.Email,
                 PhoneNumber = existingApp.PhoneNumber,
+                MeetingUrl = existingApp.MeetingUrl,
                 TeachingExperience = existingApp.TeachingExperience,
                 Status = existingApp.Status.ToString(),
+                ReviewedBy = existingApp.ReviewedBy,
+                ReviewedByName = staff?.UserName,
                 SubmittedAt = existingApp.SubmittedAt,
                 ReviewedAt = existingApp.ReviewedAt,
                 RejectionReason = existingApp.RejectionReason,
-                Language = existingApp.Language == null ? null : new LanguageResponse
+                Language = new LanguageResponse
                 {
-                    Id = existingApp.Language.LanguageID,
-                    LangName = existingApp.Language.LanguageName,
-                    LangCode = existingApp.Language.LanguageCode
+                    Id = selectedLang.LanguageID,
+                    LangName = selectedLang.LanguageName,
+                    LangCode = selectedLang.LanguageCode
                 },
-                User = existingApp.User == null ? null : new UserResponse
+                User = new UserResponse
                 {
-                    UserId = existingApp.User.UserID,
-                    UserName = existingApp.User.UserName,
-                    Email = existingApp.User.Email
+                    UserId = selectedUser.UserID,
+                    UserName = selectedUser.UserName,
+                    Email = selectedUser.Email
                 },
-                Certificates = existingApp.Certificates.Select(cert => new ApplicationCertTypeResponse
-                {
-                    ApplicationCertTypeId = cert.ApplicationCertTypeId,
-                    CertificateTypeId = cert.CertificateTypeId,
-                    CertificateImageUrl = cert.CertificateImageUrl,
-                    CertificateType = cert.CertificateType == null ? null : new CertificateResponse
-                    {
-                        CertificateId = cert.CertificateType.CertificateTypeId,
-                        Name = cert.CertificateType.Name,
-                        Description = cert.CertificateType.Description
-                    }
-                }).ToList()
+                Certificates = certResponses
             };
 
             return BaseResponse<ApplicationResponse>.Success(response, "Application updated successfully.");
         }
+
     }
 }

@@ -93,7 +93,7 @@ namespace Presentation.Controllers.Application
         /// </remarks>
         [Authorize(Policy = "OnlyLearner")]
         [HttpPut("applications")]
-        public async Task<IActionResult> Update([FromForm] ApplicationRequest request)
+        public async Task<IActionResult> Update([FromForm] ApplicationUpdateRequest request)
         {
             var userIdClaim = User.FindFirstValue("user_id")
                                  ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
