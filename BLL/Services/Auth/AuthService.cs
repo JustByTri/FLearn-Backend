@@ -1,9 +1,11 @@
 ﻿using BLL.IServices.Auth;
 using BLL.Settings;
 using Common.DTO.Auth;
+using DAL.Helpers;
 using DAL.Models;
 using DAL.UnitOfWork;
 using Google.Apis.Auth;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -67,8 +69,8 @@ namespace BLL.Services.Auth
                 RefreshTokenID = Guid.NewGuid(),
                 UserID = user.UserID,
                 Token = GenerateRefreshToken(),
-                CreatedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenDays),
+                CreatedAt = TimeHelper.GetVietnamTime(),
+                ExpiresAt = TimeHelper.GetVietnamTime().AddDays(refreshTokenDays),
                 IsRevoked = false
             };
 
@@ -270,8 +272,8 @@ namespace BLL.Services.Auth
                 RefreshTokenID = Guid.NewGuid(),
                 UserID = user.UserID,
                 Token = GenerateRefreshToken(),
-                CreatedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
+                CreatedAt = TimeHelper.GetVietnamTime(),
+                ExpiresAt = TimeHelper.GetVietnamTime().AddDays(_jwtSettings.RefreshTokenExpirationDays),
                 IsRevoked = false
             };
 
@@ -538,7 +540,11 @@ namespace BLL.Services.Auth
                 };
 
                 //Check if user exists
-                var user = await _unitOfWork.Users.GetByEmailAsync(userInfo.Email);
+                var user = await _unitOfWork.Users.Query()
+                    .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                    .Where(u => u.Email == userInfo.Email)
+                    .FirstOrDefaultAsync();
 
                 if (user != null)
                 {
@@ -566,17 +572,18 @@ namespace BLL.Services.Auth
                         Email = userInfo.Email,
                         PasswordHash = string.Empty,
                         PasswordSalt = string.Empty,
-                        BirthDate = DateTime.Now.AddYears(-18),
                         Avatar = userInfo.Picture,
                         Status = true,
-                        CreatedAt = DateTime.UtcNow,
                         IsEmailConfirmed = userInfo.EmailVerified,
+                        CreatedAt = TimeHelper.GetVietnamTime(),
+                        UpdatedAt = TimeHelper.GetVietnamTime(),
                     };
 
                     // Save new user
                     await _unitOfWork.Users.CreateAsync(newUser);
 
-                    var defaultRole = await _unitOfWork.Roles.GetByNameAsync("Learner");
+                    var defaultRole = await _unitOfWork.Roles.Query().Where(r => r.Name == "Learner").FirstOrDefaultAsync();
+
                     if (defaultRole != null)
                     {
                         var userRole = new UserRole

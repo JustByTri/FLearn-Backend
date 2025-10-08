@@ -1,5 +1,6 @@
 ﻿using DAL.DBContext;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace DAL.Basic
 {
@@ -152,6 +153,18 @@ namespace DAL.Basic
         {
             await _context.Set<T>().AddRangeAsync(entities);
             return await _context.SaveChangesAsync();
+        }
+        public async Task<T?> FindAsync(Expression<Func<T, bool>> predicate)
+        {
+            return await _context.Set<T>().FirstOrDefaultAsync(predicate);
+        }
+        public async Task<IEnumerable<T>> FindAllAsync(Expression<Func<T, bool>> predicate)
+        {
+            return await _context.Set<T>().Where(predicate).ToListAsync();
+        }
+        public void DeleteRange(IEnumerable<T> entities)
+        {
+            _context.Set<T>().RemoveRange(entities);
         }
     }
 }

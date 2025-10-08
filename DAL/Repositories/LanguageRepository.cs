@@ -10,29 +10,14 @@ namespace DAL.Repositories
     {
         public LanguageRepository(AppDbContext context) : base(context) { }
 
-        public async Task<Language> GetByLanguageCodeAsync(string languageCode)
+        public async Task<Language?> FindByLanguageCodeAsync(string langCode)
         {
-            return await _context.Languages
-                .FirstOrDefaultAsync(l => l.LanguageCode == languageCode);
-        }
+            if (string.IsNullOrWhiteSpace(langCode))
+                throw new ArgumentException("Language code must not be null or empty.", nameof(langCode));
 
-        public async Task<List<Language>> GetActiveLanguagesAsync()
-        {
             return await _context.Languages
-                .OrderBy(l => l.LanguageName)
-            .ToListAsync();
-        }
-
-        public async Task<Language> GetByNameAsync(string languageName)
-        {
-            return await _context.Languages
-                .FirstOrDefaultAsync(l => l.LanguageName == languageName);
-        }
-
-        public async Task<bool> IsLanguageCodeExistsAsync(string languageCode)
-        {
-            return await _context.Languages
-                .AnyAsync(l => l.LanguageCode == languageCode);
+                .AsNoTracking()
+                .FirstOrDefaultAsync(l => l.LanguageCode == langCode);
         }
     }
 }

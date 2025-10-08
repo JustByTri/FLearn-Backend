@@ -160,6 +160,123 @@ namespace DAL.DBContext
                }
                );
 
+            modelBuilder.Entity<CertificateType>().HasData(
+    // English certificates
+    new CertificateType
+    {
+        CertificateTypeId = Guid.NewGuid(),
+        LanguageId = englishId,
+        Name = "IELTS",
+        Description = "International English Language Testing System",
+        Status = true,
+        CreatedAt = now,
+        UpdatedAt = now
+    },
+    new CertificateType
+    {
+        CertificateTypeId = Guid.NewGuid(),
+        LanguageId = englishId,
+        Name = "TOEFL",
+        Description = "Test of English as a Foreign Language",
+        Status = true,
+        CreatedAt = now,
+        UpdatedAt = now
+    },
+    new CertificateType
+    {
+        CertificateTypeId = Guid.NewGuid(),
+        LanguageId = englishId,
+        Name = "Cambridge English",
+        Description = "Cambridge Assessment English certifications (KET, PET, FCE, CAE, CPE)",
+        Status = true,
+        CreatedAt = now,
+        UpdatedAt = now
+    },
+     new CertificateType
+     {
+         CertificateTypeId = Guid.NewGuid(),
+         LanguageId = englishId,
+         Name = "TOEIC",
+         Description = "Test of English for International Communication – Listening & Reading, Speaking & Writing",
+         Status = true,
+         CreatedAt = now,
+         UpdatedAt = now
+     },
+     new CertificateType
+     {
+         CertificateTypeId = Guid.NewGuid(),
+         LanguageId = englishId,
+         Name = "Duolingo English Test",
+         Description = "Online English proficiency test accepted by many universities",
+         Status = true,
+         CreatedAt = now,
+         UpdatedAt = now
+     },
+    // Japanese certificates
+    new CertificateType
+    {
+        CertificateTypeId = Guid.NewGuid(),
+        LanguageId = japaneseId,
+        Name = "JLPT",
+        Description = "Japanese Language Proficiency Test (N1–N5)",
+        Status = true,
+        CreatedAt = now,
+        UpdatedAt = now
+    },
+    new CertificateType
+    {
+        CertificateTypeId = Guid.NewGuid(),
+        LanguageId = japaneseId,
+        Name = "BJT",
+        Description = "Business Japanese Proficiency Test",
+        Status = true,
+        CreatedAt = now,
+        UpdatedAt = now
+    },
+    new CertificateType
+    {
+        CertificateTypeId = Guid.NewGuid(),
+        LanguageId = japaneseId,
+        Name = "J-Test",
+        Description = "Practical Japanese Test (A–F levels) focusing on real communication",
+        Status = true,
+        CreatedAt = now,
+        UpdatedAt = now
+    },
+    // Chinese certificates
+    new CertificateType
+    {
+        CertificateTypeId = Guid.NewGuid(),
+        LanguageId = chineseId,
+        Name = "HSK",
+        Description = "Hanyu Shuiping Kaoshi – Chinese Proficiency Test (Level 1–6)",
+        Status = true,
+        CreatedAt = now,
+        UpdatedAt = now
+    },
+    new CertificateType
+    {
+        CertificateTypeId = Guid.NewGuid(),
+        LanguageId = chineseId,
+        Name = "HSKK",
+        Description = "Hanyu Shuiping Kouyu Kaoshi – Chinese Proficiency Speaking Test (Beginner to Advanced)",
+        Status = true,
+        CreatedAt = now,
+        UpdatedAt = now
+    },
+    new CertificateType
+    {
+        CertificateTypeId = Guid.NewGuid(),
+        LanguageId = chineseId,
+        Name = "TOCFL",
+        Description = "Test of Chinese as a Foreign Language – for traditional Chinese learners",
+        Status = true,
+        CreatedAt = now,
+        UpdatedAt = now
+    }
+);
+
+
             modelBuilder.Entity<Language>().HasData(
                  new Language { LanguageID = englishId, LanguageName = "English", LanguageCode = "en", CreatedAt = now },
                  new Language { LanguageID = japaneseId, LanguageName = "Japanese", LanguageCode = "ja", CreatedAt = now },
