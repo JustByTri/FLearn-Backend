@@ -318,3 +318,4 @@ E:\SEP\be2\FLearn-Backend\Presentation\obj\Debug\net8.0\refint\Presentation.dll
 E:\SEP\be2\FLearn-Backend\Presentation\obj\Debug\net8.0\Presentation.pdb
 E:\SEP\be2\FLearn-Backend\Presentation\obj\Debug\net8.0\Presentation.genruntimeconfig.cache
 E:\SEP\be2\FLearn-Backend\Presentation\obj\Debug\net8.0\ref\Presentation.dll
+D:\F-Learn\F-Learn-BackEnd\Presentation\bin\Debug\net8.0\AutoMapper.dll
