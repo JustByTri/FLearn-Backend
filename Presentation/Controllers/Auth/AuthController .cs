@@ -206,7 +206,7 @@ namespace Presentation.Controllers.Auth
             }
 
             var result = await _authService.LoginGoogleAsync(request.IdToken);
-            if (result.AccessToken.IsNullOrEmpty())
+            if (string.IsNullOrEmpty(result.AccessToken))
             {
                 return BadRequest(new { success = false, message = "Đã xảy ra lỗi trong quá trình đăng nhập Google." });
             }
