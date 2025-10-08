@@ -14,6 +14,7 @@ namespace DAL.Models
         [ForeignKey(nameof(CertificateTypeId))]
         public virtual CertificateType? CertificateType { get; set; }
         public string CertificateImageUrl { get; set; } = string.Empty;
+        public string CertificateImagePublicId { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }

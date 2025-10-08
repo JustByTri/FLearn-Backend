@@ -1,7 +1,9 @@
 ﻿using BLL.IServices.Admin;
 using BLL.IServices.AI;
+using BLL.IServices.Application;
 using BLL.IServices.Assessment;
 using BLL.IServices.Auth;
+using BLL.IServices.Certificate;
 using BLL.IServices.CourseTemplate;
 using BLL.IServices.Goal;
 using BLL.IServices.Language;
@@ -10,8 +12,10 @@ using BLL.IServices.Topic;
 using BLL.IServices.Upload;
 using BLL.Services.Admin;
 using BLL.Services.AI;
+using BLL.Services.Application;
 using BLL.Services.Assessment;
 using BLL.Services.Auth;
+using BLL.Services.Certificate;
 using BLL.Services.CourseTemplate;
 using BLL.Services.Goal;
 using BLL.Services.Languages;
@@ -19,7 +23,9 @@ using BLL.Services.Redis;
 using BLL.Services.Topic;
 using BLL.Services.Upload;
 using BLL.Settings;
+using Common.Authorization;
 using DAL;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
@@ -38,7 +44,7 @@ namespace BLL
 
             services.AddDalServices(configuration);
 
-            // 🚀 REDIS SETUP
+            //REDIS SETUP
             services.AddSingleton<IConnectionMultiplexer>(provider =>
             {
                 var redisSettings = configuration.GetSection("RedisSettings");
@@ -93,6 +99,9 @@ namespace BLL
             services.AddScoped<IGoalService, GoalService>();
             services.AddScoped<ILanguageService, LanguageService>();
             services.AddScoped<IVoiceAssessmentService, VoiceAssessmentService>();
+            services.AddScoped<ICertificateService, CertificateService>();
+            services.AddSingleton<IAuthorizationHandler, ExclusiveRoleHandler>();
+            services.AddScoped<ITeacherApplicationService, TeacherApplicationService>();
             return services;
         }
     }

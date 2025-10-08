@@ -412,3 +412,7 @@ CopilotSnapshots/
 **/obj/
 *.dll
 *.pdb
+
+# Build outputs
+bin/
+obj/

@@ -1,14 +1,15 @@
 ﻿using BLL;
 using BLL.Background;
 using BLL.Settings;
+using Common.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Presentation.Filter;
 using System.Reflection;
 using System.Text;
-using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,7 +17,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<FormOptions>(options =>
 {
     options.ValueLengthLimit = int.MaxValue;
-    options.MultipartBodyLengthLimit = 500_000_000; 
+    options.MultipartBodyLengthLimit = 500_000_000;
     options.MultipartHeadersLengthLimit = int.MaxValue;
     options.MemoryBufferThreshold = int.MaxValue;
 });
@@ -24,20 +25,20 @@ builder.Services.Configure<FormOptions>(options =>
 
 builder.Services.Configure<KestrelServerOptions>(options =>
 {
-    options.Limits.MaxRequestBodySize = 500_000_000; 
+    options.Limits.MaxRequestBodySize = 500_000_000;
 });
 
 
 builder.Services.Configure<IISServerOptions>(options =>
 {
-    options.MaxRequestBodySize = 500_000_000; 
+    options.MaxRequestBodySize = 500_000_000;
 });
 
 
 builder.Services.AddControllers(options =>
 {
-  
-    options.Filters.Add(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(500_000_000)); 
+
+    options.Filters.Add(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(500_000_000));
 });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -49,8 +50,8 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "Flearn API",
         Version = "v1",
-        Description = "API cho nền tảng học ngôn ngữ Flearn với Voice Assessment" ,
-                    
+        Description = "API cho nền tảng học ngôn ngữ Flearn với Voice Assessment",
+
         Contact = new OpenApiContact
         {
             Name = "Flearn Support",
@@ -58,7 +59,7 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 
-  
+
     c.OperationFilter<FileUploadOperationFilter>();
 
     var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
@@ -91,7 +92,7 @@ builder.Services.AddSwaggerGen(c =>
 
     c.SchemaFilter<FormFileSchemaFilter>();
 
-   
+
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = @"Nhập JWT token (chỉ cần token, không cần 'Bearer ')",
@@ -120,7 +121,7 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 
-   
+
     c.DocInclusionPredicate((docName, apiDesc) =>
     {
         var controllerName = apiDesc.ActionDescriptor.RouteValues["controller"];
@@ -141,7 +142,7 @@ try
 }
 catch
 {
-    
+
 }
 
 
@@ -150,7 +151,7 @@ var jwtSettings = jwtSection.Get<JwtSettings>();
 
 if (jwtSettings != null && !string.IsNullOrEmpty(jwtSettings.SecretKey))
 {
-   
+
     if (jwtSettings.SecretKey.Length < 32)
     {
         throw new InvalidOperationException("JWT SecretKey must be at least 32 characters");
@@ -242,13 +243,13 @@ if (jwtSettings != null && !string.IsNullOrEmpty(jwtSettings.SecretKey))
         options.AddPolicy("StaffOnly", policy => policy.RequireRole("Staff", "Admin"));
         options.AddPolicy("TeacherOnly", policy => policy.RequireRole("Teacher", "Admin"));
         options.AddPolicy("LearnerOnly", policy => policy.RequireRole("Learner", "Teacher", "Staff", "Admin"));
-
+        options.AddPolicy("OnlyLearner", policy => policy.Requirements.Add(new ExclusiveRoleRequirement("Learner")));
         options.AddPolicy("AuthenticatedUser", policy => policy.RequireAuthenticatedUser());
     });
 }
 else
 {
-   
+
     builder.Services.AddAuthentication();
     builder.Services.AddAuthorization();
 }

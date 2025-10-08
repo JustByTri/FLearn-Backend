@@ -36,6 +36,9 @@ namespace DAL.Models
         public string PhoneNumber { get; set; } = string.Empty;
         [Required]
         [StringLength(500)]
+        public string MeetingUrl { get; set; } = string.Empty;
+        [Required]
+        [StringLength(500)]
         public string TeachingExperience { get; set; } = string.Empty;
         public string? RejectionReason { get; set; }
         public ApplicationStatus Status { get; set; } = ApplicationStatus.Pending;

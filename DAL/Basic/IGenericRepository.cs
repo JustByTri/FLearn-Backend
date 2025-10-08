@@ -1,4 +1,6 @@
-﻿namespace DAL.Basic
+﻿using System.Linq.Expressions;
+
+namespace DAL.Basic
 {
     public interface IGenericRepository<T> where T : class
     {
@@ -27,5 +29,8 @@
         Task<bool> RemoveRangeAsync(IEnumerable<T> entities);
         void AddRange(IEnumerable<T> entities);
         Task<int> AddRangeAsync(IEnumerable<T> entities);
+        Task<T?> FindAsync(Expression<Func<T, bool>> predicate);
+        Task<IEnumerable<T>> FindAllAsync(Expression<Func<T, bool>> predicate);
+        void DeleteRange(IEnumerable<T> entities);
     }
 }
