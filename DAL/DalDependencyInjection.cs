@@ -1,4 +1,5 @@
 ﻿
+using AutoMapper.Configuration;
 using DAL.DBContext;
 using DAL.IRepositories;
 using DAL.Repositories;

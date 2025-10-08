@@ -267,6 +267,10 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
+            "AutoMapper": {
+              "target": "Package",
+              "version": "[15.0.1, )"
+            },
             "Microsoft.AspNetCore.Authentication.JwtBearer": {
               "target": "Package",
               "version": "[8.0.20, )"
@@ -358,6 +362,9 @@
             "projectReferences": {
               "E:\\SEP\\be2\\FLearn-Backend\\BLL\\BLL.csproj": {
                 "projectPath": "E:\\SEP\\be2\\FLearn-Backend\\BLL\\BLL.csproj"
+              },
+              "E:\\SEP\\be2\\FLearn-Backend\\Common\\Common.csproj": {
+                "projectPath": "E:\\SEP\\be2\\FLearn-Backend\\Common\\Common.csproj"
               }
             }
           }
