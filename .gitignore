@@ -408,11 +408,3 @@ Migrations/
 CopilotSnapshots/
 **CopilotSnapshots/
 
-**/bin/
-**/obj/
-*.dll
-*.pdb
-
-# Build outputs
-bin/
-obj/

@@ -15,6 +15,7 @@
         "tags": [
           "Admin"
         ],
+        "summary": "Lấy thông tin dashboard tổng quan cho admin",
         "responses": {
           "200": {
             "description": "OK"
@@ -27,6 +28,7 @@
         "tags": [
           "Admin"
         ],
+        "summary": "Lấy danh sách tất cả người dùng",
         "parameters": [
           {
             "name": "page",
@@ -59,6 +61,7 @@
         "tags": [
           "Admin"
         ],
+        "summary": "Lấy danh sách tất cả staff",
         "responses": {
           "200": {
             "description": "OK"
@@ -71,6 +74,7 @@
         "tags": [
           "Admin"
         ],
+        "summary": "Lấy thông tin chi tiết một người dùng",
         "parameters": [
           {
             "name": "userId",
@@ -94,6 +98,7 @@
         "tags": [
           "Admin"
         ],
+        "summary": "Đổi mật khẩu cho staff",
         "requestBody": {
           "content": {
             "application/json": {
@@ -125,6 +130,7 @@
         "tags": [
           "Admin"
         ],
+        "summary": "Tìm kiếm người dùng theo từ khóa",
         "parameters": [
           {
             "name": "keyword",
@@ -160,6 +166,7 @@
         "tags": [
           "Admin"
         ],
+        "summary": "Thống kê người dùng theo vai trò",
         "responses": {
           "200": {
             "description": "OK"
@@ -172,6 +179,7 @@
         "tags": [
           "Admin"
         ],
+        "summary": "Thống kê người dùng theo thời gian đăng ký",
         "parameters": [
           {
             "name": "days",
@@ -195,6 +203,8 @@
         "tags": [
           "Application"
         ],
+        "summary": "Submits a new teacher application.",
+        "description": "This endpoint can only be accessed by users with the \"Learner\" role.\r\nThe request should be sent as `multipart/form-data` to allow file uploads.",
         "requestBody": {
           "content": {
             "multipart/form-data": {
@@ -247,7 +257,13 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Returns the created application details."
+          },
+          "400": {
+            "description": "If validation fails or the data is invalid."
+          },
+          "401": {
+            "description": "If the user is not authorized."
           }
         }
       },
@@ -255,6 +271,8 @@
         "tags": [
           "Application"
         ],
+        "summary": "Updates an existing teacher application (only if it is still Pending or Rejected).",
+        "description": "This endpoint allows resubmission of an application when the previous one was rejected or pending.\r\nCertificates and profile information will be revalidated and updated accordingly.",
         "requestBody": {
           "content": {
             "multipart/form-data": {
@@ -317,6 +335,7 @@
         "tags": [
           "Application"
         ],
+        "summary": "Get the teacher application of the currently logged-in user.",
         "responses": {
           "200": {
             "description": "OK"
@@ -329,10 +348,12 @@
         "tags": [
           "Application"
         ],
+        "summary": "Get all teacher applications (Staff only)",
         "parameters": [
           {
             "name": "status",
             "in": "query",
+            "description": "Optional: Filter by status (pending, approved, rejected)",
             "schema": {
               "type": "string"
             }
@@ -629,6 +650,7 @@
         "tags": [
           "Auth"
         ],
+        "summary": "Gửi lại mã OTP cho đăng ký",
         "requestBody": {
           "content": {
             "application/json": {
@@ -660,6 +682,7 @@
         "tags": [
           "Auth"
         ],
+        "summary": "Quên mật khẩu - gửi OTP reset password",
         "requestBody": {
           "content": {
             "application/json": {
@@ -691,6 +714,7 @@
         "tags": [
           "Auth"
         ],
+        "summary": "Đặt lại mật khẩu bằng OTP",
         "requestBody": {
           "content": {
             "application/json": {
@@ -776,6 +800,7 @@
         "tags": [
           "Course"
         ],
+        "summary": "Retrieves a paginated list of courses, optionally filtered by course status.",
         "parameters": [
           {
             "name": "Page",
@@ -792,11 +817,19 @@
               "type": "integer",
               "format": "int32"
             }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Optional filter by course status. Accepted values:\r\n<list type=\"bullet\"><item><description>`Draft`</description></item><item><description>`PendingApproval`</description></item><item><description>`Published`</description></item><item><description>`Rejected`</description></item><item><description>`Archived`</description></item></list>",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Successfully retrieved the list of courses.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -815,8 +848,22 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid status value.",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          },
           "404": {
-            "description": "Not Found",
+            "description": "No courses found.",
             "content": {
               "text/plain": {
                 "schema": { }
@@ -830,7 +877,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error",
+            "description": "Server error during course retrieval.",
             "content": {
               "text/plain": {
                 "schema": { }
@@ -849,6 +896,8 @@
         "tags": [
           "Course"
         ],
+        "summary": "Creates a new course submitted by an authorized teacher.",
+        "description": "This endpoint is restricted to users with the `Teacher` role.\r\nThe method extracts the teacher's ID from the authentication token, validates the request,\r\nand delegates course creation to M:BLL.Services.Course.CourseService.CreateCourseAsync(System.Guid,Common.DTO.Course.Request.CourseRequest).",
         "requestBody": {
           "content": {
             "multipart/form-data": {
@@ -880,16 +929,10 @@
                   "CourseType": {
                     "type": "string"
                   },
-                  "LanguageID": {
-                    "type": "string"
-                  },
                   "GoalId": {
                     "type": "integer"
                   },
-                  "CourseLevel": {
-                    "type": "string"
-                  },
-                  "CourseSkill": {
+                  "Level": {
                     "type": "string"
                   }
                 }
@@ -910,10 +953,12 @@
         "tags": [
           "Course"
         ],
+        "summary": "Retrieves the details of a course by its ID.",
         "parameters": [
           {
             "name": "courseId",
             "in": "path",
+            "description": "The ID of the course",
             "required": true,
             "schema": {
               "type": "string",
@@ -923,7 +968,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Course found successfully",
             "content": {
               "text/plain": {
                 "schema": {
@@ -943,7 +988,7 @@
             }
           },
           "404": {
-            "description": "Not Found",
+            "description": "Course not found",
             "content": {
               "text/plain": {
                 "schema": { }
@@ -957,7 +1002,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error",
+            "description": "Server error during course details retrieval",
             "content": {
               "text/plain": {
                 "schema": { }
@@ -976,10 +1021,13 @@
         "tags": [
           "Course"
         ],
+        "summary": "Update a course (only Draft or Rejected courses can be updated).",
+        "description": "- Only the teacher who created the course can update it.  \r\n- Status will remain Draft after update until submitted for review.  \r\n- If a new image is uploaded, the old one will be deleted from Cloudinary.",
         "parameters": [
           {
             "name": "courseId",
             "in": "path",
+            "description": "ID of the course to update",
             "required": true,
             "schema": {
               "type": "string",
@@ -1015,19 +1063,13 @@
                   "DiscountPrice": {
                     "type": "string"
                   },
-                  "CourseType": {
-                    "type": "string"
-                  },
-                  "LanguageID": {
+                  "Type": {
                     "type": "string"
                   },
                   "GoalId": {
                     "type": "integer"
                   },
-                  "CourseLevel": {
-                    "type": "string"
-                  },
-                  "CourseSkill": {
+                  "Level": {
                     "type": "string"
                   }
                 }
@@ -1096,6 +1138,26 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseResponseBaseResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseResponseBaseResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseResponseBaseResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -1105,6 +1167,7 @@
         "tags": [
           "Course"
         ],
+        "summary": "Retrieves all courses created by the currently authenticated teacher.",
         "parameters": [
           {
             "name": "Page",
@@ -1121,11 +1184,19 @@
               "type": "integer",
               "format": "int32"
             }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "(Optional) Filter courses by status.  \r\nAccepted values: Draft, PendingApproval, Published, Rejected, Archived.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Successfully retrieved courses.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1141,46 +1212,62 @@
                 "schema": {
                   "$ref": "#/components/schemas/CourseResponseIEnumerablePagedResponse"
                 }
+              }
+            }
+          },
+          "400": {
+            "description": "If the status value is invalid or user ID format is incorrect.",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
               }
             }
           },
           "401": {
-            "description": "Unauthorized",
+            "description": "If the user is not authenticated or not a Teacher.",
             "content": {
               "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
+                "schema": { }
               },
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
+                "schema": { }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
+                "schema": { }
               }
             }
           },
           "404": {
-            "description": "Not Found",
+            "description": "If no teacher or courses found.",
             "content": {
               "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
+                "schema": { }
               },
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
+                "schema": { }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
+                "schema": { }
+              }
+            }
+          },
+          "500": {
+            "description": "If an unexpected error occurs.",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
               }
             }
           }
@@ -1192,10 +1279,12 @@
         "tags": [
           "CourseExercise"
         ],
+        "summary": "Create a new exercise under a specific lesson.",
         "parameters": [
           {
             "name": "courseId",
             "in": "path",
+            "description": "The ID of the course the exercise belongs to.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1205,6 +1294,7 @@
           {
             "name": "unitId",
             "in": "path",
+            "description": "The ID of the unit the exercise belongs to.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1214,6 +1304,7 @@
           {
             "name": "lessonId",
             "in": "path",
+            "description": "The ID of the lesson the exercise belongs to.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1325,10 +1416,12 @@
         "tags": [
           "CourseExercise"
         ],
+        "summary": "Update an existing exercise.",
         "parameters": [
           {
             "name": "courseId",
             "in": "path",
+            "description": "The ID of the course.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1338,6 +1431,7 @@
           {
             "name": "unitId",
             "in": "path",
+            "description": "The ID of the unit.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1347,6 +1441,7 @@
           {
             "name": "lessonId",
             "in": "path",
+            "description": "The ID of the lesson.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1356,6 +1451,7 @@
           {
             "name": "exerciseId",
             "in": "path",
+            "description": "The ID of the exercise to update.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1445,10 +1541,12 @@
         "tags": [
           "CourseExercise"
         ],
+        "summary": "Delete an exercise by its ID.",
         "parameters": [
           {
             "name": "courseId",
             "in": "path",
+            "description": "The ID of the course.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1458,6 +1556,7 @@
           {
             "name": "unitId",
             "in": "path",
+            "description": "The ID of the unit.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1467,6 +1566,7 @@
           {
             "name": "lessonId",
             "in": "path",
+            "description": "The ID of the lesson.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1476,6 +1576,7 @@
           {
             "name": "exerciseId",
             "in": "path",
+            "description": "The ID of the exercise to delete.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1512,10 +1613,12 @@
         "tags": [
           "CourseExercise"
         ],
+        "summary": "Get a paginated list of exercises for a specific lesson.",
         "parameters": [
           {
             "name": "lessonId",
             "in": "path",
+            "description": "The ID of the lesson.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1568,10 +1671,12 @@
         "tags": [
           "CourseExercise"
         ],
+        "summary": "Get details of a specific exercise by its ID.",
         "parameters": [
           {
             "name": "exerciseId",
             "in": "path",
+            "description": "The ID of the exercise.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1608,10 +1713,12 @@
         "tags": [
           "CourseLesson"
         ],
+        "summary": "Create a new lesson under a specific course and unit.",
         "parameters": [
           {
             "name": "courseId",
             "in": "path",
+            "description": "The unique identifier of the course to which the lesson belongs.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1621,6 +1728,7 @@
           {
             "name": "unitId",
             "in": "path",
+            "description": "The unique identifier of the unit to which the lesson belongs.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1662,7 +1770,7 @@
         },
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Lesson created successfully.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1682,7 +1790,7 @@
             }
           },
           "400": {
-            "description": "Bad Request",
+            "description": "Invalid input or creation failed.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1709,10 +1817,13 @@
         "tags": [
           "CourseLesson"
         ],
+        "summary": "Update an existing lesson information.",
+        "description": "This endpoint allows teachers to update an existing lesson.  \r\nOnly lessons in courses with status **Draft** or **Rejected** can be updated.  \r\nIf new files are provided, old video/document files will be replaced and deleted from storage.",
         "parameters": [
           {
             "name": "courseId",
             "in": "path",
+            "description": "The unique identifier of the course that contains the unit.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1722,6 +1833,7 @@
           {
             "name": "unitId",
             "in": "path",
+            "description": "The unique identifier of the course unit that contains the lesson.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1731,6 +1843,7 @@
           {
             "name": "lessonId",
             "in": "path",
+            "description": "The unique identifier of the lesson to update.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1772,7 +1885,7 @@
         },
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Lesson updated successfully.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1792,7 +1905,7 @@
             }
           },
           "400": {
-            "description": "Bad Request",
+            "description": "Invalid request data or validation failure.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1812,7 +1925,7 @@
             }
           },
           "404": {
-            "description": "Not Found",
+            "description": "Teacher, course, unit, or lesson not found.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1832,7 +1945,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error",
+            "description": "Internal server error during update or file upload.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1859,10 +1972,13 @@
         "tags": [
           "CourseLesson"
         ],
+        "summary": "Get a paged list of lessons within a specific course unit.",
+        "description": "Returns a paginated list of lessons that belong to the given unit.",
         "parameters": [
           {
             "name": "unitId",
             "in": "path",
+            "description": "The unique identifier of the course unit.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1888,7 +2004,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Lessons retrieved successfully.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1908,7 +2024,7 @@
             }
           },
           "404": {
-            "description": "Not Found",
+            "description": "Unit not found or no lessons available.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1935,10 +2051,13 @@
         "tags": [
           "CourseLesson"
         ],
+        "summary": "Retrieve the details of a specific lesson by its Id.",
+        "description": "Returns detailed information about the requested lesson,\r\nincluding related course and unit details if available.",
         "parameters": [
           {
             "name": "lessonId",
             "in": "path",
+            "description": "The unique identifier of the lesson.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1948,7 +2067,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Lesson retrieved successfully.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1968,7 +2087,7 @@
             }
           },
           "404": {
-            "description": "Not Found",
+            "description": "Lesson not found.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1995,10 +2114,13 @@
         "tags": [
           "CourseLesson"
         ],
+        "summary": "Get a paged list of all lessons that belong to a specific course.",
+        "description": "Returns a paginated list of lessons across all units inside the given course.",
         "parameters": [
           {
             "name": "courseId",
             "in": "path",
+            "description": "The unique identifier of the course.",
             "required": true,
             "schema": {
               "type": "string",
@@ -2024,7 +2146,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Lessons retrieved successfully.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2044,7 +2166,7 @@
             }
           },
           "404": {
-            "description": "Not Found",
+            "description": "Course not found or no lessons available.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2071,6 +2193,7 @@
         "tags": [
           "CourseTemplate"
         ],
+        "summary": "Get all course templates with pagination.",
         "parameters": [
           {
             "name": "Page",
@@ -2116,7 +2239,9 @@
         "tags": [
           "CourseTemplate"
         ],
+        "summary": "Create a new course template.",
         "requestBody": {
+          "description": "Course template data",
           "content": {
             "application/json": {
               "schema": {
@@ -2184,10 +2309,12 @@
         "tags": [
           "CourseTemplate"
         ],
+        "summary": "Get a course template by its Id.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
+            "description": "Course template Id",
             "required": true,
             "schema": {
               "type": "string",
@@ -2242,10 +2369,12 @@
         "tags": [
           "CourseTemplate"
         ],
+        "summary": "Update an existing course template.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
+            "description": "Course template Id",
             "required": true,
             "schema": {
               "type": "string",
@@ -2254,6 +2383,7 @@
           }
         ],
         "requestBody": {
+          "description": "Updated course template data",
           "content": {
             "application/json": {
               "schema": {
@@ -2334,64 +2464,6 @@
             }
           }
         }
-      },
-      "delete": {
-        "tags": [
-          "CourseTemplate"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/BooleanBaseResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BooleanBaseResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BooleanBaseResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
       }
     },
     "/api/courses/{courseId}/units": {
@@ -2399,10 +2471,13 @@
         "tags": [
           "CourseUnit"
         ],
+        "summary": "Creates a new Unit for a Course.",
+        "description": "Example request:\r\n\r\n    POST /api/courses/{courseId}/units\r\n    {\r\n        \"title\": \"Unit 1 - Introduction\",\r\n        \"description\": \"Overview of the course\"\r\n    }",
         "parameters": [
           {
             "name": "courseId",
             "in": "path",
+            "description": "ID of the course to which the Unit will be added.",
             "required": true,
             "schema": {
               "type": "string",
@@ -2411,6 +2486,7 @@
           }
         ],
         "requestBody": {
+          "description": "Information about the Unit to be created.",
           "content": {
             "application/json": {
               "schema": {
@@ -2431,7 +2507,10 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Successfully created a new Unit."
+          },
+          "400": {
+            "description": "Invalid data or creation failed."
           }
         }
       },
@@ -2439,10 +2518,12 @@
         "tags": [
           "CourseUnit"
         ],
+        "summary": "Updates an existing unit within a specific course.",
         "parameters": [
           {
             "name": "courseId",
             "in": "path",
+            "description": "The ID of the course containing the unit.",
             "required": true,
             "schema": {
               "type": "string",
@@ -2452,6 +2533,7 @@
           {
             "name": "unitId",
             "in": "query",
+            "description": "The ID of the unit to update.",
             "schema": {
               "type": "string",
               "format": "uuid"
@@ -2459,27 +2541,28 @@
           }
         ],
         "requestBody": {
+          "description": "The request payload containing updated unit details.",
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UnitRequest"
+                "$ref": "#/components/schemas/UnitUpdateRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/UnitRequest"
+                "$ref": "#/components/schemas/UnitUpdateRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/UnitRequest"
+                "$ref": "#/components/schemas/UnitUpdateRequest"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Returns the updated unit.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2497,6 +2580,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "If the request is invalid or update fails."
           }
         }
       },
@@ -2504,10 +2590,12 @@
         "tags": [
           "CourseUnit"
         ],
+        "summary": "Retrieves a paginated list of units for a specific course.",
         "parameters": [
           {
             "name": "courseId",
             "in": "path",
+            "description": "The ID of the course to filter units.",
             "required": true,
             "schema": {
               "type": "string",
@@ -2533,7 +2621,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Returns a paginated list of course units for the specified course.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2551,6 +2639,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "If the course is not found."
           }
         }
       }
@@ -2560,10 +2651,12 @@
         "tags": [
           "CourseUnit"
         ],
+        "summary": "Retrieves a unit by its unique identifier.",
         "parameters": [
           {
             "name": "unitId",
             "in": "path",
+            "description": "The ID of the unit to retrieve.",
             "required": true,
             "schema": {
               "type": "string",
@@ -2573,7 +2666,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Returns the requested unit.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2590,54 +2683,10 @@
                   "$ref": "#/components/schemas/UnitResponseBaseResponse"
                 }
               }
-            }
-          }
-        }
-      }
-    },
-    "/api/units": {
-      "get": {
-        "tags": [
-          "CourseUnit"
-        ],
-        "parameters": [
-          {
-            "name": "Page",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
             }
           },
-          {
-            "name": "PageSize",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnitResponseIEnumerablePagedResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnitResponseIEnumerablePagedResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnitResponseIEnumerablePagedResponse"
-                }
-              }
-            }
+          "404": {
+            "description": "If the unit is not found."
           }
         }
       }
@@ -2683,6 +2732,7 @@
         "tags": [
           "Goal"
         ],
+        "summary": "Get all goals with paging",
         "parameters": [
           {
             "name": "Page",
@@ -2737,7 +2787,9 @@
         "tags": [
           "Goal"
         ],
+        "summary": "Create a new goal",
         "requestBody": {
+          "description": "Goal data",
           "content": {
             "application/json": {
               "schema": {
@@ -2805,10 +2857,12 @@
         "tags": [
           "Goal"
         ],
+        "summary": "Get goal by Id",
         "parameters": [
           {
             "name": "id",
             "in": "path",
+            "description": "Goal Id",
             "required": true,
             "schema": {
               "type": "integer",
@@ -2863,10 +2917,12 @@
         "tags": [
           "Goal"
         ],
+        "summary": "Update an existing goal",
         "parameters": [
           {
             "name": "id",
             "in": "path",
+            "description": "Goal Id",
             "required": true,
             "schema": {
               "type": "integer",
@@ -2875,6 +2931,7 @@
           }
         ],
         "requestBody": {
+          "description": "Updated goal data",
           "content": {
             "application/json": {
               "schema": {
@@ -2960,10 +3017,12 @@
         "tags": [
           "Goal"
         ],
+        "summary": "Delete a goal by Id",
         "parameters": [
           {
             "name": "id",
             "in": "path",
+            "description": "Goal Id",
             "required": true,
             "schema": {
               "type": "integer",
@@ -3015,6 +3074,7 @@
         "tags": [
           "Topic"
         ],
+        "summary": "Retrieves a paginated list of topics.",
         "parameters": [
           {
             "name": "Page",
@@ -3035,7 +3095,7 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Successfully retrieved topics",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3055,7 +3115,7 @@
             }
           },
           "404": {
-            "description": "Not Found",
+            "description": "No topics found",
             "content": {
               "text/plain": {
                 "schema": { }
@@ -3069,7 +3129,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error",
+            "description": "Server error while fetching topics",
             "content": {
               "text/plain": {
                 "schema": { }
@@ -3088,6 +3148,7 @@
         "tags": [
           "Topic"
         ],
+        "summary": "Creates a new topic.",
         "requestBody": {
           "content": {
             "multipart/form-data": {
@@ -3112,7 +3173,7 @@
         },
         "responses": {
           "201": {
-            "description": "Created",
+            "description": "Topic created successfully",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3132,7 +3193,7 @@
             }
           },
           "400": {
-            "description": "Bad Request",
+            "description": "Validation error or topic already exists",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3152,7 +3213,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error",
+            "description": "Server error",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3179,6 +3240,7 @@
         "tags": [
           "Topic"
         ],
+        "summary": "Get topic by id (for CreatedAtAction)",
         "parameters": [
           {
             "name": "topicId",
@@ -3237,10 +3299,12 @@
         "tags": [
           "Topic"
         ],
+        "summary": "Updates an existing topic by its ID.",
         "parameters": [
           {
             "name": "topicId",
             "in": "path",
+            "description": "The ID of the topic to update.",
             "required": true,
             "schema": {
               "type": "string",
@@ -3272,7 +3336,7 @@
         },
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Topic updated successfully.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3292,7 +3356,7 @@
             }
           },
           "400": {
-            "description": "Bad Request",
+            "description": "Topic with the same name already exists or validation fails.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3312,7 +3376,7 @@
             }
           },
           "500": {
-            "description": "Internal Server Error",
+            "description": "Internal server error.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3624,6 +3688,7 @@
   },
   "components": {
     "schemas": {
+<<<<<<< HEAD
       "AcceptVoiceAssessmentRequestDto": {
         "type": "object",
         "properties": {
@@ -3655,6 +3720,8 @@
         },
         "additionalProperties": false
       },
+=======
+>>>>>>> f6c26f87a39437de4ac5c4fe240d454a396fb272
       "CertificateResponse": {
         "type": "object",
         "properties": {
@@ -3766,9 +3833,6 @@
           "courseLevel": {
             "type": "string"
           },
-          "courseSkill": {
-            "type": "string"
-          },
           "publishedAt": {
             "type": "string",
             "nullable": true
@@ -3787,7 +3851,7 @@
             "format": "int32"
           },
           "approvedBy": {
-            "$ref": "#/components/schemas/UserInfo"
+            "$ref": "#/components/schemas/StaffInfo"
           },
           "approvedAt": {
             "type": "string",
@@ -3870,9 +3934,6 @@
             "type": "boolean"
           },
           "requireLevel": {
-            "type": "boolean"
-          },
-          "requireSkillFocus": {
             "type": "boolean"
           },
           "requireTopic": {
@@ -4239,10 +4300,6 @@
       "GoalInfo": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
           "name": {
             "type": "string"
           },
@@ -4305,10 +4362,6 @@
       "LanguageInfo": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
           "name": {
             "type": "string"
           },
@@ -4429,9 +4482,9 @@
       },
       "LevelType": {
         "enum": [
-          0,
           1,
-          2
+          2,
+          3
         ],
         "type": "integer",
         "format": "int32"
@@ -4595,19 +4648,40 @@
         "type": "integer",
         "format": "int32"
       },
+      "StaffInfo": {
+        "type": "object",
+        "properties": {
+          "staffId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "TeacherInfo": {
         "type": "object",
         "properties": {
-          "id": {
+          "teacherId": {
             "type": "string",
             "format": "uuid"
           },
           "fullName": {
             "type": "string"
           },
-          "avatarUrl": {
-            "type": "string",
-            "nullable": true
+          "avatar": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phoneNumber": {
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -4647,7 +4721,7 @@
       "TemplateInfo": {
         "type": "object",
         "properties": {
-          "id": {
+          "templateId": {
             "type": "string",
             "format": "uuid"
           },
@@ -4839,18 +4913,23 @@
         },
         "additionalProperties": false
       },
-      "UserInfo": {
+      "UnitUpdateRequest": {
         "type": "object",
         "properties": {
-          "id": {
+          "title": {
+            "maxLength": 200,
+            "minLength": 0,
             "type": "string",
-            "format": "uuid"
+            "nullable": true
           },
-          "fullName": {
-            "type": "string"
-          },
-          "avatarUrl": {
+          "description": {
+            "maxLength": 500,
+            "minLength": 0,
             "type": "string",
+            "nullable": true
+          },
+          "isPreview": {
+            "type": "boolean",
             "nullable": true
           }
         },

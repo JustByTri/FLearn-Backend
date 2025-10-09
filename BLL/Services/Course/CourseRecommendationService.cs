@@ -1,4 +1,4 @@
-﻿// BLL/Services/Implementation/CourseRecommendationService.cs
+﻿
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -86,7 +86,8 @@ namespace BLL.Services.Implementation
                         .ToList();
                 }
 
-                _logger.LogInformation("✅ Returning {Count} recommended courses", matchedCourses.Count);
+                _logger.LogInformation("Searching courses: LanguageId={LanguageId}, Level={Level}, GoalId={GoalId}",
+    languageId, determinedLevel, goalId);
 
                 return MapToCourseDtos(
                     matchedCourses.Select(x => x.Course).ToList(),
@@ -153,7 +154,7 @@ namespace BLL.Services.Implementation
 
         #region Private Helpers
 
-        private decimal CalculateMatchScore(Course course, LevelType targetLevel, int? goalId)
+        private decimal CalculateMatchScore(DAL.Models.Course course, LevelType targetLevel, int? goalId)
         {
             decimal score = 0;
 
@@ -188,7 +189,7 @@ namespace BLL.Services.Implementation
             return Math.Min(100, Math.Max(0, score));
         }
 
-        private string GenerateMatchReason(Course course, LevelType targetLevel, decimal matchScore)
+        private string GenerateMatchReason(DAL.Models.Course course, LevelType targetLevel, decimal matchScore)
         {
             var reasons = new List<string>();
 
@@ -245,7 +246,7 @@ namespace BLL.Services.Implementation
         }
 
         private List<CourseRecommendationDto> MapToCourseDtos(
-            List<Course> courses,
+            List<DAL.Models.Course> courses,
             Dictionary<Guid, decimal> matchScores,
             string determinedLevel)
         {

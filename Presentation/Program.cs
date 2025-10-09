@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Presentation.Filter;
+using Presentation.Middlewares;
 using System.Reflection;
 using System.Text;
 
@@ -282,7 +283,7 @@ app.UseSwaggerUI(c =>
 app.UseHttpsRedirection();
 
 app.UseCors("AllowAll");
-
+app.UseErrorHandlingMiddleware();
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -4,6 +4,7 @@ using Common.DTO.CourseUnit.Request;
 using Common.DTO.CourseUnit.Response;
 using Common.DTO.Paging.Request;
 using Common.DTO.Paging.Response;
+using DAL.Helpers;
 using DAL.Models;
 using DAL.Type;
 using DAL.UnitOfWork;
@@ -18,21 +19,17 @@ namespace BLL.Services.CourseUnits
         {
             _unit = unit;
         }
-        public async Task<BaseResponse<UnitResponse>> CreateUnitAsync(Guid teacherId, Guid courseId, UnitRequest request)
+        public async Task<BaseResponse<UnitResponse>> CreateUnitAsync(Guid userId, Guid courseId, UnitRequest request)
         {
-            var teacher = await _unit.Users.Query()
-                .Include(u => u.UserRoles)
-                .ThenInclude(ur => ur.Role)
-                .FirstOrDefaultAsync(u => u.UserID == teacherId);
 
-            if (teacher == null || !teacher.UserRoles.Any(ur => ur.Role.Name == "Teacher"))
-            {
-                return BaseResponse<UnitResponse>.Fail("Invalid TeacherID. Teacher not found or does not have role 'Teacher'.");
-            }
+            var teacher = await _unit.TeacherProfiles.FindAsync(x => x.UserId == userId);
+            if (teacher == null)
+                return BaseResponse<UnitResponse>.Fail("Teacher does not exist.");
+
 
             var selectedCourse = await _unit.Courses.Query()
                 .Include(c => c.CourseUnits)
-                .FirstOrDefaultAsync(c => c.CourseID == courseId && c.TeacherId == teacherId);
+                .FirstOrDefaultAsync(c => c.CourseID == courseId && c.TeacherId == teacher.TeacherProfileId);
 
             if (selectedCourse == null)
             {
@@ -58,8 +55,8 @@ namespace BLL.Services.CourseUnits
                 Position = nextPosition,
                 CourseID = courseId,
                 IsPreview = (request.IsPreview != null) ? request.IsPreview : false,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = TimeHelper.GetVietnamTime(),
+                UpdatedAt = TimeHelper.GetVietnamTime()
             };
 
             try
@@ -95,6 +92,7 @@ namespace BLL.Services.CourseUnits
         public async Task<BaseResponse<UnitResponse>> GetUnitByIdAsync(Guid unitId)
         {
             var unit = await _unit.CourseUnits.Query()
+                .OrderBy(u => u.CreatedAt)
                 .Include(u => u.Course)
                 .FirstOrDefaultAsync(u => u.CourseUnitID == unitId);
 
@@ -108,40 +106,12 @@ namespace BLL.Services.CourseUnits
                 Description = unit.Description,
                 Position = unit.Position,
                 CourseID = unit.CourseID,
-                CourseTitle = unit.Course.Title,
+                CourseTitle = unit.Course?.Title,
                 TotalLessons = unit.TotalLessons ?? 0,
                 IsPreview = unit.IsPreview,
                 CreatedAt = unit.CreatedAt,
                 UpdatedAt = unit.UpdatedAt,
             });
-        }
-
-        public async Task<PagedResponse<IEnumerable<UnitResponse>>> GetUnitsAsync(PagingRequest request)
-        {
-            var query = _unit.CourseUnits.Query()
-                .OrderBy(u => u.CreatedAt);
-
-            var total = await query.CountAsync();
-
-            var data = await query
-                .Skip((request.Page - 1) * request.PageSize)
-                .Take(request.PageSize)
-                .Select(u => new UnitResponse
-                {
-                    CourseUnitID = u.CourseUnitID,
-                    Title = u.Title,
-                    Description = u.Description,
-                    IsPreview = u.IsPreview,
-                    Position = u.Position,
-                    CourseID = u.CourseID,
-                    CourseTitle = u.Course.Title ?? "None",
-                    TotalLessons = u.TotalLessons ?? 0,
-                    CreatedAt = u.CreatedAt,
-                    UpdatedAt = u.UpdatedAt,
-                })
-                .ToListAsync();
-
-            return PagedResponse<IEnumerable<UnitResponse>>.Success(data, total, request.Page, request.PageSize);
         }
 
         public async Task<PagedResponse<IEnumerable<UnitResponse>>> GetUnitsByCourseIdAsync(Guid courseId, PagingRequest request)
@@ -167,8 +137,8 @@ namespace BLL.Services.CourseUnits
             }
 
             var query = _unit.CourseUnits.Query()
-                .Where(u => u.CourseID == courseId)
-                .OrderBy(u => u.Position);
+                .OrderBy(u => u.Position)
+                .Where(u => u.CourseID == courseId);
 
             var total = await query.CountAsync();
 
@@ -198,21 +168,16 @@ namespace BLL.Services.CourseUnits
                 message: "Get units successfully");
         }
 
-        public async Task<BaseResponse<UnitResponse>> UpdateUnitAsync(Guid teacherId, Guid courseId, Guid unitId, UnitRequest request)
+        public async Task<BaseResponse<UnitResponse>> UpdateUnitAsync(Guid userId, Guid courseId, Guid unitId, UnitUpdateRequest request)
         {
-            var teacher = await _unit.Users.Query()
-                .Include(u => u.UserRoles)
-                .ThenInclude(ur => ur.Role)
-                .FirstOrDefaultAsync(u => u.UserID == teacherId);
+            var teacher = await _unit.TeacherProfiles.FindAsync(x => x.UserId == userId);
+            if (teacher == null)
+                return BaseResponse<UnitResponse>.Fail("Teacher does not exist.");
 
-            if (teacher == null || !teacher.UserRoles.Any(ur => ur.Role.Name == "Teacher"))
-            {
-                return BaseResponse<UnitResponse>.Fail("Invalid TeacherID. Teacher not found or does not have role 'Teacher'.");
-            }
 
             var selectedCourse = await _unit.Courses.Query()
                 .Include(c => c.CourseUnits)
-                .FirstOrDefaultAsync(c => c.CourseID == courseId && c.TeacherId == teacherId);
+                .FirstOrDefaultAsync(c => c.CourseID == courseId && c.TeacherId == teacher.TeacherProfileId);
 
             if (selectedCourse == null)
             {
@@ -226,12 +191,28 @@ namespace BLL.Services.CourseUnits
 
             var unit = await _unit.CourseUnits.GetByIdAsync(unitId);
             if (unit == null)
-                return BaseResponse<UnitResponse>.Fail("CourseUnit not found.");
+                return BaseResponse<UnitResponse>.Fail(null, "CourseUnit not found.", 404);
 
-            unit.Title = request.Title;
-            unit.IsPreview = request.IsPreview;
-            unit.Description = request.Description;
-            unit.UpdatedAt = DateTime.UtcNow;
+            if (!string.IsNullOrWhiteSpace(request.Title))
+            {
+                unit.Title = request.Title.Trim().Length > 200
+                    ? request.Title.Trim().Substring(0, 200)
+                    : request.Title.Trim();
+            }
+
+            if (request.IsPreview.HasValue)
+            {
+                unit.IsPreview = request.IsPreview.Value;
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.Description))
+            {
+                unit.Description = request.Description.Trim().Length > 500
+                    ? request.Description.Trim().Substring(0, 500)
+                    : request.Description.Trim();
+            }
+
+            unit.UpdatedAt = TimeHelper.GetVietnamTime();
 
             try
             {

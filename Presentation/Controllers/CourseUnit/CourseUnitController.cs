@@ -41,23 +41,25 @@ namespace Presentation.Controllers.CourseUnit
         [HttpPost("courses/{courseId:guid}/units")]
         public async Task<IActionResult> CreateUnitAsync(Guid courseId, [FromBody] UnitRequest request)
         {
-            var teacherId = User.FindFirstValue("user_id")
-                                ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userIdClaim = User.FindFirstValue("user_id")
+                     ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            if (string.IsNullOrEmpty(teacherId))
+            if (string.IsNullOrEmpty(userIdClaim))
             {
                 return Unauthorized("Teacher ID not found in token.");
             }
 
-            Guid teacherGuid = Guid.Parse(teacherId);
-
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return BadRequest("Invalid user ID format in token.");
+            }
 
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                return BadRequest(BaseResponse<object>.Fail("Invalid request data."));
             }
 
-            var response = await _courseUnitService.CreateUnitAsync(teacherGuid, courseId, request);
+            var response = await _courseUnitService.CreateUnitAsync(userId, courseId, request);
 
             return StatusCode(response.Code, response);
         }
@@ -75,23 +77,28 @@ namespace Presentation.Controllers.CourseUnit
         public async Task<ActionResult<BaseResponse<UnitResponse>>> UpdateUnitAsync(
             Guid courseId,
             Guid unitId,
-            [FromBody] UnitRequest request)
+            [FromBody] UnitUpdateRequest request)
         {
 
-            var teacherId = User.FindFirstValue("user_id")
-                                ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userIdClaim = User.FindFirstValue("user_id")
+                     ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            if (string.IsNullOrEmpty(teacherId))
+            if (string.IsNullOrEmpty(userIdClaim))
             {
                 return Unauthorized("Teacher ID not found in token.");
             }
 
-            Guid teacherGuid = Guid.Parse(teacherId);
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return BadRequest("Invalid user ID format in token.");
+            }
 
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            {
+                return BadRequest(BaseResponse<object>.Fail("Invalid request data."));
+            }
 
-            var response = await _courseUnitService.UpdateUnitAsync(teacherGuid, courseId, unitId, request);
+            var response = await _courseUnitService.UpdateUnitAsync(userId, courseId, unitId, request);
             return StatusCode(response.Code, response);
         }
         /// <summary>
@@ -122,22 +129,6 @@ namespace Presentation.Controllers.CourseUnit
         public async Task<ActionResult<BaseResponse<UnitResponse>>> GetUnitByIdAsync(Guid unitId)
         {
             var response = await _courseUnitService.GetUnitByIdAsync(unitId);
-            return StatusCode(response.Code, response);
-        }
-        /// <summary>
-        /// Retrieves a paginated list of all course units.
-        /// </summary>
-        /// <param name="pageNumber">The current page number (default is 1).</param>
-        /// <param name="pageSize">The number of records per page (default is 10).</param>
-        /// <returns>
-        /// A <see cref="PagedResponse{T}"/> containing the paginated list of <see cref="UnitResponse"/>.
-        /// </returns>
-        /// <response code="200">Returns a paginated list of all course units.</response>
-        [HttpGet("units")]
-        public async Task<ActionResult<PagedResponse<IEnumerable<UnitResponse>>>> GetUnitsAsync(
-            [FromQuery] PagingRequest request)
-        {
-            var response = await _courseUnitService.GetUnitsAsync(request);
             return StatusCode(response.Code, response);
         }
     }

@@ -473,6 +473,11 @@
         "Name": "PageSize",
         "Type": "System.Int32",
         "IsRequired": false
+      },
+      {
+        "Name": "status",
+        "Type": "System.String",
+        "IsRequired": false
       }
     ],
     "ReturnTypes": [
@@ -484,6 +489,15 @@
           "text/json"
         ],
         "StatusCode": 200
+      },
+      {
+        "Type": "System.Object",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 400
       },
       {
         "Type": "System.Object",
@@ -507,7 +521,7 @@
   },
   {
     "ContainingType": "Presentation.Controllers.Course.CourseController",
-    "Method": "Create",
+    "Method": "CreateCourse",
     "RelativePath": "api/courses",
     "HttpMethod": "POST",
     "IsController": true,
@@ -535,7 +549,7 @@
       },
       {
         "Name": "TopicIds",
-        "Type": "System.Collections.Generic.List\u00601[[System.Guid, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "Type": "System.String",
         "IsRequired": false
       },
       {
@@ -554,22 +568,12 @@
         "IsRequired": false
       },
       {
-        "Name": "LanguageID",
-        "Type": "System.Guid",
-        "IsRequired": false
-      },
-      {
         "Name": "GoalId",
         "Type": "System.Int32",
         "IsRequired": false
       },
       {
-        "Name": "CourseLevel",
-        "Type": "System.String",
-        "IsRequired": false
-      },
-      {
-        "Name": "CourseSkill",
+        "Name": "Level",
         "Type": "System.String",
         "IsRequired": false
       }
@@ -650,12 +654,12 @@
       },
       {
         "Name": "TemplateId",
-        "Type": "System.Guid",
+        "Type": "System.Nullable\u00601[[System.Guid, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
         "IsRequired": false
       },
       {
         "Name": "TopicIds",
-        "Type": "System.Collections.Generic.List\u00601[[System.Guid, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "Type": "System.Guid[]",
         "IsRequired": false
       },
       {
@@ -669,27 +673,17 @@
         "IsRequired": false
       },
       {
-        "Name": "CourseType",
+        "Name": "Type",
         "Type": "System.String",
-        "IsRequired": false
-      },
-      {
-        "Name": "LanguageID",
-        "Type": "System.Guid",
         "IsRequired": false
       },
       {
         "Name": "GoalId",
-        "Type": "System.Int32",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
         "IsRequired": false
       },
       {
-        "Name": "CourseLevel",
-        "Type": "System.String",
-        "IsRequired": false
-      },
-      {
-        "Name": "CourseSkill",
+        "Name": "Level",
         "Type": "System.String",
         "IsRequired": false
       }
@@ -721,6 +715,15 @@
           "text/json"
         ],
         "StatusCode": 401
+      },
+      {
+        "Type": "Common.DTO.ApiResponse.BaseResponse\u00601[[Common.DTO.Course.Response.CourseResponse, Common, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 500
       }
     ]
   },
@@ -810,7 +813,7 @@
       },
       {
         "Name": "request",
-        "Type": "Common.DTO.CourseUnit.Request.UnitRequest",
+        "Type": "Common.DTO.CourseUnit.Request.UnitUpdateRequest",
         "IsRequired": true
       }
     ],
@@ -1309,6 +1312,11 @@
         "Name": "PageSize",
         "Type": "System.Int32",
         "IsRequired": false
+      },
+      {
+        "Name": "status",
+        "Type": "System.String",
+        "IsRequired": false
       }
     ],
     "ReturnTypes": [
@@ -1322,7 +1330,16 @@
         "StatusCode": 200
       },
       {
-        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "Type": "System.Object",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 400
+      },
+      {
+        "Type": "System.Object",
         "MediaTypes": [
           "text/plain",
           "application/json",
@@ -1331,13 +1348,22 @@
         "StatusCode": 401
       },
       {
-        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "Type": "System.Object",
         "MediaTypes": [
           "text/plain",
           "application/json",
           "text/json"
         ],
         "StatusCode": 404
+      },
+      {
+        "Type": "System.Object",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 500
       }
     ]
   },
@@ -1479,41 +1505,6 @@
           "text/json"
         ],
         "StatusCode": 400
-      },
-      {
-        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
-        "MediaTypes": [
-          "text/plain",
-          "application/json",
-          "text/json"
-        ],
-        "StatusCode": 404
-      }
-    ]
-  },
-  {
-    "ContainingType": "Presentation.Controllers.CourseTemplate.CourseTemplateController",
-    "Method": "Delete",
-    "RelativePath": "api/coursetemplates/{id}",
-    "HttpMethod": "DELETE",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "id",
-        "Type": "System.Guid",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": [
-      {
-        "Type": "Common.DTO.ApiResponse.BaseResponse\u00601[[System.Boolean, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
-        "MediaTypes": [
-          "text/plain",
-          "application/json",
-          "text/json"
-        ],
-        "StatusCode": 200
       },
       {
         "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
@@ -2101,37 +2092,6 @@
           "text/json"
         ],
         "StatusCode": 500
-      }
-    ]
-  },
-  {
-    "ContainingType": "Presentation.Controllers.CourseUnit.CourseUnitController",
-    "Method": "GetUnitsAsync",
-    "RelativePath": "api/units",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "Page",
-        "Type": "System.Int32",
-        "IsRequired": false
-      },
-      {
-        "Name": "PageSize",
-        "Type": "System.Int32",
-        "IsRequired": false
-      }
-    ],
-    "ReturnTypes": [
-      {
-        "Type": "Common.DTO.Paging.Response.PagedResponse\u00601[[System.Collections.Generic.IEnumerable\u00601[[Common.DTO.CourseUnit.Response.UnitResponse, Common, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]], System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
-        "MediaTypes": [
-          "text/plain",
-          "application/json",
-          "text/json"
-        ],
-        "StatusCode": 200
       }
     ]
   },

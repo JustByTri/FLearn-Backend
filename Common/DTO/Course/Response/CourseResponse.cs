@@ -4,30 +4,30 @@ namespace Common.DTO.Course.Response
 {
     public class TeacherInfo
     {
-        public Guid Id { get; set; }
+        public Guid TeacherId { get; set; }
         public string FullName { get; set; } = string.Empty;
-        public string? AvatarUrl { get; set; }
+        public string Avatar { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
     }
-    public class UserInfo
+    public class StaffInfo
     {
-        public Guid Id { get; set; }
-        public string FullName { get; set; } = string.Empty;
-        public string? AvatarUrl { get; set; }
+        public Guid StaffId { get; set; }
+        public string UserName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
     }
     public class TemplateInfo
     {
-        public Guid Id { get; set; }
+        public Guid TemplateId { get; set; }
         public string Name { get; set; } = string.Empty;
     }
     public class LanguageInfo
     {
-        public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Code { get; set; }
     }
     public class GoalInfo
     {
-        public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
     }
@@ -45,13 +45,12 @@ namespace Common.DTO.Course.Response
         public LanguageInfo? LanguageInfo { get; set; }
         public GoalInfo? GoalInfo { get; set; }
         public string CourseLevel { get; set; } = string.Empty;
-        public string CourseSkill { get; set; } = string.Empty;
         public string? PublishedAt { get; set; }
         public string Status { get; set; } = string.Empty;
         public string CreatedAt { get; set; } = string.Empty;
         public string ModifiedAt { get; set; } = string.Empty;
         public int NumLessons { get; set; }
-        public UserInfo? ApprovedBy { get; set; }
+        public StaffInfo? ApprovedBy { get; set; }
         public string? ApprovedAt { get; set; }
         public List<TopicResponse> Topics { get; set; } = new();
     }

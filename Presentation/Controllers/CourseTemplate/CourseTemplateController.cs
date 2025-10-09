@@ -107,18 +107,5 @@ namespace Presentation.Controllers.CourseTemplate
             var response = await _courseTemplateService.UpdateAsync(id, request);
             return StatusCode(response.Code, response);
         }
-        /// <summary>
-        /// Delete a course template.
-        /// </summary>
-        /// <param name="id">Course template Id</param>
-        /// <returns>Status of delete operation</returns>
-        [HttpDelete("{id}")]
-        [ProducesResponseType(typeof(BaseResponse<bool>), 200)]
-        [ProducesResponseType(404)]
-        public async Task<IActionResult> Delete(Guid id)
-        {
-            var response = await _courseTemplateService.DeleteAsync(id);
-            return StatusCode(response.Code, response);
-        }
     }
 }

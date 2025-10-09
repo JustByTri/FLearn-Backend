@@ -17,13 +17,13 @@ namespace BLL.Services.Languages
         public async Task<BaseResponse<IEnumerable<LanguageResponse>>> GetAllAsync()
         {
             var languages = await _unit.Languages.Query()
+                .OrderBy(l => l.LanguageCode)
                 .Select(l => new LanguageResponse
                 {
                     Id = l.LanguageID,
                     LangName = l.LanguageName,
                     LangCode = l.LanguageCode,
                 })
-                .OrderBy(l => l.LangCode)
                 .ToListAsync();
 
             return BaseResponse<IEnumerable<LanguageResponse>>.Success(languages);
