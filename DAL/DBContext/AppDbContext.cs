@@ -278,9 +278,9 @@ namespace DAL.DBContext
 
 
             modelBuilder.Entity<Language>().HasData(
-                 new Language { LanguageID = englishId, LanguageName = "English", LanguageCode = "en", CreatedAt = now },
-                 new Language { LanguageID = japaneseId, LanguageName = "Japanese", LanguageCode = "ja", CreatedAt = now },
-                 new Language { LanguageID = chineseId, LanguageName = "Chinese", LanguageCode = "zh", CreatedAt = now }
+                 new Language { LanguageID = englishId, LanguageName = "English", LanguageCode = "EN", CreatedAt = now },
+                 new Language { LanguageID = japaneseId, LanguageName = "Japanese", LanguageCode = "JP", CreatedAt = now },
+                 new Language { LanguageID = chineseId, LanguageName = "Chinese", LanguageCode = "ZH", CreatedAt = now }
                  );
             // ===== Seed Data for LanguageLevel =====
             var languageLevels = new List<LanguageLevel>

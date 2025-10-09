@@ -57,7 +57,22 @@ namespace BLL.Services.Redis
                 return null;
             }
         }
+        public async Task SetAsync<T>(string key, T value, TimeSpan? expiry = null)
+        {
+            try
+            {
+                var json = JsonSerializer.Serialize(value);
+                await _database.StringSetAsync(key, json, expiry);
 
+                _logger.LogInformation("✅ Set key '{Key}' in Redis with expiry {Expiry}",
+                    key, expiry?.ToString() ?? "none");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error setting key '{Key}' in Redis", key);
+                throw;
+            }
+        }
         public async Task SetVoiceAssessmentAsync(VoiceAssessmentDto assessment)
         {
             try
