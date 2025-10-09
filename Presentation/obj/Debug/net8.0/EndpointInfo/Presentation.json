@@ -1708,265 +1708,6 @@
         }
       }
     },
-    "/api/courses/{courseId}/units/{unitId}/lessons": {
-      "post": {
-        "tags": [
-          "CourseLesson"
-        ],
-        "summary": "Create a new lesson under a specific course and unit.",
-        "parameters": [
-          {
-            "name": "courseId",
-            "in": "path",
-            "description": "The unique identifier of the course to which the lesson belongs.",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "unitId",
-            "in": "path",
-            "description": "The unique identifier of the unit to which the lesson belongs.",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "Title": {
-                    "type": "string"
-                  },
-                  "Content": {
-                    "type": "string"
-                  },
-                  "SkillFocus": {
-                    "type": "string"
-                  },
-                  "Description": {
-                    "type": "string"
-                  },
-                  "VideoFile": {
-                    "type": "string",
-                    "format": "binary"
-                  },
-                  "DocumentFile": {
-                    "type": "string",
-                    "format": "binary"
-                  }
-                }
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Lesson created successfully.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid input or creation failed.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/courses/{courseId}/units/{unitId}/lessons/{lessonId}": {
-      "put": {
-        "tags": [
-          "CourseLesson"
-        ],
-        "summary": "Update an existing lesson information.",
-        "description": "This endpoint allows teachers to update an existing lesson.  \r\nOnly lessons in courses with status **Draft** or **Rejected** can be updated.  \r\nIf new files are provided, old video/document files will be replaced and deleted from storage.",
-        "parameters": [
-          {
-            "name": "courseId",
-            "in": "path",
-            "description": "The unique identifier of the course that contains the unit.",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "unitId",
-            "in": "path",
-            "description": "The unique identifier of the course unit that contains the lesson.",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "lessonId",
-            "in": "path",
-            "description": "The unique identifier of the lesson to update.",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "Title": {
-                    "type": "string"
-                  },
-                  "Content": {
-                    "type": "string"
-                  },
-                  "SkillFocus": {
-                    "type": "string"
-                  },
-                  "Description": {
-                    "type": "string"
-                  },
-                  "VideoFile": {
-                    "type": "string",
-                    "format": "binary"
-                  },
-                  "DocumentFile": {
-                    "type": "string",
-                    "format": "binary"
-                  }
-                }
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Lesson updated successfully.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request data or validation failure.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Teacher, course, unit, or lesson not found.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error during update or file upload.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/units/{unitId}/lessons": {
       "get": {
         "tags": [
@@ -2044,6 +1785,95 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "CourseLesson"
+        ],
+        "summary": "Create a new lesson under a specific unit.",
+        "parameters": [
+          {
+            "name": "unitId",
+            "in": "path",
+            "description": "The unique identifier of the unit to which the lesson belongs.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "Title": {
+                    "type": "string"
+                  },
+                  "Description": {
+                    "type": "string"
+                  },
+                  "Content": {
+                    "type": "string"
+                  },
+                  "VideoFile": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "DocumentFile": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Lesson created successfully.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or creation failed.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/lessons/{lessonId}": {
@@ -2051,8 +1881,7 @@
         "tags": [
           "CourseLesson"
         ],
-        "summary": "Retrieve the details of a specific lesson by its Id.",
-        "description": "Returns detailed information about the requested lesson,\r\nincluding related course and unit details if available.",
+        "summary": "Retrieve details of a specific lesson by its ID.",
         "parameters": [
           {
             "name": "lessonId",
@@ -2109,18 +1938,18 @@
         }
       }
     },
-    "/api/courses/{courseId}/lessons": {
-      "get": {
+    "/api/units/{unitId}/lessons/{lessonId}": {
+      "put": {
         "tags": [
           "CourseLesson"
         ],
-        "summary": "Get a paged list of all lessons that belong to a specific course.",
-        "description": "Returns a paginated list of lessons across all units inside the given course.",
+        "summary": "Update an existing lesson.",
+        "description": "Only teachers who own the course can update it.\r\nOnly lessons in courses with status Draft or Rejected can be updated.",
         "parameters": [
           {
-            "name": "courseId",
+            "name": "unitId",
             "in": "path",
-            "description": "The unique identifier of the course.",
+            "description": "The unique identifier of the course unit that contains the lesson.",
             "required": true,
             "schema": {
               "type": "string",
@@ -2128,59 +1957,122 @@
             }
           },
           {
-            "name": "Page",
-            "in": "query",
+            "name": "lessonId",
+            "in": "path",
+            "description": "The unique identifier of the lesson to update.",
+            "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "PageSize",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string",
+              "format": "uuid"
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "Title": {
+                    "type": "string"
+                  },
+                  "Description": {
+                    "type": "string"
+                  },
+                  "Content": {
+                    "type": "string"
+                  },
+                  "VideoFile": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "DocumentFile": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
-            "description": "Lessons retrieved successfully.",
+            "description": "Lesson updated successfully.",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/LessonResponseIEnumerablePagedResponse"
+                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LessonResponseIEnumerablePagedResponse"
+                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LessonResponseIEnumerablePagedResponse"
+                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request data or validation failure.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
                 }
               }
             }
           },
           "404": {
-            "description": "Course not found or no lessons available.",
+            "description": "Lesson or unit not found.",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/LessonResponseIEnumerablePagedResponse"
+                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LessonResponseIEnumerablePagedResponse"
+                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LessonResponseIEnumerablePagedResponse"
+                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonResponseBaseResponse"
                 }
               }
             }
@@ -4068,10 +3960,6 @@
           "position": {
             "type": "integer",
             "format": "int32"
-          },
-          "skillFocus": {
-            "type": "string",
-            "nullable": true
           },
           "description": {
             "type": "string",

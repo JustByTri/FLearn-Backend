@@ -6,7 +6,6 @@
         public string Title { get; set; } = null!;
         public string? Content { get; set; }
         public int Position { get; set; }
-        public string? SkillFocus { get; set; }
         public string? Description { get; set; }
         public string? VideoUrl { get; set; }
         public string? DocumentUrl { get; set; }

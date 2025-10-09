@@ -9,6 +9,7 @@ using BLL.IServices.CourseTemplate;
 using BLL.IServices.CourseUnit;
 using BLL.IServices.Goal;
 using BLL.IServices.Language;
+using BLL.IServices.Lesson;
 using BLL.IServices.Redis;
 using BLL.IServices.Topic;
 using BLL.IServices.Upload;
@@ -23,6 +24,7 @@ using BLL.Services.CourseTemplate;
 using BLL.Services.CourseUnits;
 using BLL.Services.Goal;
 using BLL.Services.Languages;
+using BLL.Services.Lesson;
 using BLL.Services.Redis;
 using BLL.Services.Topic;
 using BLL.Services.Upload;
@@ -107,6 +109,7 @@ namespace BLL
             services.AddScoped<ITeacherApplicationService, TeacherApplicationService>();
             services.AddScoped<ICourseService, CourseService>();
             services.AddScoped<ICourseUnitService, CourseUnitService>();
+            services.AddScoped<ILessonService, LessonService>();
             return services;
         }
     }
