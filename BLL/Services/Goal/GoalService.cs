@@ -48,6 +48,7 @@ namespace BLL.Services.Goal
             var totalItems = await query.CountAsync();
 
             var goals = await query
+                .OrderBy(g => g.Id)
                 .Skip((request.Page - 1) * request.PageSize)
                 .Take(request.PageSize)
                 .Select(g => new GoalResponse
@@ -56,7 +57,6 @@ namespace BLL.Services.Goal
                     Name = g.Name,
                     Description = g.Description ?? "None",
                 })
-                .OrderBy(g => g.Id)
                 .ToListAsync();
 
             if (goals == null || !goals.Any())

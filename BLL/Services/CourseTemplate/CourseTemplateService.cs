@@ -4,6 +4,7 @@ using Common.DTO.CourseTemplate.Request;
 using Common.DTO.CourseTemplate.Response;
 using Common.DTO.Paging.Request;
 using Common.DTO.Paging.Response;
+using DAL.Helpers;
 using DAL.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,27 +17,29 @@ namespace BLL.Services.CourseTemplate
         {
             _unit = unit;
         }
-
         public async Task<BaseResponse<CourseTemplateResponse>> CreateAsync(CourseTemplateRequest request)
         {
+            if (request == null)
+                return BaseResponse<CourseTemplateResponse>.Error("Invalid request.");
+
             try
             {
                 var newTemplate = new DAL.Models.CourseTemplate
                 {
                     Id = Guid.NewGuid(),
-                    Name = request.Name,
-                    Description = request.Description,
+                    Name = string.IsNullOrWhiteSpace(request.Name) ? "Untitled Course Template" : request.Name.Trim(),
+                    Description = string.IsNullOrWhiteSpace(request.Description) ? string.Empty : request.Description.Trim(),
                     RequireGoal = request.RequireGoal,
                     RequireTopic = request.RequireTopic,
                     RequireLang = request.RequireLang,
                     RequireLevel = request.RequireLevel,
-                    MinUnits = request.MinUnits,
-                    MinLessonsPerUnit = request.MinLessonsPerUnit,
-                    MinExercisesPerLesson = request.MinExercisesPerLesson,
+                    MinUnits = request.MinUnits < 0 ? 5 : request.MinUnits,
+                    MinLessonsPerUnit = request.MinLessonsPerUnit < 0 ? 5 : request.MinLessonsPerUnit,
+                    MinExercisesPerLesson = request.MinExercisesPerLesson < 0 ? 5 : request.MinExercisesPerLesson,
+                    CreatedAt = TimeHelper.GetVietnamTime(),
                 };
 
-                _unit.CourseTemplates.Create(newTemplate);
-                await _unit.SaveChangesAsync();
+                await _unit.CourseTemplates.CreateAsync(newTemplate);
 
                 var response = new CourseTemplateResponse
                 {
@@ -59,19 +62,14 @@ namespace BLL.Services.CourseTemplate
                 return BaseResponse<CourseTemplateResponse>.Error(ex.Message);
             }
         }
-
-        public Task<BaseResponse<bool>> DeleteAsync(Guid id)
-        {
-            throw new NotImplementedException();
-        }
-
         public async Task<PagedResponse<IEnumerable<CourseTemplateResponse>>> GetAllAsync(PagingRequest request)
         {
-            var query = _unit.CourseTemplates.Query();
+            var query = _unit.CourseTemplates.Query().Where(t => t.Status == true);
 
             var totalItems = await query.CountAsync();
 
             var templates = await query
+                .OrderBy(t => t.CreatedAt)
                 .Skip((request.Page - 1) * request.PageSize)
                 .Take(request.PageSize)
                 .Select(t => new CourseTemplateResponse
@@ -87,7 +85,6 @@ namespace BLL.Services.CourseTemplate
                     MinLessonsPerUnit = t.MinLessonsPerUnit,
                     MinExercisesPerLesson = t.MinExercisesPerLesson
                 })
-                .OrderBy(t => t.Id)
                 .ToListAsync();
 
             if (templates == null || !templates.Any())
@@ -141,6 +138,9 @@ namespace BLL.Services.CourseTemplate
 
         public async Task<BaseResponse<CourseTemplateResponse>> UpdateAsync(Guid id, CourseTemplateRequest request)
         {
+            if (request == null)
+                return BaseResponse<CourseTemplateResponse>.Error("Invalid request.");
+
             var selectedTemplate = await _unit.CourseTemplates.GetByIdAsync(id);
 
             if (selectedTemplate == null)
@@ -148,37 +148,60 @@ namespace BLL.Services.CourseTemplate
                 return BaseResponse<CourseTemplateResponse>.Fail(new { Id = "Not found" }, "CourseTemplate not found", 404);
             }
 
-            selectedTemplate.Name = request.Name;
-            selectedTemplate.Description = request.Description;
-            selectedTemplate.RequireGoal = request.RequireGoal;
-            selectedTemplate.RequireLevel = request.RequireLevel;
-            selectedTemplate.RequireTopic = request.RequireTopic;
-            selectedTemplate.RequireLang = request.RequireLang;
-            selectedTemplate.MinUnits = request.MinUnits;
-            selectedTemplate.MinLessonsPerUnit = request.MinLessonsPerUnit;
-            selectedTemplate.MinExercisesPerLesson = request.MinExercisesPerLesson;
-            selectedTemplate.ModifiedAt = DateTime.UtcNow;
-
-            await _unit.SaveChangesAsync();
-
-            var response = new CourseTemplateResponse
+            try
             {
-                Id = selectedTemplate.Id,
-                Name = selectedTemplate.Name,
-                Description = selectedTemplate.Description,
-                RequireGoal = selectedTemplate.RequireGoal,
-                RequireLevel = selectedTemplate.RequireLevel,
-                RequireTopic = selectedTemplate.RequireTopic,
-                RequireLang = selectedTemplate.RequireLang,
-                MinUnits = selectedTemplate.MinUnits,
-                MinLessonsPerUnit = selectedTemplate.MinLessonsPerUnit,
-                MinExercisesPerLesson = selectedTemplate.MinExercisesPerLesson
-            };
+                if (!string.IsNullOrWhiteSpace(request.Name))
+                    selectedTemplate.Name = request.Name.Trim();
+                if (request.Description != null)
+                    selectedTemplate.Description = string.IsNullOrWhiteSpace(request.Description)
+                        ? selectedTemplate.Description
+                        : request.Description.Trim();
 
-            return BaseResponse<CourseTemplateResponse>.Success(
-                response,
-                "CourseTemplate updated successfully"
-            );
+                selectedTemplate.RequireGoal = request.RequireGoal;
+                selectedTemplate.RequireLevel = request.RequireLevel;
+                selectedTemplate.RequireTopic = request.RequireTopic;
+                selectedTemplate.RequireLang = request.RequireLang;
+
+                if (request.MinUnits > 0)
+                    selectedTemplate.MinUnits = request.MinUnits;
+
+                if (request.MinLessonsPerUnit > 0)
+                    selectedTemplate.MinLessonsPerUnit = request.MinLessonsPerUnit;
+
+                if (request.MinExercisesPerLesson > 0)
+                    selectedTemplate.MinExercisesPerLesson = request.MinExercisesPerLesson;
+
+                selectedTemplate.ModifiedAt = TimeHelper.GetVietnamTime();
+
+                await _unit.SaveChangesAsync();
+
+                var response = new CourseTemplateResponse
+                {
+                    Id = selectedTemplate.Id,
+                    Name = selectedTemplate.Name,
+                    Description = selectedTemplate.Description,
+                    RequireGoal = selectedTemplate.RequireGoal,
+                    RequireLevel = selectedTemplate.RequireLevel,
+                    RequireTopic = selectedTemplate.RequireTopic,
+                    RequireLang = selectedTemplate.RequireLang,
+                    MinUnits = selectedTemplate.MinUnits,
+                    MinLessonsPerUnit = selectedTemplate.MinLessonsPerUnit,
+                    MinExercisesPerLesson = selectedTemplate.MinExercisesPerLesson
+                };
+
+                return BaseResponse<CourseTemplateResponse>.Success(
+                    response,
+                    "CourseTemplate updated successfully"
+                );
+            }
+            catch (DbUpdateException)
+            {
+                return BaseResponse<CourseTemplateResponse>.Error("Database error while updating course template.");
+            }
+            catch (Exception)
+            {
+                return BaseResponse<CourseTemplateResponse>.Error("Unexpected error while updating course template.");
+            }
         }
     }
 }

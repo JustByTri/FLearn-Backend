@@ -10,7 +10,6 @@ namespace BLL.IServices.CourseTemplate
     {
         Task<BaseResponse<CourseTemplateResponse>> CreateAsync(CourseTemplateRequest request);
         Task<BaseResponse<CourseTemplateResponse>> UpdateAsync(Guid id, CourseTemplateRequest request);
-        Task<BaseResponse<bool>> DeleteAsync(Guid id);
         Task<BaseResponse<CourseTemplateResponse>> GetByIdAsync(Guid id);
         Task<PagedResponse<IEnumerable<CourseTemplateResponse>>> GetAllAsync(PagingRequest request);
     }

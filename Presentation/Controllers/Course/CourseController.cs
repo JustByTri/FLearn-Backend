@@ -1,4 +1,5 @@
 ﻿using BLL.IServices.Course;
+using BLL.Services.Course;
 using Common.DTO.ApiResponse;
 using Common.DTO.Course.Request;
 using Common.DTO.Course.Response;
@@ -20,22 +21,36 @@ namespace Presentation.Controllers.Course
             _courseService = courseService;
         }
         /// <summary>
-        /// Retrieves a paginated list of courses.
+        /// Retrieves a paginated list of courses, optionally filtered by course status.
         /// </summary>
-        /// <param name="request">Pagination information: Page, PageSize</param>
-        /// <returns>A paginated list of courses</returns>
-        /// <response code="200">Successfully retrieved the list of courses</response>
-        /// <response code="404">No courses found</response>
-        /// <response code="500">Server error during course retrieval</response>
+        /// <param name="request">
+        /// Pagination information: <c>Page</c>, <c>PageSize</c>.
+        /// </param>
+        /// <param name="status">
+        /// Optional filter by course status. Accepted values:
+        /// <list type="bullet">
+        /// <item><description><c>Draft</c></description></item>
+        /// <item><description><c>PendingApproval</c></description></item>
+        /// <item><description><c>Published</c></description></item>
+        /// <item><description><c>Rejected</c></description></item>
+        /// <item><description><c>Archived</c></description></item>
+        /// </list>
+        /// </param>
+        /// <returns>A paginated list of courses.</returns>
+        /// <response code="200">Successfully retrieved the list of courses.</response>
+        /// <response code="400">Invalid status value.</response>
+        /// <response code="404">No courses found.</response>
+        /// <response code="500">Server error during course retrieval.</response>
         [HttpGet]
         [ProducesResponseType(typeof(PagedResponse<IEnumerable<CourseResponse>>), 200)]
+        [ProducesResponseType(typeof(object), 400)]
         [ProducesResponseType(typeof(object), 404)]
         [ProducesResponseType(typeof(object), 500)]
-        public async Task<IActionResult> GetAllCourses([FromQuery] PagingRequest request)
+        public async Task<IActionResult> GetAllCourses([FromQuery] PagingRequest request, [FromQuery] string? status)
         {
             try
             {
-                var response = await _courseService.GetAllCoursesAsync(request);
+                var response = await _courseService.GetAllCoursesAsync(request, status);
 
                 if (response.Data == null || !response.Data.Any())
                 {
@@ -92,33 +107,48 @@ namespace Presentation.Controllers.Course
             }
         }
         /// <summary>
-        /// Create a new course with topics, teacher, template, and other details.
+        /// Creates a new course submitted by an authorized teacher.
         /// </summary>
-        /// <param name="request">Course request model including title, description, image, etc.</param>
+        /// <param name="request">
+        /// The course creation request containing title, description, image, template ID,
+        /// topic IDs, price, discount, course type, goal, and level information.
+        /// </param>
         /// <returns>
-        /// Returns a <see cref="CourseResponse"/> wrapped inside <c>BaseResponse</c>.
-        /// If success, HTTP 200 (OK) with course data.
-        /// If validation fails, HTTP 400 (Bad Request).
+        /// Returns an <see cref="IActionResult"/> containing:
+        /// <list type="bullet">
+        /// <item><description><b>201 Created</b> - if the course is successfully created.</description></item>
+        /// <item><description><b>400 Bad Request</b> - if the request data or user ID is invalid.</description></item>
+        /// <item><description><b>401 Unauthorized</b> - if the teacher ID is missing or invalid in the JWT token.</description></item>
+        /// </list>
+        /// </returns>
+        /// <remarks>
+        /// This endpoint is restricted to users with the <c>Teacher</c> role.
+        /// The method extracts the teacher's ID from the authentication token, validates the request,
+        /// and delegates course creation to <see cref="CourseService.CreateCourseAsync(Guid, CourseRequest)"/>.
+        /// </remarks>
         [Authorize(Roles = "Teacher")]
         [HttpPost]
-        public async Task<IActionResult> Create([FromForm] CourseRequest request)
+        public async Task<IActionResult> CreateCourse([FromForm] CourseRequest request)
         {
-            var teacherId = User.FindFirstValue("user_id")
-                                ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userIdClaim = User.FindFirstValue("user_id")
+                     ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            if (string.IsNullOrEmpty(teacherId))
+            if (string.IsNullOrEmpty(userIdClaim))
             {
                 return Unauthorized("Teacher ID not found in token.");
             }
 
-            Guid teacherGuid = Guid.Parse(teacherId);
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return BadRequest("Invalid user ID format in token.");
+            }
 
             if (!ModelState.IsValid)
             {
                 return BadRequest(BaseResponse<object>.Fail("Invalid request data."));
             }
 
-            var response = await _courseService.CreateCourseAsync(teacherGuid, request);
+            var response = await _courseService.CreateCourseAsync(userId, request);
 
             return StatusCode(response.Code, response);
         }
@@ -139,59 +169,124 @@ namespace Presentation.Controllers.Course
         [ProducesResponseType(typeof(BaseResponse<CourseResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(BaseResponse<CourseResponse>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(BaseResponse<CourseResponse>), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(BaseResponse<CourseResponse>), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> UpdateCourse(Guid courseId, [FromForm] UpdateCourseRequest request)
         {
-            var teacherId = User.FindFirstValue("user_id")
-                                ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (string.IsNullOrEmpty(teacherId))
+            try
             {
-                return Unauthorized("Teacher ID not found in token.");
+                var userIdClaim = User.FindFirstValue("user_id")
+                         ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                if (string.IsNullOrEmpty(userIdClaim))
+                {
+                    return Unauthorized("Teacher ID not found in token.");
+                }
+
+                if (!Guid.TryParse(userIdClaim, out Guid userId))
+                {
+                    return BadRequest("Invalid user ID format in token.");
+                }
+
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState
+                        .Where(e => e.Value?.Errors.Count > 0)
+                        .ToDictionary(
+                            kvp => kvp.Key,
+                            kvp => kvp.Value!.Errors.First().ErrorMessage
+                        );
+
+                    return BadRequest(BaseResponse<object>.Fail(errors, "Invalid request data.", 400));
+                }
+
+                var response = await _courseService.UpdateCourseAsync(userId, courseId, request);
+
+                return StatusCode(response.Code, response);
             }
-
-            Guid teacherGuid = Guid.Parse(teacherId);
-
-            if (!ModelState.IsValid)
+            catch (Exception ex)
             {
-                return BadRequest(BaseResponse<object>.Fail("Invalid request data."));
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    BaseResponse<object>.Error("An unexpected error occurred while updating the course."));
             }
-
-            var response = await _courseService.UpdateCourseAsync(teacherGuid, courseId, request);
-
-            return StatusCode(response.Code, response);
         }
         /// <summary>
-        /// Retrieves all courses created by a specific teacher.
+        /// Retrieves all courses created by the currently authenticated teacher.
         /// </summary>
         /// <param name="request">The paging request containing page number and page size.</param>
+        /// <param name="status">
+        /// (Optional) Filter courses by status.  
+        /// Accepted values: Draft, PendingApproval, Published, Rejected, Archived.
+        /// </param>
         /// <returns>
-        /// A paged response containing a list of courses created by the given teacher. 
-        /// If the teacher is not found or does not have the "Teacher" role, 
-        /// an error will be returned.
+        /// A paged response containing the teacher's courses.  
+        /// Returns 404 if the teacher does not exist or has no courses.
         /// </returns>
-        /// <response code="200">Returns the list of courses for the teacher.</response>
-        /// <response code="401">If the user does not have the Teacher role.</response>
-        /// <response code="404">If the teacher with the given ID does not exist.</response>
+        /// <response code="200">Successfully retrieved courses.</response>
+        /// <response code="400">If the status value is invalid or user ID format is incorrect.</response>
+        /// <response code="401">If the user is not authenticated or not a Teacher.</response>
+        /// <response code="404">If no teacher or courses found.</response>
+        /// <response code="500">If an unexpected error occurs.</response>
         [HttpGet("by-teacher")]
         [Authorize(Roles = "Teacher")]
-        [ProducesResponseType(typeof(PagedResponse<IEnumerable<CourseResponse>>), 200)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(404)]
-        public async Task<IActionResult> GetAllCoursesByTeacherId([FromQuery] PagingRequest request)
+        [ProducesResponseType(typeof(PagedResponse<IEnumerable<CourseResponse>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetAllCoursesByTeacherId([FromQuery] PagingRequest request, [FromQuery] string? status)
         {
-            var teacherId = User.FindFirstValue("user_id")
-                    ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (string.IsNullOrEmpty(teacherId))
+            try
             {
-                return Unauthorized("Teacher ID not found in token.");
+                var userIdClaim = User.FindFirstValue("user_id")
+                                 ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                if (string.IsNullOrEmpty(userIdClaim))
+                {
+                    return Unauthorized(new
+                    {
+                        Message = "Teacher ID not found in token."
+                    });
+                }
+
+                if (!Guid.TryParse(userIdClaim, out Guid userId))
+                {
+                    return BadRequest(new
+                    {
+                        Message = "Invalid user ID format in token."
+                    });
+                }
+
+                var response = await _courseService.GetAllCoursesByTeacherIdAsync(userId, request, status);
+
+                if (response.Code == 404 || response.Data == null || !response.Data.Any())
+                {
+                    return NotFound(new
+                    {
+                        Message = "No courses found for this teacher.",
+                        Page = request.Page,
+                        PageSize = request.PageSize,
+                        TotalItems = response.Meta?.TotalItems ?? 0
+                    });
+                }
+
+                return Ok(response);
             }
-
-            Guid teacherGuid = Guid.Parse(teacherId);
-
-            var response = await _courseService.GetAllCoursesByTeacherIdAsync(teacherGuid, request);
-
-            return StatusCode(response.Code, response);
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    Message = "Invalid status value provided.",
+                    Details = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new
+                {
+                    Message = "An unexpected error occurred while retrieving courses.",
+                    Details = ex.Message
+                });
+            }
         }
     }
 }
