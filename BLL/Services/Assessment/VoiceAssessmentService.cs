@@ -63,24 +63,51 @@ namespace BLL.Services.Assessment
                 if (language == null)
                     throw new ArgumentException("Ngôn ngữ không tồn tại");
 
-                // 🆕 CHUẨN HÓA MÃ NGÔN NGỮ
                 var languageCode = language.LanguageCode?.Trim().ToUpper();
 
                 var supportedLanguages = new[] { "EN", "ZH", "JP" };
                 if (string.IsNullOrEmpty(languageCode) || !supportedLanguages.Contains(languageCode))
                     throw new ArgumentException("Chỉ hỗ trợ đánh giá giọng nói tiếng Anh, tiếng Trung và tiếng Nhật");
 
-                // Kiểm tra bài đánh giá đã tồn tại
+                // ✅ CHECK XEM USER ĐÃ ACCEPT ASSESSMENT CHƯA (có Roadmap)
+                var allLearnerLanguages = await _unitOfWork.LearnerLanguages.GetAllAsync();
+                var learnerLanguage = allLearnerLanguages.FirstOrDefault(ll =>
+                    ll.UserId == userId &&
+                    ll.LanguageId == languageId);
+
+                if (learnerLanguage != null)
+                {
+                    // ✅ CHECK XEM CÓ ROADMAP KHÔNG
+                    var allRoadmaps = await _unitOfWork.Roadmaps.GetAllAsync();
+                    var existingRoadmap = allRoadmaps.FirstOrDefault(r =>
+                        r.LearnerLanguageId == learnerLanguage.LearnerLanguageId);
+
+                    if (existingRoadmap != null)
+                    {
+                        _logger.LogWarning("❌ User {UserId} already ACCEPTED assessment for language {LanguageId}. Roadmap exists: {RoadmapId}",
+                            userId, languageId, existingRoadmap.RoadmapID);
+
+                        throw new InvalidOperationException(
+                            $"Bạn đã hoàn thành và chấp nhận kết quả đánh giá cho {language.LanguageName}. " +
+                            $"Không thể làm lại assessment sau khi đã chấp nhận kết quả.");
+                    }
+                }
+
+                // ✅ LUÔN XÓA ASSESSMENT CŨ (nếu có) - CHỈ assessment chưa accept
                 var existingAssessments = await _redisService.GetUserAssessmentsAsync(userId, languageId);
                 var existingAssessment = existingAssessments.FirstOrDefault();
 
                 if (existingAssessment != null)
                 {
-                    _logger.LogInformation("Resuming existing assessment {AssessmentId}", existingAssessment.AssessmentId);
-                    return existingAssessment;
+                    _logger.LogWarning("⚠️ Found existing assessment {AssessmentId}. Deleting to create fresh one...",
+                        existingAssessment.AssessmentId);
+
+                    await _redisService.DeleteVoiceAssessmentAsync(existingAssessment.AssessmentId);
+
+                    _logger.LogInformation("✅ Deleted old assessment. Creating new one.");
                 }
 
-                // Lấy Goal nếu có
+          
                 string? goalName = null;
                 if (goalId.HasValue)
                 {
@@ -89,30 +116,22 @@ namespace BLL.Services.Assessment
                     _logger.LogInformation("Goal selected: {GoalName}", goalName ?? "None");
                 }
 
-                // 🆕 GENERATE QUESTIONS VỚI MÃ ĐÃ CHUẨN HÓA
-                _logger.LogInformation("🎯 Generating questions for {LanguageCode} ({LanguageName})",
+            
+                _logger.LogInformation("🎯 Generating NEW questions for {LanguageCode} ({LanguageName})",
                     languageCode, language.LanguageName);
 
                 var questions = await _geminiService.GenerateVoiceAssessmentQuestionsAsync(
-                    languageCode,  // ✅ Dùng mã đã chuẩn hóa
+                    languageCode,
                     language.LanguageName);
 
-                // VALIDATION
                 if (questions == null || questions.Count == 0)
                 {
-                    _logger.LogError("❌ GenerateVoiceAssessmentQuestionsAsync returned null or empty list for {LanguageCode}", languageCode);
-                    throw new InvalidOperationException($"Không thể tạo câu hỏi cho ngôn ngữ {language.LanguageName}. Vui lòng thử lại sau.");
+                    throw new InvalidOperationException($"Không thể tạo câu hỏi cho ngôn ngữ {language.LanguageName}");
                 }
 
-                _logger.LogInformation("📝 Generated {Count} questions for assessment", questions.Count);
+                _logger.LogInformation("📝 Generated {Count} questions", questions.Count);
 
-                foreach (var q in questions)
-                {
-                    _logger.LogInformation("Question {Number}: {QuestionType} - {Difficulty} - WordGuides: {WordCount}",
-                        q.QuestionNumber, q.QuestionType, q.Difficulty, q.WordGuides?.Count ?? 0);
-                }
-
-                // Tạo assessment mới
+             
                 var assessment = new VoiceAssessmentDto
                 {
                     AssessmentId = Guid.NewGuid(),
@@ -128,8 +147,7 @@ namespace BLL.Services.Assessment
 
                 await _redisService.SetVoiceAssessmentAsync(assessment);
 
-                _logger.LogInformation("✅ CREATED Assessment {AssessmentId} with {QuestionCount} questions, Goal: {GoalName}",
-                    assessment.AssessmentId, questions.Count, goalName ?? "None");
+                _logger.LogInformation("✅ CREATED NEW Assessment {AssessmentId}", assessment.AssessmentId);
 
                 return assessment;
             }

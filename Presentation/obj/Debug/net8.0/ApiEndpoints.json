@@ -2462,6 +2462,22 @@
   },
   {
     "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
+    "Method": "CheckAssessmentStatus",
+    "RelativePath": "api/VoiceAssessment/check-status/{languageId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "languageId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
     "Method": "CompleteVoiceAssessment",
     "RelativePath": "api/VoiceAssessment/complete/{assessmentId}",
     "HttpMethod": "POST",
@@ -2474,6 +2490,16 @@
         "IsRequired": true
       }
     ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
+    "Method": "GetMyAssessmentStatus",
+    "RelativePath": "api/VoiceAssessment/my-assessment-status",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
     "ReturnTypes": []
   },
   {
@@ -2532,7 +2558,7 @@
   {
     "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
     "Method": "StartVoiceAssessment",
-    "RelativePath": "api/VoiceAssessment/start/{languageId}",
+    "RelativePath": "api/VoiceAssessment/start",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
@@ -2540,28 +2566,12 @@
       {
         "Name": "languageId",
         "Type": "System.Guid",
-        "IsRequired": true
+        "IsRequired": false
       },
       {
         "Name": "goalId",
         "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
         "IsRequired": false
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
-    "Method": "CheckAssessmentStatus",
-    "RelativePath": "api/VoiceAssessment/status/{languageId}",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "languageId",
-        "Type": "System.Guid",
-        "IsRequired": true
       }
     ],
     "ReturnTypes": []
