@@ -12,6 +12,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using System.Security.Claims;
 using System.Linq;
 using BLL.IServices.Course;
+using BLL.IServices.Redis;
 namespace Presentation.Controllers.Assessment
 {
     [Route("api/[controller]")]
@@ -24,17 +25,18 @@ namespace Presentation.Controllers.Assessment
         private readonly ILogger<VoiceAssessmentController> _logger;
         private readonly IGeminiService _geminiService;
         private readonly ICourseRecommendationService _courseRecommendationService;
-
+        private readonly IRedisService _redisService;
         public VoiceAssessmentController(
             IVoiceAssessmentService voiceAssessmentService,
             IUnitOfWork unitOfWork,
             ICourseRecommendationService courseRecommendationService,  
-            ILogger<VoiceAssessmentController> logger)
+            ILogger<VoiceAssessmentController> logger, IRedisService redisService)
         {
             _logger = logger;
             _voiceAssessmentService = voiceAssessmentService;
             _unitOfWork = unitOfWork;
-            _courseRecommendationService = courseRecommendationService;  
+            _courseRecommendationService = courseRecommendationService;
+            _redisService = redisService;
         }
 
         /// <summary>
@@ -43,76 +45,163 @@ namespace Presentation.Controllers.Assessment
         /// <summary>
         /// Bắt đầu bài đánh giá giọng nói - TỰ ĐỘNG LƯU VÀO REDIS
         /// </summary>
-        [HttpPost("start/{languageId:guid}")]
-        public async Task<IActionResult> StartVoiceAssessment(Guid languageId, [FromQuery] int? goalId = null)
+        [HttpPost("start")]
+        public async Task<IActionResult> StartVoiceAssessment(
+      [FromQuery] Guid languageId,  // ✅ Query parameter
+      [FromQuery] int? goalId = null)  // ✅ Optional
         {
             try
             {
                 var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-                // Lấy thông tin ngôn ngữ từ DB
-                var language = await _unitOfWork.Languages.GetByIdAsync(languageId);
-                if (language == null)
-                {
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = "Ngôn ngữ không tồn tại",
-                        errorCode = "LANGUAGE_NOT_FOUND"
-                    });
-                }
-
-           
-                _logger.LogInformation("🔍 Language from DB: Name={Name}, Code=[{Code}], Length={Length}",
-                    language.LanguageName,
-                    language.LanguageCode,
-                    language.LanguageCode?.Length ?? 0);
-
-        
-                var trimmedCode = language.LanguageCode?.Trim().ToUpper();
-
-                var supportedLanguages = new[] { "EN", "ZH", "JP" };
-
-                if (string.IsNullOrEmpty(trimmedCode) || !supportedLanguages.Contains(trimmedCode))
-                {
-                    _logger.LogWarning("❌ Unsupported language code: [{Code}] (trimmed: [{Trimmed}])",
-                        language.LanguageCode, trimmedCode);
-
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = "Chỉ hỗ trợ đánh giá giọng nói tiếng Anh, tiếng Trung và tiếng Nhật",
-                        errorCode = "LANGUAGE_NOT_SUPPORTED"
-                    });
-                }
-
-             
-                var assessment = await _voiceAssessmentService.StartVoiceAssessmentAsync(
+                _logger.LogInformation("Starting assessment: UserId={UserId}, LanguageId={LanguageId}, GoalId={GoalId}",
                     userId, languageId, goalId);
+
+                var assessment = await _voiceAssessmentService.StartVoiceAssessmentAsync(
+                    userId,
+                    languageId,
+                    goalId);
 
                 return Ok(new
                 {
                     success = true,
-                    message = $"Bắt đầu đánh giá giọng nói {assessment.LanguageName}" +
-                             (assessment.GoalName != null ? $" - Mục tiêu: {assessment.GoalName}" : ""),
+                    message = "Bắt đầu voice assessment thành công",
+                    data = assessment
+                });
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("đã hoàn thành và chấp nhận"))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message,
+                    errorCode = "ASSESSMENT_ALREADY_ACCEPTED",
+                    canRetake = false
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting voice assessment");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Đã xảy ra lỗi khi bắt đầu assessment",
+                    error = ex.Message
+                });
+            }
+        }
+        [HttpGet("check-required")]
+        public async Task<IActionResult> CheckAssessmentRequired()
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+                _logger.LogInformation("Checking if assessment is required for user {UserId}", userId);
+
+                // Lấy tất cả LearnerLanguages của user
+                var allLearnerLanguages = await _unitOfWork.LearnerLanguages.GetAllAsync();
+                var userLearnerLanguages = allLearnerLanguages
+                    .Where(ll => ll.UserId == userId)
+                    .ToList();
+
+                // Nếu user chưa có LearnerLanguage nào → PHẢI LÀM ASSESSMENT
+                if (!userLearnerLanguages.Any())
+                {
+                    _logger.LogInformation("User {UserId} has NO LearnerLanguages. Assessment REQUIRED.", userId);
+
+                    return Ok(new
+                    {
+                        success = true,
+                        data = new
+                        {
+                            assessmentRequired = true,
+                            hasAcceptedAssessment = false,
+                            reason = "Bạn chưa chọn ngôn ngữ học. Vui lòng làm assessment để bắt đầu.",
+                            nextAction = "SELECT_LANGUAGE_AND_GOAL"
+                        }
+                    });
+                }
+
+                // Kiểm tra xem có LearnerLanguage nào đã có Roadmap chưa
+                var allRoadmaps = await _unitOfWork.Roadmaps.GetAllAsync();
+                var hasAcceptedRoadmap = userLearnerLanguages.Any(ll =>
+                    allRoadmaps.Any(r => r.LearnerLanguageId == ll.LearnerLanguageId));
+
+                if (hasAcceptedRoadmap)
+                {
+                    // User đã accept ít nhất 1 assessment → KHÔNG CẦN LÀM NỮA
+                    _logger.LogInformation("User {UserId} has ACCEPTED assessment(s). No action required.", userId);
+
+                    var acceptedLanguages = userLearnerLanguages
+                        .Where(ll => allRoadmaps.Any(r => r.LearnerLanguageId == ll.LearnerLanguageId))
+                        .Select(async ll => new
+                        {
+                            learnerLanguageId = ll.LearnerLanguageId,
+                            languageId = ll.LanguageId,
+                            languageName = (await _unitOfWork.Languages.GetByIdAsync(ll.LanguageId))?.LanguageName,
+                            proficiencyLevel = ll.ProficiencyLevel,
+                            goalId = ll.GoalId
+                        })
+                        .Select(t => t.Result)
+                        .ToList();
+
+                    return Ok(new
+                    {
+                        success = true,
+                        data = new
+                        {
+                            assessmentRequired = false,
+                            hasAcceptedAssessment = true,
+                            acceptedLanguages = acceptedLanguages,
+                            reason = "Bạn đã hoàn thành assessment và có roadmap học tập.",
+                            nextAction = "GO_TO_HOME"
+                        }
+                    });
+                }
+
+                // User có LearnerLanguage nhưng CHƯA accept → CÓ THỂ LÀM LẠI
+                _logger.LogInformation("User {UserId} has LearnerLanguages but NO accepted roadmap. Can retake assessment.", userId);
+
+                return Ok(new
+                {
+                    success = true,
                     data = new
                     {
-                        assessmentId = assessment.AssessmentId,
-                        languageName = assessment.LanguageName,
-                        goalName = assessment.GoalName,
-                        totalQuestions = assessment.Questions.Count,
-                        currentQuestionIndex = assessment.CurrentQuestionIndex,
-                        firstQuestion = assessment.Questions.FirstOrDefault()
+                        assessmentRequired = true,
+                        hasAcceptedAssessment = false,
+                        hasIncompleteLearnerLanguages = true,
+                        incompleteLearnerLanguages = userLearnerLanguages.Select(ll => new
+                        {
+                            learnerLanguageId = ll.LearnerLanguageId,
+                            languageId = ll.LanguageId,
+                            proficiencyLevel = ll.ProficiencyLevel,
+                            goalId = ll.GoalId
+                        }),
+                        reason = "Bạn đã bắt đầu nhưng chưa hoàn tất việc chấp nhận kết quả assessment.",
+                        nextAction = "REVIEW_OR_RETAKE"
                     }
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error starting voice assessment");
-                return BadRequest(new { success = false, message = ex.Message });
+                _logger.LogError(ex, "Error checking assessment requirement");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Đã xảy ra lỗi",
+                    error = ex.Message
+                });
             }
         }
-
         /// <summary>
         /// Lấy câu hỏi hiện tại
         /// </summary>
@@ -323,30 +412,7 @@ namespace Presentation.Controllers.Assessment
         /// <summary>
         /// Kiểm tra đã hoàn thành đánh giá chưa
         /// </summary>
-        [HttpGet("status/{languageId:guid}")]
-        public async Task<IActionResult> CheckAssessmentStatus(Guid languageId)
-        {
-            try
-            {
-                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-                var hasCompleted = await _voiceAssessmentService.HasCompletedVoiceAssessmentAsync(userId, languageId);
-
-                return Ok(new
-                {
-                    success = true,
-                    data = new
-                    {
-                        hasCompleted = hasCompleted,
-                        canStartNew = !hasCompleted
-                    },
-                    message = hasCompleted ? "Đã hoàn thành đánh giá" : "Chưa hoàn thành đánh giá"
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { success = false, message = ex.Message });
-            }
-        }
+        
 
         /// <summary>
         /// Complete voice assessment và lưu kết quả vào Redis để đợi accept/reject
@@ -354,8 +420,8 @@ namespace Presentation.Controllers.Assessment
         /// <summary>
         /// Complete voice assessment và lưu kết quả vào Redis để đợi accept/reject
         /// </summary>
-       [ HttpPost("complete/{assessmentId:guid}")]
-public async Task<IActionResult> CompleteVoiceAssessment(Guid assessmentId)
+        [HttpPost("complete/{assessmentId:guid}")]
+        public async Task<IActionResult> CompleteVoiceAssessment(Guid assessmentId)
         {
             try
             {
@@ -363,7 +429,7 @@ public async Task<IActionResult> CompleteVoiceAssessment(Guid assessmentId)
 
                 _logger.LogInformation("User {UserId} completing assessment {AssessmentId}", userId, assessmentId);
 
-             
+                // Validation
                 var assessment = await _voiceAssessmentService.RestoreAssessmentFromIdAsync(assessmentId);
                 if (assessment == null)
                 {
@@ -395,36 +461,18 @@ public async Task<IActionResult> CompleteVoiceAssessment(Guid assessmentId)
                     });
                 }
 
-               
+                // Complete assessment
                 var assessmentResult = await _voiceAssessmentService.CompleteVoiceAssessmentAsync(assessmentId);
 
-              
-                LearnerLanguage learnerLanguage;
-                try
-                {
-                    var findResult = await _unitOfWork.LearnerLanguages
-                        .FindAsync(ll => ll.UserId == userId && ll.LanguageId == assessment.LanguageId);
-
-                 
-                    if (findResult is IEnumerable<LearnerLanguage> enumerable)
-                    {
-                        learnerLanguage = enumerable.FirstOrDefault();
-                    }
-                    else
-                    {
-                        learnerLanguage = findResult as LearnerLanguage;
-                    }
-                }
-                catch
-                {
-                    
-                    var allLearnerLanguages = await _unitOfWork.LearnerLanguages.GetAllAsync();
-                    learnerLanguage = allLearnerLanguages
-                        .FirstOrDefault(ll => ll.UserId == userId && ll.LanguageId == assessment.LanguageId);
-                }
+                // ✅ TÌM HOẶC TẠO LEARNERLANGUAGE
+                var allLearnerLanguages = await _unitOfWork.LearnerLanguages.GetAllAsync();
+                var learnerLanguage = allLearnerLanguages.FirstOrDefault(ll =>
+                    ll.UserId == userId &&
+                    ll.LanguageId == assessment.LanguageId);
 
                 if (learnerLanguage == null)
                 {
+                    // ✅ TẠO MỚI LEARNERLANGUAGE
                     learnerLanguage = new LearnerLanguage
                     {
                         LearnerLanguageId = Guid.NewGuid(),
@@ -440,30 +488,55 @@ public async Task<IActionResult> CompleteVoiceAssessment(Guid assessmentId)
                     await _unitOfWork.LearnerLanguages.CreateAsync(learnerLanguage);
                     await _unitOfWork.SaveChangesAsync();
 
-                    _logger.LogInformation("Created new LearnerLanguage {LearnerLanguageId}", learnerLanguage.LearnerLanguageId);
+                    _logger.LogInformation("✅ Created NEW LearnerLanguage: Id={Id}, Language={Lang}, Goal={Goal}",
+                        learnerLanguage.LearnerLanguageId,
+                        assessment.LanguageName,
+                        assessment.GoalID);
+                }
+                else
+                {
+                    // ✅ CẬP NHẬT GOAL NẾU THAY ĐỔI
+                    if (learnerLanguage.GoalId != assessment.GoalID)
+                    {
+                        _logger.LogInformation("⚠️ Updating Goal for LearnerLanguage {Id}: {OldGoal} → {NewGoal}",
+                            learnerLanguage.LearnerLanguageId,
+                            learnerLanguage.GoalId,
+                            assessment.GoalID);
+
+                        learnerLanguage.GoalId = assessment.GoalID;
+                        learnerLanguage.UpdatedAt = DateTime.UtcNow;
+
+                        _unitOfWork.LearnerLanguages.Update(learnerLanguage);
+                        await _unitOfWork.SaveChangesAsync();
+                    }
+
+                    _logger.LogInformation("✅ Found EXISTING LearnerLanguage: Id={Id}, Language={Lang}, Goal={Goal}",
+                        learnerLanguage.LearnerLanguageId,
+                        assessment.LanguageName,
+                        learnerLanguage.GoalId);
                 }
 
-           
+                // Gọi Course Recommendation Service
                 var recommendedCourses = await _courseRecommendationService.GetRecommendedCoursesAsync(
                     assessment.LanguageId,
                     assessmentResult.OverallLevel,
-                    assessment.GoalID);
+                    learnerLanguage.GoalId);  // ✅ Dùng GoalId từ LearnerLanguage (đã updated)
 
                 _logger.LogInformation("Found {Count} recommended courses for level {Level}",
                     recommendedCourses.Count, assessmentResult.OverallLevel);
 
-             
+                // Check availability
                 var hasCoursesForLevel = await _courseRecommendationService.HasCoursesForLevelAsync(
                     assessment.LanguageId,
                     assessmentResult.OverallLevel);
 
-             
+                // Lưu recommended courses vào Redis
                 await _voiceAssessmentService.SaveRecommendedCoursesAsync(
                     userId,
                     assessment.LanguageId,
                     recommendedCourses);
 
-           
+                // Tạo message động
                 var message = hasCoursesForLevel && recommendedCourses.Any()
                     ? $"Hoàn thành voice assessment thành công! Tìm thấy {recommendedCourses.Count} khóa học phù hợp với trình độ {assessmentResult.OverallLevel} của bạn."
                     : $"Hoàn thành voice assessment thành công! Hiện tại chưa có khóa học tương ứng với trình độ {assessmentResult.OverallLevel}. Hãy tham khảo các khóa học khác trong hệ thống.";
@@ -482,9 +555,11 @@ public async Task<IActionResult> CompleteVoiceAssessment(Guid assessmentId)
                         languageId = assessment.LanguageId,
                         languageName = assessment.LanguageName,
                         learnerLanguageId = learnerLanguage.LearnerLanguageId,
+                        goalId = learnerLanguage.GoalId,  // ✅ Thêm goalId vào response
+                        goalName = assessment.GoalName,
                         requiresAcceptance = true,
 
-                     
+                        // Recommended courses
                         recommendedCourses = recommendedCourses,
                         hasRecommendedCourses = recommendedCourses.Any(),
                         coursesCount = recommendedCourses.Count,
@@ -503,7 +578,6 @@ public async Task<IActionResult> CompleteVoiceAssessment(Guid assessmentId)
                 });
             }
         }
-
 
         /// <summary>
         /// Accept voice assessment result và lưu vào DB (tạo LearnerLanguage, Roadmap, LearnerSlotBalance)
@@ -815,5 +889,199 @@ public async Task<IActionResult> CompleteVoiceAssessment(Guid assessmentId)
                 });
             }
         }
+        [HttpGet("my-assessment-status")]
+        public async Task<IActionResult> GetMyAssessmentStatus()
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+                var allLanguages = await _unitOfWork.Languages.GetAllAsync();
+                var assessmentStatuses = new List<object>();
+
+                foreach (var language in allLanguages)
+                {
+                    var hasCompleted = await _voiceAssessmentService.HasCompletedVoiceAssessmentAsync(userId, language.LanguageID);
+
+                    VoiceAssessmentResultDto? result = null;
+                    if (hasCompleted)
+                    {
+                        result = await _voiceAssessmentService.GetVoiceAssessmentResultAsync(userId, language.LanguageID);
+                    }
+
+                    var activeAssessments = await _redisService.GetUserAssessmentsAsync(userId, language.LanguageID);
+                    var activeAssessment = activeAssessments.FirstOrDefault();
+
+                    // ✅ CHECK XEM ĐÃ ACCEPT CHƯA (có Roadmap)
+                    var allLearnerLanguages = await _unitOfWork.LearnerLanguages.GetAllAsync();
+                    var learnerLanguage = allLearnerLanguages.FirstOrDefault(ll =>
+                        ll.UserId == userId && ll.LanguageId == language.LanguageID);
+
+                    bool hasAccepted = false;
+                    Guid? roadmapId = null;
+
+                    if (learnerLanguage != null)
+                    {
+                        var allRoadmaps = await _unitOfWork.Roadmaps.GetAllAsync();
+                        var roadmap = allRoadmaps.FirstOrDefault(r =>
+                            r.LearnerLanguageId == learnerLanguage.LearnerLanguageId);
+
+                        if (roadmap != null)
+                        {
+                            hasAccepted = true;
+                            roadmapId = roadmap.RoadmapID;
+                        }
+                    }
+
+                    assessmentStatuses.Add(new
+                    {
+                        languageId = language.LanguageID,
+                        languageName = language.LanguageName,
+                        languageCode = language.LanguageCode,
+
+                        // Status
+                        hasCompletedAssessment = hasCompleted,
+                        hasActiveAssessment = activeAssessment != null,
+                        hasAcceptedResult = hasAccepted,  // ✅ FLAG MỚI
+
+                        // IDs
+                        activeAssessmentId = activeAssessment?.AssessmentId,
+                        learnerLanguageId = learnerLanguage?.LearnerLanguageId,
+                        roadmapId = roadmapId,  // ✅ ROADMAP ID
+
+                        // Assessment info
+                        currentQuestionIndex = activeAssessment?.CurrentQuestionIndex,
+                        totalQuestions = activeAssessment?.Questions.Count,
+
+                        // Result info
+                        determinedLevel = result?.DeterminedLevel ?? learnerLanguage?.ProficiencyLevel,
+                        overallScore = result?.OverallScore,
+                        completedAt = result?.CompletedAt,
+
+                        // Action flags
+                        needsSelection = !hasCompleted && activeAssessment == null && !hasAccepted,
+                        canResume = activeAssessment != null && !hasAccepted,
+                        canReview = hasCompleted,
+                        canRetake = !hasAccepted,  // ✅ CHỈ CHO LÀM LẠI NẾU CHƯA ACCEPT
+                        isLocked = hasAccepted  // ✅ ĐÃ LOCK
+                    });
+                }
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Lấy trạng thái assessment thành công",
+                    data = new
+                    {
+                        userId = userId,
+                        languages = assessmentStatuses
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting assessment status");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Đã xảy ra lỗi",
+                    error = ex.Message
+                });
+            }
+        }
+        [HttpGet("check-status/{languageId:guid}")]
+        public async Task<IActionResult> CheckAssessmentStatus(Guid languageId)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+                _logger.LogInformation("Checking assessment status for user {UserId}, language {LanguageId}",
+                    userId, languageId);
+
+                var language = await _unitOfWork.Languages.GetByIdAsync(languageId);
+                if (language == null)
+                {
+                    return NotFound(new
+                    {
+                        success = false,
+                        message = "Ngôn ngữ không tồn tại"
+                    });
+                }
+
+                // Check completed
+                var hasCompleted = await _voiceAssessmentService.HasCompletedVoiceAssessmentAsync(userId, languageId);
+
+                // Get result if completed
+                VoiceAssessmentResultDto? result = null;
+                if (hasCompleted)
+                {
+                    result = await _voiceAssessmentService.GetVoiceAssessmentResultAsync(userId, languageId);
+                }
+
+                // Check active assessment
+                var activeAssessments = await _redisService.GetUserAssessmentsAsync(userId, languageId);
+                var activeAssessment = activeAssessments.FirstOrDefault();
+
+                return Ok(new
+                {
+                    success = true,
+                    data = new
+                    {
+                        languageId = languageId,
+                        languageName = language.LanguageName,
+
+                        // Status flags
+                        hasCompletedAssessment = hasCompleted,
+                        hasActiveAssessment = activeAssessment != null,
+
+                        // Active assessment
+                        activeAssessment = activeAssessment != null ? new
+                        {
+                            assessmentId = activeAssessment.AssessmentId,
+                            currentQuestionIndex = activeAssessment.CurrentQuestionIndex,
+                            totalQuestions = activeAssessment.Questions.Count,
+                            goalId = activeAssessment.GoalID,
+                            goalName = activeAssessment.GoalName,
+                            createdAt = activeAssessment.CreatedAt
+                        } : null,
+
+                        // Completed result
+                        completedResult = hasCompleted ? new
+                        {
+                            determinedLevel = result.DeterminedLevel,
+                            overallScore = result.OverallScore,
+                            completedAt = result.CompletedAt
+                        } : null,
+
+                        // Recommendation
+                        recommendation = GetRecommendation(hasCompleted, activeAssessment != null)
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking assessment status");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Đã xảy ra lỗi",
+                    error = ex.Message
+                });
+            }
+        }
+
+       
+        private string GetRecommendation(bool hasCompleted, bool hasActive)
+        {
+            if (hasCompleted)
+                return "Bạn đã hoàn thành assessment. Có thể xem lại kết quả hoặc làm lại.";
+
+            if (hasActive)
+                return "Bạn có bài assessment đang làm dở. Tiếp tục hoặc bắt đầu lại?";
+
+            return "Bạn chưa làm assessment. Hãy chọn goal để bắt đầu!";
+        }
+
     }
 }

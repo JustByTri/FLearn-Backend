@@ -3398,16 +3398,16 @@
         }
       }
     },
-    "/api/VoiceAssessment/start/{languageId}": {
+    "/api/VoiceAssessment/start": {
       "post": {
         "tags": [
           "VoiceAssessment"
         ],
+        "summary": "Bắt đầu bài đánh giá giọng nói - TỰ ĐỘNG LƯU VÀO REDIS",
         "parameters": [
           {
             "name": "languageId",
-            "in": "path",
-            "required": true,
+            "in": "query",
             "schema": {
               "type": "string",
               "format": "uuid"
@@ -3434,6 +3434,7 @@
         "tags": [
           "VoiceAssessment"
         ],
+        "summary": "Lấy câu hỏi hiện tại",
         "parameters": [
           {
             "name": "assessmentId",
@@ -3457,6 +3458,7 @@
         "tags": [
           "VoiceAssessment"
         ],
+        "summary": "Submit voice với validation mạnh",
         "parameters": [
           {
             "name": "assessmentId",
@@ -3547,29 +3549,7 @@
         "tags": [
           "VoiceAssessment"
         ],
-        "parameters": [
-          {
-            "name": "languageId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/VoiceAssessment/status/{languageId}": {
-      "get": {
-        "tags": [
-          "VoiceAssessment"
-        ],
+        "summary": "Lấy kết quả đánh giá giọng nói đã hoàn thành",
         "parameters": [
           {
             "name": "languageId",
@@ -3593,6 +3573,7 @@
         "tags": [
           "VoiceAssessment"
         ],
+        "summary": "Kiểm tra đã hoàn thành đánh giá chưa",
         "parameters": [
           {
             "name": "assessmentId",
@@ -3616,6 +3597,7 @@
         "tags": [
           "VoiceAssessment"
         ],
+        "summary": "Accept voice assessment result và lưu vào DB (tạo LearnerLanguage, Roadmap, LearnerSlotBalance)",
         "requestBody": {
           "content": {
             "application/json": {
@@ -3647,6 +3629,7 @@
         "tags": [
           "VoiceAssessment"
         ],
+        "summary": "Reject voice assessment result - Xóa kết quả và cho phép làm lại",
         "requestBody": {
           "content": {
             "application/json": {
@@ -3678,6 +3661,42 @@
         "tags": [
           "VoiceAssessment"
         ],
+        "summary": "Test Redis connection",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/my-assessment-status": {
+      "get": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/check-status/{languageId}": {
+      "get": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "parameters": [
+          {
+            "name": "languageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -3688,7 +3707,6 @@
   },
   "components": {
     "schemas": {
-<<<<<<< HEAD
       "AcceptVoiceAssessmentRequestDto": {
         "type": "object",
         "properties": {
@@ -3699,29 +3717,6 @@
         },
         "additionalProperties": false
       },
-      "BooleanBaseResponse": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string"
-          },
-          "code": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "message": {
-            "type": "string"
-          },
-          "data": {
-            "type": "boolean"
-          },
-          "errors": { },
-          "meta": { }
-        },
-        "additionalProperties": false
-      },
-=======
->>>>>>> f6c26f87a39437de4ac5c4fe240d454a396fb272
       "CertificateResponse": {
         "type": "object",
         "properties": {
