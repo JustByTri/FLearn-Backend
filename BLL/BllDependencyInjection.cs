@@ -6,6 +6,7 @@ using BLL.IServices.Auth;
 using BLL.IServices.Certificate;
 using BLL.IServices.Course;
 using BLL.IServices.CourseTemplate;
+using BLL.IServices.CourseUnit;
 using BLL.IServices.Goal;
 using BLL.IServices.Language;
 using BLL.IServices.Redis;
@@ -19,6 +20,7 @@ using BLL.Services.Auth;
 using BLL.Services.Certificate;
 using BLL.Services.Course;
 using BLL.Services.CourseTemplate;
+using BLL.Services.CourseUnits;
 using BLL.Services.Goal;
 using BLL.Services.Languages;
 using BLL.Services.Redis;
@@ -104,6 +106,7 @@ namespace BLL
             services.AddSingleton<IAuthorizationHandler, ExclusiveRoleHandler>();
             services.AddScoped<ITeacherApplicationService, TeacherApplicationService>();
             services.AddScoped<ICourseService, CourseService>();
+            services.AddScoped<ICourseUnitService, CourseUnitService>();
             return services;
         }
     }
