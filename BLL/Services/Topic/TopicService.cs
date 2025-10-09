@@ -24,6 +24,7 @@ namespace BLL.Services.Topic
             var query = _unit.Topics.Query();
             var totalItems = await query.CountAsync();
             var topics = await query
+                .OrderBy(t => t.Name)
                 .Skip((request.Page - 1) * request.PageSize)
                 .Take(request.PageSize)
                 .Select(t => new TopicResponse
@@ -33,7 +34,6 @@ namespace BLL.Services.Topic
                     TopicDescription = t.Description,
                     ImageUrl = (t.ImageUrl != null) ? t.ImageUrl : "default"
                 })
-                .OrderBy(t => t.TopicName)
                 .ToListAsync();
 
             if (topics == null || !topics.Any())
@@ -124,7 +124,6 @@ namespace BLL.Services.Topic
                 return BaseResponse<TopicResponse>.Error(ex.Message);
             }
         }
-
         public async Task<BaseResponse<TopicResponse>> UpdateTopicAsync(Guid topicId, TopicRequest request)
         {
             var existingTopic = await _unit.Topics.Query()
