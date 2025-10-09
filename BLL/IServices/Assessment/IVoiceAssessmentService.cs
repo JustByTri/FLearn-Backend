@@ -1,4 +1,5 @@
 ﻿using Common.DTO.Assement;
+using Common.DTO.Learner;
 
 namespace BLL.IServices.Assessment
 {
@@ -23,6 +24,7 @@ namespace BLL.IServices.Assessment
         /// Xóa kết quả assessment cũ khi đổi ngôn ngữ
         /// </summary>
         Task ClearAssessmentResultAsync(Guid userId, Guid languageId);
+        Task SaveRecommendedCoursesAsync(Guid userId, Guid languageId, List<CourseRecommendationDto> courses);
 
     }
 }

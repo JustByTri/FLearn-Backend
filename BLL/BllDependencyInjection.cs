@@ -22,6 +22,7 @@ using BLL.Services.Course;
 using BLL.Services.CourseTemplate;
 using BLL.Services.CourseUnits;
 using BLL.Services.Goal;
+using BLL.Services.Implementation;
 using BLL.Services.Languages;
 using BLL.Services.Redis;
 using BLL.Services.Topic;
@@ -103,6 +104,7 @@ namespace BLL
             services.AddScoped<ILanguageService, LanguageService>();
             services.AddScoped<IVoiceAssessmentService, VoiceAssessmentService>();
             services.AddScoped<ICertificateService, CertificateService>();
+            services.AddScoped<ICourseRecommendationService, CourseRecommendationService>();
             services.AddSingleton<IAuthorizationHandler, ExclusiveRoleHandler>();
             services.AddScoped<ITeacherApplicationService, TeacherApplicationService>();
             services.AddScoped<ICourseService, CourseService>();

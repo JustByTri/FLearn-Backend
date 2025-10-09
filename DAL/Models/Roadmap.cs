@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DAL.Models
 {
@@ -7,7 +8,8 @@ namespace DAL.Models
         [Key]
         public Guid RoadmapID { get; set; }
         [Required]
-        public Guid LearnerId { get; set; } // UserId + LanguageId
+        [ForeignKey("LearnerLanguage")]
+        public Guid LearnerLanguageId { get; set; }
         public virtual LearnerLanguage LearnerLanguage { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }

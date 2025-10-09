@@ -6,6 +6,8 @@ D:\F-Learn\F-Learn-BackEnd\Presentation\bin\Debug\net8.0\Presentation.deps.json
 D:\F-Learn\F-Learn-BackEnd\Presentation\bin\Debug\net8.0\Presentation.runtimeconfig.json
 D:\F-Learn\F-Learn-BackEnd\Presentation\bin\Debug\net8.0\Presentation.dll
 D:\F-Learn\F-Learn-BackEnd\Presentation\bin\Debug\net8.0\Presentation.pdb
+D:\F-Learn\F-Learn-BackEnd\Presentation\bin\Debug\net8.0\Presentation.xml
+D:\F-Learn\F-Learn-BackEnd\Presentation\bin\Debug\net8.0\AutoMapper.dll
 D:\F-Learn\F-Learn-BackEnd\Presentation\bin\Debug\net8.0\Azure.Core.dll
 D:\F-Learn\F-Learn-BackEnd\Presentation\bin\Debug\net8.0\Azure.Identity.dll
 D:\F-Learn\F-Learn-BackEnd\Presentation\bin\Debug\net8.0\CloudinaryDotNet.dll
@@ -156,7 +158,7 @@ D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Debug\net8.0\staticwebassets.upToDat
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Debug\net8.0\Presenta.BC777DBE.Up2Date
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Debug\net8.0\Presentation.dll
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Debug\net8.0\refint\Presentation.dll
+D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Debug\net8.0\Presentation.xml
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Debug\net8.0\Presentation.pdb
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Debug\net8.0\Presentation.genruntimeconfig.cache
 D:\F-Learn\F-Learn-BackEnd\Presentation\obj\Debug\net8.0\ref\Presentation.dll
-D:\F-Learn\F-Learn-BackEnd\Presentation\bin\Debug\net8.0\AutoMapper.dll

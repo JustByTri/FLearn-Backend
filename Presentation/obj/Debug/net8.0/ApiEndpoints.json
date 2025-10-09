@@ -2391,5 +2391,189 @@
       }
     ],
     "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
+    "Method": "GetCurrentQuestion",
+    "RelativePath": "api/VoiceAssessment/{assessmentId}/current-question",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "assessmentId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
+    "Method": "SubmitVoiceResponse",
+    "RelativePath": "api/VoiceAssessment/{assessmentId}/submit-voice",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "assessmentId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "QuestionNumber",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "IsSkipped",
+        "Type": "System.Boolean",
+        "IsRequired": false
+      },
+      {
+        "Name": "AudioFile",
+        "Type": "Microsoft.AspNetCore.Http.IFormFile",
+        "IsRequired": false
+      },
+      {
+        "Name": "RecordingDurationSeconds",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
+    "Method": "AcceptVoiceAssessmentResult",
+    "RelativePath": "api/VoiceAssessment/accept-voice-assessment",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "Common.DTO.Assement.AcceptVoiceAssessmentRequestDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
+    "Method": "CompleteVoiceAssessment",
+    "RelativePath": "api/VoiceAssessment/complete/{assessmentId}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "assessmentId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
+    "Method": "RejectVoiceAssessmentResult",
+    "RelativePath": "api/VoiceAssessment/reject-voice-assessment",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "Common.DTO.Assement.AcceptVoiceAssessmentRequestDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
+    "Method": "GetAssessmentResult",
+    "RelativePath": "api/VoiceAssessment/result/{languageId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "languageId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
+    "Method": "SmartStartVoiceAssessment",
+    "RelativePath": "api/VoiceAssessment/smart-start/{languageId}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "languageId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "goalId",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
+    "Method": "StartVoiceAssessment",
+    "RelativePath": "api/VoiceAssessment/start/{languageId}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "languageId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "goalId",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
+    "Method": "CheckAssessmentStatus",
+    "RelativePath": "api/VoiceAssessment/status/{languageId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "languageId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
+    "Method": "TestRedis",
+    "RelativePath": "api/VoiceAssessment/test-redis",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
   }
 ]
