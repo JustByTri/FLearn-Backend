@@ -14,6 +14,7 @@ namespace DAL.Models
         [Required]
         public Guid CourseId { get; set; }
         [ForeignKey(nameof(CourseId))]
+
         public virtual Course Course { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }

@@ -3289,10 +3289,338 @@
           }
         }
       }
+    },
+    "/api/VoiceAssessment/start": {
+      "post": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "summary": "Bắt đầu bài đánh giá giọng nói - TỰ ĐỘNG LƯU VÀO REDIS",
+        "parameters": [
+          {
+            "name": "languageId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "goalId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/check-required": {
+      "get": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/{assessmentId}/current-question": {
+      "get": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "summary": "Lấy câu hỏi hiện tại",
+        "parameters": [
+          {
+            "name": "assessmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/{assessmentId}/submit-voice": {
+      "post": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "summary": "Submit voice với validation mạnh",
+        "parameters": [
+          {
+            "name": "assessmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "questionNumber",
+                  "isSkipped"
+                ],
+                "type": "object",
+                "properties": {
+                  "questionNumber": {
+                    "type": "integer",
+                    "description": "Số thứ tự câu hỏi",
+                    "example": 1
+                  },
+                  "isSkipped": {
+                    "type": "boolean",
+                    "description": "Có bỏ qua câu hỏi không",
+                    "example": false
+                  },
+                  "audioFile": {
+                    "type": "string",
+                    "description": "File âm thanh (MP3, WAV, M4A, WebM - Max 10MB)",
+                    "format": "binary"
+                  },
+                  "recordingDurationSeconds": {
+                    "type": "integer",
+                    "description": "Thời lượng ghi âm (giây)",
+                    "example": 0
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/smart-start/{languageId}": {
+      "post": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "parameters": [
+          {
+            "name": "languageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "goalId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/result/{languageId}": {
+      "get": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "summary": "Lấy kết quả đánh giá giọng nói đã hoàn thành",
+        "parameters": [
+          {
+            "name": "languageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/complete/{assessmentId}": {
+      "post": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "summary": "Kiểm tra đã hoàn thành đánh giá chưa",
+        "parameters": [
+          {
+            "name": "assessmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/accept-voice-assessment": {
+      "post": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "summary": "Accept voice assessment result và lưu vào DB (tạo LearnerLanguage, Roadmap, LearnerSlotBalance)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/reject-voice-assessment": {
+      "post": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "summary": "Reject voice assessment result - Xóa kết quả và cho phép làm lại",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/test-redis": {
+      "get": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "summary": "Test Redis connection",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/my-assessment-status": {
+      "get": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/check-status/{languageId}": {
+      "get": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "parameters": [
+          {
+            "name": "languageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AcceptVoiceAssessmentRequestDto": {
+        "type": "object",
+        "properties": {
+          "learnerLanguageId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
       "CertificateResponse": {
         "type": "object",
         "properties": {

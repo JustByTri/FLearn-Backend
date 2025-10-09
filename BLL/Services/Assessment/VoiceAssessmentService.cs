@@ -2,9 +2,11 @@
 using BLL.IServices.Assessment;
 using BLL.IServices.Redis;
 using Common.DTO.Assement;
+using Common.DTO.Learner;
 using DAL.UnitOfWork;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using System.Linq;
 
 namespace BLL.Services.Assessment
 {
@@ -61,20 +63,51 @@ namespace BLL.Services.Assessment
                 if (language == null)
                     throw new ArgumentException("Ngôn ngữ không tồn tại");
 
+                var languageCode = language.LanguageCode?.Trim().ToUpper();
+
                 var supportedLanguages = new[] { "EN", "ZH", "JP" };
-                if (!supportedLanguages.Contains(language.LanguageCode))
+                if (string.IsNullOrEmpty(languageCode) || !supportedLanguages.Contains(languageCode))
                     throw new ArgumentException("Chỉ hỗ trợ đánh giá giọng nói tiếng Anh, tiếng Trung và tiếng Nhật");
 
+                // ✅ CHECK XEM USER ĐÃ ACCEPT ASSESSMENT CHƯA (có Roadmap)
+                var allLearnerLanguages = await _unitOfWork.LearnerLanguages.GetAllAsync();
+                var learnerLanguage = allLearnerLanguages.FirstOrDefault(ll =>
+                    ll.UserId == userId &&
+                    ll.LanguageId == languageId);
+
+                if (learnerLanguage != null)
+                {
+                    // ✅ CHECK XEM CÓ ROADMAP KHÔNG
+                    var allRoadmaps = await _unitOfWork.Roadmaps.GetAllAsync();
+                    var existingRoadmap = allRoadmaps.FirstOrDefault(r =>
+                        r.LearnerLanguageId == learnerLanguage.LearnerLanguageId);
+
+                    if (existingRoadmap != null)
+                    {
+                        _logger.LogWarning("❌ User {UserId} already ACCEPTED assessment for language {LanguageId}. Roadmap exists: {RoadmapId}",
+                            userId, languageId, existingRoadmap.RoadmapID);
+
+                        throw new InvalidOperationException(
+                            $"Bạn đã hoàn thành và chấp nhận kết quả đánh giá cho {language.LanguageName}. " +
+                            $"Không thể làm lại assessment sau khi đã chấp nhận kết quả.");
+                    }
+                }
+
+                // ✅ LUÔN XÓA ASSESSMENT CŨ (nếu có) - CHỈ assessment chưa accept
                 var existingAssessments = await _redisService.GetUserAssessmentsAsync(userId, languageId);
                 var existingAssessment = existingAssessments.FirstOrDefault();
 
                 if (existingAssessment != null)
                 {
-                    _logger.LogInformation("Resuming existing assessment {AssessmentId}", existingAssessment.AssessmentId);
-                    return existingAssessment;
+                    _logger.LogWarning("⚠️ Found existing assessment {AssessmentId}. Deleting to create fresh one...",
+                        existingAssessment.AssessmentId);
+
+                    await _redisService.DeleteVoiceAssessmentAsync(existingAssessment.AssessmentId);
+
+                    _logger.LogInformation("✅ Deleted old assessment. Creating new one.");
                 }
 
-                // Lấy Goal nếu có
+          
                 string? goalName = null;
                 if (goalId.HasValue)
                 {
@@ -83,10 +116,22 @@ namespace BLL.Services.Assessment
                     _logger.LogInformation("Goal selected: {GoalName}", goalName ?? "None");
                 }
 
+            
+                _logger.LogInformation("🎯 Generating NEW questions for {LanguageCode} ({LanguageName})",
+                    languageCode, language.LanguageName);
+
                 var questions = await _geminiService.GenerateVoiceAssessmentQuestionsAsync(
-                    language.LanguageCode,
+                    languageCode,
                     language.LanguageName);
 
+                if (questions == null || questions.Count == 0)
+                {
+                    throw new InvalidOperationException($"Không thể tạo câu hỏi cho ngôn ngữ {language.LanguageName}");
+                }
+
+                _logger.LogInformation("📝 Generated {Count} questions", questions.Count);
+
+             
                 var assessment = new VoiceAssessmentDto
                 {
                     AssessmentId = Guid.NewGuid(),
@@ -102,8 +147,7 @@ namespace BLL.Services.Assessment
 
                 await _redisService.SetVoiceAssessmentAsync(assessment);
 
-                _logger.LogInformation("✅ CREATED Assessment {AssessmentId} with Goal: {GoalName}",
-                    assessment.AssessmentId, goalName ?? "None");
+                _logger.LogInformation("✅ CREATED NEW Assessment {AssessmentId}", assessment.AssessmentId);
 
                 return assessment;
             }
@@ -113,7 +157,6 @@ namespace BLL.Services.Assessment
                 throw;
             }
         }
-
         public async Task<VoiceAssessmentQuestion> GetCurrentQuestionAsync(Guid assessmentId)
         {
             try
@@ -203,20 +246,49 @@ namespace BLL.Services.Assessment
                 if (language == null)
                     throw new ArgumentException("Ngôn ngữ không tồn tại");
 
-                // Evaluate
-                var result = await _geminiService.EvaluateBatchVoiceResponsesAsync(
-                    assessment.Questions,
-                    language.LanguageCode,
-                    language.LanguageName);
+                // 🆕 CHECK FOR SKIPPED QUESTIONS BEFORE AI EVALUATION
+                var completedQuestions = assessment.Questions.Where(q => !q.IsSkipped).ToList();
+                var skippedCount = assessment.Questions.Count - completedQuestions.Count;
 
+                BatchVoiceEvaluationResult result;
+
+                if (completedQuestions.Count == 0)
+                {
+                    // 🆕 ALL QUESTIONS SKIPPED - CREATE DEFAULT RESULT
+                    _logger.LogWarning("All questions skipped for assessment {AssessmentId}. Creating default beginner result.", assessmentId);
+
+                    result = CreateDefaultSkippedResult(language.LanguageName, assessment.Questions.Count);
+                }
+                else if (skippedCount > completedQuestions.Count)
+                {
+                    // 🆕 MORE THAN HALF SKIPPED - EVALUATE WITH WARNING
+                    _logger.LogInformation("More than half questions skipped ({SkippedCount}/{TotalCount}) for assessment {AssessmentId}",
+                        skippedCount, assessment.Questions.Count, assessmentId);
+
+                    result = await _geminiService.EvaluateBatchVoiceResponsesAsync(
+                        assessment.Questions,
+                        language.LanguageCode,
+                        language.LanguageName);
+
+                    // Adjust confidence and add warning message
+                    result = AdjustResultForSkippedQuestions(result, skippedCount, assessment.Questions.Count);
+                }
+                else
+                {
+                    // 🆕 NORMAL EVALUATION - MOST QUESTIONS ANSWERED
+                    result = await _geminiService.EvaluateBatchVoiceResponsesAsync(
+                        assessment.Questions,
+                        language.LanguageCode,
+                        language.LanguageName);
+                }
 
                 var resultDto = MapBatchResultToDto(result, assessment, language);
                 await _redisService.SetVoiceAssessmentResultAsync(assessment.UserId, assessment.LanguageId, resultDto);
 
                 await CleanupAudioFilesAsync(assessment.Questions);
 
-                _logger.LogInformation("✅ Completed assessment {AssessmentId} with level {Level}",
-                    assessmentId, result.OverallLevel);
+                _logger.LogInformation("✅ Completed assessment {AssessmentId} with level {Level} (Skipped: {SkippedCount}/{TotalCount})",
+                    assessmentId, result.OverallLevel, skippedCount, assessment.Questions.Count);
 
                 return result;
             }
@@ -226,7 +298,199 @@ namespace BLL.Services.Assessment
                 throw;
             }
         }
+        /// <summary>
+        /// 🆕 Tạo kết quả mặc định khi tất cả câu hỏi đều bị skip
+        /// </summary>
+        private BatchVoiceEvaluationResult CreateDefaultSkippedResult(string languageName, int totalQuestions)
+        {
+            var beginnerLevel = GetBeginnerLevelForLanguage(languageName);
 
+            return new BatchVoiceEvaluationResult
+            {
+                OverallLevel = beginnerLevel,
+                OverallScore = 25, // Điểm thấp do không có dữ liệu
+                QuestionResults = new List<QuestionEvaluationResult>(),
+                Strengths = new List<string>
+        {
+            "Đã tham gia hoàn thành bài đánh giá",
+            "Sẵn sàng bắt đầu hành trình học ngôn ngữ"
+        },
+                Weaknesses = new List<string>
+        {
+            "Cần thực hiện đánh giá giọng nói để có kết quả chính xác hơn",
+            "Nên thử trả lời một số câu hỏi để đánh giá khả năng hiện tại"
+        },
+                RecommendedCourses = GetBeginnerCoursesForLanguage(languageName),
+                EvaluatedAt = DateTime.UtcNow
+            };
+        }
+
+        /// <summary>
+        /// 🆕 Điều chỉnh kết quả khi có nhiều câu hỏi bị skip
+        /// </summary>
+        private BatchVoiceEvaluationResult AdjustResultForSkippedQuestions(
+            BatchVoiceEvaluationResult originalResult,
+            int skippedCount,
+            int totalQuestions)
+        {
+            var skipPercentage = (double)skippedCount / totalQuestions * 100;
+
+            // Reduce confidence and overall score due to limited data
+            originalResult.OverallScore = Math.Max(10, originalResult.OverallScore - (int)(skipPercentage / 4));
+
+            // Add warnings to feedback
+            originalResult.Weaknesses = originalResult.Weaknesses ?? new List<string>();
+            originalResult.Weaknesses.Insert(0, $"Đã bỏ qua {skippedCount}/{totalQuestions} câu hỏi, kết quả có thể chưa phản ánh đúng khả năng thực tế");
+
+            if (skipPercentage >= 75)
+            {
+                originalResult.Weaknesses.Insert(0, "Nên thực hiện lại đánh giá với nhiều câu trả lời hơn để có kết quả chính xác");
+            }
+
+            return originalResult;
+        }
+
+        /// <summary>
+        /// 🆕 Lấy level cơ bản cho từng ngôn ngữ
+        /// </summary>
+        private string GetBeginnerLevelForLanguage(string languageName)
+        {
+            if (languageName.Contains("English") || languageName.Contains("Anh"))
+                return "A1";
+            else if (languageName.Contains("Chinese") || languageName.Contains("Trung"))
+                return "HSK 1";
+            else if (languageName.Contains("Japanese") || languageName.Contains("Nhật"))
+                return "N5";
+            else
+                return "Beginner";
+        }
+
+        /// <summary>
+        /// 🆕 Tạo khuyến nghị khóa học cơ bản
+        /// </summary>
+        private List<CourseRecommendation> GetBeginnerCoursesForLanguage(string languageName)
+        {
+            if (languageName.Contains("English") || languageName.Contains("Anh"))
+            {
+                return new List<CourseRecommendation>
+        {
+            new CourseRecommendation { Focus = "English Pronunciation Basics", Level = "A1", Reason = "Cần cải thiện phát âm cơ bản" },
+            new CourseRecommendation { Focus = "English Speaking Confidence", Level = "A1", Reason = "Xây dựng tự tin khi nói tiếng Anh" }
+        };
+            }
+            else if (languageName.Contains("Chinese") || languageName.Contains("Trung"))
+            {
+                return new List<CourseRecommendation>
+        {
+            new CourseRecommendation { Focus = "Chinese Pinyin & Tones", Level = "HSK 1", Reason = "Nắm vững hệ thống thanh điệu tiếng Trung" },
+            new CourseRecommendation { Focus = "Basic Chinese Conversation", Level = "HSK 1", Reason = "Học hội thoại tiếng Trung cơ bản" }
+        };
+            }
+            else if (languageName.Contains("Japanese") || languageName.Contains("Nhật"))
+            {
+                return new List<CourseRecommendation>
+        {
+            new CourseRecommendation { Focus = "Japanese Pronunciation & Hiragana", Level = "N5", Reason = "Học phát âm và bảng chữ Hiragana" },
+            new CourseRecommendation { Focus = "Basic Japanese Phrases", Level = "N5", Reason = "Học các cụm từ tiếng Nhật cơ bản" }
+        };
+            }
+
+            return new List<CourseRecommendation>();
+        }
+        private string BuildDetailedFeedback(BatchVoiceEvaluationResult result, VoiceAssessmentDto assessment)
+        {
+            var completedCount = assessment.Questions.Count(q => !q.IsSkipped);
+            var skippedCount = assessment.Questions.Count - completedCount;
+
+            var feedback = $"**Tổng quan**: ";
+
+            if (skippedCount == assessment.Questions.Count)
+            {
+                feedback += $"Bạn đã bỏ qua tất cả {assessment.Questions.Count} câu hỏi. ";
+                feedback += $"Chúng tôi đánh giá bạn ở mức **{result.OverallLevel}** (mức cơ bản) ";
+                feedback += $"để bạn có thể bắt đầu học từ nền tảng.\n\n";
+                feedback += "**Khuyến nghị**: Hãy thử làm lại bài đánh giá và trả lời một số câu hỏi để có kết quả chính xác hơn.\n\n";
+            }
+            else if (skippedCount > 0)
+            {
+                feedback += $"Bạn đạt cấp độ **{result.OverallLevel}** với điểm tổng thể **{result.OverallScore}/100** ";
+                feedback += $"(dựa trên {completedCount}/{assessment.Questions.Count} câu trả lời).\n\n";
+                feedback += $"⚠️ **Lưu ý**: Bạn đã bỏ qua {skippedCount} câu hỏi, kết quả có thể chưa phản ánh đầy đủ khả năng thực tế.\n\n";
+            }
+            else
+            {
+                feedback += $"Bạn đạt cấp độ **{result.OverallLevel}** với điểm tổng thể **{result.OverallScore}/100** ";
+                feedback += $"(hoàn thành đầy đủ {assessment.Questions.Count} câu hỏi).\n\n";
+            }
+
+            if (result.QuestionResults.Any())
+            {
+                feedback += "**Chi tiết từng câu trả lời**:\n";
+                foreach (var qr in result.QuestionResults)
+                {
+                    feedback += $"- Câu {qr.QuestionNumber}: {qr.Feedback}\n";
+                    if (qr.MissingWords.Any())
+                    {
+                        feedback += $"  ⚠️ Thiếu từ: {string.Join(", ", qr.MissingWords)}\n";
+                    }
+                }
+            }
+
+            return feedback;
+        }
+        private VoiceAssessmentResultDto MapBatchResultToDto(
+    BatchVoiceEvaluationResult batchResult,
+    VoiceAssessmentDto assessment,
+    DAL.Models.Language language)
+        {
+            var completedCount = assessment.Questions.Count(q => !q.IsSkipped);
+            var isFullySkipped = completedCount == 0;
+
+            return new VoiceAssessmentResultDto
+            {
+                AssessmentId = assessment.AssessmentId,
+                LanguageName = language.LanguageName,
+                DeterminedLevel = batchResult.OverallLevel,
+                LevelConfidence = isFullySkipped ? 30 : (completedCount < assessment.Questions.Count / 2 ? 60 : 95),
+                AssessmentCompleteness = $"{completedCount}/{assessment.Questions.Count} câu" +
+                    (isFullySkipped ? " (tất cả đều bỏ qua)" : ""),
+                OverallScore = batchResult.OverallScore,
+
+                // Calculate average scores from question results
+                PronunciationScore = batchResult.QuestionResults.Any()
+                    ? (int)batchResult.QuestionResults.Average(q => q.PronunciationScore)
+                    : (isFullySkipped ? 20 : 0), // Give some base score if all skipped
+
+                FluencyScore = batchResult.QuestionResults.Any()
+                    ? (int)batchResult.QuestionResults.Average(q => q.FluencyScore)
+                    : (isFullySkipped ? 20 : 0),
+
+                GrammarScore = batchResult.QuestionResults.Any()
+                    ? (int)batchResult.QuestionResults.Average(q => q.GrammarScore)
+                    : (isFullySkipped ? 20 : 0),
+
+                VocabularyScore = batchResult.QuestionResults.Any()
+                    ? (int)batchResult.QuestionResults.Average(q => q.AccuracyScore)
+                    : (isFullySkipped ? 20 : 0),
+
+                DetailedFeedback = BuildDetailedFeedback(batchResult, assessment), // Updated method
+                KeyStrengths = batchResult.Strengths,
+                ImprovementAreas = batchResult.Weaknesses,
+                NextLevelRequirements = GetNextLevelRequirement(batchResult.OverallLevel, language.LanguageName),
+
+                // Map course recommendations
+                RecommendedCourses = batchResult.RecommendedCourses.Select(rc => new RecommendedCourseDto
+                {
+                    CourseId = rc.CourseId ?? Guid.Empty,
+                    CourseName = rc.Focus,
+                    Level = rc.Level,
+                    MatchReason = rc.Reason,
+                    GoalName = assessment.GoalName
+                }).ToList(),
+
+                CompletedAt = DateTime.UtcNow
+            };
+        }
         //private async Task CreatePendingVoiceAssessmentAsync(Guid userId, VoiceAssessmentResultDto resultDto)
         //{
         //    try
@@ -245,52 +509,7 @@ namespace BLL.Services.Assessment
         //        _logger.LogError(ex, "Error creating pending voice assessment for user {UserId}", userId);
         //    }
         //}
-        private VoiceAssessmentResultDto MapBatchResultToDto(
-    BatchVoiceEvaluationResult batchResult,
-    VoiceAssessmentDto assessment,
-    DAL.Models.Language language)
-        {
-            return new VoiceAssessmentResultDto
-            {
-                AssessmentId = assessment.AssessmentId,
-                LanguageName = language.LanguageName,
-                DeterminedLevel = batchResult.OverallLevel,
-                LevelConfidence = 95, // High confidence cho batch evaluation
-                AssessmentCompleteness = $"{assessment.Questions.Count(q => !q.IsSkipped)}/{assessment.Questions.Count} câu",
-                OverallScore = batchResult.OverallScore,
-
-                // Calculate average scores from question results
-                PronunciationScore = batchResult.QuestionResults.Any()
-                    ? (int)batchResult.QuestionResults.Average(q => q.PronunciationScore)
-                    : 0,
-                FluencyScore = batchResult.QuestionResults.Any()
-                    ? (int)batchResult.QuestionResults.Average(q => q.FluencyScore)
-                    : 0,
-                GrammarScore = batchResult.QuestionResults.Any()
-                    ? (int)batchResult.QuestionResults.Average(q => q.GrammarScore)
-                    : 0,
-                VocabularyScore = batchResult.QuestionResults.Any()
-                    ? (int)batchResult.QuestionResults.Average(q => q.AccuracyScore)
-                    : 0,
-
-                DetailedFeedback = BuildDetailedFeedback(batchResult),
-                KeyStrengths = batchResult.Strengths,
-                ImprovementAreas = batchResult.Weaknesses,
-                NextLevelRequirements = GetNextLevelRequirement(batchResult.OverallLevel, language.LanguageName),
-
-                // Map course recommendations
-                RecommendedCourses = batchResult.RecommendedCourses.Select(rc => new RecommendedCourseDto
-                {
-                    CourseId = rc.CourseId ?? Guid.Empty,
-                    CourseName = rc.Focus,
-                    Level = rc.Level,
-                    MatchReason = rc.Reason,
-                    GoalName = assessment.GoalName
-                }).ToList(),
-
-                CompletedAt = DateTime.UtcNow
-            };
-        }
+   
         private string GetNextLevelRequirement(string currentLevel, string languageName)
         {
             if (languageName.Contains("Anh") || languageName.Contains("English"))
@@ -601,7 +820,38 @@ namespace BLL.Services.Assessment
         {
             return await _redisService.DeleteVoiceAssessmentAsync(assessmentId);
         }
+        /// <summary>
+        /// Lưu danh sách khóa học được gợi ý vào Redis để sử dụng khi accept assessment
+        /// </summary>
+        public async Task SaveRecommendedCoursesAsync(
+            Guid userId,
+            Guid languageId,
+            List<CourseRecommendationDto> courses)
+        {
+            try
+            {
+                if (courses == null || !courses.Any())
+                {
+                    _logger.LogWarning("No courses to save for user {UserId}, language {LanguageId}",
+                        userId, languageId);
+                    return;
+                }
 
+                // Tạo key để lưu trong Redis
+                var cacheKey = $"voice_assessment_recommended_courses:{userId}:{languageId}";
+
+                // Lưu vào Redis với TTL 24 giờ
+                await _redisService.SetAsync(cacheKey, courses, TimeSpan.FromHours(24));
+
+                _logger.LogInformation("✅ Saved {Count} recommended courses to Redis for user {UserId}, language {LanguageId}",
+                    courses.Count, userId, languageId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error saving recommended courses to Redis for user {UserId}", userId);
+                // Không throw - cho phép tiếp tục flow
+            }
+        }
         public async Task<int> ClearAllAssessmentsDebugAsync()
         {
             return await _redisService.ClearAllAssessmentsAsync();

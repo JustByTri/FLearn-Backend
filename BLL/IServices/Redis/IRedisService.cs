@@ -31,5 +31,6 @@ namespace BLL.IServices.Redis
         /// Delete generic key
         /// </summary>
         Task DeleteAsync(string key);
+        Task SetAsync<T>(string key, T value, TimeSpan? expiry = null);
     }
 }
