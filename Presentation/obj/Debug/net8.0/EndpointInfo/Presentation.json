@@ -2545,17 +2545,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UnitRequest"
+                "$ref": "#/components/schemas/UnitUpdateRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/UnitRequest"
+                "$ref": "#/components/schemas/UnitUpdateRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/UnitRequest"
+                "$ref": "#/components/schemas/UnitUpdateRequest"
               }
             }
           }
@@ -2687,54 +2687,6 @@
           },
           "404": {
             "description": "If the unit is not found."
-          }
-        }
-      }
-    },
-    "/api/units": {
-      "get": {
-        "tags": [
-          "CourseUnit"
-        ],
-        "summary": "Retrieves a paginated list of all course units.",
-        "parameters": [
-          {
-            "name": "Page",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "PageSize",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns a paginated list of all course units.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnitResponseIEnumerablePagedResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnitResponseIEnumerablePagedResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnitResponseIEnumerablePagedResponse"
-                }
-              }
-            }
           }
         }
       }
@@ -4636,6 +4588,28 @@
           "errors": { },
           "meta": {
             "$ref": "#/components/schemas/PagingMeta"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UnitUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "maxLength": 200,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          },
+          "isPreview": {
+            "type": "boolean",
+            "nullable": true
           }
         },
         "additionalProperties": false
