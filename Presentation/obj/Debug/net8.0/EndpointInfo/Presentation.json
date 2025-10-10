@@ -1033,6 +1033,17 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "TopicIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
           }
         ],
         "requestBody": {
@@ -1052,9 +1063,6 @@
                     "format": "binary"
                   },
                   "TemplateId": {
-                    "type": "string"
-                  },
-                  "TopicIds": {
                     "type": "string"
                   },
                   "Price": {
@@ -1270,6 +1278,179 @@
                 "schema": { }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/courses/{courseId}/submit": {
+      "post": {
+        "tags": [
+          "Course"
+        ],
+        "summary": "Submit a course for staff review.",
+        "parameters": [
+          {
+            "name": "courseId",
+            "in": "path",
+            "description": "The ID of the course to be submitted.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/courses/submissions/{submissionId}/approve": {
+      "put": {
+        "tags": [
+          "Course"
+        ],
+        "summary": "Approve a course submission.",
+        "parameters": [
+          {
+            "name": "submissionId",
+            "in": "path",
+            "description": "The ID of the submission to approve.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/courses/submissions/{submissionId}/reject": {
+      "put": {
+        "tags": [
+          "Course"
+        ],
+        "summary": "Reject a course submission with a feedback reason.",
+        "parameters": [
+          {
+            "name": "submissionId",
+            "in": "path",
+            "description": "The ID of the submission to reject.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The reason for rejecting the submission.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectApplicationRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectApplicationRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectApplicationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/courses/submissions/by-staff": {
+      "get": {
+        "tags": [
+          "Course"
+        ],
+        "summary": "Get all course submissions assigned to the logged-in staff user.",
+        "parameters": [
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by submission status (Pending, Approved, Rejected).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/courses/submissions/by-teacher": {
+      "get": {
+        "tags": [
+          "Course"
+        ],
+        "summary": "Get all course submissions made by the logged-in teacher.",
+        "parameters": [
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by submission status (Pending, Approved, Rejected).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }

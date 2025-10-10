@@ -16,10 +16,9 @@ namespace DAL.Models
         public Guid SubmittedById { get; set; }
         [ForeignKey(nameof(SubmittedById))]
         public virtual TeacherProfile SubmittedBy { get; set; }
-        [Required]
-        public Guid ReviewedById { get; set; }
+        public Guid? ReviewedById { get; set; }
         [ForeignKey(nameof(ReviewedById))]
-        public virtual StaffLanguage ReviewedBy { get; set; }
+        public virtual StaffLanguage? ReviewedBy { get; set; }
         public SubmissionStatus Status { get; set; } = SubmissionStatus.Pending;
         public string? Feedback { get; set; }
         public DateTime? SubmittedAt { get; set; }

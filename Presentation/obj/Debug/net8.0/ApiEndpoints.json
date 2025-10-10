@@ -664,7 +664,7 @@
       },
       {
         "Name": "Price",
-        "Type": "System.Decimal",
+        "Type": "System.Nullable\u00601[[System.Decimal, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
         "IsRequired": false
       },
       {
@@ -726,6 +726,22 @@
         "StatusCode": 500
       }
     ]
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Course.CourseController",
+    "Method": "SubmitCourseForReview",
+    "RelativePath": "api/courses/{courseId}/submit",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "courseId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
   },
   {
     "ContainingType": "Presentation.Controllers.CourseUnit.CourseUnitController",
@@ -891,6 +907,95 @@
         "StatusCode": 500
       }
     ]
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Course.CourseController",
+    "Method": "ApproveCourseSubmission",
+    "RelativePath": "api/courses/submissions/{submissionId}/approve",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "submissionId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Course.CourseController",
+    "Method": "RejectCourseSubmission",
+    "RelativePath": "api/courses/submissions/{submissionId}/reject",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "submissionId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "Common.DTO.Application.Request.RejectApplicationRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Course.CourseController",
+    "Method": "GetAllCourseSubmissionsByStaff",
+    "RelativePath": "api/courses/submissions/by-staff",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "Page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "PageSize",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "status",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Course.CourseController",
+    "Method": "GetAllCourseSubmissionsByTeacher",
+    "RelativePath": "api/courses/submissions/by-teacher",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "Page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "PageSize",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "status",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
   },
   {
     "ContainingType": "Presentation.Controllers.CourseTemplate.CourseTemplateController",

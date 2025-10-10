@@ -1,6 +1,7 @@
 ﻿using BLL.IServices.Course;
 using BLL.Services.Course;
 using Common.DTO.ApiResponse;
+using Common.DTO.Application.Request;
 using Common.DTO.Course.Request;
 using Common.DTO.Course.Response;
 using Common.DTO.Paging.Request;
@@ -287,6 +288,163 @@ namespace Presentation.Controllers.Course
                     Details = ex.Message
                 });
             }
+        }
+        /// <summary>
+        /// Submit a course for staff review.
+        /// </summary>
+        /// <param name="courseId">The ID of the course to be submitted.</param>
+        /// <returns>A response indicating whether the submission was successful.</returns>
+        [HttpPost("{courseId:guid}/submit")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> SubmitCourseForReview(Guid courseId)
+        {
+            var userIdClaim = User.FindFirstValue("user_id")
+                 ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized(new
+                {
+                    Message = "Teacher ID not found in token."
+                });
+            }
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return BadRequest(new
+                {
+                    Message = "Invalid user ID format in token."
+                });
+            }
+
+            var result = await _courseService.SubmitCourseForReviewAsync(userId, courseId);
+            return StatusCode(result.Code, result);
+        }
+        /// <summary>
+        /// Approve a course submission.
+        /// </summary>
+        /// <param name="submissionId">The ID of the submission to approve.</param>
+        /// <returns>A response indicating whether the approval was successful.</returns>
+        [HttpPut("submissions/{submissionId:guid}/approve")]
+        [Authorize(Roles = "Staff")]
+        public async Task<IActionResult> ApproveCourseSubmission(Guid submissionId)
+        {
+            var userIdClaim = User.FindFirstValue("user_id")
+                 ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized(new
+                {
+                    Message = "Teacher ID not found in token."
+                });
+            }
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return BadRequest(new
+                {
+                    Message = "Invalid user ID format in token."
+                });
+            }
+
+            var result = await _courseService.ApproveCourseSubmissionAsync(userId, submissionId);
+            return StatusCode(result.Code, result);
+        }
+        /// <summary>
+        /// Reject a course submission with a feedback reason.
+        /// </summary>
+        /// <param name="submissionId">The ID of the submission to reject.</param>
+        /// <param name="request">The reason for rejecting the submission.</param>
+        /// <returns>A response indicating whether the rejection was successful.</returns>
+        [HttpPut("submissions/{submissionId:guid}/reject")]
+        [Authorize(Roles = "Staff")]
+        public async Task<IActionResult> RejectCourseSubmission(Guid submissionId, [FromBody] RejectApplicationRequest request)
+        {
+            var userIdClaim = User.FindFirstValue("user_id")
+                 ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized(new
+                {
+                    Message = "Teacher ID not found in token."
+                });
+            }
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return BadRequest(new
+                {
+                    Message = "Invalid user ID format in token."
+                });
+            }
+
+            var result = await _courseService.RejectCourseSubmissionAsync(userId, submissionId, request.Reason);
+            return StatusCode(result.Code, result);
+        }
+        /// <summary>
+        /// Get all course submissions assigned to the logged-in staff user.
+        /// </summary>
+        /// <param name="request">Paging parameters (page number and page size).</param>
+        /// <param name="status">Filter by submission status (Pending, Approved, Rejected).</param>
+        /// <returns>A paginated list of course submissions.</returns>
+        [HttpGet("submissions/by-staff")]
+        [Authorize(Roles = "Staff")]
+        public async Task<IActionResult> GetAllCourseSubmissionsByStaff([FromQuery] PagingRequest request, [FromQuery] string? status)
+        {
+            var userIdClaim = User.FindFirstValue("user_id")
+                 ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized(new
+                {
+                    Message = "Teacher ID not found in token."
+                });
+            }
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return BadRequest(new
+                {
+                    Message = "Invalid user ID format in token."
+                });
+            }
+
+            var result = await _courseService.GetAllCourseSubmissionsByStaffAsync(userId, request, status ?? "Pending");
+            return StatusCode(result.Code, result);
+        }
+        /// <summary>
+        /// Get all course submissions made by the logged-in teacher.
+        /// </summary>
+        /// <param name="request">Paging parameters (page number and page size).</param>
+        /// <param name="status">Filter by submission status (Pending, Approved, Rejected).</param>
+        /// <returns>A paginated list of course submissions.</returns>
+        [HttpGet("submissions/by-teacher")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> GetAllCourseSubmissionsByTeacher([FromQuery] PagingRequest request, [FromQuery] string? status)
+        {
+            var userIdClaim = User.FindFirstValue("user_id")
+                 ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized(new
+                {
+                    Message = "Teacher ID not found in token."
+                });
+            }
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return BadRequest(new
+                {
+                    Message = "Invalid user ID format in token."
+                });
+            }
+            var result = await _courseService.GetAllCourseSubmissionsByTeacherAsync(userId, request, status ?? "Pending");
+            return StatusCode(result.Code, result);
         }
     }
 }

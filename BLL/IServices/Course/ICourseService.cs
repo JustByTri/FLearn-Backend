@@ -13,5 +13,10 @@ namespace BLL.IServices.Course
         Task<PagedResponse<IEnumerable<CourseResponse>>> GetAllCoursesByTeacherIdAsync(Guid userId, PagingRequest request, string status);
         Task<BaseResponse<CourseResponse>> GetCourseByIdAsync(Guid courseId);
         Task<BaseResponse<CourseResponse>> UpdateCourseAsync(Guid userId, Guid courseId, UpdateCourseRequest request);
+        Task<BaseResponse<object>> SubmitCourseForReviewAsync(Guid userId, Guid courseId);
+        Task<BaseResponse<object>> ApproveCourseSubmissionAsync(Guid userId, Guid submissionId);
+        Task<BaseResponse<object>> RejectCourseSubmissionAsync(Guid userId, Guid submissionId, string reason);
+        Task<PagedResponse<IEnumerable<CourseSubmissionResponse>>> GetAllCourseSubmissionsByStaffAsync(Guid userId, PagingRequest request, string status);
+        Task<PagedResponse<IEnumerable<CourseSubmissionResponse>>> GetAllCourseSubmissionsByTeacherAsync(Guid userId, PagingRequest request, string status);
     }
 }
