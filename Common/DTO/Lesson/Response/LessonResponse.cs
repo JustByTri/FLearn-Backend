@@ -7,6 +7,7 @@
         public string? Content { get; set; }
         public int Position { get; set; }
         public string? Description { get; set; }
+        public int TotalExercises { get; set; } = 0;
         public string? VideoUrl { get; set; }
         public string? DocumentUrl { get; set; }
         public Guid CourseUnitID { get; set; }

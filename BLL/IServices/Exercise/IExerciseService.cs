@@ -8,10 +8,10 @@ namespace BLL.IServices.Exercise
 {
     public interface IExerciseService
     {
-        Task<BaseResponse<ExerciseResponse>> CreateExerciseAsync(Guid teacherId, Guid courseId, Guid unitId, Guid lessonId, ExerciseRequest request);
-        Task<BaseResponse<ExerciseResponse>> UpdateExerciseAsync(Guid teacherId, Guid courseId, Guid unitId, Guid lessonId, Guid exerciseId, ExerciseRequest request);
+        Task<BaseResponse<ExerciseResponse>> CreateExerciseAsync(Guid userId, Guid lessonId, ExerciseRequest request);
+        Task<BaseResponse<ExerciseResponse>> UpdateExerciseAsync(Guid userId, Guid lessonId, Guid exerciseId, ExerciseUpdateRequest request);
         Task<PagedResponse<IEnumerable<ExerciseResponse>>> GetExercisesByLessonIdAsync(Guid lessonId, PagingRequest request);
         Task<BaseResponse<ExerciseResponse>> GetExerciseByIdAsync(Guid exerciseId);
-        Task<BaseResponse<ExerciseResponse>> DeleteExerciseAsync(Guid teacherId, Guid courseId, Guid unitId, Guid lessonId, Guid exerciseId);
+        Task<BaseResponse<ExerciseResponse>> DeleteExerciseByIdAsync(Guid userId, Guid exerciseId);
     }
 }

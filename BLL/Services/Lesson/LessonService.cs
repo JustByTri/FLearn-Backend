@@ -153,6 +153,7 @@ namespace BLL.Services.Lesson
                     Content = newLesson.Content,
                     Position = newLesson.Position,
                     Description = newLesson.Description,
+                    TotalExercises = newLesson.TotalExercises ?? 0,
                     VideoUrl = newLesson.VideoUrl,
                     DocumentUrl = newLesson.DocumentUrl,
                     CourseID = selectedCourse.CourseID,
@@ -198,6 +199,7 @@ namespace BLL.Services.Lesson
                     VideoUrl = lesson.VideoUrl,
                     DocumentUrl = lesson.DocumentUrl,
                     CourseID = lesson.CourseUnit.CourseID,
+                    TotalExercises = lesson.TotalExercises ?? 0,
                     CourseTitle = lesson.CourseUnit.Course?.Title,
                     CourseUnitID = lesson.CourseUnitID,
                     UnitTitle = lesson.CourseUnit?.Title,
@@ -244,6 +246,7 @@ namespace BLL.Services.Lesson
                         LessonID = l.LessonID,
                         Title = l.Title,
                         Description = l.Description,
+                        TotalExercises = l.TotalExercises ?? 0,
                         Content = l.Content,
                         Position = l.Position,
                         VideoUrl = l.VideoUrl,
@@ -277,8 +280,6 @@ namespace BLL.Services.Lesson
                 };
             }
         }
-
-
         public async Task<BaseResponse<LessonResponse>> UpdateLessonAsync(Guid userId, Guid unitId, Guid lessonId, LessonUpdateRequest request)
         {
             try
@@ -419,6 +420,7 @@ namespace BLL.Services.Lesson
                     LessonID = existingLesson.LessonID,
                     Title = existingLesson.Title,
                     Description = existingLesson.Description,
+                    TotalExercises = existingLesson.TotalExercises ?? 0,
                     Content = existingLesson.Content,
                     Position = existingLesson.Position,
                     VideoUrl = existingLesson.VideoUrl,
