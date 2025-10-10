@@ -197,7 +197,7 @@ namespace DAL.DBContext
          CertificateTypeId = Guid.NewGuid(),
          LanguageId = englishId,
          Name = "TOEIC",
-         Description = "Test of English for International Communication – Listening & Reading, Speaking & Writing",
+         Description = "Test of English for International Communication",
          Status = true,
          CreatedAt = now,
          UpdatedAt = now

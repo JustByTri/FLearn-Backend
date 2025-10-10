@@ -6,7 +6,6 @@ using Common.DTO.Paging.Request;
 using Common.DTO.Paging.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
 using System.Security.Claims;
 
 namespace Presentation.Controllers.Exercise
@@ -21,122 +20,38 @@ namespace Presentation.Controllers.Exercise
             _exerciseService = exerciseService;
         }
         /// <summary>
-        /// Create a new exercise under a specific lesson.
+        /// Creates a new exercise for a specified lesson.
         /// </summary>
-        /// <param name="courseId">The ID of the course the exercise belongs to.</param>
-        /// <param name="unitId">The ID of the unit the exercise belongs to.</param>
-        /// <param name="lessonId">The ID of the lesson the exercise belongs to.</param>
-        /// <param name="request">The exercise request object containing exercise details.</param>
-        /// <returns>A response containing the created exercise details or an error message.</returns>
+        /// <param name="lessonId">The unique identifier of the lesson to which the exercise belongs.</param>
+        /// <param name="request">The exercise creation request containing details and media files.</param>
+        /// <returns>
+        /// Returns a <see cref="BaseResponse{T}"/> containing the created exercise details if successful,
+        /// or an error message otherwise.
+        /// </returns>
+        /// <response code="201">Exercise created successfully.</response>
+        /// <response code="400">Invalid data or request format.</response>
+        /// <response code="403">The user does not have permission to create exercises for this lesson.</response>
+        /// <response code="404">Lesson or associated resource not found.</response>
+        /// <response code="500">An internal server error occurred while processing the request.</response>
         [Authorize(Roles = "Teacher")]
-        [HttpPost("courses/{courseId:guid}/units/{unitId:guid}/lessons/{lessonId:guid}/exercises")]
-        [ProducesResponseType(typeof(BaseResponse<ExerciseResponse>), 200)]
-        [ProducesResponseType(typeof(BaseResponse<ExerciseResponse>), 400)]
-        public async Task<IActionResult> CreateExercise(
-            Guid courseId,
-            Guid unitId,
-            Guid lessonId,
-            [FromForm] ExerciseRequest request)
+        [HttpPost("lessons/{lessonId:guid}/exercises")]
+        [ProducesResponseType(typeof(BaseResponse<ExerciseResponse>), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(BaseResponse<ExerciseResponse>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BaseResponse<ExerciseResponse>), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(BaseResponse<ExerciseResponse>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BaseResponse<ExerciseResponse>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> CreateExercise(Guid lessonId, [FromForm] ExerciseRequest request)
         {
-            var idClaim = User.FindFirst("user_id")?.Value
-                       ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                       ?? User.FindFirst("sub")?.Value
-                       ?? User.FindFirst("id")?.Value;
+            var userIdClaim = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            if (string.IsNullOrWhiteSpace(idClaim))
+            if (string.IsNullOrEmpty(userIdClaim))
             {
                 return Unauthorized("Teacher ID not found in token.");
             }
 
-            if (!Guid.TryParse(idClaim, out Guid teacherGuid) || teacherGuid == Guid.Empty)
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
             {
-                return Unauthorized("Invalid teacher ID in token.");
-            }
-
-            if (Request.Form.ContainsKey("Options"))
-            {
-                var optionValues = Request.Form["Options"];
-                var parsedList = new List<ExerciseOptionRequest>();
-                foreach (var val in optionValues)
-                {
-                    try
-                    {
-                        var option = JsonConvert.DeserializeObject<ExerciseOptionRequest>(val);
-                        if (option != null)
-                        {
-                            parsedList.Add(option);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        throw new Exception($"Parse error: {ex.Message}");
-                    }
-                }
-
-                request.Options = parsedList;
-            }
-
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(BaseResponse<object>.Fail("Invalid request data."));
-            }
-            var result = await _exerciseService.CreateExerciseAsync(teacherGuid, courseId, unitId, lessonId, request);
-            return StatusCode(result.Code, result);
-        }
-        /// <summary>
-        /// Update an existing exercise.
-        /// </summary>
-        /// <param name="courseId">The ID of the course.</param>
-        /// <param name="unitId">The ID of the unit.</param>
-        /// <param name="lessonId">The ID of the lesson.</param>
-        /// <param name="exerciseId">The ID of the exercise to update.</param>
-        /// <param name="request">The updated exercise request data.</param>
-        /// <returns>Returns the updated exercise details.</returns>
-        [Authorize(Roles = "Teacher")]
-        [HttpPut("courses/{courseId:guid}/units/{unitId:guid}/lessons/{lessonId:guid}/exercises/{exerciseId:guid}")]
-        public async Task<ActionResult<BaseResponse<ExerciseResponse>>> UpdateExercise(
-            Guid courseId,
-            Guid unitId,
-            Guid lessonId,
-            Guid exerciseId,
-            [FromForm] ExerciseRequest request)
-        {
-            var idClaim = User.FindFirst("user_id")?.Value
-                ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                ?? User.FindFirst("sub")?.Value
-                ?? User.FindFirst("id")?.Value;
-
-            if (string.IsNullOrWhiteSpace(idClaim))
-            {
-                return Unauthorized("Teacher ID not found in token.");
-            }
-
-            if (!Guid.TryParse(idClaim, out Guid teacherGuid) || teacherGuid == Guid.Empty)
-            {
-                return Unauthorized("Invalid teacher ID in token.");
-            }
-
-            if (Request.Form.ContainsKey("Options"))
-            {
-                var optionValues = Request.Form["Options"];
-                var parsedList = new List<ExerciseOptionRequest>();
-                foreach (var val in optionValues)
-                {
-                    try
-                    {
-                        var option = JsonConvert.DeserializeObject<ExerciseOptionRequest>(val);
-                        if (option != null)
-                        {
-                            parsedList.Add(option);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        throw new Exception($"Parse error: {ex.Message}");
-                    }
-                }
-
-                request.Options = parsedList;
+                return BadRequest("Invalid user ID format in token.");
             }
 
             if (!ModelState.IsValid)
@@ -144,68 +59,117 @@ namespace Presentation.Controllers.Exercise
                 return BadRequest(BaseResponse<object>.Fail("Invalid request data."));
             }
 
-            var result = await _exerciseService.UpdateExerciseAsync(teacherGuid, courseId, unitId, lessonId, exerciseId, request);
+            var result = await _exerciseService.CreateExerciseAsync(userId, lessonId, request);
             return StatusCode(result.Code, result);
         }
         /// <summary>
-        /// Get a paginated list of exercises for a specific lesson.
+        /// Updates an existing exercise within a specified lesson.
         /// </summary>
-        /// <param name="lessonId">The ID of the lesson.</param>
-        /// <param name="paging">The paging parameters (pageNumber, pageSize).</param>
-        /// <returns>Returns a paginated list of exercises.</returns>
+        /// <param name="lessonId">The unique identifier of the lesson that contains the exercise.</param>
+        /// <param name="exerciseId">The unique identifier of the exercise to update.</param>
+        /// <param name="request">The exercise update request containing new details and media files.</param>
+        /// <returns>
+        /// Returns a <see cref="BaseResponse{T}"/> containing the updated exercise details if successful,
+        /// or an error message otherwise.
+        /// </returns>
+        /// <response code="200">Exercise updated successfully.</response>
+        /// <response code="400">Invalid request data or media format.</response>
+        /// <response code="403">The user does not have permission to modify this exercise.</response>
+        /// <response code="404">Lesson or exercise not found.</response>
+        /// <response code="500">An internal server error occurred while updating the exercise.</response>
+        [Authorize(Roles = "Teacher")]
+        [HttpPut("lessons/{lessonId:guid}/exercises/{exerciseId:guid}")]
+        [ProducesResponseType(typeof(BaseResponse<ExerciseResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponse<ExerciseResponse>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BaseResponse<ExerciseResponse>), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(BaseResponse<ExerciseResponse>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BaseResponse<ExerciseResponse>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> UpdateExercise(Guid lessonId, Guid exerciseId, [FromForm] ExerciseUpdateRequest request)
+        {
+            var userIdClaim = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized("Teacher ID not found in token.");
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+                return BadRequest("Invalid user ID format in token.");
+
+            if (!ModelState.IsValid)
+                return BadRequest(BaseResponse<object>.Fail("Invalid request data."));
+
+            var result = await _exerciseService.UpdateExerciseAsync(userId, lessonId, exerciseId, request);
+            return StatusCode(result.Code, result);
+        }
+        /// <summary>
+        /// Retrieves a paginated list of exercises belonging to a specific lesson.
+        /// </summary>
+        /// <param name="lessonId">The unique identifier of the lesson.</param>
+        /// <param name="request">The pagination request specifying page number and size.</param>
+        /// <returns>
+        /// Returns a <see cref="PagedResponse{T}"/> containing the list of exercises for the given lesson.
+        /// </returns>
+        /// <response code="200">Exercises retrieved successfully.</response>
+        /// <response code="404">Lesson not found.</response>
+        /// <response code="500">An internal server error occurred while retrieving exercises.</response>
+        [AllowAnonymous]
         [HttpGet("lessons/{lessonId:guid}/exercises")]
-        [AllowAnonymous]
-        public async Task<ActionResult<PagedResponse<IEnumerable<ExerciseResponse>>>> GetExercisesByLesson(
-            Guid lessonId,
-            [FromQuery] PagingRequest paging)
+        [ProducesResponseType(typeof(PagedResponse<IEnumerable<ExerciseResponse>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(PagedResponse<IEnumerable<ExerciseResponse>>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(PagedResponse<IEnumerable<ExerciseResponse>>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetExercisesByLessonId(Guid lessonId, [FromQuery] PagingRequest request)
         {
-            var result = await _exerciseService.GetExercisesByLessonIdAsync(lessonId, paging);
+            var result = await _exerciseService.GetExercisesByLessonIdAsync(lessonId, request);
             return StatusCode(result.Code, result);
         }
         /// <summary>
-        /// Get details of a specific exercise by its ID.
+        /// Retrieves detailed information of a specific exercise.
         /// </summary>
-        /// <param name="exerciseId">The ID of the exercise.</param>
-        /// <returns>Returns the exercise details.</returns>
-        [HttpGet("exercises/{exerciseId:guid}")]
+        /// <param name="exerciseId">The unique identifier of the exercise.</param>
+        /// <returns>
+        /// Returns a <see cref="BaseResponse{T}"/> containing exercise details if found,
+        /// or an error message otherwise.
+        /// </returns>
+        /// <response code="200">Exercise retrieved successfully.</response>
+        /// <response code="404">Exercise not found.</response>
+        /// <response code="500">An internal server error occurred while retrieving exercise.</response>
         [AllowAnonymous]
-        public async Task<ActionResult<BaseResponse<ExerciseResponse>>> GetExerciseById(Guid exerciseId)
+        [HttpGet("exercises/{exerciseId:guid}")]
+        [ProducesResponseType(typeof(BaseResponse<ExerciseResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponse<ExerciseResponse>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BaseResponse<ExerciseResponse>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetExerciseById(Guid exerciseId)
         {
             var result = await _exerciseService.GetExerciseByIdAsync(exerciseId);
             return StatusCode(result.Code, result);
         }
         /// <summary>
-        /// Delete an exercise by its ID.
+        /// Deletes a specific exercise created by the authenticated teacher.
         /// </summary>
-        /// <param name="courseId">The ID of the course.</param>
-        /// <param name="unitId">The ID of the unit.</param>
-        /// <param name="lessonId">The ID of the lesson.</param>
-        /// <param name="exerciseId">The ID of the exercise to delete.</param>
-        /// <returns>Returns the deleted exercise details.</returns>
+        /// <param name="exerciseId">The unique identifier of the exercise to delete.</param>
+        /// <returns>
+        /// Returns a <see cref="BaseResponse{T}"/> indicating whether the deletion was successful.
+        /// </returns>
+        /// <response code="200">Exercise deleted successfully.</response>
+        /// <response code="403">The user does not have permission to delete this exercise.</response>
+        /// <response code="404">Exercise not found.</response>
+        /// <response code="500">An internal server error occurred while deleting the exercise.</response>
         [Authorize(Roles = "Teacher")]
-        [HttpDelete("courses/{courseId:guid}/units/{unitId:guid}/lessons/{lessonId:guid}/exercises/{exerciseId:guid}")]
-        public async Task<ActionResult<BaseResponse<ExerciseResponse>>> DeleteExercise(
-            Guid courseId,
-            Guid unitId,
-            Guid lessonId,
-            Guid exerciseId)
+        [HttpDelete("exercises/{exerciseId:guid}")]
+        [ProducesResponseType(typeof(BaseResponse<ExerciseResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponse<ExerciseResponse>), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(BaseResponse<ExerciseResponse>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BaseResponse<ExerciseResponse>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> DeleteExerciseById(Guid exerciseId)
         {
-            var idClaim = User.FindFirst("user_id")?.Value
-                ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                ?? User.FindFirst("sub")?.Value
-                ?? User.FindFirst("id")?.Value;
+            var userIdClaim = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            if (string.IsNullOrWhiteSpace(idClaim))
-            {
+            if (string.IsNullOrEmpty(userIdClaim))
                 return Unauthorized("Teacher ID not found in token.");
-            }
 
-            if (!Guid.TryParse(idClaim, out Guid teacherGuid) || teacherGuid == Guid.Empty)
-            {
-                return Unauthorized("Invalid teacher ID in token.");
-            }
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+                return BadRequest("Invalid user ID format in token.");
 
-            var result = await _exerciseService.DeleteExerciseAsync(teacherGuid, courseId, unitId, lessonId, exerciseId);
+            var result = await _exerciseService.DeleteExerciseByIdAsync(userId, exerciseId);
             return StatusCode(result.Code, result);
         }
     }

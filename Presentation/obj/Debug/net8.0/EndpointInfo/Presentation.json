@@ -1274,37 +1274,17 @@
         }
       }
     },
-    "/api/courses/{courseId}/units/{unitId}/lessons/{lessonId}/exercises": {
+    "/api/lessons/{lessonId}/exercises": {
       "post": {
         "tags": [
           "CourseExercise"
         ],
-        "summary": "Create a new exercise under a specific lesson.",
+        "summary": "Creates a new exercise for a specified lesson.",
         "parameters": [
-          {
-            "name": "courseId",
-            "in": "path",
-            "description": "The ID of the course the exercise belongs to.",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "unitId",
-            "in": "path",
-            "description": "The ID of the unit the exercise belongs to.",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
           {
             "name": "lessonId",
             "in": "path",
-            "description": "The ID of the lesson the exercise belongs to.",
+            "description": "The unique identifier of the lesson to which the exercise belongs.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1340,9 +1320,6 @@
                   "Type": {
                     "type": "string"
                   },
-                  "SkillType": {
-                    "type": "string"
-                  },
                   "Difficulty": {
                     "type": "string"
                   },
@@ -1357,9 +1334,6 @@
                   },
                   "FeedbackIncorrect": {
                     "type": "string"
-                  },
-                  "Options": {
-                    "type": "string"
                   }
                 }
               }
@@ -1368,8 +1342,8 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK",
+          "201": {
+            "description": "Exercise created successfully.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1389,7 +1363,7 @@
             }
           },
           "400": {
-            "description": "Bad Request",
+            "description": "Invalid data or request format.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1407,116 +1381,49 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/courses/{courseId}/units/{unitId}/lessons/{lessonId}/exercises/{exerciseId}": {
-      "put": {
-        "tags": [
-          "CourseExercise"
-        ],
-        "summary": "Update an existing exercise.",
-        "parameters": [
-          {
-            "name": "courseId",
-            "in": "path",
-            "description": "The ID of the course.",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
           },
-          {
-            "name": "unitId",
-            "in": "path",
-            "description": "The ID of the unit.",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "lessonId",
-            "in": "path",
-            "description": "The ID of the lesson.",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "exerciseId",
-            "in": "path",
-            "description": "The ID of the exercise to update.",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "Title": {
-                    "type": "string"
-                  },
-                  "Prompt": {
-                    "type": "string"
-                  },
-                  "Hints": {
-                    "type": "string"
-                  },
-                  "Content": {
-                    "type": "string"
-                  },
-                  "ExpectedAnswer": {
-                    "type": "string"
-                  },
-                  "MediaFile": {
-                    "type": "string",
-                    "format": "binary"
-                  },
-                  "Type": {
-                    "type": "string"
-                  },
-                  "SkillType": {
-                    "type": "string"
-                  },
-                  "Difficulty": {
-                    "type": "string"
-                  },
-                  "MaxScore": {
-                    "type": "integer"
-                  },
-                  "PassScore": {
-                    "type": "integer"
-                  },
-                  "FeedbackCorrect": {
-                    "type": "string"
-                  },
-                  "FeedbackIncorrect": {
-                    "type": "string"
-                  },
-                  "Options": {
-                    "type": "string"
-                  }
+          "403": {
+            "description": "The user does not have permission to create exercises for this lesson.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
                 }
               }
             }
           },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
+          "404": {
+            "description": "Lesson or associated resource not found.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An internal server error occurred while processing the request.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1537,88 +1444,16 @@
           }
         }
       },
-      "delete": {
-        "tags": [
-          "CourseExercise"
-        ],
-        "summary": "Delete an exercise by its ID.",
-        "parameters": [
-          {
-            "name": "courseId",
-            "in": "path",
-            "description": "The ID of the course.",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "unitId",
-            "in": "path",
-            "description": "The ID of the unit.",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "lessonId",
-            "in": "path",
-            "description": "The ID of the lesson.",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "exerciseId",
-            "in": "path",
-            "description": "The ID of the exercise to delete.",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/lessons/{lessonId}/exercises": {
       "get": {
         "tags": [
           "CourseExercise"
         ],
-        "summary": "Get a paginated list of exercises for a specific lesson.",
+        "summary": "Retrieves a paginated list of exercises belonging to a specific lesson.",
         "parameters": [
           {
             "name": "lessonId",
             "in": "path",
-            "description": "The ID of the lesson.",
+            "description": "The unique identifier of the lesson.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1644,7 +1479,47 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Exercises retrieved successfully.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseIEnumerablePagedResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseIEnumerablePagedResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseIEnumerablePagedResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Lesson not found.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseIEnumerablePagedResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseIEnumerablePagedResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseIEnumerablePagedResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An internal server error occurred while retrieving exercises.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1666,17 +1541,198 @@
         }
       }
     },
+    "/api/lessons/{lessonId}/exercises/{exerciseId}": {
+      "put": {
+        "tags": [
+          "CourseExercise"
+        ],
+        "summary": "Updates an existing exercise within a specified lesson.",
+        "parameters": [
+          {
+            "name": "lessonId",
+            "in": "path",
+            "description": "The unique identifier of the lesson that contains the exercise.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "exerciseId",
+            "in": "path",
+            "description": "The unique identifier of the exercise to update.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "Title": {
+                    "type": "string"
+                  },
+                  "Prompt": {
+                    "type": "string"
+                  },
+                  "Hints": {
+                    "type": "string"
+                  },
+                  "Content": {
+                    "type": "string"
+                  },
+                  "ExpectedAnswer": {
+                    "type": "string"
+                  },
+                  "MediaFile": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "Type": {
+                    "type": "string"
+                  },
+                  "Difficulty": {
+                    "type": "string"
+                  },
+                  "MaxScore": {
+                    "type": "integer"
+                  },
+                  "PassScore": {
+                    "type": "integer"
+                  },
+                  "FeedbackCorrect": {
+                    "type": "string"
+                  },
+                  "FeedbackIncorrect": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Exercise updated successfully.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request data or media format.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The user does not have permission to modify this exercise.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Lesson or exercise not found.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An internal server error occurred while updating the exercise.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/exercises/{exerciseId}": {
       "get": {
         "tags": [
           "CourseExercise"
         ],
-        "summary": "Get details of a specific exercise by its ID.",
+        "summary": "Retrieves detailed information of a specific exercise.",
         "parameters": [
           {
             "name": "exerciseId",
             "in": "path",
-            "description": "The ID of the exercise.",
+            "description": "The unique identifier of the exercise.",
             "required": true,
             "schema": {
               "type": "string",
@@ -1686,7 +1742,147 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Exercise retrieved successfully.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Exercise not found.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An internal server error occurred while retrieving exercise.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "CourseExercise"
+        ],
+        "summary": "Deletes a specific exercise created by the authenticated teacher.",
+        "parameters": [
+          {
+            "name": "exerciseId",
+            "in": "path",
+            "description": "The unique identifier of the exercise to delete.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Exercise deleted successfully.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The user does not have permission to delete this exercise.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Exercise not found.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseResponseBaseResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An internal server error occurred while deleting the exercise.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3969,43 +4165,6 @@
         "type": "integer",
         "format": "int32"
       },
-      "ExerciseOptionRequest": {
-        "required": [
-          "text"
-        ],
-        "type": "object",
-        "properties": {
-          "text": {
-            "maxLength": 500,
-            "minLength": 0,
-            "type": "string"
-          },
-          "isCorrect": {
-            "type": "boolean"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ExerciseOptionResponse": {
-        "type": "object",
-        "properties": {
-          "optionID": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "text": {
-            "type": "string"
-          },
-          "isCorrect": {
-            "type": "boolean"
-          },
-          "position": {
-            "type": "integer",
-            "format": "int32"
-          }
-        },
-        "additionalProperties": false
-      },
       "ExerciseResponse": {
         "type": "object",
         "properties": {
@@ -4045,16 +4204,10 @@
             "format": "int32"
           },
           "exerciseType": {
-            "type": "string",
-            "nullable": true
-          },
-          "skillType": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "difficulty": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "maxScore": {
             "type": "integer",
@@ -4110,13 +4263,6 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
-          },
-          "options": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ExerciseOptionResponse"
-            },
-            "nullable": true
           }
         },
         "additionalProperties": false
@@ -4167,21 +4313,6 @@
           }
         },
         "additionalProperties": false
-      },
-      "ExerciseType": {
-        "enum": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5,
-          6,
-          7,
-          8
-        ],
-        "type": "integer",
-        "format": "int32"
       },
       "ForgotPasswordDto": {
         "required": [
@@ -4292,6 +4423,10 @@
           "description": {
             "type": "string",
             "nullable": true
+          },
+          "totalExercises": {
+            "type": "integer",
+            "format": "int32"
           },
           "videoUrl": {
             "type": "string",
@@ -4528,17 +4663,15 @@
         },
         "additionalProperties": false
       },
-      "SkillType": {
+      "SpeakingExerciseType": {
         "enum": [
-          0,
           1,
           2,
           3,
           4,
           5,
           6,
-          7,
-          8
+          7
         ],
         "type": "integer",
         "format": "int32"
