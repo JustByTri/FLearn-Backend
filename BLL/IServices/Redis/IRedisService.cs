@@ -32,5 +32,6 @@ namespace BLL.IServices.Redis
         /// </summary>
         Task DeleteAsync(string key);
         Task SetAsync<T>(string key, T value, TimeSpan? expiry = null);
+        Task<T?> GetAsync<T>(string key) where T : class;
     }
 }

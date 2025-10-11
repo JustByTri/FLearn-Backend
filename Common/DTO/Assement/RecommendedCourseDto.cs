@@ -11,8 +11,7 @@ namespace Common.DTO.Assement
         public Guid CourseId { get; set; }
         public string CourseName { get; set; } = string.Empty;
         public string Level { get; set; } = string.Empty;
-        public string GoalName { get; set; } = string.Empty;
         public string MatchReason { get; set; } = string.Empty;
-        public int EstimatedDuration { get; set; }
+        public string? GoalName { get; set; }
     }
 }

@@ -65,7 +65,7 @@ namespace BLL.Services.Assessment
 
                 var languageCode = language.LanguageCode?.Trim().ToUpper();
 
-                var supportedLanguages = new[] { "EN", "ZH", "JP" };
+                var supportedLanguages = new[] { "EN", "ZH", "JA" };
                 if (string.IsNullOrEmpty(languageCode) || !supportedLanguages.Contains(languageCode))
                     throw new ArgumentException("Chỉ hỗ trợ đánh giá giọng nói tiếng Anh, tiếng Trung và tiếng Nhật");
 

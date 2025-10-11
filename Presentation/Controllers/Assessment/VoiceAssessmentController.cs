@@ -429,7 +429,6 @@ namespace Presentation.Controllers.Assessment
 
                 _logger.LogInformation("User {UserId} completing assessment {AssessmentId}", userId, assessmentId);
 
-                // Validation
                 var assessment = await _voiceAssessmentService.RestoreAssessmentFromIdAsync(assessmentId);
                 if (assessment == null)
                 {
@@ -461,10 +460,10 @@ namespace Presentation.Controllers.Assessment
                     });
                 }
 
-                // Complete assessment
+   
                 var assessmentResult = await _voiceAssessmentService.CompleteVoiceAssessmentAsync(assessmentId);
 
-                // ✅ TÌM HOẶC TẠO LEARNERLANGUAGE
+             
                 var allLearnerLanguages = await _unitOfWork.LearnerLanguages.GetAllAsync();
                 var learnerLanguage = allLearnerLanguages.FirstOrDefault(ll =>
                     ll.UserId == userId &&
@@ -472,7 +471,7 @@ namespace Presentation.Controllers.Assessment
 
                 if (learnerLanguage == null)
                 {
-                    // ✅ TẠO MỚI LEARNERLANGUAGE
+                
                     learnerLanguage = new LearnerLanguage
                     {
                         LearnerLanguageId = Guid.NewGuid(),
@@ -495,7 +494,7 @@ namespace Presentation.Controllers.Assessment
                 }
                 else
                 {
-                    // ✅ CẬP NHẬT GOAL NẾU THAY ĐỔI
+                 
                     if (learnerLanguage.GoalId != assessment.GoalID)
                     {
                         _logger.LogInformation("⚠️ Updating Goal for LearnerLanguage {Id}: {OldGoal} → {NewGoal}",
@@ -516,27 +515,27 @@ namespace Presentation.Controllers.Assessment
                         learnerLanguage.GoalId);
                 }
 
-                // Gọi Course Recommendation Service
+             
                 var recommendedCourses = await _courseRecommendationService.GetRecommendedCoursesAsync(
                     assessment.LanguageId,
                     assessmentResult.OverallLevel,
-                    learnerLanguage.GoalId);  // ✅ Dùng GoalId từ LearnerLanguage (đã updated)
+                    learnerLanguage.GoalId);  
 
                 _logger.LogInformation("Found {Count} recommended courses for level {Level}",
                     recommendedCourses.Count, assessmentResult.OverallLevel);
 
-                // Check availability
+             
                 var hasCoursesForLevel = await _courseRecommendationService.HasCoursesForLevelAsync(
                     assessment.LanguageId,
                     assessmentResult.OverallLevel);
 
-                // Lưu recommended courses vào Redis
+        
                 await _voiceAssessmentService.SaveRecommendedCoursesAsync(
                     userId,
                     assessment.LanguageId,
                     recommendedCourses);
 
-                // Tạo message động
+           
                 var message = hasCoursesForLevel && recommendedCourses.Any()
                     ? $"Hoàn thành voice assessment thành công! Tìm thấy {recommendedCourses.Count} khóa học phù hợp với trình độ {assessmentResult.OverallLevel} của bạn."
                     : $"Hoàn thành voice assessment thành công! Hiện tại chưa có khóa học tương ứng với trình độ {assessmentResult.OverallLevel}. Hãy tham khảo các khóa học khác trong hệ thống.";
@@ -555,11 +554,11 @@ namespace Presentation.Controllers.Assessment
                         languageId = assessment.LanguageId,
                         languageName = assessment.LanguageName,
                         learnerLanguageId = learnerLanguage.LearnerLanguageId,
-                        goalId = learnerLanguage.GoalId,  // ✅ Thêm goalId vào response
+                        goalId = learnerLanguage.GoalId,  
                         goalName = assessment.GoalName,
                         requiresAcceptance = true,
 
-                        // Recommended courses
+                    
                         recommendedCourses = recommendedCourses,
                         hasRecommendedCourses = recommendedCourses.Any(),
                         coursesCount = recommendedCourses.Count,
@@ -589,21 +588,30 @@ namespace Presentation.Controllers.Assessment
             {
                 var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-               
                 var learnerLanguage = await _unitOfWork.LearnerLanguages.GetByIdAsync(request.LearnerLanguageId);
                 if (learnerLanguage == null || learnerLanguage.UserId != userId)
                 {
                     return BadRequest(new { success = false, message = "LearnerLanguage không tồn tại hoặc không thuộc về bạn" });
                 }
 
-             
                 var assessmentResult = await _voiceAssessmentService.GetVoiceAssessmentResultAsync(userId, learnerLanguage.LanguageId);
                 if (assessmentResult == null)
                 {
                     return BadRequest(new { success = false, message = "Không tìm thấy kết quả assessment trong Redis" });
                 }
 
-           
+                // ✅ LẤY RECOMMENDED COURSES TỪ REDIS (CourseRecommendationDto)
+                var recommendedCoursesFromRedis = await GetRecommendedCoursesFromRedis(userId, learnerLanguage.LanguageId);
+
+                // ✅ CONVERT CourseRecommendationDto → RecommendedCourseDto
+                assessmentResult.RecommendedCourses = recommendedCoursesFromRedis.Select(rc => new RecommendedCourseDto
+                {
+                    CourseId = rc.CourseID,  // ✅ CourseID → CourseId
+                    CourseName = rc.CourseName,
+                    Level = rc.Level,
+                    MatchReason = rc.MatchReason
+                }).ToList();
+
                 await SaveAcceptedAssessmentToDatabase(learnerLanguage, assessmentResult);
 
                 await _voiceAssessmentService.ClearAssessmentResultAsync(userId, learnerLanguage.LanguageId);
@@ -621,22 +629,34 @@ namespace Presentation.Controllers.Assessment
                     }
                 });
             }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { success = false, message = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { success = false, message = ex.Message });
-            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error accepting voice assessment result for LearnerLanguageId {LearnerLanguageId}", request.LearnerLanguageId);
+                _logger.LogError(ex, "Error accepting voice assessment result");
                 return StatusCode(500, new
                 {
                     success = false,
                     message = "Đã xảy ra lỗi khi chấp nhận kết quả voice assessment"
                 });
+            }
+        }
+
+   
+        private async Task<List<CourseRecommendationDto>> GetRecommendedCoursesFromRedis(Guid userId, Guid languageId)
+        {
+            try
+            {
+                var cacheKey = $"voice_assessment_recommended_courses:{userId}:{languageId}";
+                var courses = await _redisService.GetAsync<List<CourseRecommendationDto>>(cacheKey);
+
+                _logger.LogInformation("📚 Retrieved {Count} courses from Redis key: {Key}",
+                    courses?.Count ?? 0, cacheKey);
+
+                return courses ?? new List<CourseRecommendationDto>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting recommended courses from Redis");
+                return new List<CourseRecommendationDto>();
             }
         }
 
@@ -688,24 +708,24 @@ namespace Presentation.Controllers.Assessment
         /// Private method to save accepted assessment result to database
         /// </summary>
         private async Task SaveAcceptedAssessmentToDatabase(
-     LearnerLanguage learnerLanguage,
-     VoiceAssessmentResultDto assessmentResult)
+            LearnerLanguage learnerLanguage,
+            VoiceAssessmentResultDto assessmentResult)
         {
             try
             {
                 _logger.LogInformation("🗺️ Starting SaveAcceptedAssessmentToDatabase for LearnerLanguageId: {LearnerLanguageId}",
                     learnerLanguage.LearnerLanguageId);
 
-              
+                // ✅ 1. Update LearnerLanguage ProficiencyLevel
                 learnerLanguage.ProficiencyLevel = assessmentResult.DeterminedLevel;
                 learnerLanguage.UpdatedAt = DateTime.UtcNow;
                 _unitOfWork.LearnerLanguages.Update(learnerLanguage);
 
-         
+                // ✅ 2. Create Roadmap
                 var roadmap = new Roadmap
                 {
                     RoadmapID = Guid.NewGuid(),
-                    LearnerLanguageId = learnerLanguage.LearnerLanguageId,  // ✅ SỬA TÊN PROPERTY
+                    LearnerLanguageId = learnerLanguage.LearnerLanguageId,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -715,79 +735,65 @@ namespace Presentation.Controllers.Assessment
 
                 await _unitOfWork.Roadmaps.CreateAsync(roadmap);
 
-                // 3. Create RoadmapDetails for recommended courses
+                // ✅ 3. SAVE ROADMAP FIRST before creating RoadmapDetails
+                await _unitOfWork.SaveChangesAsync();
+                _logger.LogInformation("✅ Roadmap saved successfully");
+
+                // ✅ 4. Get RecommendedCourses with detailed logging
                 var recommendedCourses = assessmentResult.RecommendedCourses ?? new List<RecommendedCourseDto>();
 
-                _logger.LogInformation("📚 Creating {Count} RoadmapDetails", recommendedCourses.Count);
+                _logger.LogInformation("📚 RecommendedCourses Count: {Count}", recommendedCourses.Count);
 
-                foreach (var course in recommendedCourses.Where(rc => rc.CourseId != Guid.Empty))
+                if (recommendedCourses.Any())
                 {
-                    var roadmapDetail = new RoadmapDetail
+                    foreach (var course in recommendedCourses)
                     {
-                        RoadmapDetailID = Guid.NewGuid(),
-                        RoadmapID = roadmap.RoadmapID,
-                        CourseId = course.CourseId,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-
-                    await _unitOfWork.RoadmapDetails.CreateAsync(roadmapDetail);
-
-                    _logger.LogInformation("✅ Created RoadmapDetail: CourseId={CourseId}", course.CourseId);
+                        _logger.LogInformation("Course Info: CourseId={CourseId}, CourseName={CourseName}",
+                            course.CourseId, course.CourseName ?? "NULL");
+                    }
                 }
 
-            
-                var existingBalanceList = await _unitOfWork.LearnerSlotBalances
-                    .FindAsync(lsb => lsb.LearnerId == learnerLanguage.LearnerLanguageId);
+                // ✅ 5. Filter valid courses and create RoadmapDetails
+                var validCourses = recommendedCourses.Where(rc => rc.CourseId != Guid.Empty).ToList();
 
-                var allBalances = await _unitOfWork.LearnerSlotBalances.GetAllAsync();
-                var existingBalance = allBalances?.FirstOrDefault(lsb =>
-                    lsb.LearnerId == learnerLanguage.LearnerLanguageId);
+                _logger.LogInformation("📚 Valid courses to create RoadmapDetails: {Count}", validCourses.Count);
 
-                if (existingBalance == null)
+                if (validCourses.Any())
                 {
-                   
-                    _logger.LogInformation("💰 Creating NEW LearnerSlotBalance for LearnerId={LearnerId}",
-                        learnerLanguage.LearnerLanguageId);
-
-                    var slotBalance = new LearnerSlotBalance
+                    foreach (var course in validCourses)
                     {
-                        LearnerSlotBalanceId = Guid.NewGuid(),
-                        LearnerId = learnerLanguage.LearnerLanguageId,  
-                        TotalSlots = 0,
-                        UsedSlots = 0,
-                        RemainingSlots = 0,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
+                        // ✅ Verify Course exists in database
+                        var courseExists = await _unitOfWork.Courses.GetByIdAsync(course.CourseId);
+                        if (courseExists == null)
+                        {
+                            _logger.LogWarning("⚠️ Course {CourseId} not found in database, skipping", course.CourseId);
+                            continue;
+                        }
 
-                    // ✅ LOG AFTER SET để confirm
-                    _logger.LogInformation("✅ SlotBalance object created: LearnerSlotBalanceId={Id}, LearnerId={LearnerId}, TotalSlots={Total}",
-                        slotBalance.LearnerSlotBalanceId,
-                        slotBalance.LearnerId,
-                        slotBalance.TotalSlots);
+                        var roadmapDetail = new RoadmapDetail
+                        {
+                            RoadmapDetailID = Guid.NewGuid(),
+                            RoadmapID = roadmap.RoadmapID,
+                            CourseId = course.CourseId,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
 
-                    // ✅ THÊM VÀO CONTEXT TRƯỚC
-                    await _unitOfWork.LearnerSlotBalances.CreateAsync(slotBalance);
+                        await _unitOfWork.RoadmapDetails.CreateAsync(roadmapDetail);
 
-                    _logger.LogInformation("✅ SlotBalance added to context, preparing to save...");
+                        _logger.LogInformation("✅ Created RoadmapDetail: ID={RoadmapDetailId}, CourseId={CourseId}, CourseName={CourseName}",
+                            roadmapDetail.RoadmapDetailID, course.CourseId, course.CourseName);
+                    }
+
+                    await _unitOfWork.SaveChangesAsync();
+                    _logger.LogInformation("✅ All RoadmapDetails saved successfully");
                 }
                 else
                 {
-                    existingBalance.UpdatedAt = DateTime.UtcNow;
-                    _unitOfWork.LearnerSlotBalances.Update(existingBalance);
-
-                    _logger.LogInformation("✅ Updated existing LearnerSlotBalance: Id={Id}",
-                        existingBalance.LearnerSlotBalanceId);
+                    _logger.LogWarning("⚠️ No valid courses to create RoadmapDetails");
                 }
 
-                // ✅ LOG TRƯỚC KHI SAVE
-                _logger.LogInformation("💾 About to call SaveChangesAsync...");
-
-                // 5. Save all changes
-                await _unitOfWork.SaveChangesAsync();
-
-                _logger.LogInformation("✅✅✅ SaveChangesAsync completed successfully!");
+                _logger.LogInformation("✅✅✅ SaveAcceptedAssessmentToDatabase completed successfully!");
             }
             catch (DbUpdateException dbEx)
             {
@@ -801,6 +807,7 @@ namespace Presentation.Controllers.Assessment
                 throw;
             }
         }
+
 
         /// <summary>
         /// Helper method to determine next target level

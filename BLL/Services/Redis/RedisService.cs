@@ -57,6 +57,28 @@ namespace BLL.Services.Redis
                 return null;
             }
         }
+        public async Task<T?> GetAsync<T>(string key) where T : class
+        {
+            try
+            {
+                var cachedValue = await _database.StringGetAsync(key);
+
+                if (!cachedValue.HasValue)
+                {
+                    _logger.LogDebug("Key '{Key}' not found in Redis", key);
+                    return null;
+                }
+
+                var result = JsonSerializer.Deserialize<T>(cachedValue);
+                _logger.LogDebug("✅ Retrieved key '{Key}' from Redis", key);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error getting key '{Key}' from Redis", key);
+                return null;
+            }
+        }
         public async Task SetAsync<T>(string key, T value, TimeSpan? expiry = null)
         {
             try
