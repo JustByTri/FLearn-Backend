@@ -1,5 +1,131 @@
 [
   {
+    "ContainingType": "Presentation.Controllers.ConversationPrompt.ConversationPromptController",
+    "Method": "GetAllGlobalPrompts",
+    "RelativePath": "api/admin/conversation-prompts",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.ConversationPrompt.ConversationPromptController",
+    "Method": "CreateGlobalPrompt",
+    "RelativePath": "api/admin/conversation-prompts",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "createPromptDto",
+        "Type": "Common.DTO.Admin.CreateGlobalPromptDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.ConversationPrompt.ConversationPromptController",
+    "Method": "GetGlobalPromptById",
+    "RelativePath": "api/admin/conversation-prompts/{promptId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "promptId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.ConversationPrompt.ConversationPromptController",
+    "Method": "UpdateGlobalPrompt",
+    "RelativePath": "api/admin/conversation-prompts/{promptId}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "promptId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "updatePromptDto",
+        "Type": "Common.DTO.Admin.UpdateGlobalPromptDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.ConversationPrompt.ConversationPromptController",
+    "Method": "DeleteGlobalPrompt",
+    "RelativePath": "api/admin/conversation-prompts/{promptId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "promptId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.ConversationPrompt.ConversationPromptController",
+    "Method": "PreviewPrompt",
+    "RelativePath": "api/admin/conversation-prompts/{promptId}/preview",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "promptId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "previewRequest",
+        "Type": "Presentation.Controllers.ConversationPrompt.PreviewPromptRequestDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.ConversationPrompt.ConversationPromptController",
+    "Method": "ToggleGlobalPromptStatus",
+    "RelativePath": "api/admin/conversation-prompts/{promptId}/toggle-status",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "promptId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.ConversationPrompt.ConversationPromptController",
+    "Method": "GetActiveGlobalPrompt",
+    "RelativePath": "api/admin/conversation-prompts/active",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "Presentation.Controllers.Admin.AdminController",
     "Method": "GetAdminDashboard",
     "RelativePath": "api/Admin/dashboard",
@@ -455,6 +581,131 @@
         "StatusCode": 200
       }
     ]
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Conversation.ConversationController",
+    "Method": "GetConversationSession",
+    "RelativePath": "api/conversation/{sessionId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "sessionId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Conversation.ConversationController",
+    "Method": "EndConversation",
+    "RelativePath": "api/conversation/{sessionId}/end",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "sessionId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Conversation.ConversationController",
+    "Method": "GetConversationHistory",
+    "RelativePath": "api/conversation/history",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Conversation.ConversationController",
+    "Method": "GetAvailableLanguages",
+    "RelativePath": "api/conversation/languages",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Conversation.ConversationController",
+    "Method": "SendMessage",
+    "RelativePath": "api/conversation/send-message",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "Common.DTO.Conversation.SendMessageRequestDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Conversation.ConversationController",
+    "Method": "SendVoiceMessage",
+    "RelativePath": "api/conversation/send-voice",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "SessionId",
+        "Type": "System.Guid",
+        "IsRequired": false
+      },
+      {
+        "Name": "AudioFile",
+        "Type": "Microsoft.AspNetCore.Http.IFormFile",
+        "IsRequired": false
+      },
+      {
+        "Name": "AudioDuration",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "Transcript",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Conversation.ConversationController",
+    "Method": "StartConversation",
+    "RelativePath": "api/conversation/start",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "Common.DTO.Conversation.StartConversationRequestDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Conversation.ConversationController",
+    "Method": "GetAvailableTopics",
+    "RelativePath": "api/conversation/topics",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
   },
   {
     "ContainingType": "Presentation.Controllers.Course.CourseController",

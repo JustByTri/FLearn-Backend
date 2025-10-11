@@ -7,6 +7,7 @@ using BLL.IServices.Certificate;
 using BLL.IServices.Course;
 using BLL.IServices.CourseTemplate;
 using BLL.IServices.CourseUnit;
+using BLL.IServices.Coversation;
 using BLL.IServices.Exercise;
 using BLL.IServices.Goal;
 using BLL.IServices.Language;
@@ -14,6 +15,7 @@ using BLL.IServices.Lesson;
 using BLL.IServices.Redis;
 using BLL.IServices.Topic;
 using BLL.IServices.Upload;
+using BLL.Services;
 using BLL.Services.Admin;
 using BLL.Services.AI;
 using BLL.Services.Application;
@@ -96,7 +98,7 @@ namespace BLL
                     };
                 }
             });
-
+            services.AddSignalR();
             services.AddScoped<IRedisService, RedisService>();
             services.AddScoped<ICloudinaryService, CloudinaryService>();
             services.AddScoped<IGeminiService, GeminiService>();
@@ -115,6 +117,8 @@ namespace BLL
             services.AddScoped<ICourseUnitService, CourseUnitService>();
             services.AddScoped<ILessonService, LessonService>();
             services.AddScoped<IExerciseService, ExerciseService>();
+          services.AddScoped<IConversationPartnerService, ConversationPartnerService>();
+        services.AddHttpClient<IGeminiService, GeminiService>();
             return services;
         }
     }

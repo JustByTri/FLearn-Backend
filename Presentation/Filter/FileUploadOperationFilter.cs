@@ -26,6 +26,19 @@ namespace Presentation.Filter
                 return;
 
             ApplyFileUploadSchema(operation, context, formFileParams);
+            if (context.ApiDescription.RelativePath?.Contains("submit-voice") == true)
+            {
+                ApplyVoiceAssessmentSchema(operation, context);
+                return;
+            }
+
+            
+            if (context.ApiDescription.RelativePath?.Contains("conversation/send-voice") == true)
+            {
+                ApplyConversationVoiceSchema(operation, context);
+                return;
+            }
+
         }
 
         private void ApplyVoiceAssessmentSchema(OpenApiOperation operation, OperationFilterContext context)
@@ -145,6 +158,93 @@ namespace Presentation.Filter
             }
 
             return new OpenApiSchema { Type = "string" };
+        }
+
+        private void ApplyConversationVoiceSchema(OpenApiOperation operation, OperationFilterContext context)
+        {
+            operation.RequestBody = new OpenApiRequestBody
+            {
+                Required = true,
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["multipart/form-data"] = new OpenApiMediaType
+                    {
+                        Schema = new OpenApiSchema
+                        {
+                            Type = "object",
+                            Properties = new Dictionary<string, OpenApiSchema>
+                            {
+                                ["sessionId"] = new OpenApiSchema
+                                {
+                                    Type = "string",
+                                    Format = "uuid",
+                                    Description = "ID của conversation session"
+                                },
+                                ["audioFile"] = new OpenApiSchema
+                                {
+                                    Type = "string",
+                                    Format = "binary",
+                                    Description = "File âm thanh (MP3, WAV, M4A, WebM, OGG - Max 10MB)"
+                                },
+                                ["audioDuration"] = new OpenApiSchema
+                                {
+                                    Type = "integer",
+                                    Description = "Thời lượng audio (giây)",
+                                    Nullable = true
+                                },
+                                ["transcript"] = new OpenApiSchema
+                                {
+                                    Type = "string",
+                                    Description = "Transcript của voice message (optional)",
+                                    Nullable = true
+                                }
+                            },
+                            Required = new HashSet<string> { "sessionId", "audioFile" }
+                        }
+                    }
+                }
+            };
+
+            // Add response schema
+            operation.Responses["200"] = new OpenApiResponse
+            {
+                Description = "Voice message sent successfully",
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaType
+                    {
+                        Schema = new OpenApiSchema
+                        {
+                            Type = "object",
+                            Properties = new Dictionary<string, OpenApiSchema>
+                            {
+                                ["success"] = new OpenApiSchema { Type = "boolean" },
+                                ["message"] = new OpenApiSchema { Type = "string" },
+                                ["data"] = new OpenApiSchema
+                                {
+                                    Type = "object",
+                                    Properties = new Dictionary<string, OpenApiSchema>
+                                    {
+                                        ["aiResponse"] = new OpenApiSchema { Type = "object" },
+                                        ["voiceInfo"] = new OpenApiSchema
+                                        {
+                                            Type = "object",
+                                            Properties = new Dictionary<string, OpenApiSchema>
+                                            {
+                                                ["audioUrl"] = new OpenApiSchema { Type = "string" },
+                                                ["audioPublicId"] = new OpenApiSchema { Type = "string" },
+                                                ["audioDuration"] = new OpenApiSchema { Type = "integer" },
+                                                ["fileSize"] = new OpenApiSchema { Type = "integer" },
+                                                ["contentType"] = new OpenApiSchema { Type = "string" }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
         }
     }
 }

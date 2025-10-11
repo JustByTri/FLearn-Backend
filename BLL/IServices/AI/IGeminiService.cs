@@ -1,4 +1,5 @@
 ﻿using Common.DTO.Assement;
+using Common.DTO.Conversation;
 using Common.DTO.Learner;
 using Common.DTO.Teacher;
 using Microsoft.AspNetCore.Http;
@@ -31,7 +32,10 @@ namespace BLL.IServices.AI
    string languageName);
         Task<List<VoiceAssessmentQuestion>> GenerateVoiceAssessmentQuestionsAsync(string languageCode, string languageName);
         Task<VoiceEvaluationResult> EvaluateVoiceResponseDirectlyAsync(VoiceAssessmentQuestion question, IFormFile audioFile, string languageCode);
-            
+      
+        Task<GeneratedConversationContentDto> GenerateConversationContentAsync(ConversationContextDto context);
+        Task<string> GenerateResponseAsync(string systemPrompt, string userMessage, List<string> conversationHistory);
+        Task<ConversationEvaluationResult> EvaluateConversationAsync(string evaluationPrompt);
     }
 
     public class CourseInfoDto
@@ -45,5 +49,16 @@ namespace BLL.IServices.AI
         public List<string> Skills { get; set; } = new();
         public int Duration { get; set; }
         public string Difficulty { get; set; } = string.Empty;
+    }
+    public class ConversationEvaluationResult
+    {
+        public float OverallScore { get; set; }
+        public float FluentScore { get; set; }
+        public float GrammarScore { get; set; }
+        public float VocabularyScore { get; set; }
+        public float CulturalScore { get; set; }
+        public string AIFeedback { get; set; } = string.Empty;
+        public string Improvements { get; set; } = string.Empty;
+        public string Strengths { get; set; } = string.Empty;
     }
 }
