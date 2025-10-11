@@ -302,7 +302,7 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
                                     MatchScore = Math.Min(100, Math.Max(0, rec.MatchScore)),
                                     MatchReason = rec.MatchReason ?? "Phù hợp với mục tiêu học tập",
                                     EstimatedDuration = course.Duration,
-                                    Skills = course.Skills ?? new List<string>()
+                                    
                                 });
 
                                 _logger.LogDebug("Matched course: {CourseId} - {Title}", course.CourseID, course.Title);
@@ -324,7 +324,7 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
                                         MatchScore = 70,
                                         MatchReason = "Gợi ý thay thế phù hợp",
                                         EstimatedDuration = fallbackCourse.Duration,
-                                        Skills = fallbackCourse.Skills ?? new List<string>()
+                                      
                                     });
                                 }
                             }
@@ -412,7 +412,7 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
         {
             var fallbackRecommendations = new List<CourseRecommendationDto>();
 
-            // If we have available courses, recommend the first few
+      
             if (availableCourses.Any())
             {
                 var topCourses = availableCourses.Take(3);
@@ -427,7 +427,7 @@ Viết bằng tiếng Việt, ngắn gọn nhưng hữu ích.";
                         MatchScore = 75,
                         MatchReason = "Khóa học phổ biến phù hợp cho người mới bắt đầu",
                         EstimatedDuration = course.Duration,
-                        Skills = course.Skills ?? new List<string>()
+                    
                     });
                 }
             }
@@ -872,7 +872,7 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
 - **Tone changes**: Biến điệu thanh trong từ ghép
 - **Rhythm**: Nhịp điệu đặc trưng tiếng Trung",
 
-                "JP" => @"
+                "JA" => @"
 - **Pitch accent**: Trọng âm cao thấp đúng
 - **Mora timing**: Nhịp điệu đều đặn
 - **Long vowels**: Nguyên âm dài chính xác
@@ -1269,7 +1269,7 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
 - Vocabulary: 5000+ characters, chengyu usage
 - Can handle: Professional, academic discussions",
 
-                "JP" => @"
+                "JA" => @"
 ### JLPT Framework (Japanese Language Proficiency Test)
 
 **N5 (Beginner):**
@@ -1349,7 +1349,7 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
 - Tones accurate 70-85%: HSK 3-4
 - Tones accurate > 85%: HSK 5-6",
 
-                "JP" => @"
+                "JA" => @"
 **Quy tắc xác định JLPT Level:**
 - N5: Overall 20-35, basic hiragana pronunciation
 - N4: Overall 35-50, simple Japanese understandable
@@ -1372,7 +1372,7 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
             {
                 "EN" => "B1",
                 "ZH" => "HSK 3",
-                "JP" => "N3",
+                "JA" => "N3",
                 _ => "Intermediate"
             };
         }
@@ -1383,7 +1383,7 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
             {
                 "EN" => "B2",
                 "ZH" => "HSK 4",
-                "JP" => "N2",
+                "JA" => "N2",
                 _ => "Advanced"
             };
         }
@@ -1394,7 +1394,7 @@ Trước khi đánh giá, hãy XÁC ĐỊNH NGÔN NGỮ trong audio:
             {
                 "EN" => "CEFR",
                 "ZH" => "HSK",
-                "JP" => "JLPT",
+                "JA" => "JLPT",
                 _ => "Standard"
             };
         }
@@ -2013,7 +2013,7 @@ Chỉ trả về JSON, không thêm markdown hay giải thích.";
             {
                 "EN" => "tiếng Anh",
                 "ZH" => "tiếng Trung",
-                "JP" => "tiếng Nhật",
+                "JA" => "tiếng Nhật",
                 _ => "ngôn ngữ"
             };
         }
@@ -2050,7 +2050,7 @@ Chỉ trả về JSON, không thêm markdown hay giải thích.";
 - Proper use of measure words
 - Cultural appropriateness",
 
-                "JP" => @"
+                "JA" => @"
 **Japanese Standards (JLPT):**
 - **Beginner (N5-N4)**: Hiragana/Katakana, 300-600 kanji, basic grammar
 - **Elementary (N3)**: 650-1000 kanji, intermediate grammar patterns
@@ -2429,7 +2429,7 @@ Chỉ trả về JSON, không thêm markdown hay giải thích.";
             }
         },
 
-                "JP" => new List<VoiceAssessmentQuestion>
+                "JA" => new List<VoiceAssessmentQuestion>
         {
 
             new() {
@@ -2726,7 +2726,7 @@ Chỉ trả về JSON, không thêm markdown hay giải thích.";
                 MaxRecordingSeconds = 120
             }
         },
-                "JP" => new List<VoiceAssessmentQuestion>
+                "JA" => new List<VoiceAssessmentQuestion>
         {
             new() {
                 QuestionNumber = 1,
@@ -2879,7 +2879,7 @@ Tạo 4 câu hỏi đánh giá khả năng nói {languageName}, độ khó tăng
    - Thanh 3 (ˇ): Giọng hỏi, xuống rồi lên
    - Thanh 4 (`): Giọng nặng, đi xuống mạnh",
 
-                "JP" => @"
+                "JA" => @"
 ### Hướng dẫn tiếng Việt cho Japanese:
 1. **Phiên âm**: Romaji + cách đọc Việt hóa
    - VD: こんにちは (konnichiwa / kon-ni-chi-oa) - Xin chào

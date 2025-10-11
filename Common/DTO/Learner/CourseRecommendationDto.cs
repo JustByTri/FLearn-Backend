@@ -15,6 +15,6 @@ namespace Common.DTO.Learner
         public decimal MatchScore { get; set; } // 0-100
         public string MatchReason { get; set; } = string.Empty;
         public int EstimatedDuration { get; set; } // in hours
-        public List<string> Skills { get; set; } = new();
+    
     }
 }

@@ -273,7 +273,7 @@ namespace BLL.Services.Implementation
                     MatchScore = matchScore,
                     MatchReason = GenerateMatchReason(course, targetLevel, matchScore),
                     EstimatedDuration = course.NumLessons * 2,
-                    Skills = GenerateSkillsList(course.Level)
+               
                 };
 
                 result.Add(dto);
