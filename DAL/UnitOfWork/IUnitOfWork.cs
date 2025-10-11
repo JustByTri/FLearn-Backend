@@ -52,6 +52,10 @@ namespace DAL.UnitOfWork
         ITransactionRepository UserTransactions { get; }
         IUserRepository Users { get; }
         IUserRoleRepository UserRoles { get; }
+        IGlobalConversationPromptRepository GlobalConversationPrompts { get; }
+        IConversationSessionRepository ConversationSessions { get; }
+        IConversationMessageRepository ConversationMessages { get; }
+
         int SaveChanges();
         Task<int> SaveChangesAsync();
         void BeginTransaction();

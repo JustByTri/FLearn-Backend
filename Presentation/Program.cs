@@ -1,5 +1,6 @@
 ﻿using BLL;
 using BLL.Background;
+using BLL.Hubs;
 using BLL.Settings;
 using Common.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -266,6 +267,14 @@ builder.Services.AddCors(options =>
         policy.AllowAnyOrigin()
               .AllowAnyHeader()
               .AllowAnyMethod();
+    
+    });
+    options.AddPolicy("SignalRCors", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+         
     });
 });
 
@@ -288,7 +297,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
-
+app.MapHub<ConversationHub>("/conversationHub");
 app.Run();
 

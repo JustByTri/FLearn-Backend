@@ -1,5 +1,6 @@
 ﻿using DAL.DBContext;
 using DAL.IRepositories;
+using DAL.Models;
 using DAL.Repositories;
 
 using Microsoft.EntityFrameworkCore.Storage;
@@ -63,6 +64,11 @@ namespace DAL.UnitOfWork
             UserTransactions = new TransactionRepository(_context);
             Users = new UserRepository(_context);
             UserRoles = new UserRoleRepository(_context);
+            GlobalConversationPrompts = new GlobalConversationPromptRepository(_context);
+            ConversationSessions = new ConversationSessionRepository(_context);
+            ConversationMessages = new ConversationMessageRepository(_context);
+
+
         }
         #region Repository Properties
         public IAchievementRepository Achievements { get; private set; }
@@ -113,6 +119,9 @@ namespace DAL.UnitOfWork
         public ITransactionRepository UserTransactions { get; private set; }
         public IUserRepository Users { get; private set; }
         public IUserRoleRepository UserRoles { get; private set; }
+        public IGlobalConversationPromptRepository GlobalConversationPrompts { get; private set; }
+        public IConversationSessionRepository ConversationSessions { get; private set; }
+        public IConversationMessageRepository ConversationMessages { get; private set; }
         #endregion
         #region Transaction Methods
         public void BeginTransaction()

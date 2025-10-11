@@ -795,6 +795,459 @@
         }
       }
     },
+    "/api/conversation/languages": {
+      "get": {
+        "tags": [
+          "Conversation"
+        ],
+        "summary": "Lấy danh sách ngôn ngữ có sẵn cho conversation",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/conversation/topics": {
+      "get": {
+        "tags": [
+          "Conversation"
+        ],
+        "summary": "Lấy danh sách chủ đề có sẵn cho conversation",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/conversation/start": {
+      "post": {
+        "tags": [
+          "Conversation"
+        ],
+        "summary": "Bắt đầu conversation session mới",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartConversationRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartConversationRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartConversationRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/conversation/send-message": {
+      "post": {
+        "tags": [
+          "Conversation"
+        ],
+        "summary": "Gửi tin nhắn text trong conversation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/conversation/send-voice": {
+      "post": {
+        "tags": [
+          "Conversation"
+        ],
+        "summary": "🎤 Gửi voice message trong conversation với upload lên Cloudinary",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "sessionId",
+                  "audioFile"
+                ],
+                "type": "object",
+                "properties": {
+                  "sessionId": {
+                    "type": "string",
+                    "description": "ID của conversation session",
+                    "format": "uuid"
+                  },
+                  "audioFile": {
+                    "type": "string",
+                    "description": "File âm thanh (MP3, WAV, M4A, WebM, OGG - Max 10MB)",
+                    "format": "binary"
+                  },
+                  "audioDuration": {
+                    "type": "integer",
+                    "description": "Thời lượng audio (giây)",
+                    "nullable": true
+                  },
+                  "transcript": {
+                    "type": "string",
+                    "description": "Transcript của voice message (optional)",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Voice message sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "aiResponse": {
+                          "type": "object"
+                        },
+                        "voiceInfo": {
+                          "type": "object",
+                          "properties": {
+                            "audioUrl": {
+                              "type": "string"
+                            },
+                            "audioPublicId": {
+                              "type": "string"
+                            },
+                            "audioDuration": {
+                              "type": "integer"
+                            },
+                            "fileSize": {
+                              "type": "integer"
+                            },
+                            "contentType": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/conversation/{sessionId}/end": {
+      "post": {
+        "tags": [
+          "Conversation"
+        ],
+        "summary": "Kết thúc conversation và nhận đánh giá",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/conversation/history": {
+      "get": {
+        "tags": [
+          "Conversation"
+        ],
+        "summary": "Lấy lịch sử conversations của user",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/conversation/{sessionId}": {
+      "get": {
+        "tags": [
+          "Conversation"
+        ],
+        "summary": "Lấy chi tiết một conversation session",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/conversation-prompts": {
+      "get": {
+        "tags": [
+          "ConversationPrompt"
+        ],
+        "summary": "Lấy danh sách tất cả global conversation prompts",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ConversationPrompt"
+        ],
+        "summary": "Tạo global conversation prompt mới",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGlobalPromptDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGlobalPromptDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGlobalPromptDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/conversation-prompts/{promptId}": {
+      "get": {
+        "tags": [
+          "ConversationPrompt"
+        ],
+        "summary": "Lấy thông tin chi tiết một global prompt",
+        "parameters": [
+          {
+            "name": "promptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "ConversationPrompt"
+        ],
+        "summary": "Cập nhật global conversation prompt",
+        "parameters": [
+          {
+            "name": "promptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGlobalPromptDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGlobalPromptDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGlobalPromptDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ConversationPrompt"
+        ],
+        "summary": "Xóa global conversation prompt",
+        "parameters": [
+          {
+            "name": "promptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/conversation-prompts/{promptId}/toggle-status": {
+      "patch": {
+        "tags": [
+          "ConversationPrompt"
+        ],
+        "summary": "Bật/tắt trạng thái global prompt",
+        "parameters": [
+          {
+            "name": "promptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/conversation-prompts/active": {
+      "get": {
+        "tags": [
+          "ConversationPrompt"
+        ],
+        "summary": "Lấy prompt đang active (để preview)",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/conversation-prompts/{promptId}/preview": {
+      "post": {
+        "tags": [
+          "ConversationPrompt"
+        ],
+        "summary": "Preview prompt với sample data",
+        "parameters": [
+          {
+            "name": "promptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewPromptRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewPromptRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewPromptRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/courses": {
       "get": {
         "tags": [
@@ -4336,6 +4789,60 @@
         "type": "integer",
         "format": "int32"
       },
+      "CreateGlobalPromptDto": {
+        "required": [
+          "description",
+          "masterPromptTemplate",
+          "promptName"
+        ],
+        "type": "object",
+        "properties": {
+          "promptName": {
+            "maxLength": 200,
+            "minLength": 0,
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 1000,
+            "minLength": 0,
+            "type": "string"
+          },
+          "masterPromptTemplate": {
+            "maxLength": 5000,
+            "minLength": 0,
+            "type": "string"
+          },
+          "scenarioGuidelines": {
+            "maxLength": 2000,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          },
+          "roleplayInstructions": {
+            "maxLength": 1000,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          },
+          "evaluationCriteria": {
+            "maxLength": 1000,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          },
+          "languageID": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "isDefault": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "DifficultyLevel": {
         "enum": [
           1,
@@ -4721,6 +5228,15 @@
         },
         "additionalProperties": false
       },
+      "MessageType": {
+        "enum": [
+          1,
+          2,
+          4
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
       "PagingMeta": {
         "type": "object",
         "properties": {
@@ -4739,6 +5255,33 @@
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PreviewPromptRequestDto": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string"
+          },
+          "languageCode": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "topicDescription": {
+            "type": "string"
+          },
+          "difficultyLevel": {
+            "type": "string"
+          },
+          "sampleScenario": {
+            "type": "string"
+          },
+          "sampleRole": {
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -4844,6 +5387,41 @@
         },
         "additionalProperties": false
       },
+      "SendMessageRequestDto": {
+        "required": [
+          "messageContent",
+          "sessionId"
+        ],
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "messageContent": {
+            "maxLength": 2000,
+            "minLength": 0,
+            "type": "string"
+          },
+          "messageType": {
+            "$ref": "#/components/schemas/MessageType"
+          },
+          "audioUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "audioPublicId": {
+            "type": "string",
+            "nullable": true
+          },
+          "audioDuration": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SpeakingExerciseType": {
         "enum": [
           1,
@@ -4868,6 +5446,23 @@
             "type": "string"
           },
           "email": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StartConversationRequestDto": {
+        "type": "object",
+        "properties": {
+          "languageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "difficultyLevel": {
             "type": "string"
           }
         },
@@ -5140,6 +5735,56 @@
           "isPreview": {
             "type": "boolean",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateGlobalPromptDto": {
+        "required": [
+          "description",
+          "masterPromptTemplate",
+          "promptName"
+        ],
+        "type": "object",
+        "properties": {
+          "promptName": {
+            "maxLength": 200,
+            "minLength": 0,
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 1000,
+            "minLength": 0,
+            "type": "string"
+          },
+          "masterPromptTemplate": {
+            "maxLength": 5000,
+            "minLength": 0,
+            "type": "string"
+          },
+          "scenarioGuidelines": {
+            "maxLength": 2000,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          },
+          "roleplayInstructions": {
+            "maxLength": 1000,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          },
+          "evaluationCriteria": {
+            "maxLength": 1000,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "isDefault": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

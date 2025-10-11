@@ -56,6 +56,9 @@ namespace DAL.DBContext
         public DbSet<Transaction> UserTransactions { get; set; }
         public DbSet<User> Users { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }
+        public DbSet<GlobalConversationPrompt> GlobalConversationPrompts { get; set; }
+        public DbSet<ConversationMessage> ConversationMessages { get; set; }
+        public DbSet<ConversationSession> ConversationSession { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

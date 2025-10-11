@@ -25,5 +25,6 @@ namespace DAL.Models
         public virtual ICollection<Achievement>? Achievements { get; set; } // Achievements associated with this language
         public virtual ICollection<Conversation>? Conversations { get; set; } // Conversations in this language
         public virtual ICollection<Course>? Courses { get; set; }
+        public virtual ICollection<GlobalConversationPrompt>? GlobalConversationPrompts { get; set; } // Global conversation prompts in this language
     }
 }
