@@ -1,4 +1,4 @@
-ame: Deploy FLearn Backend (Stable)
+name: Deploy FLearn Backend (Stable)
 
 on:
   push:
