@@ -1436,6 +1436,11 @@
         "Name": "PageSize",
         "Type": "System.Int32",
         "IsRequired": false
+      },
+      {
+        "Name": "lang",
+        "Type": "System.String",
+        "IsRequired": false
       }
     ],
     "ReturnTypes": []
@@ -1794,6 +1799,27 @@
     ]
   },
   {
+    "ContainingType": "Presentation.Controllers.LessonProgress.LessonProgressController",
+    "Method": "CompleteLesson",
+    "RelativePath": "api/lessons/{lessonId}/complete",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "lessonId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "req",
+        "Type": "Common.DTO.LessonProgress.Request.CompleteLessonRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "Presentation.Controllers.Exercise.CourseExerciseController",
     "Method": "CreateExercise",
     "RelativePath": "api/lessons/{lessonId}/exercises",
@@ -2095,6 +2121,69 @@
         "StatusCode": 500
       }
     ]
+  },
+  {
+    "ContainingType": "Presentation.Controllers.LessonProgress.LessonProgressController",
+    "Method": "UpdateProgress",
+    "RelativePath": "api/lessons/{lessonId}/progress",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "lessonId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "req",
+        "Type": "Common.DTO.LessonProgress.Request.UpdateLessonProgressRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.LessonProgress.LessonProgressController",
+    "Method": "GetProgress",
+    "RelativePath": "api/lessons/{lessonId}/progress/{enrollmentId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "lessonId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "enrollmentId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.LessonProgress.LessonProgressController",
+    "Method": "StartLesson",
+    "RelativePath": "api/lessons/{lessonId}/start",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "lessonId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "req",
+        "Type": "Common.DTO.LessonProgress.Request.StartLessonRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
   },
   {
     "ContainingType": "Presentation.Controllers.Application.ApplicationController",

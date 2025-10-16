@@ -99,13 +99,12 @@ namespace BLL.Services.Enrollment
 
                 return BaseResponse<EnrollmentResponse>.Success(enrollmentResponse, "Enrolled successfully.");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
-                throw;
+                return BaseResponse<EnrollmentResponse>.Error($"Unexpected error occurred: {ex.Message}", 500, null);
             }
         }
-        public async Task<PagedResponse<IEnumerable<EnrollmentResponse>>> GetEnrolledCoursesAsync(Guid userId, PagingRequest request)
+        public async Task<PagedResponse<IEnumerable<EnrollmentResponse>>> GetEnrolledCoursesAsync(Guid userId, string lang, PagingRequest request)
         {
             var learner = await _unit.LearnerLanguages.FindAsync(l => l.UserId == userId);
             if (learner == null)
@@ -114,8 +113,16 @@ namespace BLL.Services.Enrollment
             var query = _unit.Enrollments.Query()
                 .Include(e => e.Course)
                     .ThenInclude(c => c.Teacher)
-                .Where(e => e.LearnerId == learner.LearnerLanguageId)
-                .OrderByDescending(e => e.EnrolledAt);
+                .Include(e => e.Course)
+                    .ThenInclude(c => c.Language)
+                .Where(e => e.LearnerId == learner.LearnerLanguageId);
+
+            if (!string.IsNullOrEmpty(lang))
+            {
+                query = query.Where(e => e.Course.Language.LanguageCode == lang);
+            }
+
+            query = query.OrderByDescending(e => e.EnrolledAt);
 
             int totalItems = await query.CountAsync();
             var enrollments = await query
@@ -142,6 +149,7 @@ namespace BLL.Services.Enrollment
                     CourseType = e.Course.Type.ToString(),
                     CourseLevel = e.Course.Level.ToString(),
                     Status = e.Course.Status.ToString(),
+                    LanguageCode = e.Course.Language.LanguageCode,
                     TeacherInfo = e.Course.Teacher != null ? new TeacherInfo
                     {
                         TeacherId = e.Course.Teacher.TeacherProfileId,

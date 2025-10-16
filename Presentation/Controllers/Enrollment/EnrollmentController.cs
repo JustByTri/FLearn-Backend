@@ -1,6 +1,7 @@
 ﻿using BLL.IServices.Enrollment;
 using Common.DTO.ApiResponse;
 using Common.DTO.Enrollment.Request;
+using Common.DTO.Language;
 using Common.DTO.Paging.Request;
 using Common.DTO.Paging.Response;
 using Microsoft.AspNetCore.Authorization;
@@ -69,7 +70,7 @@ namespace Presentation.Controllers.Enrollment
         /// <response code="500">Internal server error occurred.</response>
         [Authorize(Policy = "OnlyLearner")]
         [HttpGet]
-        public async Task<IActionResult> GetEnrolledCoursesAsync([FromQuery] PagingRequest request)
+        public async Task<IActionResult> GetEnrolledCoursesAsync([FromQuery] PagingRequest request, [FromQuery][AllowedLang] string lang)
         {
             var userIdClaim = User.FindFirstValue("user_id")
                                  ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -84,7 +85,7 @@ namespace Presentation.Controllers.Enrollment
                 return BadRequest("Invalid user ID format in token.");
             }
 
-            var result = await _enrollmentService.GetEnrolledCoursesAsync(userId, request);
+            var result = await _enrollmentService.GetEnrolledCoursesAsync(userId, lang, request);
 
             return StatusCode(result.Code, result);
         }
