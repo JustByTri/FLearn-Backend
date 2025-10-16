@@ -46,20 +46,20 @@ jobs:
             echo "PWD:  $(pwd)"
             dotnet --info | head -n 20 || echo ".NET info unavailable"
 
-            banner "Stopping service and waiting for it to shut down"
+            banner "Forcefully stopping service and waiting for it to terminate"
             if systemctl is-active --quiet "$SERVICE_NAME"; then
-              systemctl stop "$SERVICE_NAME"
-              echo "Stop command sent. Pausing for 2 seconds before checking..."
+              systemctl kill "$SERVICE_NAME"
+              echo "Kill command sent. Pausing for 2 seconds before checking..."
               sleep 2
               
-              echo "Waiting for service to stop..."
+              echo "Waiting for service to terminate..."
               for i in {1..10}; do
                 if ! systemctl is-active --quiet "$SERVICE_NAME"; then
-                  echo "Service has stopped."
+                  echo "Service has terminated."
                   break
                 fi
                 if [ $i -eq 10 ]; then
-                  echo "ERROR: Service did not stop after ~50 seconds."
+                  echo "ERROR: Service did not terminate after ~50 seconds."
                   exit 1
                 fi
                 sleep 5
