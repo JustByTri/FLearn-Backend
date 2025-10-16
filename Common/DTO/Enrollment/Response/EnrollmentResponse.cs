@@ -20,6 +20,7 @@
         public decimal Price { get; set; }
         public string CourseType { get; set; } = string.Empty;
         public string CourseLevel { get; set; } = string.Empty;
+        public string? LanguageCode { get; set; }
         public string Status { get; set; } = string.Empty;
         public TeacherInfo TeacherInfo { get; set; }
     }

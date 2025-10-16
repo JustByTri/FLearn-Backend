@@ -13,6 +13,7 @@ using BLL.IServices.Exercise;
 using BLL.IServices.Goal;
 using BLL.IServices.Language;
 using BLL.IServices.Lesson;
+using BLL.IServices.LessonProgress;
 using BLL.IServices.Redis;
 using BLL.IServices.Topic;
 using BLL.IServices.Upload;
@@ -32,6 +33,7 @@ using BLL.Services.Goal;
 using BLL.Services.Implementation;
 using BLL.Services.Languages;
 using BLL.Services.Lesson;
+using BLL.Services.LessonProgress;
 using BLL.Services.Redis;
 using BLL.Services.Topic;
 using BLL.Services.Upload;
@@ -122,6 +124,7 @@ namespace BLL
             services.AddScoped<IConversationPartnerService, ConversationPartnerService>();
             services.AddHttpClient<IGeminiService, GeminiService>();
             services.AddScoped<IEnrollmentService, EnrollmentService>();
+            services.AddScoped<ILessonProgressService, LessonProgressService>();
             return services;
         }
     }

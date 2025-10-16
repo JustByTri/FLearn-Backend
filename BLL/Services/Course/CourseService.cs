@@ -371,9 +371,10 @@ namespace BLL.Services.Course
                     }
                     else
                     {
-                        return (PagedResponse<IEnumerable<CourseResponse>>)PagedResponse<IEnumerable<CourseResponse>>.Fail(null,
-                            $"Invalid course status: '{status}'. Allowed values: {string.Join(", ", Enum.GetNames(typeof(CourseStatus)))}",
-                            400
+                        return PagedResponse<IEnumerable<CourseResponse>>.Fail(
+                            errors: null,
+                            message: $"Invalid course status: '{status}'. Allowed values: {string.Join(", ", Enum.GetNames(typeof(CourseStatus)))}",
+                            code: 400
                         );
                     }
                 }
