@@ -141,7 +141,3 @@ jobs:
       - name: Done
         run: echo "🎉 Deployment job finished successfully!"
 
-
-## 🚀 Copy toàn bộ file này vào:
-```
-.github/workflows/deploy.yml
