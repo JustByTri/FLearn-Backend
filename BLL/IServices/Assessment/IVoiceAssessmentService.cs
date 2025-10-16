@@ -5,17 +5,19 @@ namespace BLL.IServices.Assessment
 {
     public interface IVoiceAssessmentService
     {
+       
+        Task<VoiceAssessmentDto> StartVoiceAssessmentAsync(Guid userId, Guid languageId, List<int>? goalIds = null);
+
         Task<VoiceAssessmentDto> StartVoiceAssessmentAsync(Guid userId, Guid languageId, int? goalId = null);
+
         Task<VoiceAssessmentQuestion> GetCurrentQuestionAsync(Guid assessmentId);
         Task SubmitVoiceResponseAsync(Guid assessmentId, VoiceAssessmentResponseDto response);
         Task<BatchVoiceEvaluationResult> CompleteVoiceAssessmentAsync(Guid assessmentId);
         Task<VoiceAssessmentResultDto?> GetVoiceAssessmentResultAsync(Guid userId, Guid languageId);
         Task<bool> HasCompletedVoiceAssessmentAsync(Guid userId, Guid languageId);
 
-    
         Task<List<VoiceAssessmentDto>> GetActiveAssessmentsDebugAsync();
 
-    
         Task<Guid?> FindAssessmentIdAsync(Guid userId, Guid languageId);
         Task<VoiceAssessmentDto?> RestoreAssessmentFromIdAsync(Guid assessmentId);
         Task<bool> ValidateAssessmentIdAsync(Guid assessmentId, Guid userId);
@@ -25,7 +27,6 @@ namespace BLL.IServices.Assessment
         /// </summary>
         Task ClearAssessmentResultAsync(Guid userId, Guid languageId);
         Task SaveRecommendedCoursesAsync(Guid userId, Guid languageId, List<CourseRecommendationDto> courses);
-
     }
 }
 
