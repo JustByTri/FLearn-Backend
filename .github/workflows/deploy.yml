@@ -1,5 +1,4 @@
 name: Deploy FLearn Backend (Stable)
-
 on:
   push:
     branches: [main]
@@ -37,77 +36,112 @@ jobs:
             SERVICE_NAME="flearn-backend"
             REPO_DIR="/root/FLearn-Backend"
             PUBLISH_DIR="/var/www/flearn-backend-published"
-            
+           
             banner() { printf "\n===== %s =====\n" "$1"; }
-
+            
             banner "Environment Info"
             echo "TIME: $(date -u)"
             echo "USER: $(whoami)"
             echo "PWD:  $(pwd)"
             dotnet --info | head -n 20 || echo ".NET info unavailable"
-
-            banner "Forcefully stopping service and waiting for it to terminate"
+            
+            banner "Step 1: Stop service and release file locks"
             if systemctl is-active --quiet "$SERVICE_NAME"; then
-              systemctl kill "$SERVICE_NAME"
-              echo "Kill command sent. Pausing for 2 seconds before checking..."
+              echo "Stopping service..."
+              systemctl stop "$SERVICE_NAME"
               sleep 2
-              
-              echo "Waiting for service to terminate..."
-              for i in {1..10}; do
-                if ! systemctl is-active --quiet "$SERVICE_NAME"; then
-                  echo "Service has terminated."
-                  break
-                fi
-                if [ $i -eq 10 ]; then
-                  echo "ERROR: Service did not terminate after ~50 seconds."
-                  exit 1
-                fi
-                sleep 5
-              done
-            else
-              echo "Service is not running. Nothing to stop."
             fi
-
-            banner "Updating repository"
+            
+            echo "Killing any remaining dotnet processes..."
+            pkill -9 -f "Presentation.dll" || true
+            pkill -9 -f "dotnet" || true
+            sleep 3
+            
+            echo "Verifying service is stopped..."
+            for i in {1..5}; do
+              if ! systemctl is-active --quiet "$SERVICE_NAME"; then
+                echo "✓ Service confirmed stopped"
+                break
+              fi
+              echo "[$i] Waiting for service to stop..."
+              sleep 2
+            done
+            
+            banner "Step 2: Clean old publish directory"
+            if [ -d "$PUBLISH_DIR" ]; then
+              echo "Removing old publish directory..."
+              rm -rf "$PUBLISH_DIR"
+              sleep 1
+            fi
+            mkdir -p "$PUBLISH_DIR"
+            echo "✓ Publish directory ready"
+            
+            banner "Step 3: Update repository"
             if [ ! -d "$REPO_DIR/.git" ]; then
-              echo "Repository folder missing: $REPO_DIR"
+              echo "ERROR: Repository folder missing: $REPO_DIR"
               exit 1
             fi
             cd "$REPO_DIR"
             git fetch --all --prune
             git reset --hard origin/main
             git clean -fdx
-
-            banner "Building & Publishing"
-            cd Presentation
-            dotnet publish -c Release -o "$PUBLISH_DIR" --verbosity minimal
-
-            banner "Setting permissions"
-            chown -R www-data:www-data "$PUBLISH_DIR"
-
-            banner "Starting service"
-            systemctl start "$SERVICE_NAME"
+            echo "✓ Repository updated"
             
-            banner "Waiting for service to become active"
-            for i in {1..12}; do
-              if systemctl is-active --quiet "$SERVICE_NAME"; then
-                echo "Service is active."
-                break
-              fi
-              echo "[$i] Waiting 5s..."
-              sleep 5
-            done
-
-            if ! systemctl is-active --quiet "$SERVICE_NAME"; then
-              echo "ERROR: Service failed to become active."
-              journalctl -u "$SERVICE_NAME" -n 120 --no-pager || true
+            banner "Step 4: Build & Publish Release"
+            cd Presentation
+            dotnet publish -c Release -o "$PUBLISH_DIR" \
+              -p:DebugType=none \
+              -p:DebugSymbols=false \
+              --verbosity minimal 2>&1 | grep -E "(error|warning|Build|Publish)" || true
+            
+            if [ ! -f "$PUBLISH_DIR/Presentation.dll" ]; then
+              echo "ERROR: Presentation.dll not found after publish!"
               exit 1
             fi
-
-            banner "Last 40 log lines"
-            journalctl -u "$SERVICE_NAME" -n 40 --no-pager || true
-            echo "✅ Deployment completed successfully at $(date -u)"
+            echo "✓ Build completed successfully"
+            
+            banner "Step 5: Set permissions"
+            chown -R www-data:www-data "$PUBLISH_DIR"
+            chmod -R 755 "$PUBLISH_DIR"
+            echo "✓ Permissions set"
+            
+            banner "Step 6: Start service"
+            systemctl start "$SERVICE_NAME"
+            sleep 2
+            
+            banner "Step 7: Verify service is running"
+            for i in {1..12}; do
+              if systemctl is-active --quiet "$SERVICE_NAME"; then
+                echo "✓ Service is active and running"
+                break
+              fi
+              if [ $i -eq 12 ]; then
+                echo "ERROR: Service failed to start!"
+                echo ""
+                echo "Recent logs:"
+                journalctl -u "$SERVICE_NAME" -n 50 --no-pager || true
+                exit 1
+              fi
+              echo "[$i/12] Waiting for service to start..."
+              sleep 5
+            done
+            
+            banner "Step 8: Service Status & Logs"
+            systemctl status "$SERVICE_NAME" --no-pager
+            echo ""
+            echo "Last 30 log lines:"
+            journalctl -u "$SERVICE_NAME" -n 30 --no-pager || true
+            
+            banner "✅ Deployment completed successfully"
+            echo "TIME: $(date -u)"
+            echo "Service: $SERVICE_NAME"
+            echo "Status: $(systemctl is-active $SERVICE_NAME)"
           EOF
-          
+         
       - name: Done
-        run: echo "🎉 Deployment job finished."
+        run: echo "🎉 Deployment job finished successfully!"
+
+
+## 🚀 Copy toàn bộ file này vào:
+```
+.github/workflows/deploy.yml
