@@ -13,12 +13,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     env:
       SERVICE_NAME: flearn-backend
       REPO_DIR: /root/FLearn-Backend
       PUBLISH_DIR: /var/www/flearn-backend-published
-
     steps:
       - name: Prepare SSH client
         run: |
@@ -40,11 +38,10 @@ jobs:
           echo "==> Connecting to server..."
           ssh -o StrictHostKeyChecking=yes "${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}" 'bash -seu' <<'EOF'
             set -euo pipefail
-
             SERVICE_NAME="flearn-backend"
             REPO_DIR="/root/FLearn-Backend"
             PUBLISH_DIR="/var/www/flearn-backend-published"
-
+            
             banner() { printf "\n===== %s =====\n" "$1"; }
 
             banner "Environment Info"
@@ -53,8 +50,24 @@ jobs:
             echo "PWD:  $(pwd)"
             dotnet --info | head -n 20 || echo ".NET info unavailable"
 
-            banner "Stopping service (ignore if not running)"
-            systemctl stop "$SERVICE_NAME" || true
+            banner "Stopping service and waiting for it to shut down"
+            if systemctl is-active --quiet "$SERVICE_NAME"; then
+              systemctl stop "$SERVICE_NAME"
+              echo "Waiting for service to stop..."
+              for i in {1..10}; do
+                if ! systemctl is-active --quiet "$SERVICE_NAME"; then
+                  echo "Service has stopped."
+                  break
+                fi
+                if [ $i -eq 10 ]; then
+                  echo "ERROR: Service did not stop after 50 seconds."
+                  exit 1
+                fi
+                sleep 5
+              done
+            else
+              echo "Service is not running. Nothing to stop."
+            fi
 
             banner "Updating repository"
             if [ ! -d "$REPO_DIR/.git" ]; then
@@ -67,8 +80,8 @@ jobs:
             git clean -fdx
 
             banner "Building & Publishing"
+            # It's better to publish from the project directory
             cd Presentation
-            dotnet restore --verbosity minimal
             dotnet publish -c Release -o "$PUBLISH_DIR" --verbosity minimal
 
             banner "Setting permissions"
@@ -76,7 +89,7 @@ jobs:
 
             banner "Starting service"
             systemctl start "$SERVICE_NAME"
-
+            
             banner "Waiting for service to become active"
             for i in {1..12}; do
               if systemctl is-active --quiet "$SERVICE_NAME"; then
@@ -95,9 +108,8 @@ jobs:
 
             banner "Last 40 log lines"
             journalctl -u "$SERVICE_NAME" -n 40 --no-pager || true
-
             echo "✅ Deployment completed successfully at $(date -u)"
           EOF
-
+          
       - name: Done
         run: echo "🎉 Deployment job finished ."
