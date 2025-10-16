@@ -164,9 +164,6 @@ if (jwtSettings != null && !string.IsNullOrEmpty(jwtSettings.SecretKey))
         throw new InvalidOperationException("AccessTokenExpirationMinutes must be positive");
     }
 
-    Console.WriteLine($"🔐 JWT configured: Issuer={jwtSettings.Issuer}, " +
-                     $"AccessExpiry={jwtSettings.AccessTokenExpirationMinutes}min");
-
     builder.Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -267,14 +264,14 @@ builder.Services.AddCors(options =>
         policy.AllowAnyOrigin()
               .AllowAnyHeader()
               .AllowAnyMethod();
-    
+
     });
     options.AddPolicy("SignalRCors", policy =>
     {
         policy.AllowAnyOrigin()
               .AllowAnyHeader()
               .AllowAnyMethod();
-         
+
     });
 });
 

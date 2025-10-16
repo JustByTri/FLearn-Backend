@@ -1278,6 +1278,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "description": "Optional filter by lang code. Accepted values:\r\n<list type=\"bullet\"><item><description>`en`</description></item><item><description>`ja`</description></item><item><description>`zh`</description></item></list>",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1382,8 +1390,8 @@
                   "CourseType": {
                     "type": "string"
                   },
-                  "GoalId": {
-                    "type": "integer"
+                  "GoalIds": {
+                    "type": "string"
                   },
                   "Level": {
                     "type": "string"
@@ -1486,17 +1494,6 @@
               "type": "string",
               "format": "uuid"
             }
-          },
-          {
-            "name": "TopicIds",
-            "in": "query",
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "format": "uuid"
-              }
-            }
           }
         ],
         "requestBody": {
@@ -1518,6 +1515,9 @@
                   "TemplateId": {
                     "type": "string"
                   },
+                  "TopicIds": {
+                    "type": "string"
+                  },
                   "Price": {
                     "type": "string"
                   },
@@ -1527,8 +1527,8 @@
                   "Type": {
                     "type": "string"
                   },
-                  "GoalId": {
-                    "type": "integer"
+                  "GoalIds": {
+                    "type": "string"
                   },
                   "Level": {
                     "type": "string"
@@ -3413,6 +3413,96 @@
         }
       }
     },
+    "/api/enrollments": {
+      "post": {
+        "tags": [
+          "Enrollment"
+        ],
+        "summary": "Enrolls the authenticated user into a specified course.",
+        "requestBody": {
+          "description": "The enrollment request containing the course ID.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnrollmentRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnrollmentRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnrollmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully enrolled in the course."
+          },
+          "400": {
+            "description": "User is already enrolled in the course or invalid data provided."
+          },
+          "401": {
+            "description": "Unauthorized request (user not authenticated)."
+          },
+          "403": {
+            "description": "Access denied (account inactive, email not confirmed, or course not purchased)."
+          },
+          "404": {
+            "description": "The specified course was not found."
+          },
+          "500": {
+            "description": "Internal server error occurred."
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Enrollment"
+        ],
+        "summary": "Retrieves all courses that the authenticated user has enrolled in, with pagination.",
+        "parameters": [
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved enrolled courses."
+          },
+          "401": {
+            "description": "Unauthorized request (user not authenticated)."
+          },
+          "500": {
+            "description": "Internal server error occurred."
+          }
+        }
+      }
+    },
     "/api/enums/course-status": {
       "get": {
         "tags": [
@@ -3791,6 +3881,164 @@
         }
       }
     },
+    "/api/lessons/{lessonId}/start": {
+      "post": {
+        "tags": [
+          "LessonProgress"
+        ],
+        "parameters": [
+          {
+            "name": "lessonId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartLessonRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartLessonRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartLessonRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/lessons/{lessonId}/progress": {
+      "post": {
+        "tags": [
+          "LessonProgress"
+        ],
+        "parameters": [
+          {
+            "name": "lessonId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLessonProgressRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLessonProgressRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLessonProgressRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/lessons/{lessonId}/complete": {
+      "post": {
+        "tags": [
+          "LessonProgress"
+        ],
+        "parameters": [
+          {
+            "name": "lessonId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteLessonRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteLessonRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteLessonRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/lessons/{lessonId}/progress/{enrollmentId}": {
+      "get": {
+        "tags": [
+          "LessonProgress"
+        ],
+        "parameters": [
+          {
+            "name": "lessonId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "enrollmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/topics": {
       "get": {
         "tags": [
@@ -4119,338 +4367,10 @@
           }
         }
       }
-    },
-    "/api/VoiceAssessment/start": {
-      "post": {
-        "tags": [
-          "VoiceAssessment"
-        ],
-        "summary": "Bắt đầu bài đánh giá giọng nói - TỰ ĐỘNG LƯU VÀO REDIS",
-        "parameters": [
-          {
-            "name": "languageId",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "goalId",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/VoiceAssessment/check-required": {
-      "get": {
-        "tags": [
-          "VoiceAssessment"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/VoiceAssessment/{assessmentId}/current-question": {
-      "get": {
-        "tags": [
-          "VoiceAssessment"
-        ],
-        "summary": "Lấy câu hỏi hiện tại",
-        "parameters": [
-          {
-            "name": "assessmentId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/VoiceAssessment/{assessmentId}/submit-voice": {
-      "post": {
-        "tags": [
-          "VoiceAssessment"
-        ],
-        "summary": "Submit voice với validation mạnh",
-        "parameters": [
-          {
-            "name": "assessmentId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "required": [
-                  "questionNumber",
-                  "isSkipped"
-                ],
-                "type": "object",
-                "properties": {
-                  "questionNumber": {
-                    "type": "integer",
-                    "description": "Số thứ tự câu hỏi",
-                    "example": 1
-                  },
-                  "isSkipped": {
-                    "type": "boolean",
-                    "description": "Có bỏ qua câu hỏi không",
-                    "example": false
-                  },
-                  "audioFile": {
-                    "type": "string",
-                    "description": "File âm thanh (MP3, WAV, M4A, WebM - Max 10MB)",
-                    "format": "binary"
-                  },
-                  "recordingDurationSeconds": {
-                    "type": "integer",
-                    "description": "Thời lượng ghi âm (giây)",
-                    "example": 0
-                  }
-                }
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/VoiceAssessment/smart-start/{languageId}": {
-      "post": {
-        "tags": [
-          "VoiceAssessment"
-        ],
-        "parameters": [
-          {
-            "name": "languageId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "goalId",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/VoiceAssessment/result/{languageId}": {
-      "get": {
-        "tags": [
-          "VoiceAssessment"
-        ],
-        "summary": "Lấy kết quả đánh giá giọng nói đã hoàn thành",
-        "parameters": [
-          {
-            "name": "languageId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/VoiceAssessment/complete/{assessmentId}": {
-      "post": {
-        "tags": [
-          "VoiceAssessment"
-        ],
-        "summary": "Kiểm tra đã hoàn thành đánh giá chưa",
-        "parameters": [
-          {
-            "name": "assessmentId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/VoiceAssessment/accept-voice-assessment": {
-      "post": {
-        "tags": [
-          "VoiceAssessment"
-        ],
-        "summary": "Accept voice assessment result và lưu vào DB (tạo LearnerLanguage, Roadmap, LearnerSlotBalance)",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/VoiceAssessment/reject-voice-assessment": {
-      "post": {
-        "tags": [
-          "VoiceAssessment"
-        ],
-        "summary": "Reject voice assessment result - Xóa kết quả và cho phép làm lại",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/VoiceAssessment/test-redis": {
-      "get": {
-        "tags": [
-          "VoiceAssessment"
-        ],
-        "summary": "Test Redis connection",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/VoiceAssessment/my-assessment-status": {
-      "get": {
-        "tags": [
-          "VoiceAssessment"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/VoiceAssessment/check-status/{languageId}": {
-      "get": {
-        "tags": [
-          "VoiceAssessment"
-        ],
-        "parameters": [
-          {
-            "name": "languageId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
     }
   },
   "components": {
     "schemas": {
-      "AcceptVoiceAssessmentRequestDto": {
-        "type": "object",
-        "properties": {
-          "learnerLanguageId": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "additionalProperties": false
-      },
       "CertificateResponse": {
         "type": "object",
         "properties": {
@@ -4518,6 +4438,22 @@
         },
         "additionalProperties": false
       },
+      "CompleteLessonRequest": {
+        "required": [
+          "enrollmentId"
+        ],
+        "type": "object",
+        "properties": {
+          "enrollmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "forceComplete": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "CourseResponse": {
         "type": "object",
         "properties": {
@@ -4556,8 +4492,11 @@
           "languageInfo": {
             "$ref": "#/components/schemas/LanguageInfo"
           },
-          "goalInfo": {
-            "$ref": "#/components/schemas/GoalInfo"
+          "goals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GoalResponse"
+            }
           },
           "courseLevel": {
             "type": "string"
@@ -4712,9 +4651,6 @@
           "requireLevel": {
             "type": "boolean"
           },
-          "requireSkillFocus": {
-            "type": "boolean"
-          },
           "requireTopic": {
             "type": "boolean"
           },
@@ -4852,6 +4788,19 @@
         ],
         "type": "integer",
         "format": "int32"
+      },
+      "EnrollmentRequest": {
+        "required": [
+          "courseId"
+        ],
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
       },
       "ExerciseResponse": {
         "type": "object",
@@ -5011,19 +4960,6 @@
           "emailOrUsername": {
             "minLength": 1,
             "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
-      "GoalInfo": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string",
-            "nullable": true
           }
         },
         "additionalProperties": false
@@ -5468,6 +5404,19 @@
         },
         "additionalProperties": false
       },
+      "StartLessonRequest": {
+        "required": [
+          "enrollmentId"
+        ],
+        "type": "object",
+        "properties": {
+          "enrollmentId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
       "TeacherInfo": {
         "type": "object",
         "properties": {
@@ -5785,6 +5734,25 @@
           },
           "isDefault": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateLessonProgressRequest": {
+        "required": [
+          "enrollmentId"
+        ],
+        "type": "object",
+        "properties": {
+          "enrollmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "progressPercent": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false

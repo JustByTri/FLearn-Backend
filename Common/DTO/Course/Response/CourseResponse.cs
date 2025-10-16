@@ -1,4 +1,5 @@
-﻿using Common.DTO.Topic.Response;
+﻿using Common.DTO.Goal.Response;
+using Common.DTO.Topic.Response;
 
 namespace Common.DTO.Course.Response
 {
@@ -26,11 +27,6 @@ namespace Common.DTO.Course.Response
         public string Name { get; set; } = string.Empty;
         public string? Code { get; set; }
     }
-    public class GoalInfo
-    {
-        public string Name { get; set; } = string.Empty;
-        public string? Description { get; set; }
-    }
     public class CourseResponse
     {
         public Guid CourseID { get; set; }
@@ -43,7 +39,7 @@ namespace Common.DTO.Course.Response
         public string CourseType { get; set; } = string.Empty;
         public TeacherInfo? TeacherInfo { get; set; }
         public LanguageInfo? LanguageInfo { get; set; }
-        public GoalInfo? GoalInfo { get; set; }
+        public List<GoalResponse> Goals { get; set; } = new();
         public string CourseLevel { get; set; } = string.Empty;
         public string? PublishedAt { get; set; }
         public string Status { get; set; } = string.Empty;

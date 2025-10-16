@@ -1,6 +1,5 @@
 ﻿using DAL.DBContext;
 using DAL.IRepositories;
-using DAL.Models;
 using DAL.Repositories;
 
 using Microsoft.EntityFrameworkCore.Storage;
@@ -23,6 +22,7 @@ namespace DAL.UnitOfWork
             ContentIssueReports = new ContentIssueReportRepository(_context);
             Conversations = new ConversationRepository(_context);
             Courses = new CourseRepository(_context);
+            CourseGoals = new CourseGoalRepository(_context);
             CourseReviews = new CourseReviewRepository(_context);
             CourseSubmissions = new CourseSubmissionRepository(_context);
             CourseTemplates = new CourseTemplateRepository(_context);
@@ -38,7 +38,7 @@ namespace DAL.UnitOfWork
             LearnerAchievements = new LearnerAchievementRepository(_context);
             LearnerLanguages = new LearnerLanguageRepository(_context);
             LearnerProgresses = new LearnerProgressRepository(_context);
-            LearnerSlotBalances = new LearnerSlotBalanceRepository(_context);
+            LearnerGoals = new LearnerGoalRepository(_context);
             Lessons = new LessonRepository(_context);
             LessonBookings = new LessonBookingRepository(_context);
             LessonDisputes = new LessonDisputeRepository(_context);
@@ -53,7 +53,6 @@ namespace DAL.UnitOfWork
             Roadmaps = new RoadmapRepository(_context);
             RoadmapDetails = new RoadmapDetailRepository(_context);
             Roles = new RoleRepository(_context);
-            SlotPurchases = new SlotPurchaseRepository(_context);
             StaffLanguages = new StaffLanguageRepository(_context);
             TeacherApplications = new TeacherApplicationRepository(_context);
             TeacherPayouts = new TeacherPayoutRepository(_context);
@@ -78,6 +77,7 @@ namespace DAL.UnitOfWork
         public IContentIssueReportRepository ContentIssueReports { get; private set; }
         public IConversationRepository Conversations { get; private set; }
         public ICourseRepository Courses { get; private set; }
+        public ICourseGoalRepository CourseGoals { get; private set; }
         public ICourseReviewRepository CourseReviews { get; private set; }
         public ICourseSubmissionRepository CourseSubmissions { get; private set; }
         public ICourseTemplateRepository CourseTemplates { get; private set; }
@@ -93,7 +93,7 @@ namespace DAL.UnitOfWork
         public ILearnerAchievementRepository LearnerAchievements { get; private set; }
         public ILearnerLanguageRepository LearnerLanguages { get; private set; }
         public ILearnerProgressRepository LearnerProgresses { get; private set; }
-        public ILearnerSlotBalanceRepository LearnerSlotBalances { get; private set; }
+        public ILearnerGoalRepository LearnerGoals { get; private set; }
         public ILessonRepository Lessons { get; private set; }
         public ILessonBookingRepository LessonBookings { get; private set; }
         public ILessonDisputeRepository LessonDisputes { get; private set; }
@@ -108,7 +108,6 @@ namespace DAL.UnitOfWork
         public IRoadmapRepository Roadmaps { get; private set; }
         public IRoadmapDetailRepository RoadmapDetails { get; private set; }
         public IRoleRepository Roles { get; private set; }
-        public ISlotPurchaseRepository SlotPurchases { get; private set; }
         public IStaffLanguageRepository StaffLanguages { get; private set; }
         public ITeacherApplicationRepository TeacherApplications { get; private set; }
         public ITeacherPayoutRepository TeacherPayouts { get; private set; }

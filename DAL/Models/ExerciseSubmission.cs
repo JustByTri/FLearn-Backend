@@ -22,6 +22,8 @@ namespace DAL.Models
         public string? AIFeedback { get; set; }
         public double? TeacherScore { get; set; } = 0.0;
         public string? TeacherFeedback { get; set; }
+        public int? XPGranted { get; set; }
+        public bool IsPassed { get; set; }
         public ExerciseSubmissionStatus Status { get; set; } = ExerciseSubmissionStatus.PendingAiReview;
         // Liên kết tới lần nộp cũ (nếu là sửa hoặc làm lại)
         public Guid? PreviousSubmissionId { get; set; }

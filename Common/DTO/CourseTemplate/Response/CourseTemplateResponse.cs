@@ -7,7 +7,6 @@
         public string? Description { get; set; }
         public bool RequireGoal { get; set; }
         public bool RequireLevel { get; set; }
-        public bool RequireSkillFocus { get; set; }
         public bool RequireTopic { get; set; }
         public bool RequireLang { get; set; }
         public int MinUnits { get; set; }

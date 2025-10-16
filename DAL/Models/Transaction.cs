@@ -17,9 +17,6 @@ namespace DAL.Models
         public Guid? PurchaseId { get; set; }
         [ForeignKey(nameof(PurchaseId))]
         public virtual Purchase? Purchases { get; set; }
-        public Guid? SlotPurchaseId { get; set; }
-        [ForeignKey(nameof(SlotPurchaseId))]
-        public virtual SlotPurchase? SlotPurchase { get; set; }
         public double TotalAmount { get; set; }
         public string TransactionCode { get; set; }
         public TransactionStatus Status { get; set; }

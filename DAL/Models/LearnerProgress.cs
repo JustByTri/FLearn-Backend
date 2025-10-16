@@ -8,8 +8,9 @@ namespace DAL.Models
         [Key]
         public Guid LearnerProgressId { get; set; }
         [Required]
-        public Guid LearnerId { get; set; } // UserId + LanguageId
-        public virtual LearnerLanguage Learner { get; set; }
+        public Guid EnrollmentId { get; set; }
+        [ForeignKey(nameof(EnrollmentId))]
+        public virtual Enrollment Enrollment { get; set; }
         [Required]
         public Guid LessonId { get; set; }
         [ForeignKey(nameof(LessonId))]
@@ -17,7 +18,7 @@ namespace DAL.Models
         public bool IsCompleted { get; set; } = false;
         [Range(0, 100)]
         public double ProgressPercent { get; set; } = 0;
-        public DateTime StartedAt { get; set; }
-        public DateTime CompletedAt { get; set; }
+        public DateTime? StartedAt { get; set; }
+        public DateTime? CompletedAt { get; set; }
     }
 }

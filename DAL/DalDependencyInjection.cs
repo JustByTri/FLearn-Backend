@@ -1,6 +1,4 @@
-﻿
-using AutoMapper.Configuration;
-using DAL.DBContext;
+﻿using DAL.DBContext;
 using DAL.IRepositories;
 using DAL.Repositories;
 using DAL.UnitOfWork;
@@ -33,6 +31,7 @@ namespace DAL
             services.AddScoped<IContentIssueReportRepository, ContentIssueReportRepository>();
             services.AddScoped<IConversationRepository, ConversationRepository>();
             services.AddScoped<ICourseRepository, CourseRepository>();
+            services.AddScoped<ICourseGoalRepository, CourseGoalRepository>();
             services.AddScoped<ICourseReviewRepository, CourseReviewRepository>();
             services.AddScoped<ICourseSubmissionRepository, CourseSubmissionRepository>();
             services.AddScoped<ICourseTemplateRepository, CourseTemplateRepository>();
@@ -48,7 +47,7 @@ namespace DAL
             services.AddScoped<ILearnerAchievementRepository, LearnerAchievementRepository>();
             services.AddScoped<ILearnerLanguageRepository, LearnerLanguageRepository>();
             services.AddScoped<ILearnerProgressRepository, LearnerProgressRepository>();
-            services.AddScoped<ILearnerSlotBalanceRepository, LearnerSlotBalanceRepository>();
+            services.AddScoped<ILearnerGoalRepository, LearnerGoalRepository>();
             services.AddScoped<ILessonRepository, LessonRepository>();
             services.AddScoped<ILessonBookingRepository, LessonBookingRepository>();
             services.AddScoped<ILessonDisputeRepository, LessonDisputeRepository>();
@@ -63,7 +62,6 @@ namespace DAL
             services.AddScoped<IRoadmapRepository, RoadmapRepository>();
             services.AddScoped<IRoadmapDetailRepository, RoadmapDetailRepository>();
             services.AddScoped<IRoleRepository, RoleRepository>();
-            services.AddScoped<ISlotPurchaseRepository, SlotPurchaseRepository>();
             services.AddScoped<IStaffLanguageRepository, StaffLanguageRepository>();
             services.AddScoped<ITeacherApplicationRepository, TeacherApplicationRepository>();
             services.AddScoped<ITeacherPayoutRepository, TeacherPayoutRepository>();
