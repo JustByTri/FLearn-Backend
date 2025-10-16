@@ -28,5 +28,31 @@ namespace Common.DTO.Paging.Response
                 }
             };
         }
+        public static PagedResponse<T> Fail(
+            object errors,
+            string message = "Validation failed",
+            int code = 400)
+        {
+            return new PagedResponse<T>
+            {
+                Status = "fail",
+                Code = code,
+                Message = message,
+                Errors = errors
+            };
+        }
+        public static PagedResponse<T> Error(
+            string message = "Internal server error",
+            int code = 500,
+            object errors = null)
+        {
+            return new PagedResponse<T>
+            {
+                Status = "error",
+                Code = code,
+                Message = message,
+                Errors = errors
+            };
+        }
     }
 }

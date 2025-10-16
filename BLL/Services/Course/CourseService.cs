@@ -3,6 +3,7 @@ using BLL.IServices.Upload;
 using Common.DTO.ApiResponse;
 using Common.DTO.Course.Request;
 using Common.DTO.Course.Response;
+using Common.DTO.Goal.Response;
 using Common.DTO.Paging.Request;
 using Common.DTO.Paging.Response;
 using Common.DTO.Topic.Response;
@@ -98,23 +99,39 @@ namespace BLL.Services.Course
                     .ToList();
             }
 
+            var goalIds = new List<int>();
+
+            if (!string.IsNullOrWhiteSpace(request.GoalIds))
+            {
+                goalIds = request.GoalIds
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => int.TryParse(x.Trim(), out var result) ? result : 0)
+                    .Where(i => i != 0)
+                    .ToList();
+            }
+
             var validationErrors = new Dictionary<string, string>();
 
-
-            DAL.Models.Goal? goal = null;
+            var validGoals = new List<DAL.Models.Goal>();
             if (template.RequireGoal)
             {
-                if (request.GoalId <= 0)
+                if (goalIds.Count == 0)
                 {
-                    validationErrors[nameof(request.GoalId)] = "GoalId is required according to the course template.";
+                    validationErrors[nameof(request.GoalIds)] = "At least one GoalId is required according to the course template.";
                 }
                 else
                 {
-                    goal = await _unit.Goals.GetByIdAsync(request.GoalId);
-                    if (goal == null)
-                        validationErrors[nameof(request.GoalId)] = $"Goal with Id '{request.GoalId}' does not exist.";
+                    foreach (var goalId in goalIds)
+                    {
+                        var goal = await _unit.Goals.GetByIdAsync(goalId);
+                        if (goal == null)
+                            validationErrors[nameof(request.GoalIds)] = $"Goal with Id '{goalId}' does not exist.";
+                        else
+                            validGoals.Add(goal);
+                    }
                 }
             }
+
 
             if (template.RequireLevel)
             {
@@ -189,8 +206,6 @@ namespace BLL.Services.Course
                     TeacherId = teacher?.TeacherProfileId ?? throw new ArgumentException("Teacher is required."),
                     LanguageId = teacher?.LanguageId ?? throw new ArgumentException("Teacher LanguageId is missing."),
 
-                    GoalId = request.GoalId > 0 ? request.GoalId : 0,
-
                     Title = string.IsNullOrWhiteSpace(request.Title)
                         ? "Untitled Course"
                         : request.Title.Trim().Length > 200
@@ -255,6 +270,18 @@ namespace BLL.Services.Course
                     }).ToList();
                 }
 
+                if (validGoals.Any())
+                {
+                    newCourse.CourseGoals = validGoals.Select(g => new CourseGoal
+                    {
+                        CourseGoalId = Guid.NewGuid(),
+                        CourseId = newCourse.CourseID,
+                        GoalId = g.Id,
+                        CreatedAt = vietnamTime,
+                        UpdatedAt = vietnamTime
+                    }).ToList();
+                }
+
                 var saveResult = await _unit.Courses.CreateAsync(newCourse);
                 if (saveResult <= 0)
                 {
@@ -293,11 +320,12 @@ namespace BLL.Services.Course
                         Name = language?.LanguageName ?? "Unknown",
                         Code = language?.LanguageCode ?? "Unknown",
                     },
-                    GoalInfo = goal != null ? new GoalInfo
+                    Goals = validGoals.Select(g => new GoalResponse
                     {
-                        Name = goal.Name,
-                        Description = goal.Description
-                    } : null,
+                        Id = g.Id,
+                        Name = g.Name,
+                        Description = g.Description
+                    }).ToList(),
                     Topics = validTopics.Select(t => new TopicResponse
                     {
                         TopicId = t.TopicID,
@@ -318,7 +346,7 @@ namespace BLL.Services.Course
             }
         }
 
-        public async Task<PagedResponse<IEnumerable<CourseResponse>>> GetAllCoursesAsync(PagingRequest request, string status)
+        public async Task<PagedResponse<IEnumerable<CourseResponse>>> GetAllCoursesAsync(PagingRequest request, string status, string lang)
         {
             try
             {
@@ -329,7 +357,8 @@ namespace BLL.Services.Course
                     .Include(c => c.Template)
                     .Include(c => c.Teacher)
                     .Include(c => c.Language)
-                    .Include(c => c.Goal)
+                    .Include(c => c.CourseGoals)
+                        .ThenInclude(cg => cg.Goal)
                     .Include(c => c.CourseTopics)
                         .ThenInclude(ct => ct.Topic)
                     .AsQueryable();
@@ -347,6 +376,11 @@ namespace BLL.Services.Course
                             400
                         );
                     }
+                }
+
+                if (!string.IsNullOrWhiteSpace(lang))
+                {
+                    query = query.Where(c => c.Language.LanguageCode.ToLower() == lang.ToLower());
                 }
 
                 var totalCount = await query.CountAsync();
@@ -401,13 +435,14 @@ namespace BLL.Services.Course
                         }
                         : null,
 
-                    GoalInfo = c.Goal != null
-                        ? new GoalInfo
+                    Goals = c.CourseGoals != null && c.CourseGoals.Any()
+                        ? c.CourseGoals.Select(cg => new GoalResponse
                         {
-                            Name = c.Goal.Name,
-                            Description = c.Goal.Description
-                        }
-                        : null,
+                            Id = cg.Goal.Id,
+                            Description = cg.Goal.Description,
+                            Name = cg.Goal.Name ?? "Unknown",
+                        }).ToList()
+                        : new List<GoalResponse>(),
 
                     Topics = c.CourseTopics?
                         .Select(ct => new TopicResponse
@@ -429,7 +464,7 @@ namespace BLL.Services.Course
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error occurred while getting all courses.");
-                return (PagedResponse<IEnumerable<CourseResponse>>)PagedResponse<IEnumerable<CourseResponse>>.Error(
+                return PagedResponse<IEnumerable<CourseResponse>>.Error(
                     "An unexpected error occurred while fetching courses. Please try again later."
                 );
             }
@@ -439,7 +474,7 @@ namespace BLL.Services.Course
         {
             var teacher = await _unit.TeacherProfiles.FindAsync(x => x.UserId == userId);
             if (teacher == null)
-                return (PagedResponse<IEnumerable<CourseResponse>>)PagedResponse<IEnumerable<CourseResponse>>.Fail(null, "Teacher does not exist.", 400);
+                return PagedResponse<IEnumerable<CourseResponse>>.Fail(null, "Teacher does not exist.", 400);
             try
             {
                 if (request.Page <= 0) request.Page = 1;
@@ -449,7 +484,8 @@ namespace BLL.Services.Course
                     .Include(c => c.Template)
                     .Include(c => c.Teacher)
                     .Include(c => c.Language)
-                    .Include(c => c.Goal)
+                    .Include(c => c.CourseGoals)
+                        .ThenInclude(cg => cg.Goal)
                     .Include(c => c.CourseTopics)
                         .ThenInclude(ct => ct.Topic)
                     .Where(c => c.TeacherId == teacher.TeacherProfileId)
@@ -463,7 +499,7 @@ namespace BLL.Services.Course
                     }
                     else
                     {
-                        return (PagedResponse<IEnumerable<CourseResponse>>)PagedResponse<IEnumerable<CourseResponse>>.Fail(null,
+                        return PagedResponse<IEnumerable<CourseResponse>>.Fail(null,
                             $"Invalid course status: '{status}'. Allowed values: {string.Join(", ", Enum.GetNames(typeof(CourseStatus)))}",
                             400
                         );
@@ -522,13 +558,14 @@ namespace BLL.Services.Course
                         }
                         : null,
 
-                    GoalInfo = c.Goal != null
-                        ? new GoalInfo
+                    Goals = c.CourseGoals != null && c.CourseGoals.Any()
+                        ? c.CourseGoals.Select(cg => new GoalResponse
                         {
-                            Name = c.Goal.Name,
-                            Description = c.Goal.Description
-                        }
-                        : null,
+                            Id = cg.Goal.Id,
+                            Description = cg.Goal.Description,
+                            Name = cg.Goal.Name ?? "Unknown",
+                        }).ToList()
+                        : new List<GoalResponse>(),
 
                     Topics = c.CourseTopics?
                         .Select(ct => new TopicResponse
@@ -565,7 +602,7 @@ namespace BLL.Services.Course
                     .FirstOrDefaultAsync(x => x.UserId == userId);
 
                 if (staff == null)
-                    return (PagedResponse<IEnumerable<CourseSubmissionResponse>>)PagedResponse<IEnumerable<CourseSubmissionResponse>>.Fail(null, "Staff does not exist.", 404);
+                    return PagedResponse<IEnumerable<CourseSubmissionResponse>>.Fail(null, "Staff does not exist.", 404);
 
                 SubmissionStatus? filterStatus = null;
                 if (!string.IsNullOrWhiteSpace(status))
@@ -573,7 +610,7 @@ namespace BLL.Services.Course
                     if (Enum.TryParse<SubmissionStatus>(status, true, out var parsedStatus))
                         filterStatus = parsedStatus;
                     else
-                        return (PagedResponse<IEnumerable<CourseSubmissionResponse>>)PagedResponse<IEnumerable<CourseSubmissionResponse>>.Fail(null, "Invalid submission status.", 400);
+                        return PagedResponse<IEnumerable<CourseSubmissionResponse>>.Fail(null, "Invalid submission status.", 400);
                 }
 
                 var query = _unit.CourseSubmissions.Query()
@@ -582,7 +619,8 @@ namespace BLL.Services.Course
                     .Include(cs => cs.Course)
                         .ThenInclude(c => c.Template)
                     .Include(cs => cs.Course)
-                        .ThenInclude(c => c.Goal)
+                        .ThenInclude(c => c.CourseGoals)
+                            .ThenInclude(cg => cg.Goal)
                     .Include(cs => cs.Course)
                         .ThenInclude(c => c.CourseTopics)
                     .Include(cs => cs.Course)
@@ -633,11 +671,13 @@ namespace BLL.Services.Course
                                 Name = cs.Course.Language.LanguageName,
                                 Code = cs.Course.Language.LanguageCode
                             } : null,
-                            GoalInfo = cs.Course.Goal != null ? new GoalInfo
+                            Goals = cs.Course.CourseGoals != null && cs.Course.CourseGoals.Any()
+                            ? cs.Course.CourseGoals.Select(cg => new GoalResponse
                             {
-                                Name = cs.Course.Goal.Name,
-                                Description = cs.Course.Goal.Description
-                            } : null,
+                                Id = cg.Goal.Id,
+                                Description = cg.Goal.Description,
+                                Name = cg.Goal.Name ?? "Unknown",
+                            }).ToList() : new List<GoalResponse>(),
                             TeacherInfo = cs.Course.Teacher != null ? new TeacherInfo
                             {
                                 TeacherId = cs.Course.Teacher.TeacherProfileId,
@@ -668,7 +708,7 @@ namespace BLL.Services.Course
             }
             catch (Exception ex)
             {
-                return (PagedResponse<IEnumerable<CourseSubmissionResponse>>)PagedResponse<IEnumerable<CourseSubmissionResponse>>.Error("An unexpected error occurred.", 500, ex.Message);
+                return PagedResponse<IEnumerable<CourseSubmissionResponse>>.Error("An unexpected error occurred.", 500, ex.Message);
             }
         }
         public async Task<PagedResponse<IEnumerable<CourseSubmissionResponse>>> GetAllCourseSubmissionsByTeacherAsync(Guid userId, PagingRequest request, string status)
@@ -679,7 +719,7 @@ namespace BLL.Services.Course
                     .FirstOrDefaultAsync(x => x.UserId == userId);
 
                 if (teacher == null)
-                    return (PagedResponse<IEnumerable<CourseSubmissionResponse>>)PagedResponse<IEnumerable<CourseSubmissionResponse>>.Fail(null, "Teacher does not exist.", 404);
+                    return PagedResponse<IEnumerable<CourseSubmissionResponse>>.Fail(null, "Teacher does not exist.", 404);
 
                 SubmissionStatus? filterStatus = null;
                 if (!string.IsNullOrWhiteSpace(status))
@@ -687,7 +727,7 @@ namespace BLL.Services.Course
                     if (Enum.TryParse<SubmissionStatus>(status, true, out var parsedStatus))
                         filterStatus = parsedStatus;
                     else
-                        return (PagedResponse<IEnumerable<CourseSubmissionResponse>>)PagedResponse<IEnumerable<CourseSubmissionResponse>>.Fail(null, "Invalid submission status.", 400);
+                        return PagedResponse<IEnumerable<CourseSubmissionResponse>>.Fail(null, "Invalid submission status.", 400);
                 }
 
                 var query = _unit.CourseSubmissions.Query()
@@ -696,7 +736,8 @@ namespace BLL.Services.Course
                     .Include(cs => cs.Course)
                         .ThenInclude(c => c.Template)
                     .Include(cs => cs.Course)
-                        .ThenInclude(c => c.Goal)
+                        .ThenInclude(c => c.CourseGoals)
+                            .ThenInclude(cg => cg.Goal)
                     .Include(cs => cs.Course)
                         .ThenInclude(c => c.CourseTopics)
                     .Include(cs => cs.Course)
@@ -744,11 +785,13 @@ namespace BLL.Services.Course
                                 Name = cs.Course.Language.LanguageName,
                                 Code = cs.Course.Language.LanguageCode
                             } : null,
-                            GoalInfo = cs.Course.Goal != null ? new GoalInfo
+                            Goals = cs.Course.CourseGoals != null && cs.Course.CourseGoals.Any()
+                            ? cs.Course.CourseGoals.Select(cg => new GoalResponse
                             {
-                                Name = cs.Course.Goal.Name,
-                                Description = cs.Course.Goal.Description
-                            } : null,
+                                Id = cg.Goal.Id,
+                                Description = cg.Goal.Description,
+                                Name = cg.Goal.Name ?? "Unknown",
+                            }).ToList() : new List<GoalResponse>(),
                             TeacherInfo = new TeacherInfo
                             {
                                 TeacherId = teacher.TeacherProfileId,
@@ -779,26 +822,24 @@ namespace BLL.Services.Course
             }
             catch (Exception ex)
             {
-                return (PagedResponse<IEnumerable<CourseSubmissionResponse>>)PagedResponse<IEnumerable<CourseSubmissionResponse>>.Error("An unexpected error occurred.", 500, ex.Message);
+                return PagedResponse<IEnumerable<CourseSubmissionResponse>>.Error("An unexpected error occurred.", 500, ex.Message);
             }
         }
 
         public async Task<BaseResponse<CourseResponse>> GetCourseByIdAsync(Guid courseId)
         {
-            var course = await _unit.Courses.GetByIdAsync(courseId);
+            var course = await _unit.Courses.Query()
+                .Include(c => c.Template)
+                .Include(c => c.Teacher)
+                .Include(c => c.Language)
+                .Include(c => c.CourseGoals)
+                    .ThenInclude(cg => cg.Goal)
+                .Include(c => c.CourseTopics)
+                    .ThenInclude(ct => ct.Topic)
+                .FirstOrDefaultAsync(c => c.CourseID == courseId);
+
             if (course == null)
                 return BaseResponse<CourseResponse>.Fail(null, "Course not found.", 404);
-
-            var teacher = await _unit.TeacherProfiles.GetByIdAsync(course.TeacherId);
-            var language = await _unit.Languages.GetByIdAsync(course.LanguageId);
-            var template = await _unit.CourseTemplates.GetByIdAsync(course.TemplateId);
-            var goal = course.GoalId > 0 ? await _unit.Goals.GetByIdAsync(course.GoalId) : null;
-
-            var topics = await _unit.CourseTopics.Query()
-                .OrderBy(ct => ct.CreatedAt)
-                .Include(ct => ct.Topic)
-                .Where(ct => ct.CourseID == course.CourseID)
-                .ToListAsync();
 
             var response = new CourseResponse
             {
@@ -815,40 +856,51 @@ namespace BLL.Services.Course
                 ModifiedAt = course.UpdatedAt.ToString("yyyy-MM-dd HH:mm:ss"),
                 NumLessons = course.NumLessons,
 
-                TemplateInfo = template != null ? new TemplateInfo
-                {
-                    TemplateId = template.Id,
-                    Name = template.Name
-                } : null,
+                TemplateInfo = course.Template != null
+                    ? new TemplateInfo
+                    {
+                        TemplateId = course.Template.Id,
+                        Name = course.Template.Name
+                    }
+                    : null,
 
-                TeacherInfo = teacher != null ? new TeacherInfo
-                {
-                    TeacherId = teacher.TeacherProfileId,
-                    FullName = teacher.FullName ?? "Unknown",
-                    Avatar = teacher.Avatar ?? "Unknown",
-                    Email = teacher.Email ?? "Unknown",
-                    PhoneNumber = teacher.PhoneNumber ?? "Unknown"
-                } : null,
+                TeacherInfo = course.Teacher != null
+                    ? new TeacherInfo
+                    {
+                        TeacherId = course.Teacher.TeacherProfileId,
+                        FullName = course.Teacher.FullName ?? "Unknown",
+                        Avatar = course.Teacher.Avatar ?? "Unknown",
+                        Email = course.Teacher.Email ?? "Unknown",
+                        PhoneNumber = course.Teacher.PhoneNumber ?? "Unknown"
+                    }
+                    : null,
 
-                LanguageInfo = language != null ? new LanguageInfo
-                {
-                    Name = language.LanguageName ?? "Unknown",
-                    Code = language.LanguageCode ?? "Unknown"
-                } : null,
+                LanguageInfo = course.Language != null
+                    ? new LanguageInfo
+                    {
+                        Name = course.Language.LanguageName ?? "Unknown",
+                        Code = course.Language.LanguageCode ?? "Unknown"
+                    }
+                    : null,
 
-                GoalInfo = goal != null ? new GoalInfo
-                {
-                    Name = goal.Name,
-                    Description = goal.Description
-                } : null,
+                Goals = course.CourseGoals != null && course.CourseGoals.Any()
+                    ? course.CourseGoals.Select(cg => new GoalResponse
+                    {
+                        Id = cg.Goal.Id,
+                        Name = cg.Goal.Name,
+                        Description = cg.Goal.Description
+                    }).ToList()
+                    : new List<GoalResponse>(),
 
-                Topics = topics.Select(t => new TopicResponse
-                {
-                    TopicId = t.TopicID,
-                    TopicName = t.Topic.Name,
-                    TopicDescription = t.Topic.Description ?? string.Empty,
-                    ImageUrl = t.Topic.ImageUrl ?? string.Empty
-                }).ToList()
+                Topics = course.CourseTopics != null && course.CourseTopics.Any()
+                    ? course.CourseTopics.Select(ct => new TopicResponse
+                    {
+                        TopicId = ct.Topic.TopicID,
+                        TopicName = ct.Topic.Name,
+                        TopicDescription = ct.Topic.Description ?? string.Empty,
+                        ImageUrl = ct.Topic.ImageUrl ?? string.Empty
+                    }).ToList()
+                    : new List<TopicResponse>()
             };
 
             return BaseResponse<CourseResponse>.Success(response, "Course retrieved successfully.");
@@ -974,65 +1026,41 @@ namespace BLL.Services.Course
                 if (template == null)
                     return BaseResponse<CourseResponse>.Fail("Template does not exist.");
 
-                // 5. Determine topicIds to use:
-                //    - if request.TopicIds != null -> use that (empty array means clear topics)
-                //    - else use existing course topics
                 List<Guid> topicIds = new();
                 var existingCourseTopicEntities = (List<DAL.Models.CourseTopic>)await _unit.CourseTopics.FindAllAsync(ct => ct.CourseID == course.CourseID);
                 var existingTopicIds = existingCourseTopicEntities?.Select(t => t.TopicID).ToList() ?? new List<Guid>();
 
-                if (request.TopicIds != null)
+                if (!string.IsNullOrWhiteSpace(request.TopicIds))
                 {
                     topicIds = request.TopicIds
-                        .Where(g => g != Guid.Empty)
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(x => Guid.TryParse(x.Trim(), out var id) ? id : Guid.Empty)
+                        .Where(x => x != Guid.Empty)
                         .Distinct()
                         .ToList();
                 }
                 else
                 {
-                    // keep existing
                     topicIds = existingTopicIds;
                 }
 
                 // 6. Validate Goal (based on effective template requirement)
-                DAL.Models.Goal? goal = null;
-                if (template.RequireGoal)
+                List<int> goalIds = new();
+                var existingCourseGoalEntities = (List<DAL.Models.CourseGoal>)await _unit.CourseGoals.FindAllAsync(g => g.CourseId == course.CourseID);
+                var existingGoalIds = existingCourseGoalEntities?.Select(g => g.GoalId).ToList() ?? new List<int>();
+
+                if (!string.IsNullOrWhiteSpace(request.GoalIds))
                 {
-                    if (request.GoalId.HasValue)
-                    {
-                        if (request.GoalId.Value <= 0)
-                        {
-                            validationErrors[nameof(request.GoalId)] = "GoalId is required according to the course template.";
-                        }
-                        else
-                        {
-                            goal = await _unit.Goals.GetByIdAsync(request.GoalId.Value);
-                            if (goal == null)
-                                validationErrors[nameof(request.GoalId)] = $"Goal with Id '{request.GoalId.Value}' does not exist.";
-                        }
-                    }
-                    else
-                    {
-                        // request didn't provide GoalId -> ensure existing course has one
-                        if (course.GoalId <= 0)
-                        {
-                            validationErrors[nameof(request.GoalId)] = "GoalId is required according to the course template.";
-                        }
-                        else
-                        {
-                            goal = await _unit.Goals.GetByIdAsync(course.GoalId);
-                        }
-                    }
+                    goalIds = request.GoalIds
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(x => int.TryParse(x.Trim(), out var gid) ? gid : 0)
+                        .Where(gid => gid > 0)
+                        .Distinct()
+                        .ToList();
                 }
                 else
                 {
-                    // if template does not require goal but request specified a valid goal, validate it
-                    if (request.GoalId.HasValue && request.GoalId.Value > 0)
-                    {
-                        goal = await _unit.Goals.GetByIdAsync(request.GoalId.Value);
-                        if (goal == null)
-                            validationErrors[nameof(request.GoalId)] = $"Goal with Id '{request.GoalId.Value}' does not exist.";
-                    }
+                    goalIds = existingGoalIds;
                 }
 
                 // 7. Validate Level (based on template)
@@ -1055,6 +1083,9 @@ namespace BLL.Services.Course
                     }
                 }
 
+                if (template.RequireGoal && !goalIds.Any())
+                    validationErrors[nameof(request.GoalIds)] = "At least one goal is required according to the course template.";
+
                 // 8. Validate topics according to template
                 if (template.RequireTopic && !topicIds.Any())
                     validationErrors[nameof(request.TopicIds)] = "At least one topic is required according to the course template.";
@@ -1068,6 +1099,16 @@ namespace BLL.Services.Course
                     var invalidIds = topicIds.Where(id => !validIds.Contains(id)).ToList();
                     if (invalidIds.Any())
                         return BaseResponse<CourseResponse>.Fail($"Invalid topic IDs: {string.Join(", ", invalidIds)}");
+                }
+
+                var validGoals = new List<DAL.Models.Goal>();
+                if (goalIds.Any())
+                {
+                    validGoals = (List<DAL.Models.Goal>)await _unit.Goals.FindAllAsync(g => goalIds.Contains(g.Id));
+                    var validGoalIds = validGoals.Select(g => g.Id).ToHashSet();
+                    var invalidGoals = goalIds.Where(id => !validGoalIds.Contains(id)).ToList();
+                    if (invalidGoals.Any())
+                        validationErrors[nameof(request.GoalIds)] = $"Invalid goal IDs: {string.Join(", ", invalidGoals)}";
                 }
 
                 // 10. Type/Price validation (combine effective type)
@@ -1148,11 +1189,6 @@ namespace BLL.Services.Course
                 if (request.TemplateId.HasValue && request.TemplateId.Value != Guid.Empty)
                     course.TemplateId = request.TemplateId.Value;
 
-                // Goal
-                if (request.GoalId.HasValue)
-                    course.GoalId = request.GoalId.Value;
-                // else keep existing
-
                 // Level
                 if (request.Level.HasValue)
                     course.Level = request.Level.Value;
@@ -1180,6 +1216,15 @@ namespace BLL.Services.Course
                         TopicID = tid
                     }).ToList();
                 }
+                if (request.GoalIds != null)
+                {
+                    course.CourseGoals = goalIds.Select(gid => new DAL.Models.CourseGoal
+                    {
+                        CourseGoalId = Guid.NewGuid(),
+                        CourseId = course.CourseID,
+                        GoalId = gid
+                    }).ToList();
+                }
                 // else keep existing course.CourseTopics
 
 
@@ -1189,8 +1234,7 @@ namespace BLL.Services.Course
                 }
 
                 // 14. UpdatedAt
-                var vietnamTime = TimeHelper.GetVietnamTime();
-                course.UpdatedAt = vietnamTime;
+                course.UpdatedAt = TimeHelper.GetVietnamTime();
 
                 // 15. Persist update
                 var updateResult = await _unit.Courses.UpdateAsync(course);
@@ -1203,11 +1247,6 @@ namespace BLL.Services.Course
                 Language? language = null;
                 if (teacher.LanguageId != Guid.Empty)
                     language = await _unit.Languages.GetByIdAsync(teacher.LanguageId);
-
-                // ensure template variable refers to the effective template (we fetched earlier)
-                // ensure goal variable contains the selected goal (may be null)
-                if (goal == null && course.GoalId > 0)
-                    goal = await _unit.Goals.GetByIdAsync(course.GoalId);
 
                 // topics for response: validTopics already contains the topics for topicIds when topicIds.Any()
                 // but if topicIds was empty and course had no topics, validTopics will be empty -> that's fine.
@@ -1250,11 +1289,12 @@ namespace BLL.Services.Course
                         Name = language?.LanguageName ?? "Unknown",
                         Code = language?.LanguageCode ?? "Unknown"
                     },
-                    GoalInfo = goal != null ? new GoalInfo
+                    Goals = validGoals.Select(g => new GoalResponse
                     {
-                        Name = goal.Name,
-                        Description = goal.Description
-                    } : null,
+                        Id = g.Id,
+                        Name = g.Name,
+                        Description = g.Description
+                    }).ToList(),
                     Topics = validTopics.Select(t => new TopicResponse
                     {
                         TopicId = t.TopicID,

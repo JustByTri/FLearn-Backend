@@ -9,7 +9,7 @@ namespace BLL.IServices.Course
     public interface ICourseService
     {
         Task<BaseResponse<CourseResponse>> CreateCourseAsync(Guid userId, CourseRequest request);
-        Task<PagedResponse<IEnumerable<CourseResponse>>> GetAllCoursesAsync(PagingRequest request, string status);
+        Task<PagedResponse<IEnumerable<CourseResponse>>> GetAllCoursesAsync(PagingRequest request, string status, string lang);
         Task<PagedResponse<IEnumerable<CourseResponse>>> GetAllCoursesByTeacherIdAsync(Guid userId, PagingRequest request, string status);
         Task<BaseResponse<CourseResponse>> GetCourseByIdAsync(Guid courseId);
         Task<BaseResponse<CourseResponse>> UpdateCourseAsync(Guid userId, Guid courseId, UpdateCourseRequest request);

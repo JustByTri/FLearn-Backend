@@ -8,6 +8,7 @@ using BLL.IServices.Course;
 using BLL.IServices.CourseTemplate;
 using BLL.IServices.CourseUnit;
 using BLL.IServices.Coversation;
+using BLL.IServices.Enrollment;
 using BLL.IServices.Exercise;
 using BLL.IServices.Goal;
 using BLL.IServices.Language;
@@ -25,6 +26,7 @@ using BLL.Services.Certificate;
 using BLL.Services.Course;
 using BLL.Services.CourseTemplate;
 using BLL.Services.CourseUnits;
+using BLL.Services.Enrollment;
 using BLL.Services.Exercise;
 using BLL.Services.Goal;
 using BLL.Services.Implementation;
@@ -117,8 +119,9 @@ namespace BLL
             services.AddScoped<ICourseUnitService, CourseUnitService>();
             services.AddScoped<ILessonService, LessonService>();
             services.AddScoped<IExerciseService, ExerciseService>();
-          services.AddScoped<IConversationPartnerService, ConversationPartnerService>();
-        services.AddHttpClient<IGeminiService, GeminiService>();
+            services.AddScoped<IConversationPartnerService, ConversationPartnerService>();
+            services.AddHttpClient<IGeminiService, GeminiService>();
+            services.AddScoped<IEnrollmentService, EnrollmentService>();
             return services;
         }
     }
