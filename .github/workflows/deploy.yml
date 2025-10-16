@@ -1,8 +1,8 @@
-name: Deploy FLearn Backend (Stable)
+ame: Deploy FLearn Backend (Stable)
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -13,10 +13,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      SERVICE_NAME: flearn-backend
-      REPO_DIR: /root/FLearn-Backend
-      PUBLISH_DIR: /var/www/flearn-backend-published
     steps:
       - name: Prepare SSH client
         run: |
@@ -53,6 +49,9 @@ jobs:
             banner "Stopping service and waiting for it to shut down"
             if systemctl is-active --quiet "$SERVICE_NAME"; then
               systemctl stop "$SERVICE_NAME"
+              echo "Stop command sent. Pausing for 2 seconds before checking..."
+              sleep 2
+              
               echo "Waiting for service to stop..."
               for i in {1..10}; do
                 if ! systemctl is-active --quiet "$SERVICE_NAME"; then
@@ -60,7 +59,7 @@ jobs:
                   break
                 fi
                 if [ $i -eq 10 ]; then
-                  echo "ERROR: Service did not stop after 50 seconds."
+                  echo "ERROR: Service did not stop after ~50 seconds."
                   exit 1
                 fi
                 sleep 5
@@ -80,7 +79,6 @@ jobs:
             git clean -fdx
 
             banner "Building & Publishing"
-            # It's better to publish from the project directory
             cd Presentation
             dotnet publish -c Release -o "$PUBLISH_DIR" --verbosity minimal
 
@@ -112,4 +110,4 @@ jobs:
           EOF
           
       - name: Done
-        run: echo "🎉 Deployment job finished ."
+        run: echo "🎉 Deployment job finished."
