@@ -15,6 +15,7 @@ namespace DAL.DBContext
         public DbSet<ContentIssueReport> ContentIssueReports { get; set; }
         public DbSet<Conversation> Conversations { get; set; }
         public DbSet<Course> Courses { get; set; }
+        public DbSet<CourseGoal> CourseGoals { get; set; }
         public DbSet<CourseReview> CourseReviews { get; set; }
         public DbSet<CourseSubmission> CourseSubmissions { get; set; }
         public DbSet<CourseTemplate> CourseTemplates { get; set; }
@@ -30,7 +31,7 @@ namespace DAL.DBContext
         public DbSet<LearnerAchievement> LearnerAchievements { get; set; }
         public DbSet<LearnerLanguage> LearnerLanguages { get; set; }
         public DbSet<LearnerProgress> LearnerProgresses { get; set; }
-        public DbSet<LearnerSlotBalance> LearnerSlotBalances { get; set; }
+        public DbSet<LearnerGoal> LearnerGoals { get; set; }
         public DbSet<Lesson> Lessons { get; set; }
         public DbSet<LessonBooking> LessonBookings { get; set; }
         public DbSet<LessonDispute> LessonDisputes { get; set; }
@@ -45,7 +46,6 @@ namespace DAL.DBContext
         public DbSet<Roadmap> Roadmaps { get; set; }
         public DbSet<RoadmapDetail> RoadmapDetails { get; set; }
         public DbSet<Role> Roles { get; set; }
-        public DbSet<SlotPurchase> SlotPurchases { get; set; }
         public DbSet<StaffLanguage> StaffLanguages { get; set; }
         public DbSet<TeacherApplication> TeacherApplications { get; set; }
         public DbSet<TeacherPayout> TeacherPayouts { get; set; }

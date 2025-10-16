@@ -321,16 +321,19 @@ namespace BLL.Services.Application
                 };
             }
 
-            var parsedStatus = string.IsNullOrWhiteSpace(status) ? ApplicationStatus.Pending
-                : Enum.TryParse<ApplicationStatus>(status, true, out var s) ? s : ApplicationStatus.Pending;
-
             var query = _unit.TeacherApplications.Query()
                 .Include(a => a.Language)
                 .Include(a => a.User)
                 .Include(a => a.Certificates)
                     .ThenInclude(c => c.CertificateType)
-                .Where(a => a.Language.LanguageID == selectedStaff.StaffLanguage.LanguageId && a.Status == parsedStatus)
-                .OrderByDescending(a => a.SubmittedAt);
+                .Where(a => a.Language.LanguageID == selectedStaff.StaffLanguage.LanguageId);
+
+            if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<ApplicationStatus>(status, true, out var parsedStatus))
+            {
+                query = query.Where(a => a.Status == parsedStatus);
+            }
+
+            query = query.OrderByDescending(a => a.SubmittedAt);
 
             var totalItems = await query.CountAsync();
 
@@ -351,6 +354,8 @@ namespace BLL.Services.Application
                 Email = teacherApp.Email,
                 PhoneNumber = teacherApp.PhoneNumber,
                 TeachingExperience = teacherApp.TeachingExperience,
+                ReviewedBy = teacherApp.ReviewedBy,
+                ReviewedByName = selectedStaff?.UserName,
                 MeetingUrl = teacherApp.MeetingUrl,
                 Status = teacherApp.Status.ToString(),
                 SubmittedAt = teacherApp.SubmittedAt,

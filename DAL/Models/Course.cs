@@ -16,10 +16,6 @@ namespace DAL.Models
         public Guid TeacherId { get; set; } // UserId + LanguageId
         [ForeignKey(nameof(TeacherId))]
         public virtual TeacherProfile Teacher { get; set; }
-        [Required]
-        public int GoalId { get; set; }
-        [ForeignKey(nameof(GoalId))]
-        public virtual Goal Goal { get; set; }
         public Guid? ApprovedByID { get; set; } // UserId of staff who approved + LanguageId
         [ForeignKey(nameof(ApprovedByID))]
         public virtual StaffLanguage? ApprovedBy { get; set; }
@@ -53,6 +49,7 @@ namespace DAL.Models
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public virtual ICollection<CourseTopic> CourseTopics { get; set; } = new List<CourseTopic>();
+        public virtual ICollection<CourseGoal> CourseGoals { get; set; } = new List<CourseGoal>();
         public virtual ICollection<CourseUnit> CourseUnits { get; set; } = new List<CourseUnit>();
         public virtual ICollection<PurchaseDetail>? PurchasesDetails { get; set; } = new List<PurchaseDetail>();
         public virtual ICollection<Enrollment>? Enrollments { get; set; } = new List<Enrollment>();

@@ -26,8 +26,9 @@ namespace Common.DTO.Course.Request
         public decimal? DiscountPrice { get; set; }
         [Required(ErrorMessage = "Course type is required.")]
         public CourseType CourseType { get; set; }
-        [Required(ErrorMessage = "GoalId is required.")]
-        public int GoalId { get; set; }
+        [Required(ErrorMessage = "At least one goal is required.")]
+        [MinLength(1, ErrorMessage = "Must provide at least one goal.")]
+        public string GoalIds { get; set; }
         [Required(ErrorMessage = "Level is required.")]
         public LevelType Level { get; set; }
     }

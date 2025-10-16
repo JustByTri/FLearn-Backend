@@ -15,7 +15,7 @@ namespace DAL.Models
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public bool Status { get; set; } = true; // Active by default or false for inactive
-        public virtual ICollection<Course>? Courses { get; set; } = new List<Course>();
-        public virtual ICollection<LearnerLanguage>? LearnerLanguages { get; set; } = new List<LearnerLanguage>();
+        public virtual ICollection<CourseGoal>? CourseGoals { get; set; } = new List<CourseGoal>();
+        public virtual ICollection<LearnerGoal>? LearnerGoals { get; set; } = new List<LearnerGoal>();
     }
 }

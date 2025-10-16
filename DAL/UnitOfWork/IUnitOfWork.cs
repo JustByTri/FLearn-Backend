@@ -11,6 +11,7 @@ namespace DAL.UnitOfWork
         IContentIssueReportRepository ContentIssueReports { get; }
         IConversationRepository Conversations { get; }
         ICourseRepository Courses { get; }
+        ICourseGoalRepository CourseGoals { get; }
         ICourseReviewRepository CourseReviews { get; }
         ICourseSubmissionRepository CourseSubmissions { get; }
         ICourseTemplateRepository CourseTemplates { get; }
@@ -26,7 +27,7 @@ namespace DAL.UnitOfWork
         ILearnerAchievementRepository LearnerAchievements { get; }
         ILearnerLanguageRepository LearnerLanguages { get; }
         ILearnerProgressRepository LearnerProgresses { get; }
-        ILearnerSlotBalanceRepository LearnerSlotBalances { get; }
+        ILearnerGoalRepository LearnerGoals { get; }
         ILessonRepository Lessons { get; }
         ILessonBookingRepository LessonBookings { get; }
         ILessonDisputeRepository LessonDisputes { get; }
@@ -41,7 +42,6 @@ namespace DAL.UnitOfWork
         IRoadmapRepository Roadmaps { get; }
         IRoadmapDetailRepository RoadmapDetails { get; }
         IRoleRepository Roles { get; }
-        ISlotPurchaseRepository SlotPurchases { get; }
         IStaffLanguageRepository StaffLanguages { get; }
         ITeacherApplicationRepository TeacherApplications { get; }
         ITeacherPayoutRepository TeacherPayouts { get; }

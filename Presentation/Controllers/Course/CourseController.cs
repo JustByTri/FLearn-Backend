@@ -4,6 +4,7 @@ using Common.DTO.ApiResponse;
 using Common.DTO.Application.Request;
 using Common.DTO.Course.Request;
 using Common.DTO.Course.Response;
+using Common.DTO.Language;
 using Common.DTO.Paging.Request;
 using Common.DTO.Paging.Response;
 using Microsoft.AspNetCore.Authorization;
@@ -37,6 +38,14 @@ namespace Presentation.Controllers.Course
         /// <item><description><c>Archived</c></description></item>
         /// </list>
         /// </param>
+        /// <param name="lang">
+        /// Optional filter by lang code. Accepted values:
+        /// <list type="bullet">
+        /// <item><description><c>en</c></description></item>
+        /// <item><description><c>ja</c></description></item>
+        /// <item><description><c>zh</c></description></item>
+        /// </list>
+        /// </param>
         /// <returns>A paginated list of courses.</returns>
         /// <response code="200">Successfully retrieved the list of courses.</response>
         /// <response code="400">Invalid status value.</response>
@@ -47,11 +56,11 @@ namespace Presentation.Controllers.Course
         [ProducesResponseType(typeof(object), 400)]
         [ProducesResponseType(typeof(object), 404)]
         [ProducesResponseType(typeof(object), 500)]
-        public async Task<IActionResult> GetAllCourses([FromQuery] PagingRequest request, [FromQuery] string? status)
+        public async Task<IActionResult> GetAllCourses([FromQuery] PagingRequest request, [FromQuery] string? status, [FromQuery][AllowedLang] string? lang)
         {
             try
             {
-                var response = await _courseService.GetAllCoursesAsync(request, status);
+                var response = await _courseService.GetAllCoursesAsync(request, status, lang);
 
                 if (response.Data == null || !response.Data.Any())
                 {
@@ -412,7 +421,7 @@ namespace Presentation.Controllers.Course
                 });
             }
 
-            var result = await _courseService.GetAllCourseSubmissionsByStaffAsync(userId, request, status ?? "Pending");
+            var result = await _courseService.GetAllCourseSubmissionsByStaffAsync(userId, request, status);
             return StatusCode(result.Code, result);
         }
         /// <summary>
