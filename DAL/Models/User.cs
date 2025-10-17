@@ -32,6 +32,9 @@ namespace DAL.Models
         public virtual Language? ActiveLanguage { get; set; }
         public DateTime UpdatedAt { get; set; }
         public DateTime CreatedAt { get; set; }
+        public int DailyConversationLimit { get; set; } = 2;
+        public int ConversationsUsedToday { get; set; } = 0;
+        public DateTime LastConversationResetDate { get; set; } = DateTime.UtcNow;
         public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
         public virtual ICollection<RefreshToken>? RefreshTokens { get; set; } = new List<RefreshToken>();
         public virtual ICollection<Review>? Reviews { get; set; } = new List<Review>();
@@ -42,5 +45,7 @@ namespace DAL.Models
         public virtual ICollection<Conversation>? Conversations { get; set; } = new List<Conversation>();
         public virtual ICollection<Purchase>? Purchases { get; set; } = new List<Purchase>();
         public virtual ICollection<Transaction>? Transactions { get; set; } = new List<Transaction>();
+        public virtual ICollection<ConversationTask>? ConversationTasks { get; set; } = new List<ConversationTask>();
+        public virtual ICollection<UserSubscription>? Subscriptions { get; set; } = new List<UserSubscription>();
     }
 }

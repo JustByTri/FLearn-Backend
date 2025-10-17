@@ -56,7 +56,7 @@ namespace DAL.UnitOfWork
         IGlobalConversationPromptRepository GlobalConversationPrompts { get; }
         IConversationSessionRepository ConversationSessions { get; }
         IConversationMessageRepository ConversationMessages { get; }
-
+        IConversationTaskRepository ConversationTasks { get; }
         int SaveChanges();
         Task<int> SaveChangesAsync();
         void BeginTransaction();

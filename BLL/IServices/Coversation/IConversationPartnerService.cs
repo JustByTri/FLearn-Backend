@@ -17,5 +17,6 @@ namespace BLL.IServices.Coversation
         Task<ConversationEvaluationDto> EndConversationAsync(Guid userId, Guid sessionId);
         Task<List<ConversationSessionDto>> GetUserConversationHistoryAsync(Guid userId);
         Task<ConversationSessionDto?> GetConversationSessionAsync(Guid userId, Guid sessionId);
+        Task<ConversationUsageDto> GetConversationUsageAsync(Guid userId);
     }
 }

@@ -1,5 +1,6 @@
 ﻿using DAL.DBContext;
 using DAL.IRepositories;
+
 using DAL.Repositories;
 
 using Microsoft.EntityFrameworkCore.Storage;
@@ -67,6 +68,7 @@ namespace DAL.UnitOfWork
             GlobalConversationPrompts = new GlobalConversationPromptRepository(_context);
             ConversationSessions = new ConversationSessionRepository(_context);
             ConversationMessages = new ConversationMessageRepository(_context);
+            ConversationTasks  = new ConversationTaskRepository(_context);
 
 
         }
@@ -123,6 +125,7 @@ namespace DAL.UnitOfWork
         public IGlobalConversationPromptRepository GlobalConversationPrompts { get; private set; }
         public IConversationSessionRepository ConversationSessions { get; private set; }
         public IConversationMessageRepository ConversationMessages { get; private set; }
+        public IConversationTaskRepository ConversationTasks { get; private set; }
         #endregion
         #region Transaction Methods
         public void BeginTransaction()

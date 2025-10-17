@@ -60,6 +60,7 @@ namespace DAL.DBContext
         public DbSet<GlobalConversationPrompt> GlobalConversationPrompts { get; set; }
         public DbSet<ConversationMessage> ConversationMessages { get; set; }
         public DbSet<ConversationSession> ConversationSession { get; set; }
+        public DbSet<ConversationTask> ConversationTasks { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

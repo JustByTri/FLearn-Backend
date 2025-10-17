@@ -12,5 +12,7 @@ namespace Common.DTO.Conversation
         public string AIRole { get; set; } = string.Empty;
         public string SystemPrompt { get; set; } = string.Empty;
         public string FirstMessage { get; set; } = string.Empty;
+
+        public List<ConversationTaskDto> Tasks { get; set; } = new List<ConversationTaskDto>();
     }
 }

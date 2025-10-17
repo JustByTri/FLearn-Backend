@@ -80,6 +80,22 @@
   },
   {
     "ContainingType": "Presentation.Controllers.ConversationPrompt.ConversationPromptController",
+    "Method": "ActivateGlobalPrompt",
+    "RelativePath": "api/admin/conversation-prompts/{promptId}/activate",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "promptId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.ConversationPrompt.ConversationPromptController",
     "Method": "PreviewPrompt",
     "RelativePath": "api/admin/conversation-prompts/{promptId}/preview",
     "HttpMethod": "POST",
@@ -93,7 +109,7 @@
       },
       {
         "Name": "previewRequest",
-        "Type": "Presentation.Controllers.ConversationPrompt.PreviewPromptRequestDto",
+        "Type": "Presentation.Controllers.ConversationPrompt.ConversationPromptController\u002BPreviewPromptRequestDto",
         "IsRequired": true
       }
     ],
@@ -717,6 +733,16 @@
     "ContainingType": "Presentation.Controllers.Conversation.ConversationController",
     "Method": "GetAvailableTopics",
     "RelativePath": "api/conversation/topics",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Conversation.ConversationController",
+    "Method": "GetConversationUsage",
+    "RelativePath": "api/conversation/usage",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,

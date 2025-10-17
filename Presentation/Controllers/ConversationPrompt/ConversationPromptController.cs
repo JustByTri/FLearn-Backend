@@ -283,47 +283,7 @@ namespace Presentation.Controllers.ConversationPrompt
             }
         }
 
-        /// <summary>
-        /// Lấy prompt đang active (để preview)
-        /// </summary>
-        [HttpGet("active")]
-        public async Task<IActionResult> GetActiveGlobalPrompt()
-        {
-            try
-            {
-                var adminUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-                var activePrompt = await _adminService.GetActiveGlobalPromptAsync(adminUserId);
 
-                return Ok(new
-                {
-                    success = true,
-                    message = "Lấy active prompt thành công",
-                    data = activePrompt,
-                    note = "Đây là prompt hiện đang được sử dụng cho tất cả conversation partners"
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Forbid(ex.Message);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return NotFound(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Đã xảy ra lỗi khi lấy active prompt",
-                    error = ex.Message
-                });
-            }
-        }
 
         /// <summary>
         /// Preview prompt với sample data
@@ -375,17 +335,84 @@ namespace Presentation.Controllers.ConversationPrompt
                 });
             }
         }
-    }
 
-    public class PreviewPromptRequestDto
-    {
-        public string Language { get; set; } = "English";
-        public string LanguageCode { get; set; } = "EN";
-        public string Topic { get; set; } = "Restaurant";
-        public string TopicDescription { get; set; } = "Ordering food and drinks";
-        public string DifficultyLevel { get; set; } = "B1";
-        public string SampleScenario { get; set; } = "You are at a restaurant and want to order food";
-        public string SampleRole { get; set; } = "Waiter";
+
+        /// <summary>
+        /// Activate một prompt (chỉ 1 active tại 1 thời điểm)
+        /// </summary>
+        [HttpPost("{promptId:guid}/activate")]
+        public async Task<IActionResult> ActivateGlobalPrompt(Guid promptId)
+        {
+            try
+            {
+                var adminUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                var activatedPrompt = await _adminService.ActivateGlobalPromptAsync(adminUserId, promptId);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Prompt activated successfully. Previous active prompt has been archived.",
+                    data = activatedPrompt,
+                    note = "This prompt is now active and will be used for all new conversations"
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Error activating prompt",
+                    error = ex.Message
+                });
+            }
+        }
+
+        /// <summary>
+        /// Lấy prompt đang active
+        /// </summary>
+        [HttpGet("active")]
+        public async Task<IActionResult> GetActiveGlobalPrompt()
+        {
+            try
+            {
+                var adminUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                var activePrompt = await _adminService.GetActiveGlobalPromptAsync(adminUserId);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Active prompt retrieved",
+                    data = activePrompt,
+                    note = "This is the prompt currently used for all new conversations"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+        public class PreviewPromptRequestDto
+        {
+            public string Language { get; set; } = "English";
+            public string LanguageCode { get; set; } = "EN";
+            public string Topic { get; set; } = "Restaurant";
+            public string TopicDescription { get; set; } = "Ordering food and drinks";
+            public string DifficultyLevel { get; set; } = "B1";
+            public string SampleScenario { get; set; } = "You are at a restaurant and want to order food";
+            public string SampleRole { get; set; } = "Waiter";
+        }
     }
 }
 

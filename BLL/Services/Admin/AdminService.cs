@@ -127,17 +127,14 @@ namespace BLL.Services.Admin
             }).OrderByDescending(p => p.IsDefault).ThenBy(p => p.PromptName).ToList();
         }
 
-        public async Task<GlobalConversationPromptDto> CreateGlobalPromptAsync(Guid adminUserId, CreateGlobalPromptDto createPromptDto)
+        public async Task<GlobalConversationPromptDto> CreateGlobalPromptAsync(
+        Guid adminUserId,
+        CreateGlobalPromptDto createPromptDto)
         {
             var adminUser = await _unitOfWork.Users.GetUserWithRolesAsync(adminUserId);
             if (adminUser == null || !adminUser.UserRoles.Any(ur => ur.Role.Name == "Admin"))
             {
-                throw new UnauthorizedAccessException("Chỉ admin mới có thể tạo global prompt");
-            }
-
-            if (createPromptDto.IsDefault)
-            {
-                await _unitOfWork.GlobalConversationPrompts.SetAsDefaultAsync(Guid.Empty);
+                throw new UnauthorizedAccessException("Only admins can create global prompts");
             }
 
             var newPrompt = new GlobalConversationPrompt
@@ -149,9 +146,12 @@ namespace BLL.Services.Admin
                 ScenarioGuidelines = createPromptDto.ScenarioGuidelines,
                 RoleplayInstructions = createPromptDto.RoleplayInstructions,
                 EvaluationCriteria = createPromptDto.EvaluationCriteria,
-                IsActive = createPromptDto.IsActive,
-                LanguageID = createPromptDto.LanguageID,
-                IsDefault = createPromptDto.IsDefault,
+                
+                Status = "Draft",
+                IsActive = false,
+                IsDefault = false,
+
+                CreatedByAdminId = adminUserId,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -159,23 +159,85 @@ namespace BLL.Services.Admin
             await _unitOfWork.GlobalConversationPrompts.CreateAsync(newPrompt);
             await _unitOfWork.SaveChangesAsync();
 
-            return new GlobalConversationPromptDto
+         
+
+            return MapToDto(newPrompt);
+        }
+        public async Task<GlobalConversationPromptDto> ActivateGlobalPromptAsync(
+    Guid adminUserId,
+    Guid promptId)
+        {
+            var adminUser = await _unitOfWork.Users.GetUserWithRolesAsync(adminUserId);
+            if (adminUser == null || !adminUser.UserRoles.Any(ur => ur.Role.Name == "Admin"))
             {
-                GlobalPromptID = newPrompt.GlobalPromptID,
-                PromptName = newPrompt.PromptName,
-                Description = newPrompt.Description,
-                MasterPromptTemplate = newPrompt.MasterPromptTemplate,
-                ScenarioGuidelines = newPrompt.ScenarioGuidelines,
-                RoleplayInstructions = newPrompt.RoleplayInstructions,
-                EvaluationCriteria = newPrompt.EvaluationCriteria,
-                IsActive = newPrompt.IsActive,
-                IsDefault = newPrompt.IsDefault,
-                UsageCount = newPrompt.UsageCount,
-                CreatedAt = newPrompt.CreatedAt,
-                UpdatedAt = newPrompt.UpdatedAt
-            };
+                throw new UnauthorizedAccessException("Only admins can activate prompts");
+            }
+
+            var prompt = await _unitOfWork.GlobalConversationPrompts.GetByIdAsync(promptId);
+            if (prompt == null)
+                throw new KeyNotFoundException("Prompt not found");
+
+            if (prompt.Status != "Draft" && prompt.Status != "Review")
+                throw new InvalidOperationException("Only Draft or Review prompts can be activated");
+
+            // ✅ Deactivate tất cả prompts cũ
+            var activePrompts = await _unitOfWork.GlobalConversationPrompts.GetActivePromptsAsync();
+            foreach (var activePrompt in activePrompts)
+            {
+                activePrompt.IsActive = false;
+                activePrompt.Status = "Archived";
+                activePrompt.UpdatedAt = DateTime.UtcNow;
+                await _unitOfWork.GlobalConversationPrompts.UpdateAsync(activePrompt);
+            }
+
+            // ✅ Activate prompt mới
+            prompt.IsActive = true;
+            prompt.Status = "Active";
+            prompt.IsDefault = true;
+            prompt.LastModifiedByAdminId = adminUserId;
+            prompt.UpdatedAt = DateTime.UtcNow;
+
+            await _unitOfWork.GlobalConversationPrompts.UpdateAsync(prompt);
+            await _unitOfWork.SaveChangesAsync();
+
+            
+
+            return MapToDto(prompt);
+        }
+        public async Task<GlobalConversationPromptDto> GetActiveGlobalPromptAsync(Guid adminUserId)
+        {
+            var adminUser = await _unitOfWork.Users.GetUserWithRolesAsync(adminUserId);
+            if (adminUser == null || !adminUser.UserRoles.Any(ur => ur.Role.Name == "Admin"))
+            {
+                throw new UnauthorizedAccessException("Only admins can view active prompts");
+            }
+
+            var activePrompt = await _unitOfWork.GlobalConversationPrompts.GetActiveDefaultPromptAsync();
+            if (activePrompt == null)
+                throw new InvalidOperationException("No active prompt found");
+
+            return MapToDto(activePrompt);
         }
 
+        private GlobalConversationPromptDto MapToDto(GlobalConversationPrompt prompt)
+        {
+            return new GlobalConversationPromptDto
+            {
+                GlobalPromptID = prompt.GlobalPromptID,
+                PromptName = prompt.PromptName,
+                Description = prompt.Description,
+                MasterPromptTemplate = prompt.MasterPromptTemplate,
+                ScenarioGuidelines = prompt.ScenarioGuidelines,
+                RoleplayInstructions = prompt.RoleplayInstructions,
+                EvaluationCriteria = prompt.EvaluationCriteria,
+                Status = prompt.Status, 
+                IsActive = prompt.IsActive,
+                IsDefault = prompt.IsDefault,
+                UsageCount = prompt.UsageCount,
+                CreatedAt = prompt.CreatedAt,
+                UpdatedAt = prompt.UpdatedAt
+            };
+        }
         public async Task<GlobalConversationPromptDto> UpdateGlobalPromptAsync(Guid adminUserId, Guid promptId, UpdateGlobalPromptDto updatePromptDto)
         {
             var adminUser = await _unitOfWork.Users.GetUserWithRolesAsync(adminUserId);
@@ -272,37 +334,7 @@ namespace BLL.Services.Admin
             return true;
         }
 
-        public async Task<GlobalConversationPromptDto> GetActiveGlobalPromptAsync(Guid adminUserId)
-        {
-            var adminUser = await _unitOfWork.Users.GetUserWithRolesAsync(adminUserId);
-            if (adminUser == null || !adminUser.UserRoles.Any(ur => ur.Role.Name == "Admin"))
-            {
-                throw new UnauthorizedAccessException("Chỉ admin mới có thể xem global prompts");
-            }
-
-            var activePrompt = await _unitOfWork.GlobalConversationPrompts.GetActiveDefaultPromptAsync();
-
-            if (activePrompt == null)
-            {
-                throw new InvalidOperationException("Không tìm thấy global prompt nào đang active");
-            }
-
-            return new GlobalConversationPromptDto
-            {
-                GlobalPromptID = activePrompt.GlobalPromptID,
-                PromptName = activePrompt.PromptName,
-                Description = activePrompt.Description,
-                MasterPromptTemplate = activePrompt.MasterPromptTemplate,
-                ScenarioGuidelines = activePrompt.ScenarioGuidelines,
-                RoleplayInstructions = activePrompt.RoleplayInstructions,
-                EvaluationCriteria = activePrompt.EvaluationCriteria,
-                IsActive = activePrompt.IsActive,
-                IsDefault = activePrompt.IsDefault,
-                UsageCount = activePrompt.UsageCount,
-                CreatedAt = activePrompt.CreatedAt,
-                UpdatedAt = activePrompt.UpdatedAt
-            };
-        }
+       
 
         public async Task<GlobalConversationPromptDto> GetGlobalPromptByIdAsync(Guid adminUserId, Guid promptId)
         {
