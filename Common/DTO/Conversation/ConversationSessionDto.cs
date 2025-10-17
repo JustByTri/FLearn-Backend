@@ -21,5 +21,6 @@ namespace Common.DTO.Conversation
         public DateTime StartedAt { get; set; }
         public float? OverallScore { get; set; }
         public string? AIFeedback { get; set; }
+        public List<ConversationTaskDto> Tasks { get; set; } = new List<ConversationTaskDto>();
     }
 }

@@ -78,6 +78,7 @@ namespace DAL.Models
         public DateTime UpdatedAt { get; set; }
 
         // Navigation Properties
+        public virtual ICollection<ConversationTask> Tasks { get; set; } = new List<ConversationTask>();
         public virtual ICollection<ConversationMessage>? ConversationMessages { get; set; } = new List<ConversationMessage>();
     }
 }

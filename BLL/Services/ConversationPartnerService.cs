@@ -103,22 +103,30 @@ namespace BLL.Services
             }
         }
 
-        public async Task<ConversationSessionDto> StartConversationAsync(Guid userId, StartConversationRequestDto request)
+        public async Task<ConversationSessionDto> StartConversationAsync(
+     Guid userId,
+     StartConversationRequestDto request)
         {
+            Language language = null;
             try
             {
-                var language = await _unitOfWork.Languages.GetByIdAsync(request.LanguageId);
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (!await CanStartConversationAsync(user))
+                {
+                    throw new InvalidOperationException(
+                        "You've reached your daily conversation limit. Please upgrade your plan.");
+                }
+
+                language = await _unitOfWork.Languages.GetByIdAsync(request.LanguageId);
                 var topic = await _unitOfWork.Topics.GetByIdAsync(request.TopicId);
 
                 if (language == null || topic == null)
                     throw new ArgumentException("Language or topic not found");
 
-                // Lấy global prompt đang active
                 var activeGlobalPrompt = await _unitOfWork.GlobalConversationPrompts.GetActiveDefaultPromptAsync();
                 if (activeGlobalPrompt == null)
-                    throw new InvalidOperationException("No active global conversation prompt found");
+                    throw new InvalidOperationException("No active prompt configured");
 
-                // Chuẩn bị context để gửi cho AI
                 var conversationContext = new ConversationContextDto
                 {
                     Language = language.LanguageName,
@@ -132,10 +140,9 @@ namespace BLL.Services
                     EvaluationCriteria = activeGlobalPrompt.EvaluationCriteria ?? ""
                 };
 
-                // Sử dụng AI để tạo scenario và system prompt cụ thể
-                var generatedContent = await GenerateConversationContentAsync(conversationContext);
 
-                // Tạo session mới
+                var generatedContent = await _geminiService.GenerateConversationContentAsync(conversationContext);
+
                 var session = new ConversationSession
                 {
                     ConversationSessionID = Guid.NewGuid(),
@@ -155,7 +162,36 @@ namespace BLL.Services
 
                 await _unitOfWork.ConversationSessions.CreateAsync(session);
 
-                // Tạo tin nhắn đầu tiên từ AI
+
+                var tasks = generatedContent.Tasks ?? new List<ConversationTaskDto>();
+
+                if (tasks.Count == 0)
+                {
+                    _logger.LogWarning("No tasks returned from Gemini, using defaults");
+                    tasks = CreateDefaultTasksForTopic(topic.Name);
+                }
+
+                int sequence = 1;
+
+                foreach (var taskDto in tasks)
+                {
+                    var conversationTask = new ConversationTask
+                    {
+                        TaskID = Guid.NewGuid(),
+                        ConversationSessionID = session.ConversationSessionID,
+                        TaskDescription = taskDto.TaskDescription,
+                        TaskContext = taskDto.TaskContext,
+                        TaskSequence = sequence++,
+                        Status = "Pending",
+                        IsCompleted = false,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    await _unitOfWork.ConversationTasks.CreateAsync(conversationTask);
+                    session.Tasks.Add(conversationTask);
+                }
+
                 var firstMessage = new ConversationMessage
                 {
                     ConversationMessageID = Guid.NewGuid(),
@@ -169,13 +205,12 @@ namespace BLL.Services
 
                 await _unitOfWork.ConversationMessages.CreateAsync(firstMessage);
 
-                // Cập nhật usage count
                 activeGlobalPrompt.UsageCount++;
                 await _unitOfWork.GlobalConversationPrompts.UpdateAsync(activeGlobalPrompt);
 
-                await _unitOfWork.SaveChangesAsync();
+                user.ConversationsUsedToday++;
+                await _unitOfWork.Users.UpdateAsync(user);
 
-                // 🔥 Thông báo real-time qua SignalR
                 await _hubContext.Clients.Group($"User_{userId}")
                     .SendAsync("ConversationStarted", new
                     {
@@ -184,6 +219,14 @@ namespace BLL.Services
                         languageName = language.LanguageName,
                         topicName = topic.Name,
                         scenario = generatedContent.ScenarioDescription,
+
+                        tasks = session.Tasks.Select(t => new
+                        {
+                            t.TaskID,
+                            t.TaskDescription,
+                            t.TaskSequence,
+                            t.Status
+                        }),
                         startedAt = DateTime.UtcNow
                     });
 
@@ -192,23 +235,109 @@ namespace BLL.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error starting conversation");
+                throw;
+            }
+        }
+        private List<ConversationTaskDto> CreateDefaultTasksForTopic(string topicName)
+        {
+           
+            return topicName.ToLower() switch
+            {
+                var t when t.Contains("restaurant") || t.Contains("ẩm thực") => new List<ConversationTaskDto>
+        {
+            new() { TaskDescription = "Ask the waiter for a recommendation", TaskSequence = 1 },
+            new() { TaskDescription = "Order your main course", TaskSequence = 2 },
+            new() { TaskDescription = "Ask for the bill", TaskSequence = 3 }
+        },
+                _ => new List<ConversationTaskDto>
+        {
+            new() { TaskDescription = "Start the conversation", TaskSequence = 1 },
+            new() { TaskDescription = "Ask follow-up questions", TaskSequence = 2 },
+            new() { TaskDescription = "Express your thoughts", TaskSequence = 3 }
+        }
+            };
+        }
+        private async Task<bool> CanStartConversationAsync(User user)
+        {
+            if (user == null) return false;
 
-                await _hubContext.Clients.Group($"User_{userId}")
-                    .SendAsync("ConversationError", new
+            // Check if user has active subscription (not Free tier)
+            var activeSubscription = user.Subscriptions?
+                .FirstOrDefault(s => s.IsActive && s.StartDate <= DateTime.UtcNow &&
+                    (s.EndDate == null || s.EndDate > DateTime.UtcNow));
+
+            // If subscription exists and user still has quota
+            if (activeSubscription != null)
+            {
+                var quota = activeSubscription.ConversationQuota;
+
+                // Reset daily count if needed
+                if (user.LastConversationResetDate.Date < DateTime.UtcNow.Date)
+                {
+                    user.ConversationsUsedToday = 0;
+                    user.LastConversationResetDate = DateTime.UtcNow;
+                }
+
+                return user.ConversationsUsedToday < quota;
+            }
+
+            // Default free tier (2 conversations)
+            if (user.LastConversationResetDate.Date < DateTime.UtcNow.Date)
+            {
+                user.ConversationsUsedToday = 0;
+                user.LastConversationResetDate = DateTime.UtcNow;
+                await _unitOfWork.Users.UpdateAsync(user);
+                await _unitOfWork.SaveChangesAsync();
+            }
+
+            return user.ConversationsUsedToday < user.DailyConversationLimit;
+        }
+
+        // Complete a task
+        public async Task<ConversationTaskDto> CompleteTaskAsync(Guid userId, CompleteTaskRequestDto request)
+        {
+            try
+            {
+                var session = await _unitOfWork.ConversationSessions.GetSessionWithMessagesAsync(request.SessionId);
+
+                if (session == null || session.UserId != userId)
+                    throw new ArgumentException("Session not found or access denied");
+
+                var task = session.Tasks.FirstOrDefault(t => t.TaskID == request.TaskId);
+                if (task == null)
+                    throw new ArgumentException("Task not found");
+
+                task.Status = "Completed";
+                task.IsCompleted = true;
+                task.CompletionNotes = request.CompletionNotes;
+                task.UpdatedAt = DateTime.UtcNow;
+
+                await _unitOfWork.ConversationTasks.UpdateAsync(task);
+                await _unitOfWork.SaveChangesAsync();
+
+                await _hubContext.Clients.Group($"Conversation_{request.SessionId}")
+                    .SendAsync("TaskCompleted", new
                     {
-                        error = "Không thể bắt đầu cuộc trò chuyện",
-                        details = ex.Message
+                        taskId = task.TaskID,
+                        taskDescription = task.TaskDescription,
+                        completedAt = DateTime.UtcNow
                     });
 
+                return MapToTaskDto(task);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error completing task");
                 throw;
             }
         }
 
         public async Task<ConversationMessageDto> SendMessageAsync(Guid userId, SendMessageRequestDto request)
         {
+            ConversationSession session = null;
             try
             {
-                var session = await _unitOfWork.ConversationSessions.GetSessionWithMessagesAsync(request.SessionId);
+               session = await _unitOfWork.ConversationSessions.GetSessionWithMessagesAsync(request.SessionId);
 
                 if (session == null || session.UserId != userId)
                     throw new ArgumentException("Session not found or access denied");
@@ -271,11 +400,20 @@ namespace BLL.Services
             {
                 _logger.LogError(ex, "Error sending message");
 
+                var languageCode = session?.Language?.LanguageCode ?? "EN";
+                var errorMessage = languageCode.ToUpper() switch
+                {
+                    "EN" => "Cannot send message",
+                    "JP" => "メッセージを送信できません",
+                    "ZH" => "无法发送消息",
+                    _ => "Cannot send message"
+                };
+
                 await _hubContext.Clients.Group($"User_{userId}")
                     .SendAsync("MessageError", new
                     {
                         sessionId = request.SessionId,
-                        error = "Không thể gửi tin nhắn",
+                        error = errorMessage,
                         details = ex.Message
                     });
 
@@ -285,9 +423,10 @@ namespace BLL.Services
 
         public async Task<ConversationEvaluationDto> EndConversationAsync(Guid userId, Guid sessionId)
         {
+            ConversationSession session = null;
             try
             {
-                var session = await _unitOfWork.ConversationSessions.GetSessionWithMessagesAsync(sessionId);
+                session = await _unitOfWork.ConversationSessions.GetSessionWithMessagesAsync(sessionId);
 
                 if (session == null || session.UserId != userId)
                     throw new ArgumentException("Session not found or access denied");
@@ -335,11 +474,20 @@ namespace BLL.Services
             {
                 _logger.LogError(ex, "Error ending conversation");
 
+                var languageCode = session?.Language?.LanguageCode ?? "EN";
+                var errorMessage = languageCode.ToUpper() switch
+                {
+                    "EN" => "Cannot evaluate conversation",
+                    "JP" => "会話を評価できません",
+                    "ZH" => "无法评估对话",
+                    _ => "Cannot evaluate conversation"
+                };
+
                 await _hubContext.Clients.Group($"User_{userId}")
                     .SendAsync("EvaluationError", new
                     {
                         sessionId,
-                        error = "Không thể đánh giá cuộc trò chuyện"
+                        error = errorMessage
                     });
 
                 throw;
@@ -424,13 +572,11 @@ namespace BLL.Services
         {
             try
             {
-                // Nếu có Gemini service thì dùng AI
                 if (_geminiService != null)
                 {
                     return await _geminiService.GenerateConversationContentAsync(context);
                 }
 
-                // Fallback: tạo content đơn giản
                 return new GeneratedConversationContentDto
                 {
                     ScenarioDescription = $"Practice {context.Topic} in {context.Language} at {context.DifficultyLevel} level",
@@ -438,14 +584,14 @@ namespace BLL.Services
                     SystemPrompt = context.MasterPrompt.Replace("{LANGUAGE}", context.Language)
                         .Replace("{TOPIC}", context.Topic)
                         .Replace("{DIFFICULTY_LEVEL}", context.DifficultyLevel),
-                    FirstMessage = GetDefaultFirstMessage(context.Language, context.Topic, context.DifficultyLevel)
+                   
+                    FirstMessage = GetDefaultFirstMessage(context.Language, context.Topic, context.DifficultyLevel, context.LanguageCode)
                 };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error generating conversation content");
 
-                // Fallback content
                 return new GeneratedConversationContentDto
                 {
                     ScenarioDescription = $"Practice conversation about {context.Topic}",
@@ -454,7 +600,7 @@ namespace BLL.Services
                     FirstMessage = "Hello! Let's start our conversation practice."
                 };
             }
-
+        
         }
         private async Task<string> GenerateAIResponseAsync(ConversationSession session, string userMessage)
         {
@@ -558,7 +704,7 @@ namespace BLL.Services
                 var messageCount = session.ConversationMessages?.Count(m => m.Sender == MessageSender.User) ?? 0;
                 var duration = (int)(DateTime.UtcNow - session.StartedAt).TotalSeconds;
 
-                // Sử dụng AI để đánh giá nếu có
+          
                 if (_geminiService != null && messageCount > 0)
                 {
                     var conversationHistory = session.ConversationMessages?
@@ -629,10 +775,12 @@ Format as JSON with clear numeric scores.";
 
         private ConversationEvaluationDto GenerateSimpleEvaluation(ConversationSession session, int messageCount, int duration)
         {
-            // Điểm số đơn giản dựa trên số tin nhắn và thời gian
             var baseScore = Math.Min(100, 50 + (messageCount * 5));
-            var timeBonus = duration > 300 ? 10 : 0; // Bonus nếu trò chuyện > 5 phút
+            var timeBonus = duration > 300 ? 10 : 0;
             var overall = Math.Min(100, baseScore + timeBonus);
+
+          
+            var languageCode = session.Language?.LanguageCode ?? "EN";
 
             return new ConversationEvaluationDto
             {
@@ -642,68 +790,168 @@ Format as JSON with clear numeric scores.";
                 GrammarScore = overall * 0.85f,
                 VocabularyScore = overall * 0.95f,
                 CulturalScore = overall * 0.8f,
-                AIFeedback = GenerateFeedbackMessage(messageCount, duration, session.Language?.LanguageName ?? ""),
-                Improvements = GenerateImprovementSuggestions(messageCount, session.DifficultyLevel),
-                Strengths = GenerateStrengthPoints(messageCount, duration),
+             
+                AIFeedback = GenerateFeedbackMessage(messageCount, duration, session.Language?.LanguageName ?? "", languageCode),
+                Improvements = GenerateImprovementSuggestions(messageCount, session.DifficultyLevel, languageCode),
+                Strengths = GenerateStrengthPoints(messageCount, duration, languageCode),
                 TotalMessages = messageCount,
                 SessionDuration = duration
             };
         }
 
-        private string GenerateFeedbackMessage(int messageCount, int duration, string languageName)
+        private string GenerateFeedbackMessage(int messageCount, int duration, string languageName, string languageCode)
         {
-            if (messageCount == 0)
-                return $"Chúc mừng bạn đã bắt đầu thử thách conversation partners với {languageName}! Lần tới hãy thử gửi thêm tin nhắn để có trải nghiệm tốt hơn.";
+            return languageCode.ToUpper() switch
+            {
+                "EN" => messageCount == 0
+                    ? "Great start! Try sending more messages to get better practice experience."
+                    : messageCount < 3
+                    ? "Good! You've started the conversation in English. Try speaking more to improve."
+                    : messageCount < 10
+                    ? "Very good! You're maintaining the conversation. Your communication is improving."
+                    : "Excellent! You've had a very active conversation in English. Keep practicing!",
 
-            if (messageCount < 3)
-                return $"Tốt! Bạn đã bắt đầu cuộc trò chuyện bằng {languageName}. Hãy thử nói nhiều hơn để cải thiện kỹ năng giao tiếp.";
+                "JP" => messageCount == 0
+                    ? "素晴らしい！もっとたくさんメッセージを送ってみてください。"
+                    : messageCount < 3
+                    ? "いいですね！英語で会話を始めました。もっと話して改善しましょう。"
+                    : messageCount < 10
+                    ? "とても良いです！会話を続けています。コミュニケーションが改善されています。"
+                    : "素晴らしい！英語で非常に活動的な会話ができました。練習を続けてください！",
 
-            if (messageCount < 10)
-                return $"Rất tốt! Bạn đã duy trì được cuộc trò chuyện bằng {languageName}. Kỹ năng giao tiếp của bạn đang được cải thiện.";
+                "ZH" => messageCount == 0
+                    ? "很好的开始！尝试发送更多消息以获得更好的练习体验。"
+                    : messageCount < 3
+                    ? "很好！你已经开始用中文交谈。多说话来改进。"
+                    : messageCount < 10
+                    ? "非常好！你在维持对话。你的交流能力在改进。"
+                    : "优秀！你进行了一次非常活跃的中文对话。继续练习！",
 
-            return $"Xuất sắc! Bạn đã có một cuộc trò chuyện rất tích cực bằng {languageName}. Hãy tiếp tục thực hành để trở nên thành thạo hơn!";
+                _ => "Good effort! Keep practicing!"
+            };
         }
 
-        private string GenerateImprovementSuggestions(int messageCount, string difficultyLevel)
+        private string GenerateImprovementSuggestions(int messageCount, string difficultyLevel, string languageCode)
         {
-            var suggestions = new List<string>();
+            var suggestions = languageCode.ToUpper() switch
+            {
+                "EN" => new[]
+                {
+            messageCount < 5 ? "Try sending longer messages" : "Use more diverse vocabulary",
+            "Ask more questions to keep the conversation going",
+            "Express your ideas in more detail",
+            difficultyLevel.Contains("A1") || difficultyLevel.Contains("N5")
+                ? "Practice basic pronunciation"
+                : "Try using more complex sentence structures"
+        },
 
-            if (messageCount < 5)
-                suggestions.Add("Hãy thử gửi thêm tin nhắn để có cuộc trò chuyện dài hơn");
+                "JP" => new[]
+                {
+            messageCount < 5 ? "もっと長いメッセージを送ってみてください" : "より多くの多様な語彙を使用してください",
+            "より多くの質問をして会話を続けてください",
+            "あなたの考えをより詳しく表現してください",
+            difficultyLevel.Contains("A1") || difficultyLevel.Contains("N5")
+                ? "基本的な発音を練習してください"
+                : "より複雑な文構造を使ってみてください"
+        },
 
-            suggestions.Add("Thử sử dụng nhiều từ vựng đa dạng hơn");
-            suggestions.Add("Hãy đặt thêm câu hỏi để duy trì cuộc trò chuyện");
-            suggestions.Add("Thử diễn đạt ý kiến của bạn một cách chi tiết hơn");
+                "ZH" => new[]
+                {
+            messageCount < 5 ? "尝试发送更长的消息" : "使用更多样化的词汇",
+            "提出更多问题来继续对话",
+            "更详细地表达你的想法",
+            difficultyLevel.Contains("A1") || difficultyLevel.Contains("N5")
+                ? "练习基本发音"
+                : "尝试使用更复杂的句子结构"
+        },
 
-            if (difficultyLevel.Contains("A1") || difficultyLevel.Contains("N5") || difficultyLevel.Contains("HSK 1"))
-                suggestions.Add("Luyện tập phát âm cơ bản để giao tiếp tự nhiên hơn");
-            else
-                suggestions.Add("Thử sử dụng các cấu trúc câu phức tạp hơn");
+                _ => new[] { "Keep practicing!", "Try speaking more", "Expand your vocabulary" }
+            };
 
-            return string.Join(". ", suggestions.Take(3));
+            return string.Join(". ", suggestions.Take(3)) + ".";
+        }
+        private string GenerateStrengthPoints(int messageCount, int duration, string languageCode)
+        {
+            var strengths = languageCode.ToUpper() switch
+            {
+                "EN" => new[]
+                {
+            messageCount >= 10
+                ? "You actively participated and maintained good conversation flow"
+                : messageCount >= 5
+                ? "You answered questions reasonably well"
+                : "You started communicating with a positive learning attitude",
+
+            duration > 600
+                ? "You can maintain conversation for extended periods"
+                : duration > 300
+                ? "You showed perseverance in your practice"
+                : "You took the initiative to challenge yourself",
+
+            "You're willing to embrace new language learning technology"
+        },
+
+                "JP" => new[]
+                {
+            messageCount >= 10
+                ? "積極的に参加して、良い会話の流れを保ちました"
+                : messageCount >= 5
+                ? "質問に理にかなった答えをしました"
+                : "積極的な学習態度で通信を開始しました",
+
+            duration > 600
+                ? "長時間会話を維持できます"
+                : duration > 300
+                ? "練習に忍耐力を示しました"
+                : "進んで自分自身に挑戦しました",
+
+            "新しい言語学習技術を受け入れることをいとわない"
+        },
+
+                "ZH" => new[]
+                {
+            messageCount >= 10
+                ? "你积极参与并保持了良好的对话流程"
+                : messageCount >= 5
+                ? "你很好地回答了问题"
+                : "你以积极的学习态度开始交流",
+
+            duration > 600
+                ? "你可以长时间维持对话"
+                : duration > 300
+                ? "你在练习中表现出了毅力"
+                : "你主动挑战自己",
+
+            "你愿意接受新的语言学习技术"
+        },
+
+                _ => new[] { "Great effort!", "Good practice", "Positive attitude" }
+            };
+
+            return string.Join(". ", strengths.Take(3)) + ".";
         }
 
-        private string GenerateStrengthPoints(int messageCount, int duration)
+        private string GetDefaultFirstMessage(string language, string topic, string level, string languageCode)
         {
-            var strengths = new List<string>();
+            var isBasicLevel = level.Contains("A1") || level.Contains("N5") || level.Contains("HSK 1");
 
-            if (messageCount >= 10)
-                strengths.Add("Bạn rất tích cực tham gia và duy trì cuộc trò chuyện tốt");
-            else if (messageCount >= 5)
-                strengths.Add("Bạn có thể trả lời các câu hỏi một cách hợp lý");
-            else
-                strengths.Add("Bạn đã bắt đầu giao tiếp và có thái độ học tập tích cực");
+            return languageCode.ToUpper() switch
+            {
+                "EN" => isBasicLevel
+                    ? $"Hello! Let's practice talking about {topic}. How are you today?"
+                    : $"Hi there! I'm excited to discuss {topic} with you. What would you like to start with?",
 
-            if (duration > 600) // 10 phút
-                strengths.Add("Bạn có khả năng duy trì cuộc trò chuyện trong thời gian dài");
-            else if (duration > 300) // 5 phút
-                strengths.Add("Bạn kiên trì trong việc thực hành giao tiếp");
+                "JP" => isBasicLevel
+                    ? $"こんにちは！{topic}について話しましょう。今日はどうですか？"
+                    : $"こんにちは！{topic}について話し合うのが楽しみです。何から始めましょうか？",
 
-            strengths.Add("Bạn sẵn sàng thử thách bản thân với công nghệ học ngôn ngữ mới");
+                "ZH" => isBasicLevel
+                    ? $"你好！我们来聊聊{topic}吧。你今天怎么样？"
+                    : $"你好！我很期待和你讨论{topic}。你想从什么开始？",
 
-            return string.Join(". ", strengths.Take(3));
+                _ => "Hello! Let's start our conversation practice."
+            };
         }
-
         private string GetDefaultRole(string topicName)
         {
             return topicName.ToLower() switch
@@ -719,30 +967,35 @@ Format as JSON with clear numeric scores.";
             };
         }
 
-        private string GetDefaultFirstMessage(string language, string topic, string level)
+        public async Task<ConversationUsageDto> GetConversationUsageAsync(Guid userId)
         {
-            var isBasicLevel = level.Contains("A1") || level.Contains("N5") || level.Contains("HSK 1");
+            try
+            {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
 
-            if (language.Contains("English") || language.Contains("Anh"))
-            {
-                return isBasicLevel
-                    ? $"Hello! Let's practice talking about {topic}. How are you today?"
-                    : $"Hi there! I'm excited to discuss {topic} with you. What would you like to start with?";
-            }
-            else if (language.Contains("Japanese") || language.Contains("Nhật"))
-            {
-                return isBasicLevel
-                    ? $"こんにちは！{topic}について話しましょう。今日はどうですか？"
-                    : $"こんにちは！{topic}について話し合うのが楽しみです。何から始めましょうか？";
-            }
-            else if (language.Contains("Chinese") || language.Contains("Trung"))
-            {
-                return isBasicLevel
-                    ? $"你好！我们来聊聊{topic}吧。你今天怎么样？"
-                    : $"你好！我很期待和你讨论{topic}。你想从什么开始？";
-            }
+                if (user == null)
+                    throw new ArgumentException("User not found");
 
-            return "Hello! Let's start our conversation practice. What would you like to talk about?";
+                var activeSubscription = user.Subscriptions?
+                    .FirstOrDefault(s => s.IsActive && s.StartDate <= DateTime.UtcNow &&
+                        (s.EndDate == null || s.EndDate > DateTime.UtcNow));
+
+                var dailyLimit = activeSubscription?.ConversationQuota ?? user.DailyConversationLimit;
+                var subscriptionType = activeSubscription?.SubscriptionType ?? "Free";
+
+                return new ConversationUsageDto
+                {
+                    ConversationsUsedToday = user.ConversationsUsedToday,
+                    DailyLimit = dailyLimit,
+                    SubscriptionType = subscriptionType,
+                    ResetDate = user.LastConversationResetDate.Date.AddDays(1)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting conversation usage for user {UserId}", userId);
+                throw;
+            }
         }
 
         private ConversationSessionDto MapToConversationSessionDto(ConversationSession session, List<ConversationMessage> messages)
@@ -775,6 +1028,19 @@ Format as JSON with clear numeric scores.";
                 AudioUrl = message.AudioUrl,
                 SequenceOrder = message.SequenceOrder,
                 SentAt = message.SentAt
+            };
+        }
+        private ConversationTaskDto MapToTaskDto(ConversationTask task)
+        {
+            return new ConversationTaskDto
+            {
+                TaskId = task.TaskID,
+                TaskDescription = task.TaskDescription,
+                TaskContext = task.TaskContext,
+                TaskSequence = task.TaskSequence,
+                Status = task.Status,
+                IsCompleted = task.IsCompleted,
+                CompletionNotes = task.CompletionNotes
             };
         }
 

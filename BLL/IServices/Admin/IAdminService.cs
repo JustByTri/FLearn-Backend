@@ -21,6 +21,9 @@ namespace BLL.IServices.Admin
         Task<bool> DeleteGlobalPromptAsync(Guid adminUserId, Guid promptId);
         Task<bool> ToggleGlobalPromptStatusAsync(Guid adminUserId, Guid promptId);
         Task<GlobalConversationPromptDto> GetActiveGlobalPromptAsync(Guid adminUserId);
+        Task<GlobalConversationPromptDto> ActivateGlobalPromptAsync(
+   Guid adminUserId,
+   Guid promptId);
 
     }
 }

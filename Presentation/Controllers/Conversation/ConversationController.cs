@@ -274,7 +274,7 @@ namespace Presentation.Controllers.Conversation
                     });
                 }
 
-                // 🎤 Create SendMessageRequestDto with voice data
+                //  Create SendMessageRequestDto with voice data
                 var request = new SendMessageRequestDto
                 {
                     SessionId = formDto.SessionId,
@@ -445,6 +445,39 @@ namespace Presentation.Controllers.Conversation
                 {
                     success = false,
                     message = "Đã xảy ra lỗi khi lấy thông tin session",
+                    error = ex.Message
+                });
+            }
+        }
+        [HttpGet("usage")]
+        public async Task<IActionResult> GetConversationUsage()
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                var usage = await _conversationService.GetConversationUsageAsync(userId);
+
+                return Ok(new
+                {
+                    success = true,
+                    data = usage
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting conversation usage");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Error getting usage",
                     error = ex.Message
                 });
             }

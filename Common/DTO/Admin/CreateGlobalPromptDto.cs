@@ -29,7 +29,7 @@ namespace Common.DTO.Admin
 
         [StringLength(1000)]
         public string? EvaluationCriteria { get; set; }
-    public Guid LanguageID { get; set; }
+
         public bool IsActive { get; set; } = true;
         public bool IsDefault { get; set; } = false;
     }
