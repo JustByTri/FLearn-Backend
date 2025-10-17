@@ -10,7 +10,7 @@ namespace BLL.IServices.Application
     {
         Task<BaseResponse<ApplicationResponse>> CreateApplicationAsync(Guid userId, ApplicationRequest applicationRequest);
         Task<BaseResponse<ApplicationResponse>> UpdateApplicationAsync(Guid userId, ApplicationUpdateRequest applicationRequest);
-        Task<BaseResponse<ApplicationResponse>> GetMyApplicationAsync(Guid userId); // Application of that teacher
+        Task<PagedResponse<IEnumerable<ApplicationResponse>>> GetMyApplicationAsync(Guid userId, PagingRequest request, string status); // Application of that teacher
         Task<PagedResponse<IEnumerable<ApplicationResponse>>> GetApplicationAsync(Guid staffId, PagingRequest request, string status); // Applications which staff manages
         Task<BaseResponse<ApplicationResponse>> ApproveApplicationAsync(Guid staffId, Guid appplicationId);
         Task<BaseResponse<ApplicationResponse>> RejectApplicationAsync(Guid staffId, Guid appplicationId, RejectApplicationRequest request);

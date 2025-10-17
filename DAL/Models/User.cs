@@ -35,7 +35,7 @@ namespace DAL.Models
         public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
         public virtual ICollection<RefreshToken>? RefreshTokens { get; set; } = new List<RefreshToken>();
         public virtual ICollection<Review>? Reviews { get; set; } = new List<Review>();
-        public virtual TeacherApplication? TeacherApplication { get; set; }
+        public virtual ICollection<TeacherApplication>? TeacherApplications { get; set; } = new List<TeacherApplication>();
         public virtual TeacherProfile? TeacherProfile { get; set; }
         public virtual StaffLanguage? StaffLanguage { get; set; }
         public virtual ICollection<LearnerLanguage> LearnerLanguages { get; set; } = new List<LearnerLanguage>();

@@ -49,6 +49,7 @@ namespace DAL
             services.AddScoped<ILearnerProgressRepository, LearnerProgressRepository>();
             services.AddScoped<ILearnerGoalRepository, LearnerGoalRepository>();
             services.AddScoped<ILessonRepository, LessonRepository>();
+            services.AddScoped<ILessonActivityLogRepository, LessonActivityLogRepository>();
             services.AddScoped<ILessonBookingRepository, LessonBookingRepository>();
             services.AddScoped<ILessonDisputeRepository, LessonDisputeRepository>();
             services.AddScoped<ILessonReviewRepository, LessonReviewRepository>();

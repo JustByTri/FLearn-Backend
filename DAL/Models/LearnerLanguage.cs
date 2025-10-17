@@ -29,5 +29,6 @@ namespace DAL.Models
         public virtual ICollection<ContentIssueReport>? ContentIssueReports { get; set; } = new List<ContentIssueReport>();
         public virtual ICollection<LessonBooking>? LessonBookings { get; set; } = new List<LessonBooking>();
         public virtual ICollection<LearnerGoal>? Goals { get; set; } = new List<LearnerGoal>();
+        public virtual ICollection<LessonActivityLog>? LessonActivityLogs { get; set; } = new List<LessonActivityLog>();
     }
 }

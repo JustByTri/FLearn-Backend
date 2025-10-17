@@ -29,6 +29,7 @@ namespace DAL.UnitOfWork
         ILearnerProgressRepository LearnerProgresses { get; }
         ILearnerGoalRepository LearnerGoals { get; }
         ILessonRepository Lessons { get; }
+        ILessonActivityLogRepository LessonActivityLogs { get; }
         ILessonBookingRepository LessonBookings { get; }
         ILessonDisputeRepository LessonDisputes { get; }
         ILessonReviewRepository LessonReviews { get; }

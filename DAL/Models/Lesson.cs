@@ -34,5 +34,6 @@ namespace DAL.Models
         public virtual ICollection<Exercise> Exercises { get; set; } = new List<Exercise>();
         public virtual ICollection<LearnerProgress>? LearnerProgresses { get; set; } = new List<LearnerProgress>();
         public virtual ICollection<ContentIssueReport>? ContentIssueReports { get; set; } = new List<ContentIssueReport>();
+        public virtual ICollection<LessonActivityLog>? LessonActivityLogs { get; set; } = new List<LessonActivityLog>();
     }
 }

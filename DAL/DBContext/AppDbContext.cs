@@ -33,6 +33,7 @@ namespace DAL.DBContext
         public DbSet<LearnerProgress> LearnerProgresses { get; set; }
         public DbSet<LearnerGoal> LearnerGoals { get; set; }
         public DbSet<Lesson> Lessons { get; set; }
+        public DbSet<LessonActivityLog> LessonActivityLogs { get; set; }
         public DbSet<LessonBooking> LessonBookings { get; set; }
         public DbSet<LessonDispute> LessonDisputes { get; set; }
         public DbSet<LessonReview> LessonReviews { get; set; }

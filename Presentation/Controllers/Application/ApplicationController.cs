@@ -59,19 +59,21 @@ namespace Presentation.Controllers.Application
             return StatusCode(result.Code, result);
         }
         /// <summary>
-        /// Get the teacher application of the currently logged-in user.
+        /// Get the paginated teacher applications of the currently logged-in user.
         /// </summary>
-        /// <returns>Returns the user's teacher application information if available.</returns>
+        /// <param name="request">Paging parameters (page, pageSize)</param>
+        /// <param name="status">Optional filter by application status (Pending, Approved, Rejected)</param>
+        /// <returns>Paginated list of user's teacher applications.</returns>
         [Authorize(Roles = "Learner")]
         [HttpGet("applications/me")]
-        public async Task<IActionResult> GetMyApplication()
+        public async Task<IActionResult> GetMyApplications([FromQuery] PagingRequest request, [FromQuery] string? status)
         {
             var userIdClaim = User.FindFirstValue("user_id")
                                  ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdClaim))
             {
-                return Unauthorized("Teacher ID not found in token.");
+                return Unauthorized("User ID not found in token.");
             }
 
             if (!Guid.TryParse(userIdClaim, out Guid userId))
@@ -79,9 +81,11 @@ namespace Presentation.Controllers.Application
                 return BadRequest("Invalid user ID format in token.");
             }
 
-            var result = await _teacherApplicationService.GetMyApplicationAsync(userId);
+            var result = await _teacherApplicationService.GetMyApplicationAsync(userId, request, status);
+
             return StatusCode(result.Code, result);
         }
+
         /// <summary>
         /// Updates an existing teacher application (only if it is still Pending or Rejected).
         /// </summary>
