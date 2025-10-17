@@ -22,5 +22,6 @@ namespace DAL.Models
         public DateTime EnrolledAt { get; set; }
         public DateTime? CompletedAt { get; set; }
         public virtual ICollection<LearnerProgress> LessonProgresses { get; set; } = new List<LearnerProgress>();
+        public virtual ICollection<LessonActivityLog>? LessonActivityLogs { get; set; } = new List<LessonActivityLog>();
     }
 }

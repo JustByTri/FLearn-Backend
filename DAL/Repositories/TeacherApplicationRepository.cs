@@ -10,14 +10,14 @@ namespace DAL.Repositories
     {
         public TeacherApplicationRepository(AppDbContext context) : base(context) { }
 
-        public async Task<TeacherApplication?> GetByUserIdAsync(Guid userId)
+        public async Task<IEnumerable<TeacherApplication>> GetByUserIdAsync(Guid userId)
         {
             return await _context.TeacherApplications
                 .Include(a => a.Language)
                 .Include(a => a.User)
                 .Include(a => a.Certificates)
                     .ThenInclude(c => c.CertificateType)
-                .FirstOrDefaultAsync(a => a.UserID == userId);
+                .Where(a => a.UserID == userId).ToListAsync();
         }
     }
 }

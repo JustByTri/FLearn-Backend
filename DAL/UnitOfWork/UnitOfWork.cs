@@ -40,6 +40,7 @@ namespace DAL.UnitOfWork
             LearnerProgresses = new LearnerProgressRepository(_context);
             LearnerGoals = new LearnerGoalRepository(_context);
             Lessons = new LessonRepository(_context);
+            LessonActivityLogs = new LessonActivityLogRepository(_context);
             LessonBookings = new LessonBookingRepository(_context);
             LessonDisputes = new LessonDisputeRepository(_context);
             LessonReviews = new LessonReviewRepository(_context);
@@ -95,6 +96,7 @@ namespace DAL.UnitOfWork
         public ILearnerProgressRepository LearnerProgresses { get; private set; }
         public ILearnerGoalRepository LearnerGoals { get; private set; }
         public ILessonRepository Lessons { get; private set; }
+        public ILessonActivityLogRepository LessonActivityLogs { get; private set; }
         public ILessonBookingRepository LessonBookings { get; private set; }
         public ILessonDisputeRepository LessonDisputes { get; private set; }
         public ILessonReviewRepository LessonReviews { get; private set; }

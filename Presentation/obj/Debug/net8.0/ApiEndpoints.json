@@ -384,12 +384,28 @@
   },
   {
     "ContainingType": "Presentation.Controllers.Application.ApplicationController",
-    "Method": "GetMyApplication",
+    "Method": "GetMyApplications",
     "RelativePath": "api/applications/me",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "Page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "PageSize",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "status",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -1761,6 +1777,22 @@
     "IsController": true,
     "Order": 0,
     "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.LessonActivityLog.LessonActivityLogsController",
+    "Method": "AddLog",
+    "RelativePath": "api/lesson-logs",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "req",
+        "Type": "Common.DTO.LessonLog.Request.LessonLogRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
