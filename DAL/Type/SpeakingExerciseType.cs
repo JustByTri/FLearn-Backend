@@ -8,6 +8,6 @@
         QuestionResponse = 4,     // Trả lời câu hỏi mở
         Storytelling = 5,         // Kể chuyện / tóm tắt
         PronunciationCheck = 6,   // Kiểm tra phát âm âm vị / trọng âm
-        FreeSpeaking = 7           // Nói tự do theo chủ đề
+        FreeSpeaking = 7           // Nói tự do theo chủ đề.
     }
 }

@@ -36,6 +36,7 @@ namespace BLL.IServices.AI
         Task<GeneratedConversationContentDto> GenerateConversationContentAsync(ConversationContextDto context);
         Task<string> GenerateResponseAsync(string systemPrompt, string userMessage, List<string> conversationHistory);
         Task<ConversationEvaluationResult> EvaluateConversationAsync(string evaluationPrompt);
+        Task<string> TranslateTextAsync(string text, string sourceLanguage, string targetLanguage);
     }
 
     public class CourseInfoDto
