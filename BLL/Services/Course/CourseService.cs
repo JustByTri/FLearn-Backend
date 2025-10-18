@@ -956,7 +956,17 @@ namespace BLL.Services.Course
                 if (teacher == null)
                     return BaseResponse<object>.Fail(null, "Teacher does not exist.", 404);
 
-                var course = await _unit.Courses.GetByIdAsync(courseId);
+                var course = await _unit.Courses
+                    .Query()
+                    .Include(c => c.Template)
+                    .Include(c => c.Language)
+                    .Include(c => c.CourseGoals)
+                    .Include(c => c.CourseTopics)
+                    .Include(c => c.CourseUnits)
+                        .ThenInclude(u => u.Lessons)
+                            .ThenInclude(l => l.Exercises)
+                    .FirstOrDefaultAsync(c => c.CourseID == courseId);
+
                 if (course == null)
                     return BaseResponse<object>.Fail(null, "Course does not exist.", 404);
 
@@ -965,6 +975,54 @@ namespace BLL.Services.Course
 
                 if (course.Status != CourseStatus.Draft && course.Status != CourseStatus.Rejected)
                     return BaseResponse<object>.Fail(null, "Course can only be submitted if it is in Pending or Rejected status.", 400);
+
+                var template = course.Template;
+                if (template == null)
+                    return BaseResponse<object>.Fail(null, "This course does not have a valid template assigned.", 400);
+
+                var errors = new List<string>();
+
+                if (template.RequireLang && course.LanguageId == null)
+                    errors.Add("This course must specify a language.");
+
+                if (template.RequireGoal && (course.CourseGoals == null || !course.CourseGoals.Any()))
+                    errors.Add("This course must include at least one goal.");
+
+                if (template.RequireTopic && (course.CourseTopics == null || !course.CourseTopics.Any()))
+                    errors.Add("This course must include at least one topic.");
+
+                if (template.RequireLevel && course.Level == null)
+                    errors.Add("This course must specify a level.");
+
+                var unitCount = course.CourseUnits?.Count ?? 0;
+                if (unitCount < template.MinUnits)
+                    errors.Add($"This course must contain at least {template.MinUnits} units.");
+
+                foreach (var unit in course.CourseUnits ?? Enumerable.Empty<DAL.Models.CourseUnit>())
+                {
+                    var lessonCount = unit.Lessons?.Count ?? 0;
+                    if (lessonCount < template.MinLessonsPerUnit)
+                    {
+                        errors.Add($"Unit '{unit.Title}' must contain at least {template.MinLessonsPerUnit} lessons.");
+                        continue;
+                    }
+
+                    foreach (var lesson in unit.Lessons ?? Enumerable.Empty<DAL.Models.Lesson>())
+                    {
+                        var exerciseCount = lesson.Exercises?.Count ?? 0;
+                        if (exerciseCount < template.MinExercisesPerLesson)
+                            errors.Add($"Lesson '{lesson.Title}' must contain at least {template.MinExercisesPerLesson} exercises.");
+                    }
+                }
+
+                if (errors.Any())
+                {
+                    return BaseResponse<object>.Fail(
+                        new { Details = errors },
+                        "Course does not meet the template requirements.",
+                        400
+                    );
+                }
 
                 var submission = new CourseSubmission
                 {
