@@ -821,6 +821,254 @@
         }
       }
     },
+    "/api/admin/classes/disputes": {
+      "get": {
+        "tags": [
+          "ClassAdmin"
+        ],
+        "summary": "Get all disputes for review",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/classes/disputes/{disputeId}/resolve": {
+      "post": {
+        "tags": [
+          "ClassAdmin"
+        ],
+        "summary": "Admin resolves a dispute (refund/partial/refuse)",
+        "parameters": [
+          {
+            "name": "disputeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveDisputeDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveDisputeDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveDisputeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/classes/{classId}/payout": {
+      "post": {
+        "tags": [
+          "ClassAdmin"
+        ],
+        "summary": "Trigger payout for a class",
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/student/classes/{classId}/enroll": {
+      "post": {
+        "tags": [
+          "ClassEnrollment"
+        ],
+        "summary": "Bước 1: Student yêu cầu enroll - tạo link thanh toán",
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/student/classes/payment-callback": {
+      "post": {
+        "tags": [
+          "ClassEnrollment"
+        ],
+        "summary": "Bước 2: Callback từ PayOS - xác nhận enrollment",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentCallbackDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentCallbackDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentCallbackDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/student/classes/enrollments/{enrollmentId}": {
+      "get": {
+        "tags": [
+          "ClassEnrollment"
+        ],
+        "summary": "Kiểm tra trạng thái enrollment",
+        "parameters": [
+          {
+            "name": "enrollmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/student/classes/available": {
+      "get": {
+        "tags": [
+          "ClassEnrollment"
+        ],
+        "summary": "Lấy danh sách lớp học theo ngôn ngữ",
+        "parameters": [
+          {
+            "name": "languageId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/student/classes/my-enrollments": {
+      "get": {
+        "tags": [
+          "ClassEnrollment"
+        ],
+        "summary": "Lấy danh sách lớp học mà sinh viên đã đăng ký",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/conversation/languages": {
       "get": {
         "tags": [
@@ -4132,6 +4380,130 @@
         }
       }
     },
+    "/api/teacher/classes": {
+      "post": {
+        "tags": [
+          "TeacherClass"
+        ],
+        "summary": "Tạo lớp học mới",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateClassDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateClassDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateClassDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "TeacherClass"
+        ],
+        "summary": "Lấy danh sách lớp học của giáo viên",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/teacher/classes/{classId}/publish": {
+      "post": {
+        "tags": [
+          "TeacherClass"
+        ],
+        "summary": "Publish lớp học để học sinh có thể đăng ký",
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/teacher/classes/{classId}": {
+      "get": {
+        "tags": [
+          "TeacherClass"
+        ],
+        "summary": "Lấy chi tiết lớp học",
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/teacher/classes/{classId}/enrollments": {
+      "get": {
+        "tags": [
+          "TeacherClass"
+        ],
+        "summary": "Lấy danh sách học sinh đã đăng ký lớp học",
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/topics": {
       "get": {
         "tags": [
@@ -5148,6 +5520,66 @@
         "type": "integer",
         "format": "int32"
       },
+      "CreateClassDto": {
+        "required": [
+          "capacity",
+          "endDateTime",
+          "languageID",
+          "minStudents",
+          "pricePerStudent",
+          "startDateTime",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "title": {
+            "maxLength": 200,
+            "minLength": 0,
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 1000,
+            "minLength": 0,
+            "type": "string"
+          },
+          "languageID": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startDateTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endDateTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "minStudents": {
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          },
+          "capacity": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          },
+          "pricePerStudent": {
+            "maximum": 10000000,
+            "minimum": 0.01,
+            "type": "number",
+            "format": "double"
+          },
+          "googleMeetLink": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "CreateGlobalPromptDto": {
         "required": [
           "description",
@@ -5657,6 +6089,45 @@
         },
         "additionalProperties": false
       },
+      "PaymentCallbackDto": {
+        "type": "object",
+        "properties": {
+          "transactionId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "signature": {
+            "type": "string",
+            "nullable": true
+          },
+          "paidAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "paymentMethod": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "studentID": {
+            "type": "string"
+          },
+          "classID": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "PreviewPromptRequestDto": {
         "type": "object",
         "properties": {
@@ -5785,6 +6256,36 @@
         },
         "additionalProperties": false
       },
+      "ResolveDisputeDto": {
+        "required": [
+          "resolution"
+        ],
+        "type": "object",
+        "properties": {
+          "resolution": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "refundAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "adminNotes": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          },
+          "reasonForResolution": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SendMessageRequestDto": {
         "required": [
           "messageContent",
@@ -5824,11 +6325,7 @@
         "enum": [
           1,
           2,
-          3,
-          4,
-          5,
-          6,
-          7
+          3
         ],
         "type": "integer",
         "format": "int32"

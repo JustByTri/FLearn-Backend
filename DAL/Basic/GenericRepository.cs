@@ -154,6 +154,10 @@ namespace DAL.Basic
             await _context.Set<T>().AddRangeAsync(entities);
             return await _context.SaveChangesAsync();
         }
+        public IQueryable<T> GetQuery()
+        {
+            return _context.Set<T>().AsQueryable();
+        }
         public async Task<T?> FindAsync(Expression<Func<T, bool>> predicate)
         {
             return await _context.Set<T>().FirstOrDefaultAsync(predicate);
@@ -165,6 +169,14 @@ namespace DAL.Basic
         public void DeleteRange(IEnumerable<T> entities)
         {
             _context.Set<T>().RemoveRange(entities);
+        }
+        public async Task DeleteAsync(Guid id)
+        {
+            var entity = await GetByIdAsync(id);
+            if (entity != null)
+            {
+                await RemoveAsync(entity);
+            }
         }
     }
 }

@@ -20,7 +20,7 @@ namespace DAL.Models
         public string? Reason { get; set; }
         public string? EvidenceUrl { get; set; }
         public string? ReviewNote { get; set; }
-        public DisputeStatus? Status { get; set; } = DisputeStatus.Submitted;
+        public DisputeStatus? Status { get; set; } = DisputeStatus.Submmitted;
         public DateTime SubmittedAt { get; set; }
         public DateTime ReviewedAt { get; set; }
     }

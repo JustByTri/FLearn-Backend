@@ -57,6 +57,9 @@ namespace DAL.UnitOfWork
         IConversationSessionRepository ConversationSessions { get; }
         IConversationMessageRepository ConversationMessages { get; }
         IConversationTaskRepository ConversationTasks { get; }
+        ITeacherClassRepository TeacherClasses { get; }
+        IClassDisputeRepository ClassDisputes { get; }
+        IClassEnrollmentRepository ClassEnrollments { get; }
         int SaveChanges();
         Task<int> SaveChangesAsync();
         void BeginTransaction();

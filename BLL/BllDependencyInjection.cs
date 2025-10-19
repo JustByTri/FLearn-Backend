@@ -15,11 +15,14 @@ using BLL.IServices.Language;
 using BLL.IServices.Lesson;
 using BLL.IServices.LessonActivityLog;
 using BLL.IServices.LessonProgress;
+using BLL.IServices.Payment;
 using BLL.IServices.Redis;
+using BLL.IServices.Teacher;
 using BLL.IServices.Topic;
 using BLL.IServices.Upload;
 using BLL.Services;
 using BLL.Services.Admin;
+using BLL.Services.Admin.BLL.Services.Admin;
 using BLL.Services.AI;
 using BLL.Services.Application;
 using BLL.Services.Assessment;
@@ -36,7 +39,9 @@ using BLL.Services.Languages;
 using BLL.Services.Lesson;
 using BLL.Services.LessonActivityLog;
 using BLL.Services.LessonProgress;
+using BLL.Services.Payment;
 using BLL.Services.Redis;
+using BLL.Services.Teacher;
 using BLL.Services.Topic;
 using BLL.Services.Upload;
 using BLL.Settings;
@@ -128,6 +133,11 @@ namespace BLL
             services.AddScoped<IEnrollmentService, EnrollmentService>();
             services.AddScoped<ILessonProgressService, LessonProgressService>();
             services.AddScoped<ILessonActivityLogService, LessonActivityLogService>();
+            services.AddScoped<IClassAdminService, ClassAdminService>();
+            services.AddScoped<IClassEnrollmentService, ClassEnrollmentService>();
+            services.AddScoped<IPayOSService, PayOSService>();
+            services.AddHttpClient<PayOSService>();
+            services.AddScoped<ITeacherClassService, TeacherClassService>();
             return services;
         }
     }

@@ -76,9 +76,9 @@ namespace BLL.Services.LessonProgress
                 await _unit.SaveChangesAsync();
 
                 var enrollmentPercent = await RecalculateEnrollmentProgressAsync(enrollmentId);
-                if (Math.Abs(enrollmentPercent - 100.0) < 0.0001 && enrollment.Status != EnrollmentStatus.Completed)
+                if (Math.Abs(enrollmentPercent - 100.0) < 0.0001 && enrollment.Status != DAL.Models.EnrollmentStatus.Completed)
                 {
-                    enrollment.Status = EnrollmentStatus.Completed;
+                    enrollment.Status = DAL.Models.EnrollmentStatus.Completed;
                     enrollment.CompletedAt = DateTime.UtcNow;
                     _unit.Enrollments.Update(enrollment);
                     await _unit.SaveChangesAsync();

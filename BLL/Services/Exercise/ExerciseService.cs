@@ -5,6 +5,7 @@ using Common.DTO.Exercise.Request;
 using Common.DTO.Exercise.Response;
 using Common.DTO.Paging.Request;
 using Common.DTO.Paging.Response;
+using Common.DTO.Upload;
 using DAL.Helpers;
 using DAL.Type;
 using DAL.UnitOfWork;
@@ -89,16 +90,30 @@ namespace BLL.Services.Exercise
                     if (request.MediaFile != null)
                     {
                         var contentType = request.MediaFile.ContentType.ToLower();
-                        if (!contentType.StartsWith("audio/"))
+
+                        bool isImage = contentType.StartsWith("image/");
+                        bool isAudio = contentType.StartsWith("audio/");
+
+                        if (!isImage && !isAudio)
                         {
                             return BaseResponse<ExerciseResponse>.Fail(
                                 new { MediaFile = "Invalid file format." },
-                                "Only audio is allowed.",
+                                "Only image or audio files are allowed.",
                                 400
                             );
                         }
 
-                        var uploadResult = await _cloudinary.UploadAudioAsync(request.MediaFile, "exercises/media");
+                        UploadResultDto uploadResult;
+
+                        if (isImage)
+                        {
+                            uploadResult = await _cloudinary.UploadImageAsync(request.MediaFile, "exercises/images");
+                        }
+                        else
+                        {
+                            uploadResult = await _cloudinary.UploadAudioAsync(request.MediaFile, "exercises/audio");
+                        }
+
                         mediaUrl = uploadResult.Url;
                         mediaPublicId = uploadResult.PublicId;
                     }
@@ -123,28 +138,38 @@ namespace BLL.Services.Exercise
 
                 selectedLesson.TotalExercises += 1;
 
+                var now = TimeHelper.GetVietnamTime();
+
                 var newExercise = new DAL.Models.Exercise
                 {
                     ExerciseID = Guid.NewGuid(),
-                    Title = request.Title.Trim(),
-                    Prompt = request.Prompt,
-                    Hints = request.Hints,
-                    Content = request.Content,
-                    ExpectedAnswer = request.ExpectedAnswer,
+                    Title = request.Title?.Trim() ?? string.Empty,
+
+                    Prompt = string.IsNullOrWhiteSpace(request.Prompt) ? null : request.Prompt.Trim(),
+                    Hints = string.IsNullOrWhiteSpace(request.Hints) ? null : request.Hints.Trim(),
+                    Content = string.IsNullOrWhiteSpace(request.Content) ? null : request.Content.Trim(),
+                    ExpectedAnswer = string.IsNullOrWhiteSpace(request.ExpectedAnswer) ? null : request.ExpectedAnswer.Trim(),
+
                     Type = request.Type,
                     Difficulty = request.Difficulty,
+
                     Position = nextPosition,
                     MaxScore = request.MaxScore,
                     PassScore = request.PassScore,
-                    FeedbackCorrect = request.FeedbackCorrect,
-                    FeedbackIncorrect = request.FeedbackIncorrect,
+
+                    FeedbackCorrect = string.IsNullOrWhiteSpace(request.FeedbackCorrect) ? null : request.FeedbackCorrect.Trim(),
+                    FeedbackIncorrect = string.IsNullOrWhiteSpace(request.FeedbackIncorrect) ? null : request.FeedbackIncorrect.Trim(),
+
                     PrerequisiteExerciseID = prerequisiteExerciseId,
                     LessonID = selectedLesson.LessonID,
-                    MediaUrl = mediaUrl,
-                    MediaPublicId = mediaPublicId,
-                    CreatedAt = TimeHelper.GetVietnamTime(),
-                    UpdatedAt = TimeHelper.GetVietnamTime(),
+
+                    MediaUrl = string.IsNullOrWhiteSpace(mediaUrl) ? null : mediaUrl,
+                    MediaPublicId = string.IsNullOrWhiteSpace(mediaPublicId) ? null : mediaPublicId,
+
+                    CreatedAt = now,
+                    UpdatedAt = now
                 };
+
 
                 var result = await _unit.Exercises.CreateAsync(newExercise);
 

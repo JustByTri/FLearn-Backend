@@ -32,5 +32,7 @@ namespace DAL.Basic
         Task<T?> FindAsync(Expression<Func<T, bool>> predicate);
         Task<IEnumerable<T>> FindAllAsync(Expression<Func<T, bool>> predicate);
         void DeleteRange(IEnumerable<T> entities);
+        IQueryable<T> GetQuery();
+        Task DeleteAsync(Guid id);
     }
 }
