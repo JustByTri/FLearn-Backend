@@ -61,11 +61,16 @@ namespace DAL.DBContext
         public DbSet<ConversationMessage> ConversationMessages { get; set; }
         public DbSet<ConversationSession> ConversationSession { get; set; }
         public DbSet<ConversationTask> ConversationTasks { get; set; }
+        public DbSet<TeacherClass> TeacherClasses { get; set; }
+        public DbSet<ClassEnrollment> ClassEnrollments { get; set; }
+        public DbSet<ClassDispute> ClassDisputes { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.UseCollation("utf8mb4_general_ci");
+
 
             foreach (var entityType in modelBuilder.Model.GetEntityTypes())
             {
@@ -78,6 +83,7 @@ namespace DAL.DBContext
                     }
                 }
             }
+
             SeedData(modelBuilder);
         }
 

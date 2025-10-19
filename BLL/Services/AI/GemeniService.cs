@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -262,44 +263,58 @@ namespace BLL.Services.AI
 
         private string BuildConversationPrompt(ConversationContextDto context)
         {
-            return $@"# Generate a conversation scenario for language learning
+            return $@"# Generate conversation scenario - DUAL LANGUAGE REQUIRED
 
 ## Context
-- **Language**: {context.Language} ({context.LanguageCode})
+- **Main Language**: {context.Language} ({context.LanguageCode})
+- **Secondary Language**: Vietnamese (for clarity)
 - **Topic**: {context.Topic}
-- **Difficulty Level**: {context.DifficultyLevel}
-- **Description**: {context.TopicDescription}
+- **Level**: {context.DifficultyLevel}
 
-## Guidelines
-{context.ScenarioGuidelines}
+## CRITICAL REQUIREMENTS:
+1. ALL text MUST be bilingual: {context.Language} + Vietnamese
+2. Format: ""{context.Language} text | Vietnamese text""
+3. You MUST generate exactly 3 tasks
+4. Tasks MUST be bilingual
 
-## Your Task
-Generate a realistic and engaging conversation scenario that MUST include 3 specific tasks.
-
-## IMPORTANT: You MUST return exactly this JSON format (no markdown, no extra text):
+## Return Format (JSON only, no markdown):
 
 {{
-  ""scenarioDescription"": ""A 2-3 sentence realistic scenario based on the topic"",
-  ""aiRole"": ""The character role (e.g., Waiter, Tour Guide, Manager)"",
-  ""systemPrompt"": ""Detailed instruction for AI behavior"",
-  ""firstMessage"": ""The AI's opening message in {context.Language}"",
+  ""scenarioDescription"": ""{context.Language} scenario | Tình huống Việt"",
+  ""aiRole"": ""{context.Language} role | Vai trò Việt"",
+  ""systemPrompt"": ""System prompt (English is OK for this)"",
+  ""firstMessage"": ""{context.Language} message | Tin nhắn Việt"",
   ""tasks"": [
     {{
-      ""taskDescription"": ""Task 1: Be specific and achievable (e.g., 'Ask the waiter for a wine recommendation')"",
-      ""taskContext"": ""Context or hints for this task""
+      ""taskDescription"": ""{context.Language} task 1 | Nhiệm vụ 1 Việt"",
+      ""taskContext"": ""Context {context.Language} | Ngữ cảnh Việt""
     }},
     {{
-      ""taskDescription"": ""Task 2: Second objective (e.g., 'Order your main course and mention any dietary restrictions')"",
-      ""taskContext"": ""Context or hints""
+      ""taskDescription"": ""{context.Language} task 2 | Nhiệm vụ 2 Việt"",
+      ""taskContext"": ""Context {context.Language} | Ngữ cảnh Việt""
     }},
     {{
-      ""taskDescription"": ""Task 3: Final objective (e.g., 'Ask for the bill and discuss payment options')"",
-      ""taskContext"": ""Context or hints""
+      ""taskDescription"": ""{context.Language} task 3 | Nhiệm vụ 3 Việt"",
+      ""taskContext"": ""Context {context.Language} | Ngữ cảnh Việt""
     }}
   ]
 }}
 
-Return ONLY valid JSON. No explanations, no markdown code blocks.";
+Examples by language:
+
+**English | Tiếng Anh:**
+- scenarioDescription: ""You arrive at a Italian restaurant for dinner | Bạn đến nhà hàng Ý để ăn tối""
+- firstMessage: ""Good evening! Welcome to La Bella. How many people? | Tối nay vui lắm! Chào mừng. Bao nhiêu người?""
+
+**Chinese | Tiếng Trung:**
+- scenarioDescription: ""你来到医院看医生。你有感冒和发烧 | Bạn đến bệnh viện gặp bác sĩ. Bạn bị cảm lạnh và sốt""
+- firstMessage: ""请坐。您哪里不舒服？| Vui lòng ngồi. Chỗ nào bạn cảm thấy không thoải mái?""
+
+**Japanese | Tiếng Nhật:**
+- scenarioDescription: ""あなたはレストランに到着しました。ウェイターがメニューを持ってきます | Bạn đến nhà hàng. Người phục vụ mang thực đơn đến""
+- firstMessage: ""いらっしゃいませ。何名でしょうか？| Chào mừng. Bao nhiêu người?""
+
+Return ONLY JSON. No extra text.";
         }
 
         private string BuildResponsePrompt(
@@ -443,8 +458,7 @@ Return JSON with questionResults array, strengths, weaknesses, recommendedCourse
         {
             try
             {
-                _logger.LogInformation("Parsing conversation response: {Response}",
-                    response.Substring(0, Math.Min(200, response.Length)));
+                _logger.LogInformation("Parsing conversation response with dual language");
 
                 var cleanedResponse = CleanJsonResponse(response);
 
@@ -459,59 +473,117 @@ Return JSON with questionResults array, strengths, weaknesses, recommendedCourse
 
                 if (parsed != null)
                 {
-                    // ✅ Ensure tasks are not null
+                    // ✅ Ensure tasks exist
                     if (parsed.Tasks == null || parsed.Tasks.Count == 0)
                     {
-                        _logger.LogWarning("No tasks in response, creating default tasks");
-                        parsed.Tasks = CreateDefaultTasks(context.Topic);
+                        _logger.LogWarning("No tasks in response, creating defaults");
+                        parsed.Tasks = CreateDefaultTasks(context.Topic, context.Language);
                     }
 
-                    _logger.LogInformation("Successfully parsed conversation content with {TaskCount} tasks",
-                        parsed.Tasks.Count);
+                    _logger.LogInformation("Successfully parsed with {TaskCount} tasks in {Language}",
+                        parsed.Tasks.Count, context.Language);
                     return parsed;
                 }
             }
             catch (JsonException ex)
             {
-                _logger.LogError(ex, "JSON parsing error: {Response}",
-                    response.Substring(0, Math.Min(200, response.Length)));
+                _logger.LogError(ex, "JSON parsing error");
             }
 
             return CreateFallbackConversationContent(context);
         }
-        private List<ConversationTaskDto> CreateDefaultTasks(string topic)
+
+        private List<ConversationTaskDto> CreateDefaultTasks(string topic, string language)
         {
+            var separator = " | ";
+
             return topic.ToLower() switch
             {
                 var t when t.Contains("restaurant") || t.Contains("ẩm thực") => new List<ConversationTaskDto>
         {
-            new() { TaskDescription = "Ask the waiter for a recommendation on popular dishes", TaskSequence = 1, TaskContext = "The waiter should suggest a specialty" },
-            new() { TaskDescription = "Order your main course and mention any dietary restrictions", TaskSequence = 2, TaskContext = "Practice using polite ordering phrases" },
-            new() { TaskDescription = "Ask for the bill and inquire about payment methods", TaskSequence = 3, TaskContext = "Complete the transaction naturally" }
+            new()
+            {
+                TaskDescription = language switch
+                {
+                    var l when l.Contains("English") => "Ask the waiter for menu recommendations and house specials | Hỏi người phục vụ về những gợi ý và đặc biệt của nhà hàng",
+                    var l when l.Contains("Chinese") => "询问服务员关于菜单建议和特色菜 | Hỏi người phục vụ về những gợi ý menu và đặc biệt",
+                    var l when l.Contains("Japanese") => "ウェイターに推奨事項と特別料理について尋ねてください | Hỏi người phục vụ về gợi ý và đặc biệt",
+                    _ => "Ask for recommendations | Hỏi gợi ý"
+                },
+                TaskSequence = 1,
+                TaskContext = "Practice ordering phrases | Luyện tập cách đặt hàng"
+            },
+            new()
+            {
+                TaskDescription = language switch
+                {
+                    var l when l.Contains("English") => "Order your main course and mention dietary restrictions | Đặt hàng chính và nhắc về hạn chế ăn kiêng",
+                    var l when l.Contains("Chinese") => "点餐并提及饮食限制 | Đặt hàng và nhắc hạn chế ăn kiêng",
+                    var l when l.Contains("Japanese") => "メイン料理を注文し、食事制限について言及してください | Đặt hàng chính và nhắc hạn chế ăn kiêng",
+                    _ => "Order your meal | Đặt hàng"
+                },
+                TaskSequence = 2,
+                TaskContext = "Use polite ordering expressions | Sử dụng cách nói lịch sự"
+            },
+            new()
+            {
+                TaskDescription = language switch
+                {
+                    var l when l.Contains("English") => "Ask for the bill and inquire about payment methods | Yêu cầu bill và hỏi các phương thức thanh toán",
+                    var l when l.Contains("Chinese") => "要求账单并询问付款方式 | Yêu cầu hóa đơn và hỏi cách thanh toán",
+                    var l when l.Contains("Japanese") => "勘定を要求し、支払い方法について尋ねてください | Yêu cầu hóa đơn và hỏi cách thanh toán",
+                    _ => "Ask for the bill | Yêu cầu tính tiền"
+                },
+                TaskSequence = 3,
+                TaskContext = "Complete the transaction naturally | Hoàn thành giao dịch một cách tự nhiên"
+            }
         },
-                var t when t.Contains("travel") || t.Contains("du lịch") => new List<ConversationTaskDto>
+
+                var t when t.Contains("health") || t.Contains("sức khỏe") => new List<ConversationTaskDto>
         {
-            new() { TaskDescription = "Explain your travel destination and purpose", TaskSequence = 1, TaskContext = "Describe where you're going and why" },
-            new() { TaskDescription = "Ask for recommendations on local attractions or activities", TaskSequence = 2, TaskContext = "Request suggestions from the travel expert" },
-            new() { TaskDescription = "Inquire about transportation and accommodation options", TaskSequence = 3, TaskContext = "Ask practical travel questions" }
+            new()
+            {
+                TaskDescription = language switch
+                {
+                    var l when l.Contains("English") => "Describe your symptoms in detail to the doctor | Mô tả chi tiết các triệu chứng cho bác sĩ",
+                    var l when l.Contains("Chinese") => "详细向医生描述你的症状 | Mô tả chi tiết triệu chứng cho bác sĩ",
+                    var l when l.Contains("Japanese") => "医者に詳しく症状を説明してください | Mô tả chi tiết triệu chứng cho bác sĩ",
+                    _ => "Describe your symptoms | Mô tả triệu chứng"
+                },
+                TaskSequence = 1,
+                TaskContext = "Use medical vocabulary | Sử dụng từ vựng y tế"
+            },
+            new()
+            {
+                TaskDescription = language switch
+                {
+                    var l when l.Contains("English") => "Ask about treatment options and medication | Hỏi về các lựa chọn điều trị và thuốc",
+                    var l when l.Contains("Chinese") => "询问治疗选择和药物 | Hỏi về lựa chọn điều trị và thuốc",
+                    var l when l.Contains("Japanese") => "治療オプションと薬物について質問してください | Hỏi về lựa chọn điều trị và thuốc",
+                    _ => "Ask about treatment | Hỏi về điều trị"
+                },
+                TaskSequence = 2,
+                TaskContext = "Be specific about your concerns | Cụ thể về mối lo của bạn"
+            },
+            new()
+            {
+                TaskDescription = language switch
+                {
+                    var l when l.Contains("English") => "Ask about follow-up appointments and prevention | Hỏi về lịch tái khám và phòng ngừa",
+                    var l when l.Contains("Chinese") => "询问随访预约和预防措施 | Hỏi về tái khám và phòng ngừa",
+                    var l when l.Contains("Japanese") => "フォローアップ予定と予防について質問してください | Hỏi về tái khám và phòng ngừa",
+                    _ => "Ask about follow-up | Hỏi về tái khám"
+                },
+                TaskSequence = 3,
+                TaskContext = "Show concern for your health | Thể hiện quan tâm đến sức khỏe"
+            }
         },
-                var t when t.Contains("shopping") || t.Contains("mua sắm") => new List<ConversationTaskDto>
-        {
-            new() { TaskDescription = "Explain what you're looking for and your preferences", TaskSequence = 1, TaskContext = "Describe the item and your size/color preferences" },
-            new() { TaskDescription = "Ask about available options, sizes, and prices", TaskSequence = 2, TaskContext = "Request product information" },
-            new() { TaskDescription = "Negotiate or ask about discounts and payment options", TaskSequence = 3, TaskContext = "Complete the purchase transaction" }
-        },
-                var t when t.Contains("work") || t.Contains("công việc") => new List<ConversationTaskDto>
-        {
-            new() { TaskDescription = "Introduce yourself and your role", TaskSequence = 1, TaskContext = "Explain your position and responsibilities" },
-            new() { TaskDescription = "Discuss your project or current work", TaskSequence = 2, TaskContext = "Share details about what you're working on" },
-            new() { TaskDescription = "Ask questions about collaboration or next steps", TaskSequence = 3, TaskContext = "Show engagement and initiative" }
-        },
+
                 _ => new List<ConversationTaskDto>
         {
-            new() { TaskDescription = "Introduce yourself and engage in the conversation", TaskSequence = 1 },
-            new() { TaskDescription = "Ask clarifying questions about the topic", TaskSequence = 2 },
-            new() { TaskDescription = "Express your opinion or experience", TaskSequence = 3 }
+            new() { TaskDescription = $"Start the conversation naturally | Bắt đầu cuộc trò chuyện một cách tự nhiên", TaskSequence = 1 },
+            new() { TaskDescription = $"Ask follow-up questions | Đặt câu hỏi tiếp theo", TaskSequence = 2 },
+            new() { TaskDescription = $"Share your perspective | Chia sẻ quan điểm của bạn", TaskSequence = 3 }
         }
             };
         }
@@ -731,7 +803,7 @@ Return JSON with questionResults array, strengths, weaknesses, recommendedCourse
                 });
 
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-                var model = _settings.Model ?? "gemini-pro";
+                var model =  "gemini-2.5-pro";
                 var url = $"{_settings.BaseUrl}/models/{model}:generateContent?key={_settings.ApiKey}";
 
                 var response = await _httpClient.PostAsync(url, content);
@@ -1184,8 +1256,55 @@ Return JSON with questionResults array, strengths, weaknesses, recommendedCourse
             return "Hello! Let's start our conversation!";
         }
 
-        // ============ HELPER CLASSES ============
 
+        public async Task<string> TranslateTextAsync(string text, string sourceLanguage, string targetLanguage)
+        {
+            try
+            {
+                var prompt = $@"Translate the following text from {sourceLanguage} to {targetLanguage}.
+Only provide the translation, nothing else.
+Text: {text}";
+
+                var request = new
+                {
+                    contents = new[]
+                    {
+                new
+                {
+                    parts = new[] { new { text = prompt } }
+                }
+            }
+                };
+
+                var response = await _httpClient.PostAsJsonAsync(
+                    $"{_settings.BaseUrl}?key={_settings.ApiKey}",
+                    request
+                );
+
+                if (!response.IsSuccessStatusCode)
+                    return text;
+
+                var jsonString = await response.Content.ReadAsStringAsync();
+
+                using (JsonDocument doc = JsonDocument.Parse(jsonString))
+                {
+                    var root = doc.RootElement;
+                    var translatedText = root
+                        .GetProperty("candidates")[0]
+                        .GetProperty("content")
+                        .GetProperty("parts")[0]
+                        .GetProperty("text")
+                        .GetString();
+
+                    return string.IsNullOrWhiteSpace(translatedText) ? text : translatedText.Trim();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error translating text");
+                return text;
+            }
+        }
         private class AiResponseFormat
         {
             public List<CourseMatch>? RecommendedCourses { get; set; }

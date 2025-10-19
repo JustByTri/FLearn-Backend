@@ -16,7 +16,7 @@ namespace DAL.Models
         public Guid CourseId { get; set; }
         [ForeignKey(nameof(CourseId))]
         public virtual Course Course { get; set; }
-        public EnrollmentStatus Status { get; set; } = EnrollmentStatus.Active;
+        public EnrollmentStatus Status { get; set; } = EnrollmentStatus.Completed ;
         [Range(0, 100)]
         public double ProgressPercent { get; set; } = 0;
         public DateTime EnrolledAt { get; set; }

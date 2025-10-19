@@ -69,6 +69,9 @@ namespace DAL.UnitOfWork
             ConversationSessions = new ConversationSessionRepository(_context);
             ConversationMessages = new ConversationMessageRepository(_context);
             ConversationTasks  = new ConversationTaskRepository(_context);
+            TeacherClasses = new TeacherClassRepository(_context);
+            ClassDisputes = new ClassDisputeRepository(_context);
+            ClassEnrollments = new ClassEnrollmentRepository(_context);
 
 
         }
@@ -126,6 +129,9 @@ namespace DAL.UnitOfWork
         public IConversationSessionRepository ConversationSessions { get; private set; }
         public IConversationMessageRepository ConversationMessages { get; private set; }
         public IConversationTaskRepository ConversationTasks { get; private set; }
+        public ITeacherClassRepository TeacherClasses { get; private set; }
+        public IClassDisputeRepository ClassDisputes { get; private set; }
+        public IClassEnrollmentRepository ClassEnrollments { get; private set; }
         #endregion
         #region Transaction Methods
         public void BeginTransaction()

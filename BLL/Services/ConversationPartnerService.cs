@@ -134,7 +134,10 @@ namespace BLL.Services
                     Topic = topic.Name,
                     TopicDescription = topic.Description,
                     DifficultyLevel = request.DifficultyLevel,
-                    MasterPrompt = activeGlobalPrompt.MasterPromptTemplate,
+                    MasterPrompt = $@"{activeGlobalPrompt.MasterPromptTemplate}
+
+CRITICAL INSTRUCTION: You MUST respond ONLY in {language.LanguageName}. 
+Never respond in Vietnamese or any other language, regardless of what language the user writes in.",
                     ScenarioGuidelines = activeGlobalPrompt.ScenarioGuidelines ?? "",
                     RoleplayInstructions = activeGlobalPrompt.RoleplayInstructions ?? "",
                     EvaluationCriteria = activeGlobalPrompt.EvaluationCriteria ?? ""
@@ -337,7 +340,7 @@ namespace BLL.Services
             ConversationSession session = null;
             try
             {
-               session = await _unitOfWork.ConversationSessions.GetSessionWithMessagesAsync(request.SessionId);
+                session = await _unitOfWork.ConversationSessions.GetSessionWithMessagesAsync(request.SessionId);
 
                 if (session == null || session.UserId != userId)
                     throw new ArgumentException("Session not found or access denied");
@@ -347,7 +350,6 @@ namespace BLL.Services
 
                 var nextSequence = (session.ConversationMessages?.Count ?? 0) + 1;
 
-             
                 var userMessage = new ConversationMessage
                 {
                     ConversationMessageID = Guid.NewGuid(),
@@ -364,14 +366,22 @@ namespace BLL.Services
 
                 await _unitOfWork.ConversationMessages.CreateAsync(userMessage);
 
-                // Tạo phản hồi từ AI
+                // Generate AI response
                 var aiResponse = await GenerateAIResponseAsync(session, request.MessageContent);
+
+                // Add translation hint if user message is in Vietnamese
+                var enhancedAIResponse = EnhanceResponseWithTranslationHint(
+                    aiResponse,
+                    request.MessageContent,
+                    session.Language?.LanguageCode ?? "EN"
+                );
+
                 var aiMessage = new ConversationMessage
                 {
                     ConversationMessageID = Guid.NewGuid(),
                     ConversationSessionID = request.SessionId,
                     Sender = MessageSender.AI,
-                    MessageContent = aiResponse,
+                    MessageContent = enhancedAIResponse,
                     MessageType = MessageType.Text,
                     SequenceOrder = nextSequence + 1,
                     SentAt = DateTime.UtcNow
@@ -379,14 +389,12 @@ namespace BLL.Services
 
                 await _unitOfWork.ConversationMessages.CreateAsync(aiMessage);
 
-                // Cập nhật session
                 session.MessageCount += 2;
                 session.UpdatedAt = DateTime.UtcNow;
                 await _unitOfWork.ConversationSessions.UpdateAsync(session);
 
                 await _unitOfWork.SaveChangesAsync();
 
-                // 🔥 Thông báo real-time
                 await _hubContext.Clients.Group($"Conversation_{request.SessionId}")
                     .SendAsync("MessageProcessed", new
                     {
@@ -421,6 +429,123 @@ namespace BLL.Services
             }
         }
 
+        private string EnhanceResponseWithTranslationHint(string aiResponse, string userMessage, string targetLanguageCode)
+        {
+            // Check if user message is in Vietnamese
+            if (!IsVietnamese(userMessage))
+                return aiResponse;
+
+            // Only add hint if learning a language other than Vietnamese
+            if (targetLanguageCode.ToUpper() == "VI")
+                return aiResponse;
+
+            var translationHint = GetTranslationHint(userMessage, targetLanguageCode);
+
+            return $"{aiResponse}\n\n📝 Gợi ý: {translationHint}";
+        }
+
+        private bool IsVietnamese(string text)
+        {
+            // Check for common Vietnamese diacritical marks
+            var vietnameseDiacritics = new[] { 'ả', 'ă', 'â', 'ấ', 'ầ', 'ẩ', 'ẫ', 'ậ',
+                                       'đ', 'ế', 'ề', 'ễ', 'ệ', 'ì', 'í', 'ỉ',
+                                       'ĩ', 'ị', 'ố', 'ồ', 'ổ', 'ỗ', 'ộ', 'ớ',
+                                       'ờ', 'ở', 'ỡ', 'ợ', 'ù', 'ú', 'ủ', 'ũ',
+                                       'ụ', 'ứ', 'ừ', 'ử', 'ữ', 'ự', 'ỳ', 'ý',
+                                       'ỷ', 'ỹ', 'ỵ' };
+
+            return text.ToLower().Any(c => vietnameseDiacritics.Contains(c));
+        }
+
+        private string GetTranslationHint(string vietnameseText, string targetLanguageCode)
+        {
+            // Use Gemini to translate Vietnamese to target language with "Hint:" prefix
+            if (_geminiService != null)
+            {
+                try
+                {
+                    var languageName = targetLanguageCode.ToUpper() switch
+                    {
+                        "EN" => "English",
+                        "JP" => "Japanese",
+                        "ZH" => "Chinese",
+                        _ => "English"
+                    };
+
+                    var translationTask = _geminiService.TranslateTextAsync(
+                        vietnameseText,
+                        "Vietnamese",
+                        languageName
+                    );
+
+                    translationTask.Wait(5000); // Wait max 5 seconds
+                    return translationTask.IsCompletedSuccessfully
+                        ? $"Ý bạn là: {translationTask.Result}"
+                        : GetSimpleTranslation(vietnameseText, targetLanguageCode);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error translating Vietnamese text");
+                    return GetSimpleTranslation(vietnameseText, targetLanguageCode);
+                }
+            }
+
+            return GetSimpleTranslation(vietnameseText, targetLanguageCode);
+        }
+
+        private string GetSimpleTranslation(string vietnameseText, string targetLanguageCode)
+        {
+            // Fallback: simple common phrase translations
+            var translations = new Dictionary<string, Dictionary<string, string>>
+    {
+        { "EN", new Dictionary<string, string>
+        {
+            { "xin chào", "Hello" },
+            { "tạm biệt", "Goodbye" },
+            { "cảm ơn", "Thank you" },
+            { "không", "No" },
+            { "có", "Yes" },
+            { "tôi tên là", "My name is" },
+            { "bạn khỏe không", "How are you" },
+            { "rất vui gặp bạn", "Nice to meet you" }
+        }},
+        { "JP", new Dictionary<string, string>
+        {
+            { "xin chào", "こんにちは" },
+            { "tạm biệt", "さようなら" },
+            { "cảm ơn", "ありがとう" },
+            { "không", "いいえ" },
+            { "có", "はい" },
+            { "tôi tên là", "私の名前は" },
+            { "bạn khỏe không", "元気ですか" },
+            { "rất vui gặp bạn", "お会いして嬉しいです" }
+        }},
+        { "ZH", new Dictionary<string, string>
+        {
+            { "xin chào", "你好" },
+            { "tạm biệt", "再见" },
+            { "cảm ơn", "谢谢" },
+            { "không", "不" },
+            { "có", "是" },
+            { "tôi tên là", "我叫" },
+            { "bạn khỏe không", "你好吗" },
+            { "rất vui gặp bạn", "很高兴认识你" }
+        }}
+    };
+
+            var key = targetLanguageCode.ToUpper();
+            if (!translations.ContainsKey(key))
+                return vietnameseText;
+
+            var lowerText = vietnameseText.ToLower();
+            foreach (var phrase in translations[key])
+            {
+                if (lowerText.Contains(phrase.Key))
+                    return phrase.Value;
+            }
+
+            return vietnameseText;
+        }
         public async Task<ConversationEvaluationDto> EndConversationAsync(Guid userId, Guid sessionId)
         {
             ConversationSession session = null;
@@ -606,12 +731,18 @@ namespace BLL.Services
         {
             try
             {
-                // Sử dụng AI service nếu có
                 if (_geminiService != null)
                 {
+                  
+                    var enforcedSystemPrompt = $@"{session.GeneratedSystemPrompt}
+
+IMPORTANT: You MUST respond ONLY in {session.Language?.LanguageName ?? "English"}.
+Do NOT respond in Vietnamese, even if the user writes in Vietnamese.
+Always respond in {session.Language?.LanguageName ?? "English"} only.";
+
                     var context = new
                     {
-                        SystemPrompt = session.GeneratedSystemPrompt,
+                        SystemPrompt = enforcedSystemPrompt,
                         UserMessage = userMessage,
                         ConversationHistory = session.ConversationMessages?
                             .OrderBy(m => m.SequenceOrder)
@@ -619,10 +750,15 @@ namespace BLL.Services
                             .ToList() ?? new List<string>()
                     };
 
-                    return await _geminiService.GenerateResponseAsync(context.SystemPrompt, userMessage, context.ConversationHistory);
+                    var response = await _geminiService.GenerateResponseAsync(
+                        context.SystemPrompt,
+                        userMessage,
+                        context.ConversationHistory
+                    );
+
+                    return response;
                 }
 
-                // Fallback: phản hồi đơn giản theo ngôn ngữ
                 return GetSimpleResponse(userMessage, session.Language?.LanguageCode ?? "EN");
             }
             catch (Exception ex)

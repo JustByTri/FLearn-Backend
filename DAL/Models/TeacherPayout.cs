@@ -1,5 +1,6 @@
 ﻿using DAL.Type;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DAL.Models
 {
@@ -18,6 +19,10 @@ namespace DAL.Models
         public double FinalAmount { get; set; } = 0;
         [Required]
         public Guid StaffId { get; set; }
+        [ForeignKey("Class")]
+        public Guid? ClassID { get; set; }
+
+        public virtual TeacherClass Class { get; set; }
         public virtual StaffLanguage Staff { get; set; }
         public TeacherPayoutStatus Status { get; set; } = TeacherPayoutStatus.Pending;
         public DateTime CreatedAt { get; set; }
