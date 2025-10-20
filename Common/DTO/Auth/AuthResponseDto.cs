@@ -15,7 +15,7 @@ namespace Common.DTO.Auth
         public UserInfoDto User { get; set; }
         public List<string> Roles { get; set; }
 
-        
+        public object? ActiveLanguage { get; set; }
         public DateTime AccessTokenExpiresVN => ConvertToVietnamTime(AccessTokenExpires);
         public DateTime RefreshTokenExpiresVN => ConvertToVietnamTime(RefreshTokenExpires);
 

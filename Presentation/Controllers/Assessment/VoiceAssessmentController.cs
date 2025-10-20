@@ -673,19 +673,30 @@ namespace Presentation.Controllers.Assessment
                     return BadRequest(new { success = false, message = "Không tìm thấy kết quả assessment trong Redis" });
                 }
 
-                // ✅ LẤY RECOMMENDED COURSES TỪ REDIS (CourseRecommendationDto)
+               
                 var recommendedCoursesFromRedis = await GetRecommendedCoursesFromRedis(userId, learnerLanguage.LanguageId);
 
-                // ✅ CONVERT CourseRecommendationDto → RecommendedCourseDto
+              
                 assessmentResult.RecommendedCourses = recommendedCoursesFromRedis.Select(rc => new RecommendedCourseDto
                 {
-                    CourseId = rc.CourseID,  // ✅ CourseID → CourseId
+                    CourseId = rc.CourseID,  
                     CourseName = rc.CourseName,
                     Level = rc.Level,
                     MatchReason = rc.MatchReason
                 }).ToList();
 
                 await SaveAcceptedAssessmentToDatabase(learnerLanguage, assessmentResult);
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user != null)
+                {
+                    user.ActiveLanguageId = learnerLanguage.LanguageId;
+                    user.UpdatedAt = DateTime.UtcNow;
+                    _unitOfWork.Users.Update(user);
+                    await _unitOfWork.SaveChangesAsync();
+
+                    _logger.LogInformation("✅ Updated ActiveLanguageId for user {UserId} to {LanguageId}",
+                        userId, learnerLanguage.LanguageId);
+                }
 
                 await _voiceAssessmentService.ClearAssessmentResultAsync(userId, learnerLanguage.LanguageId);
 
@@ -698,7 +709,8 @@ namespace Presentation.Controllers.Assessment
                         learnerLanguageId = request.LearnerLanguageId,
                         determinedLevel = assessmentResult.DeterminedLevel,
                         roadmapCreated = true,
-                        slotBalanceCreated = true
+                        slotBalanceCreated = true,
+                        activeLanguageId = learnerLanguage.LanguageId
                     }
                 });
             }
@@ -1170,6 +1182,207 @@ namespace Presentation.Controllers.Assessment
                 return "Bạn có bài assessment đang làm dở. Tiếp tục hoặc bắt đầu lại?";
 
             return "Bạn chưa làm assessment. Hãy chọn goal để bắt đầu!";
+        }
+        /// <summary>
+        /// Check xem user đã hoàn thành & chấp nhận assessment cho ngôn ngữ này chưa
+        /// </summary>
+        [HttpGet("check-lang-assessment/{languageId:guid}")]
+        [Authorize]
+        public async Task<IActionResult> CheckLanguageAssessmentStatus(Guid languageId)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+                var language = await _unitOfWork.Languages.GetByIdAsync(languageId);
+                if (language == null)
+                {
+                    return NotFound(new
+                    {
+                        success = false,
+                        message = "Ngôn ngữ không tồn tại"
+                    });
+                }
+
+                // ✅ Kiểm tra xem LearnerLanguage + Roadmap có tồn tại (= đã accept)
+                var allLearnerLanguages = await _unitOfWork.LearnerLanguages.GetAllAsync();
+                var learnerLanguage = allLearnerLanguages.FirstOrDefault(ll =>
+                    ll.UserId == userId && ll.LanguageId == languageId);
+
+                if (learnerLanguage == null)
+                {
+                    // Chưa có LearnerLanguage = chưa làm assessment hoặc chưa hoàn thành
+                    return Ok(new
+                    {
+                        success = true,
+                        data = new
+                        {
+                            languageId = languageId,
+                            languageName = language.LanguageName,
+                            hasCompletedAssessment = false,
+                            requiresAssessment = true,
+                            message = $"Bạn cần hoàn thành bài đánh giá giọng nói cho {language.LanguageName} trước khi tiếp tục học."
+                        }
+                    });
+                }
+
+
+                var allRoadmaps = await _unitOfWork.Roadmaps.GetAllAsync();
+                var roadmap = allRoadmaps.FirstOrDefault(r =>
+                    r.LearnerLanguageId == learnerLanguage.LearnerLanguageId);
+
+                if (roadmap != null)
+                {
+
+                    return Ok(new
+                    {
+                        success = true,
+                        data = new
+                        {
+                            languageId = languageId,
+                            languageName = language.LanguageName,
+                            learnerLanguageId = learnerLanguage.LearnerLanguageId,
+                            hasCompletedAssessment = true,
+                            requiresAssessment = false,
+                            proficiencyLevel = learnerLanguage.ProficiencyLevel,
+                            roadmapId = roadmap.RoadmapID,
+                            message = $"Bạn đã hoàn thành assessment cho {language.LanguageName}. Mức độ: {learnerLanguage.ProficiencyLevel}"
+                        }
+                    });
+                }
+
+
+                var activeAssessments = await _redisService.GetUserAssessmentsAsync(userId, languageId);
+                var activeAssessment = activeAssessments.FirstOrDefault();
+
+                return Ok(new
+                {
+                    success = true,
+                    data = new
+                    {
+                        languageId = languageId,
+                        languageName = language.LanguageName,
+                        learnerLanguageId = learnerLanguage.LearnerLanguageId,
+                        hasCompletedAssessment = false,
+                        requiresAssessment = true,
+                        hasActiveAssessment = activeAssessment != null,
+                        activeAssessmentId = activeAssessment?.AssessmentId,
+                        message = $"Bạn chưa hoàn thành assessment cho {language.LanguageName}. Vui lòng tiếp tục hoặc bắt đầu lại."
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking language assessment status");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Đã xảy ra lỗi",
+                    error = ex.Message
+                });
+            }
+        }
+        /// <summary>
+        /// Switch ngôn ngữ - check xem đã làm assessment chưa
+        /// </summary>
+        [HttpPost("switch-language/{languageId:guid}")]
+        [Authorize]
+        public async Task<IActionResult> SwitchLanguage(Guid languageId)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+                var language = await _unitOfWork.Languages.GetByIdAsync(languageId);
+                if (language == null)
+                {
+                    return NotFound(new
+                    {
+                        success = false,
+                        message = "Ngôn ngữ không tồn tại"
+                    });
+                }
+
+            
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null)
+                    return Unauthorized();
+
+                user.ActiveLanguageId = languageId;
+                user.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.Users.Update(user);
+                await _unitOfWork.SaveChangesAsync();
+
+              
+                var allLearnerLanguages = await _unitOfWork.LearnerLanguages.GetAllAsync();
+                var learnerLanguage = allLearnerLanguages.FirstOrDefault(ll =>
+                    ll.UserId == userId && ll.LanguageId == languageId);
+
+                if (learnerLanguage == null)
+                {
+                    return Ok(new
+                    {
+                        success = true,
+                        action = "REQUIRE_ASSESSMENT",
+                        message = $"Bạn cần hoàn thành bài đánh giá giọng nói cho {language.LanguageName}",
+                        data = new
+                        {
+                            languageId = languageId,
+                            languageName = language.LanguageName,
+                            requiresAssessment = true
+                        }
+                    });
+                }
+
+                // Check xem có Roadmap chưa
+                var allRoadmaps = await _unitOfWork.Roadmaps.GetAllAsync();
+                var roadmap = allRoadmaps.FirstOrDefault(r =>
+                    r.LearnerLanguageId == learnerLanguage.LearnerLanguageId);
+
+                if (roadmap != null)
+                {
+                    // Đã accept rồi
+                    return Ok(new
+                    {
+                        success = true,
+                        action = "PROCEED_TO_HOME",
+                        message = $"Chào mừng bạn! Bạn đã sẵn sàng học {language.LanguageName}",
+                        data = new
+                        {
+                            languageId = languageId,
+                            languageName = language.LanguageName,
+                            learnerLanguageId = learnerLanguage.LearnerLanguageId,
+                            proficiencyLevel = learnerLanguage.ProficiencyLevel,
+                            roadmapId = roadmap.RoadmapID
+                        }
+                    });
+                }
+
+                // Đang làm dở assessment
+                return Ok(new
+                {
+                    success = true,
+                    action = "RESUME_ASSESSMENT",
+                    message = $"Bạn có bài assessment đang làm dở cho {language.LanguageName}",
+                    data = new
+                    {
+                        languageId = languageId,
+                        languageName = language.LanguageName,
+                        learnerLanguageId = learnerLanguage.LearnerLanguageId,
+                        requiresAssessment = true
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error switching language");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Đã xảy ra lỗi",
+                    error = ex.Message
+                });
+            }
         }
     }
 }
