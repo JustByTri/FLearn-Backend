@@ -46,6 +46,12 @@ namespace BLL.Services.Auth
 
             var (accessToken, refreshToken) = await GenerateTokensAsync(user, refreshTokenExpirationDays);
 
+            Language? activeLanguage = null;
+            if (user.ActiveLanguageId.HasValue)
+            {
+                activeLanguage = await _unitOfWork.Languages.GetByIdAsync(user.ActiveLanguageId.Value);
+            }
+
             return new AuthResponseDto
             {
                 AccessToken = accessToken.Token,
@@ -53,7 +59,13 @@ namespace BLL.Services.Auth
                 AccessTokenExpires = accessToken.ExpiresAt,
                 RefreshTokenExpires = refreshToken.ExpiresAt,
                 User = MapToUserInfoDto(user),
-                Roles = user.UserRoles?.Select(ur => ur.Role.Name).ToList() ?? new List<string>()
+                Roles = user.UserRoles?.Select(ur => ur.Role.Name).ToList() ?? new List<string>(),
+                ActiveLanguage = activeLanguage != null ? new
+                {
+                    languageId = activeLanguage.LanguageID,
+                    languageName = activeLanguage.LanguageName,
+                    languageCode = activeLanguage.LanguageCode
+                } : null
             };
         }
 
@@ -232,6 +244,12 @@ namespace BLL.Services.Auth
 
 
             var (accessToken, newRefreshToken) = await GenerateTokensAsync(user);
+            Language? activeLanguage = null;
+            if (user.ActiveLanguageId.HasValue)
+            {
+                activeLanguage = await _unitOfWork.Languages.GetByIdAsync(user.ActiveLanguageId.Value);
+            }
+
 
             return new AuthResponseDto
             {
@@ -240,7 +258,13 @@ namespace BLL.Services.Auth
                 AccessTokenExpires = accessToken.ExpiresAt,
                 RefreshTokenExpires = newRefreshToken.ExpiresAt,
                 User = MapToUserInfoDto(user),
-                Roles = user.UserRoles?.Select(ur => ur.Role.Name).ToList() ?? new List<string>()
+                Roles = user.UserRoles?.Select(ur => ur.Role.Name).ToList() ?? new List<string>(),
+                ActiveLanguage = activeLanguage != null ? new
+                {
+                    languageId = activeLanguage.LanguageID,
+                    languageName = activeLanguage.LanguageName,
+                    languageCode = activeLanguage.LanguageCode
+                } : null
             };
         }
         private DateTime ConvertToVietnamTime(DateTime utcTime)

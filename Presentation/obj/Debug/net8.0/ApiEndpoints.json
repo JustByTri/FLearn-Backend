@@ -3245,6 +3245,22 @@
   },
   {
     "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
+    "Method": "CheckLanguageAssessmentStatus",
+    "RelativePath": "api/VoiceAssessment/check-lang-assessment/{languageId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "languageId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
     "Method": "CheckAssessmentRequired",
     "RelativePath": "api/VoiceAssessment/check-required",
     "HttpMethod": "GET",
@@ -3365,6 +3381,22 @@
         "Name": "goalIds",
         "Type": "System.Collections.Generic.List\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
         "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
+    "Method": "SwitchLanguage",
+    "RelativePath": "api/VoiceAssessment/switch-language/{languageId}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "languageId",
+        "Type": "System.Guid",
+        "IsRequired": true
       }
     ],
     "ReturnTypes": []
