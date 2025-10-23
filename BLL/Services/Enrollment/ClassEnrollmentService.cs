@@ -192,7 +192,7 @@ namespace BLL.Services.Enrollment
                     TeacherName = tc.Teacher?.FullName ?? "Unknown Teacher",
                     StartDateTime = tc.StartDateTime,
                     EndDateTime = tc.EndDateTime,
-                    MinStudents = tc.MinStudents,
+                  
                     Capacity = tc.Capacity,
                     PricePerStudent = tc.PricePerStudent,
                     Status = tc.Status.ToString(),

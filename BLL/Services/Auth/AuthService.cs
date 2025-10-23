@@ -316,10 +316,13 @@ namespace BLL.Services.Auth
         new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
         new Claim(ClaimTypes.Name, user.UserName),
         new Claim(ClaimTypes.Email, user.Email),
-
+       
         new Claim("user_id", user.UserID.ToString()),
         new Claim("username", user.UserName),
         new Claim("email", user.Email),
+        new Claim("avatar", user.Avatar ?? ""),
+        new Claim("fullname" , user.FullName ?? ""),
+
 
         new Claim("created_at", user.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"))
     };

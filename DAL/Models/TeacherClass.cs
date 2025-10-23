@@ -32,11 +32,8 @@ namespace DAL.Models
         [Required]
         public DateTime EndDateTime { get; set; }
 
-        [Required]
-        public int MinStudents { get; set; }
-
-        [Required]
-        public int Capacity { get; set; }
+    
+        public int Capacity { get; set; } = 10;
 
         [Required]
         [Column(TypeName = "decimal(10,2)")]
