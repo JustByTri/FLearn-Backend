@@ -126,7 +126,7 @@ namespace BLL.Services.Teacher
                     Description = createClassDto.Description,
                     StartDateTime = createClassDto.StartDateTime,
                     EndDateTime = createClassDto.EndDateTime,
-                    MinStudents = createClassDto.MinStudents,
+               
                     Capacity = createClassDto.Capacity,
                     PricePerStudent = createClassDto.PricePerStudent,
                     GoogleMeetLink = createClassDto.GoogleMeetLink,
@@ -358,14 +358,7 @@ namespace BLL.Services.Teacher
                 // Only allow capacity/pricing changes if no enrollments yet
                 if (enrollmentCount == 0)
                 {
-                    if (updateClassDto.MinStudents.HasValue)
-                    {
-                        if (updateClassDto.MinStudents.Value > teacherClass.Capacity)
-                        {
-                            throw new InvalidOperationException("Số học sinh tối thiểu không được vượt quá sức chứa lớp");
-                        }
-                        teacherClass.MinStudents = updateClassDto.MinStudents.Value;
-                    }
+                   
 
                     if (updateClassDto.PricePerStudent.HasValue)
                     {
@@ -418,7 +411,6 @@ namespace BLL.Services.Teacher
                 LanguageName = teacherClass.Language?.LanguageName,
                 StartDateTime = teacherClass.StartDateTime,
                 EndDateTime = teacherClass.EndDateTime,
-                MinStudents = teacherClass.MinStudents,
                 Capacity = teacherClass.Capacity,
                 PricePerStudent = teacherClass.PricePerStudent,
                 GoogleMeetLink = teacherClass.GoogleMeetLink,

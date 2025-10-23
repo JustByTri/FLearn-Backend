@@ -174,6 +174,10 @@ namespace Presentation.Controllers.Auth
                 var createdAt = User.FindFirstValue("created_at");
                 var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
 
+                
+                var avatar = User.Claims.FirstOrDefault(c => c.Type == "avatar")?.Value;
+                var fullname = User.Claims.FirstOrDefault(c => c.Type == "fullname")?.Value;
+
                 return Ok(new
                 {
                     success = true,
@@ -184,11 +188,13 @@ namespace Presentation.Controllers.Auth
                         username = username,
                         email = email,
                         createdAt = createdAt,
-                        roles = roles
+                        roles = roles,
+                        avatar = avatar,
+                        fullname = fullname,
                     }
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi lấy thông tin người dùng" });
             }
