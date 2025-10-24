@@ -60,6 +60,7 @@ namespace DAL.UnitOfWork
         ITeacherClassRepository TeacherClasses { get; }
         IClassDisputeRepository ClassDisputes { get; }
         IClassEnrollmentRepository ClassEnrollments { get; }
+        IRefundRequestsRepository RefundRequests { get; }
         int SaveChanges();
         Task<int> SaveChangesAsync();
         void BeginTransaction();

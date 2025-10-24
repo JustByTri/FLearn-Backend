@@ -64,6 +64,8 @@ namespace DAL.DBContext
         public DbSet<TeacherClass> TeacherClasses { get; set; }
         public DbSet<ClassEnrollment> ClassEnrollments { get; set; }
         public DbSet<ClassDispute> ClassDisputes { get; set; }
+        public DbSet<RefundRequest> RefundRequests { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -1,4 +1,5 @@
-﻿using BLL.IServices.Admin;
+﻿using BLL.Background;
+using BLL.IServices.Admin;
 using BLL.IServices.AI;
 using BLL.IServices.Application;
 using BLL.IServices.Assessment;
@@ -17,6 +18,7 @@ using BLL.IServices.LessonActivityLog;
 using BLL.IServices.LessonProgress;
 using BLL.IServices.Payment;
 using BLL.IServices.Redis;
+using BLL.IServices.Refund;
 using BLL.IServices.Teacher;
 using BLL.IServices.Topic;
 using BLL.IServices.Upload;
@@ -41,6 +43,7 @@ using BLL.Services.LessonActivityLog;
 using BLL.Services.LessonProgress;
 using BLL.Services.Payment;
 using BLL.Services.Redis;
+using BLL.Services.Refund;
 using BLL.Services.Teacher;
 using BLL.Services.Topic;
 using BLL.Services.Upload;
@@ -138,6 +141,8 @@ namespace BLL
             services.AddScoped<IPayOSService, PayOSService>();
             services.AddHttpClient<PayOSService>();
             services.AddScoped<ITeacherClassService, TeacherClassService>();
+            services.AddHostedService<ClassEnrollmentCheckService>();
+            services.AddScoped<IRefundRequestService, RefundRequestService>();
             return services;
         }
     }

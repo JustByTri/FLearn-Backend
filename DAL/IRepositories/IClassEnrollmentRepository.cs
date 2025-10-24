@@ -17,6 +17,7 @@ namespace DAL.IRepositories
         Task<int> GetEnrollmentCountByClassAsync(Guid classId);
         Task<List<ClassEnrollment>> GetEnrollmentsByStudentPaginatedAsync(Guid studentId, EnrollmentStatus? status = null, int page = 1, int pageSize = 10);
         Task<int> GetEnrollmentsCountByStudentAsync(Guid studentId, EnrollmentStatus? status = null);
+        Task<ClassEnrollment> GetEnrollmentWithDetailsAsync(Guid enrollment);
 
     }
 }

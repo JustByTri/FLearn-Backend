@@ -6,6 +6,7 @@ using DAL.UnitOfWork;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -93,30 +94,28 @@ namespace BLL.Services.Teacher
         {
             try
             {
-                // Validate teacher exists and has teacher role
+                // Validate teacher
                 var teacher = await _unitOfWork.Users.GetUserWithRolesAsync(teacherId);
                 if (teacher == null || !teacher.UserRoles.Any(ur => ur.Role.Name == "Teacher"))
                 {
                     throw new UnauthorizedAccessException("Chỉ giáo viên mới có thể tạo lớp học");
                 }
 
-                // Validate datetime
-                if (createClassDto.StartDateTime <= DateTime.UtcNow)
+                // ✅ CHUYỂN ĐỔI: Từ ClassDate + StartTime + DurationMinutes
+                //              → StartDateTime và EndDateTime
+                var startDateTime = createClassDto.ClassDate.Date + createClassDto.StartTime;
+                var endDateTime = startDateTime.AddMinutes(createClassDto.DurationMinutes);
+
+                // Validate: Phải sau thời điểm hiện tại ít nhất 7 ngày
+                var minimumStartDate = DateTime.UtcNow.AddDays(7);
+                if (startDateTime <= minimumStartDate)
                 {
-                    throw new InvalidOperationException("Thời gian bắt đầu phải sau thời điểm hiện tại");
+                    throw new InvalidOperationException(
+                        $"Thời gian bắt đầu phải sau thời điểm hiện tại ít nhất 7 ngày (sau {minimumStartDate:dd/MM/yyyy HH:mm})"
+                    );
                 }
 
-                if (createClassDto.EndDateTime <= createClassDto.StartDateTime)
-                {
-                    throw new InvalidOperationException("Thời gian kết thúc phải sau thời gian bắt đầu");
-                }
-
-                if (createClassDto.MinStudents > createClassDto.Capacity)
-                {
-                    throw new InvalidOperationException("Số học sinh tối thiểu không được vượt quá sức chứa lớp");
-                }
-
-                // Create class
+                // ✅ TẠO MODEL với StartDateTime và EndDateTime đã tính toán
                 var teacherClass = new TeacherClass
                 {
                     ClassID = Guid.NewGuid(),
@@ -124,10 +123,11 @@ namespace BLL.Services.Teacher
                     LanguageID = createClassDto.LanguageID,
                     Title = createClassDto.Title,
                     Description = createClassDto.Description,
-                    StartDateTime = createClassDto.StartDateTime,
-                    EndDateTime = createClassDto.EndDateTime,
-               
-                    Capacity = createClassDto.Capacity,
+
+                    // Lưu vào database với DateTime đầy đủ
+                    StartDateTime = startDateTime,
+                    EndDateTime = endDateTime,
+
                     PricePerStudent = createClassDto.PricePerStudent,
                     GoogleMeetLink = createClassDto.GoogleMeetLink,
                     Status = ClassStatus.Draft,
@@ -138,10 +138,17 @@ namespace BLL.Services.Teacher
                 await _unitOfWork.TeacherClasses.CreateAsync(teacherClass);
                 await _unitOfWork.SaveChangesAsync();
 
-                _logger.LogInformation("📚 Teacher {TeacherId} created class {ClassId}", teacherId, teacherClass.ClassID);
+                _logger.LogInformation(
+                    "📚 Teacher {TeacherId} created class {ClassId} - Start: {Start}, Duration: {Duration}min",
+                    teacherId,
+                    teacherClass.ClassID,
+                    startDateTime,
+                    createClassDto.DurationMinutes
+                );
 
-                // Get class with language info for DTO mapping
-                var createdClass = await _unitOfWork.TeacherClasses.GetClassWithEnrollmentsAsync(teacherClass.ClassID);
+                var createdClass = await _unitOfWork.TeacherClasses
+                    .GetClassWithEnrollmentsAsync(teacherClass.ClassID);
+
                 return MapToTeacherClassDto(createdClass ?? teacherClass);
             }
             catch (Exception ex)
@@ -150,6 +157,13 @@ namespace BLL.Services.Teacher
                 throw;
             }
         }
+    
+        
+
+        // Áp dụng vào DTO
+        [Required(ErrorMessage = "Thời lượng là bắt buộc")]
+        [AllowedDuration]
+        public int DurationMinutes { get; set; }
 
         public async Task<TeacherClassDto> GetClassDetailsAsync(Guid teacherId, Guid classId)
         {

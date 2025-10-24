@@ -47,5 +47,9 @@ namespace DAL.Models
         public virtual ICollection<Transaction>? Transactions { get; set; } = new List<Transaction>();
         public virtual ICollection<ConversationTask>? ConversationTasks { get; set; } = new List<ConversationTask>();
         public virtual ICollection<UserSubscription>? Subscriptions { get; set; } = new List<UserSubscription>();
+        [InverseProperty("Student")]
+        public virtual ICollection<RefundRequest> RefundRequestsAsStudent { get; set; } = new List<RefundRequest>();
+        [InverseProperty("ProcessedByAdmin")]
+        public virtual ICollection<RefundRequest> RefundRequestsProcessed { get; set; } = new List<RefundRequest>();
     }
 }

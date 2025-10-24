@@ -674,5 +674,175 @@ namespace BLL.Services.Auth
             }
         }
 
+        public async Task<bool> SendRefundRequestInstructionAsync(
+    string toEmail,
+    string userName,
+    string className,
+    DateTime classStartDateTime)
+        {
+            try
+            {
+                var subject = "📋 Hướng dẫn yêu cầu hoàn tiền - Flearn";
+                var body = $@"
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset='UTF-8'>
+                <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+                <title>Hướng dẫn yêu cầu hoàn tiền</title>
+            </head>
+            <body style='margin: 0; padding: 0; font-family: Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);'>
+                <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff;'>
+                    <!-- Header -->
+                    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center;'>
+                        <h1 style='color: white; margin: 0; font-size: 28px; font-weight: 700;'>🎓 Flearn</h1>
+                        <p style='color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;'>Hướng dẫn yêu cầu hoàn tiền</p>
+                    </div>
+                    
+                    <!-- Content -->
+                    <div style='padding: 40px 30px;'>
+                        <div style='text-align: center; margin-bottom: 30px;'>
+                            <h2 style='color: #2c3e50; margin: 0 0 10px 0; font-size: 24px; font-weight: 600;'>Xin chào {userName}!</h2>
+                            <p style='color: #6c757d; margin: 0; font-size: 14px;'>Thông báo về lớp học của bạn</p>
+                        </div>
+                        
+                        <div style='background-color: #fff3cd; padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #ffc107;'>
+                            <h3 style='color: #856404; margin: 0 0 15px 0; font-size: 18px;'>⚠️ Lớp học bị hủy</h3>
+                            <p style='font-size: 16px; line-height: 1.6; color: #856404; margin: 0;'>
+                                Rất tiếc, lớp học <strong>{className}</strong> dự kiến diễn ra vào <strong>{classStartDateTime:dd/MM/yyyy HH:mm}</strong> đã bị hủy do không đủ số lượng học viên tối thiểu.
+                            </p>
+                        </div>
+                        
+                        <div style='background-color: #e7f3ff; padding: 30px; border-radius: 12px; margin: 30px 0;'>
+                            <h3 style='color: #004085; margin: 0 0 20px 0; font-size: 20px; text-align: center;'>📋 Hướng dẫn yêu cầu hoàn tiền</h3>
+                            
+                            <div style='margin-bottom: 20px;'>
+                                <div style='background-color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                                    <h4 style='color: #667eea; margin: 0 0 10px 0; font-size: 16px;'>
+                                        <span style='display: inline-block; width: 30px; height: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 50%; text-align: center; line-height: 30px; margin-right: 10px;'>1</span>
+                                        Đăng nhập vào tài khoản
+                                    </h4>
+                                    <p style='margin: 0 0 0 40px; color: #555; font-size: 14px;'>Truy cập vào phần ""Lớp học của tôi""</p>
+                                </div>
+                                
+                                <div style='background-color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                                    <h4 style='color: #667eea; margin: 0 0 10px 0; font-size: 16px;'>
+                                        <span style='display: inline-block; width: 30px; height: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 50%; text-align: center; line-height: 30px; margin-right: 10px;'>2</span>
+                                        Chọn ""Gửi đơn yêu cầu hoàn tiền""
+                                    </h4>
+                                    <p style='margin: 0 0 0 40px; color: #555; font-size: 14px;'>Tìm lớp học: <strong>{className}</strong></p>
+                                    <p style='margin: 5px 0 0 40px; color: #555; font-size: 14px;'>Mã lớp: <strong>{classStartDateTime:yyyyMMddHHmm}</strong></p>
+                                </div>
+                                
+                                <div style='background-color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                                    <h4 style='color: #667eea; margin: 0 0 10px 0; font-size: 16px;'>
+                                        <span style='display: inline-block; width: 30px; height: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 50%; text-align: center; line-height: 30px; margin-right: 10px;'>3</span>
+                                        Chọn loại yêu cầu
+                                    </h4>
+                                    <p style='margin: 0 0 0 40px; color: #555; font-size: 14px;'>Chọn: <strong>""Lớp học bị hủy - Không đủ học viên""</strong></p>
+                                </div>
+                                
+                                <div style='background-color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                                    <h4 style='color: #667eea; margin: 0 0 10px 0; font-size: 16px;'>
+                                        <span style='display: inline-block; width: 30px; height: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 50%; text-align: center; line-height: 30px; margin-right: 10px;'>4</span>
+                                        Nhập thông tin ngân hàng
+                                    </h4>
+                                    <ul style='margin: 5px 0 0 40px; color: #555; font-size: 14px; padding-left: 20px;'>
+                                        <li>Tên ngân hàng</li>
+                                        <li>Số tài khoản</li>
+                                        <li>Tên chủ tài khoản</li>
+                                    </ul>
+                                </div>
+                                
+                                <div style='background-color: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                                    <h4 style='color: #667eea; margin: 0 0 10px 0; font-size: 16px;'>
+                                        <span style='display: inline-block; width: 30px; height: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 50%; text-align: center; line-height: 30px; margin-right: 10px;'>5</span>
+                                        Đính kèm hình ảnh (nếu có)
+                                    </h4>
+                                    <p style='margin: 0 0 0 40px; color: #555; font-size: 14px;'>Upload hình ảnh chứng minh thanh toán hoặc thông tin liên quan</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style='background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 25px; border-radius: 12px; text-align: center; margin: 30px 0;'>
+                            <h3 style='color: white; margin: 0 0 10px 0; font-size: 18px;'>⏱️ Thời gian xử lý</h3>
+                            <p style='color: rgba(255,255,255,0.9); margin: 0; font-size: 16px;'>Yêu cầu của bạn sẽ được xử lý trong vòng <strong>3-5 ngày làm việc</strong></p>
+                        </div>
+                        
+                        <div style='background-color: #d1ecf1; border: 1px solid #bee5eb; padding: 20px; border-radius: 8px; margin: 25px 0;'>
+                            <p style='margin: 0; color: #0c5460; font-size: 14px; text-align: center;'>
+                                💡 <strong>Lưu ý:</strong> Vui lòng kiểm tra kỹ thông tin ngân hàng trước khi gửi
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div style='background-color: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef;'>
+                        <p style='color: #6c757d; margin: 0 0 10px 0; font-size: 14px;'>
+                            Cần hỗ trợ? Liên hệ với chúng tôi tại 
+                            <a href='mailto:support@flearn.com' style='color: #667eea; text-decoration: none;'>support@flearn.com</a>
+                        </p>
+                        <p style='color: #6c757d; margin: 0; font-size: 12px;'>
+                            © 2025 Flearn - Nền tảng học ngôn ngữ thông minh
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>";
+
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending refund request instruction email to {Email}", toEmail);
+                return false;
+            }
+        }
+        public async Task<bool> SendRefundRequestConfirmationAsync(
+    string toEmail,
+    string userName,
+    string className,
+    string refundRequestId)
+        {
+            try
+            {
+                var subject = "✅ Đã nhận yêu cầu hoàn tiền - Flearn";
+                var body = $@"
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset='UTF-8'>
+            </head>
+            <body style='margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;'>
+                <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff;'>
+                    <div style='background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 40px 20px; text-align: center;'>
+                        <h1 style='color: white; margin: 0; font-size: 28px;'>✅ Đã nhận yêu cầu</h1>
+                    </div>
+                    
+                    <div style='padding: 40px 30px;'>
+                        <h2 style='color: #2c3e50;'>Xin chào {userName}!</h2>
+                        <p style='font-size: 16px; color: #555;'>
+                            Chúng tôi đã nhận được yêu cầu hoàn tiền của bạn cho lớp học <strong>{className}</strong>.
+                        </p>
+                        <div style='background-color: #e7f3ff; padding: 20px; border-radius: 8px; margin: 20px 0;'>
+                            <p style='margin: 0; font-size: 14px; color: #555;'><strong>Mã yêu cầu:</strong> {refundRequestId}</p>
+                        </div>
+                        <p style='font-size: 16px; color: #555;'>
+                            Yêu cầu của bạn đang được xem xét và sẽ được xử lý trong vòng 3-5 ngày làm việc.
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>";
+
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending refund confirmation email");
+                return false;
+            }
+        }
+
     }
 }

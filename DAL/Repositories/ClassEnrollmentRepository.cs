@@ -97,5 +97,13 @@ namespace DAL.Repositories
 
             return await query.CountAsync();
         }
+        public async Task<ClassEnrollment> GetEnrollmentWithDetailsAsync(Guid enrollmentId)
+        {
+            return await _context.ClassEnrollments
+                .Include(e => e.Class)
+                .Include(e => e.Student)
+                .Include(e => e.RefundRequests)
+                .FirstOrDefaultAsync(e => e.EnrollmentID == enrollmentId);
+        }
     }
 }

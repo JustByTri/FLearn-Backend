@@ -1,6 +1,6 @@
 ﻿using DAL.DBContext;
 using DAL.IRepositories;
-
+using DAL.Models;
 using DAL.Repositories;
 
 using Microsoft.EntityFrameworkCore.Storage;
@@ -72,6 +72,7 @@ namespace DAL.UnitOfWork
             TeacherClasses = new TeacherClassRepository(_context);
             ClassDisputes = new ClassDisputeRepository(_context);
             ClassEnrollments = new ClassEnrollmentRepository(_context);
+            RefundRequests = new RefundRequestsRepository(_context);
 
 
         }
@@ -132,6 +133,7 @@ namespace DAL.UnitOfWork
         public ITeacherClassRepository TeacherClasses { get; private set; }
         public IClassDisputeRepository ClassDisputes { get; private set; }
         public IClassEnrollmentRepository ClassEnrollments { get; private set; }
+        public IRefundRequestsRepository RefundRequests { get; private set; }
         #endregion
         #region Transaction Methods
         public void BeginTransaction()

@@ -19,19 +19,16 @@ namespace Common.DTO.Teacher
         [Required(ErrorMessage = "Ngôn ngữ là bắt buộc")]
         public Guid LanguageID { get; set; }
 
-        [Required(ErrorMessage = "Thời gian bắt đầu là bắt buộc")]
-        public DateTime StartDateTime { get; set; }
+       
+        [Required(ErrorMessage = "Ngày diễn ra là bắt buộc")]
+        public DateTime ClassDate { get; set; }  // Chỉ ngày: 2025-11-05
 
-        [Required(ErrorMessage = "Thời gian kết thúc là bắt buộc")]
-        public DateTime EndDateTime { get; set; }
+        [Required(ErrorMessage = "Giờ bắt đầu là bắt buộc")]
+        public TimeSpan StartTime { get; set; }  // Chỉ giờ: 14:30:00
 
-        [Required(ErrorMessage = "Số học sinh tối thiểu là bắt buộc")]
-        [Range(1, 50, ErrorMessage = "Số học sinh tối thiểu phải từ 1-50")]
-        public int MinStudents { get; set; }
-
-        [Required(ErrorMessage = "Sức chứa lớp học là bắt buộc")]
-        [Range(1, 100, ErrorMessage = "Sức chứa phải từ 1-100")]
-        public int Capacity { get; set; }
+        [Required(ErrorMessage = "Thời lượng là bắt buộc")]
+        [AllowedDuration]  // Custom validation
+        public int DurationMinutes { get; set; }  // 45, 60, 90, hoặc 120
 
         [Required(ErrorMessage = "Giá học phí là bắt buộc")]
         [Range(0.01, 10000000, ErrorMessage = "Giá học phí phải lớn hơn 0")]
@@ -39,5 +36,24 @@ namespace Common.DTO.Teacher
 
         [StringLength(500, ErrorMessage = "Link Google Meet không được vượt quá 500 ký tự")]
         public string GoogleMeetLink { get; set; }
+    }
+
+ 
+    public class AllowedDurationAttribute : ValidationAttribute
+    {
+        private readonly int[] _allowedDurations = { 45, 60, 90, 120 };
+
+        protected override ValidationResult IsValid(object value, ValidationContext validationContext)
+        {
+            if (value is int duration)
+            {
+                if (_allowedDurations.Contains(duration))
+                {
+                    return ValidationResult.Success;
+                }
+                return new ValidationResult("Thời lượng chỉ được phép là 45, 60, 90 hoặc 120 phút");
+            }
+            return new ValidationResult("Giá trị không hợp lệ");
+        }
     }
 }
