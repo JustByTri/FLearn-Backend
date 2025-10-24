@@ -803,7 +803,7 @@ Return JSON with questionResults array, strengths, weaknesses, recommendedCourse
                 });
 
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-                var model =  "gemini-2.5-pro";
+                var model =  "gemini-2.5-flash";
                 var url = $"{_settings.BaseUrl}/models/{model}:generateContent?key={_settings.ApiKey}";
 
                 var response = await _httpClient.PostAsync(url, content);
@@ -858,7 +858,7 @@ Return JSON with questionResults array, strengths, weaknesses, recommendedCourse
                 });
 
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-                var model = "gemini-2.5-pro";
+                var model = "gemini-2.5-flash";
                 var url = $"{_settings.BaseUrl}/models/{model}:generateContent?key={_settings.ApiKey}";
 
                 var response = await _httpClient.PostAsync(url, content);

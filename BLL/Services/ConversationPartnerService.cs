@@ -1,4 +1,4 @@
-﻿using BLL.Hubs;
+using BLL.Hubs;
 using BLL.IServices.AI;
 using BLL.IServices.Coversation;
 using Common.DTO.Conversation;
@@ -145,6 +145,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
 
 
                 var generatedContent = await _geminiService.GenerateConversationContentAsync(conversationContext);
+                var characterRole = ResolveCharacterRole(topic.Name, generatedContent.AIRole);
 
                 var session = new ConversationSession
                 {
@@ -156,7 +157,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
                     DifficultyLevel = request.DifficultyLevel,
                     SessionName = $"{topic.Name} - {request.DifficultyLevel}",
                     GeneratedScenario = generatedContent.ScenarioDescription,
-                    AICharacterRole = generatedContent.AIRole,
+                    AICharacterRole = characterRole,
                     GeneratedSystemPrompt = generatedContent.SystemPrompt,
                     StartedAt = DateTime.UtcNow,
                     CreatedAt = DateTime.UtcNow,
@@ -166,13 +167,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
                 await _unitOfWork.ConversationSessions.CreateAsync(session);
 
 
-                var tasks = generatedContent.Tasks ?? new List<ConversationTaskDto>();
-
-                if (tasks.Count == 0)
-                {
-                    _logger.LogWarning("No tasks returned from Gemini, using defaults");
-                    tasks = CreateDefaultTasksForTopic(topic.Name);
-                }
+                var tasks = NormalizeAndSelectTasks(topic.Name, generatedContent.Tasks ?? new List<ConversationTaskDto>());
 
                 int sequence = 1;
 
@@ -195,12 +190,16 @@ Never respond in Vietnamese or any other language, regardless of what language t
                     session.Tasks.Add(conversationTask);
                 }
 
+                var firstMessageText = EnsureTargetLanguageOnly(
+                    generatedContent.FirstMessage ?? GetDefaultFirstMessage(language.LanguageName, topic.Name, request.DifficultyLevel, language.LanguageCode)
+                );
+
                 var firstMessage = new ConversationMessage
                 {
                     ConversationMessageID = Guid.NewGuid(),
                     ConversationSessionID = session.ConversationSessionID,
                     Sender = MessageSender.AI,
-                    MessageContent = generatedContent.FirstMessage,
+                    MessageContent = firstMessageText,
                     MessageType = MessageType.Text,
                     SequenceOrder = 1,
                     SentAt = DateTime.UtcNow
@@ -215,23 +214,27 @@ Never respond in Vietnamese or any other language, regardless of what language t
                 await _unitOfWork.Users.UpdateAsync(user);
 
                 await _hubContext.Clients.Group($"User_{userId}")
-                    .SendAsync("ConversationStarted", new
-                    {
-                        sessionId = session.ConversationSessionID,
-                        sessionName = session.SessionName,
-                        languageName = language.LanguageName,
-                        topicName = topic.Name,
-                        scenario = generatedContent.ScenarioDescription,
+     .SendAsync("ConversationStarted", new
+     {
+         sessionId = session.ConversationSessionID,
+         sessionName = session.SessionName,
+         languageName = language.LanguageName,
+         topicName = topic.Name,
+         scenario = generatedContent.ScenarioDescription,
 
-                        tasks = session.Tasks.Select(t => new
-                        {
-                            t.TaskID,
-                            t.TaskDescription,
-                            t.TaskSequence,
-                            t.Status
-                        }),
-                        startedAt = DateTime.UtcNow
-                    });
+         tasks = session.Tasks
+             .GroupBy(t => t.TaskID) // Group by TaskID to remove duplicates
+             .Select(g => g.First()) // Take first of each group
+             .OrderBy(t => t.TaskSequence)
+             .Select(t => new
+             {
+                 t.TaskID,
+                 t.TaskDescription,
+                 t.TaskSequence,
+                 t.Status
+             }),
+         startedAt = DateTime.UtcNow
+     });
 
                 return MapToConversationSessionDto(session, new List<ConversationMessage> { firstMessage });
             }
@@ -246,6 +249,18 @@ Never respond in Vietnamese or any other language, regardless of what language t
            
             return topicName.ToLower() switch
             {
+                var t when t.Contains("interview") || t.Contains("phỏng vấn") || t.Contains("面接") || t.Contains("採用") => new List<ConversationTaskDto>
+        {
+            new() { TaskDescription = "Self-introduction and strengths", TaskSequence = 1 },
+            new() { TaskDescription = "Why our company", TaskSequence = 2 },
+            new() { TaskDescription = "Biggest technical challenge", TaskSequence = 3 }
+        },
+                var t when t.Contains("lost luggage") || t.Contains("lost baggage") || t.Contains("baggage claim") || t.Contains("mất hành lý") || t.Contains("hành lý thất lạc") => new List<ConversationTaskDto>
+        {
+            new() { TaskDescription = "Report your missing bag and describe it.", TaskSequence = 1 },
+            new() { TaskDescription = "Ask how and when it will be delivered.", TaskSequence = 2 },
+            new() { TaskDescription = "Provide contact details clearly.", TaskSequence = 3 }
+        },
                 var t when t.Contains("restaurant") || t.Contains("ẩm thực") => new List<ConversationTaskDto>
         {
             new() { TaskDescription = "Ask the waiter for a recommendation", TaskSequence = 1 },
@@ -376,12 +391,14 @@ Never respond in Vietnamese or any other language, regardless of what language t
                     session.Language?.LanguageCode ?? "EN"
                 );
 
+                var finalAIResponse = EnsureTargetLanguageOnly(enhancedAIResponse);
+
                 var aiMessage = new ConversationMessage
                 {
                     ConversationMessageID = Guid.NewGuid(),
                     ConversationSessionID = request.SessionId,
                     Sender = MessageSender.AI,
-                    MessageContent = enhancedAIResponse,
+                    MessageContent = finalAIResponse,
                     MessageType = MessageType.Text,
                     SequenceOrder = nextSequence + 1,
                     SentAt = DateTime.UtcNow
@@ -441,7 +458,15 @@ Never respond in Vietnamese or any other language, regardless of what language t
 
             var translationHint = GetTranslationHint(userMessage, targetLanguageCode);
 
-            return $"{aiResponse}\n\n📝 Gợi ý: {translationHint}";
+            var hintLabel = targetLanguageCode.ToUpper() switch
+            {
+                "EN" => "Hint",
+                "JP" => "ヒント",
+                "ZH" => "提示",
+                _ => "Hint"
+            };
+
+            return $"{aiResponse}\n\n{hintLabel}: {translationHint}";
         }
 
         private bool IsVietnamese(string text)
@@ -480,7 +505,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
 
                     translationTask.Wait(5000); // Wait max 5 seconds
                     return translationTask.IsCompletedSuccessfully
-                        ? $"Ý bạn là: {translationTask.Result}"
+                        ? (translationTask.Result ?? vietnameseText)
                         : GetSimpleTranslation(vietnameseText, targetLanguageCode);
                 }
                 catch (Exception ex)
@@ -678,6 +703,10 @@ Never respond in Vietnamese or any other language, regardless of what language t
                     CharacterRole = session.AICharacterRole ?? "",
                     ScenarioDescription = session.GeneratedScenario ?? "",
                     Messages = messages,
+                    Tasks = session.Tasks
+                        .OrderBy(t => t.TaskSequence)
+                        .Select(MapToTaskDto)
+                        .ToList(),
                     Status = session.Status,
                     StartedAt = session.StartedAt,
                     OverallScore = session.OverallScore,
@@ -727,6 +756,154 @@ Never respond in Vietnamese or any other language, regardless of what language t
             }
         
         }
+        private List<ConversationTaskDto> NormalizeAndSelectTasks(string topicName, List<ConversationTaskDto> aiTasks)
+        {
+            var tasks = aiTasks ?? new List<ConversationTaskDto>();
+
+            // Scenario-specific override or fallback when none
+            bool isLostLuggageTopic = !string.IsNullOrWhiteSpace(topicName) &&
+                (topicName.ToLower().Contains("lost luggage") ||
+                 topicName.ToLower().Contains("lost baggage") ||
+                 topicName.ToLower().Contains("baggage claim") ||
+                 topicName.ToLower().Contains("mất hành lý") ||
+                 topicName.ToLower().Contains("hành lý thất lạc"));
+
+            bool isInterviewTopic = !string.IsNullOrWhiteSpace(topicName) &&
+                (topicName.ToLower().Contains("interview") ||
+                 topicName.ToLower().Contains("phỏng vấn") ||
+                 topicName.ToLower().Contains("面接") ||
+                 topicName.ToLower().Contains("採用"));
+
+            if (isLostLuggageTopic || isInterviewTopic || tasks.Count == 0)
+            {
+                tasks = CreateDefaultTasksForTopic(topicName);
+            }
+
+            // Enhanced deduplication logic
+            var unique = new HashSet<string>();
+            var result = new List<ConversationTaskDto>(capacity: 3);
+
+            foreach (var t in tasks.OrderBy(t => t.TaskSequence))
+            {
+                if (string.IsNullOrWhiteSpace(t.TaskDescription)) continue;
+
+                var shortened = ShortenTask(t.TaskDescription);
+
+                // Improved key generation for multilingual content
+                var normalizedDescription = NormalizeForDedup(shortened);
+                var normalizedContext = NormalizeForDedup(t.TaskContext ?? "");
+                var key = $"{normalizedDescription}#{normalizedContext}";
+
+                if (string.IsNullOrWhiteSpace(normalizedDescription)) continue;
+                if (!unique.Add(key))
+                {
+                    _logger.LogDebug("Skipping duplicate task: {TaskDescription}", shortened);
+                    continue;
+                }
+
+                result.Add(new ConversationTaskDto
+                {
+                    TaskDescription = shortened,
+                    TaskContext = t.TaskContext,
+                    TaskSequence = result.Count + 1
+                });
+
+                if (result.Count >= 3) break;
+            }
+
+         
+            if (result.Count < 3)
+            {
+                foreach (var dt in CreateDefaultTasksForTopic(topicName))
+                {
+                    var shortened = ShortenTask(dt.TaskDescription);
+                    var normalizedDescription = NormalizeForDedup(shortened);
+                    var normalizedContext = NormalizeForDedup(dt.TaskContext ?? "");
+                    var key = $"{normalizedDescription}#{normalizedContext}";
+
+                    if (!unique.Add(key)) continue;
+
+                    result.Add(new ConversationTaskDto
+                    {
+                        TaskDescription = shortened,
+                        TaskContext = dt.TaskContext,
+                        TaskSequence = result.Count + 1
+                    });
+
+                    if (result.Count >= 3) break;
+                }
+            }
+
+            _logger.LogDebug("Generated {TaskCount} unique tasks for topic: {TopicName}", result.Count, topicName);
+            return result;
+        }
+
+
+        private string ShortenTask(string description)
+        {
+            if (string.IsNullOrWhiteSpace(description)) return string.Empty;
+            var s = description.Replace("\n", " ").Replace("\r", " ").Trim();
+
+            // Remove common fillers
+            foreach (var filler in new[] { "Please ", "Kindly ", "First, ", "Then, ", "Finally, ", "Next, " })
+            {
+                if (s.StartsWith(filler, StringComparison.OrdinalIgnoreCase))
+                {
+                    s = s.Substring(filler.Length).TrimStart();
+                }
+            }
+
+            // Cut at first sentence boundary if very long
+            var periodIndex = s.IndexOf('.');
+            if (periodIndex > 0 && s.Length > 70)
+            {
+                s = s.Substring(0, periodIndex).Trim();
+            }
+
+            // If still long, keep first 8 words
+            if (s.Length > 70)
+            {
+                var words = s.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                s = string.Join(' ', words.Take(8));
+            }
+
+            // Normalize punctuation
+            s = s.Trim().TrimEnd('.', '!', '、', '。');
+
+            // Capitalize first letter
+            if (s.Length > 0)
+            {
+                s = char.ToUpperInvariant(s[0]) + (s.Length > 1 ? s.Substring(1) : string.Empty);
+            }
+
+            return s;
+        }
+
+        private string NormalizeForDedup(string description)
+        {
+            if (string.IsNullOrWhiteSpace(description)) return string.Empty;
+
+        
+            var pipeIndex = description.IndexOf('|');
+            var textToNormalize = pipeIndex > 0 ? description.Substring(0, pipeIndex) : description;
+
+            var lower = textToNormalize.ToLowerInvariant().Trim();
+            var builder = new StringBuilder(lower.Length);
+
+            foreach (var ch in lower)
+            {
+                if (char.IsLetterOrDigit(ch) || char.IsWhiteSpace(ch))
+                {
+                    builder.Append(ch);
+                }
+            }
+
+            var normalized = string.Join(' ', builder.ToString()
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
+            return normalized;
+        }
+
         private async Task<string> GenerateAIResponseAsync(ConversationSession session, string userMessage)
         {
             try
@@ -737,7 +914,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
                     var enforcedSystemPrompt = $@"{session.GeneratedSystemPrompt}
 
 IMPORTANT: You MUST respond ONLY in {session.Language?.LanguageName ?? "English"}.
-Do NOT respond in Vietnamese, even if the user writes in Vietnamese.
+Do NOT respond in any other language (including Vietnamese), regardless of the user's input language.
 Always respond in {session.Language?.LanguageName ?? "English"} only.";
 
                     var context = new
@@ -1088,10 +1265,19 @@ Format as JSON with clear numeric scores.";
                 _ => "Hello! Let's start our conversation practice."
             };
         }
+        
+        private string EnsureTargetLanguageOnly(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return text;
+            var pipeIndex = text.IndexOf('|');
+            return pipeIndex > 0 ? text.Substring(0, pipeIndex).Trim() : text.Trim();
+        }
         private string GetDefaultRole(string topicName)
         {
             return topicName.ToLower() switch
             {
+                var topic when topic.Contains("interview") || topic.Contains("phỏng vấn") || topic.Contains("面接") || topic.Contains("採用") => "採用担当者（面接官） | Người quản lý tuyển dụng (Người phỏng vấn)",
+                var topic when topic.Contains("lost luggage") || topic.Contains("lost baggage") || topic.Contains("baggage claim") || topic.Contains("mất hành lý") || topic.Contains("hành lý thất lạc") => "Baggage Service Agent",
                 var topic when topic.Contains("restaurant") || topic.Contains("ẩm thực") => "Restaurant Staff",
                 var topic when topic.Contains("travel") || topic.Contains("du lịch") => "Travel Guide",
                 var topic when topic.Contains("shopping") || topic.Contains("mua sắm") => "Shop Assistant",
@@ -1102,6 +1288,23 @@ Format as JSON with clear numeric scores.";
                 _ => "Conversation Partner"
             };
         }
+
+        private string ResolveCharacterRole(string topicName, string aiRoleCandidate)
+        {
+            var topic = topicName?.ToLower() ?? string.Empty;
+            if (topic.Contains("interview") || topic.Contains("phỏng vấn") || topic.Contains("面接") || topic.Contains("採用"))
+            {
+                return "採用担当者（面接官） | Người quản lý tuyển dụng (Người phỏng vấn)";
+            }
+
+            if (!string.IsNullOrWhiteSpace(aiRoleCandidate))
+            {
+                return aiRoleCandidate.Trim();
+            }
+
+            return GetDefaultRole(topicName ?? string.Empty);
+        }
+    
 
         public async Task<ConversationUsageDto> GetConversationUsageAsync(Guid userId)
         {
@@ -1146,6 +1349,12 @@ Format as JSON with clear numeric scores.";
                 CharacterRole = session.AICharacterRole ?? "",
                 ScenarioDescription = session.GeneratedScenario ?? "",
                 Messages = messages.Select(MapToMessageDto).ToList(),
+                Tasks = session.Tasks
+                    .GroupBy(t => t.TaskID) // Group by TaskID to eliminate duplicates
+                    .Select(g => g.First()) // Take first occurrence of each group
+                    .OrderBy(t => t.TaskSequence)
+                    .Select(MapToTaskDto)
+                    .ToList(),
                 Status = session.Status,
                 StartedAt = session.StartedAt,
                 OverallScore = session.OverallScore,
