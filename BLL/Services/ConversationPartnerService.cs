@@ -168,11 +168,37 @@ Never respond in Vietnamese or any other language, regardless of what language t
 
                 var tasks = generatedContent.Tasks ?? new List<ConversationTaskDto>();
 
-                if (tasks.Count == 0)
+                // Ensure we only return exactly 3 actionable tasks and
+                // provide deterministic tasks for specific scenarios
+                bool isLostLuggageTopic = topic.Name != null &&
+                    (topic.Name.ToLower().Contains("lost luggage") ||
+                     topic.Name.ToLower().Contains("lost baggage") ||
+                     topic.Name.ToLower().Contains("baggage claim") ||
+                     topic.Name.ToLower().Contains("mất hành lý") ||
+                     topic.Name.ToLower().Contains("hành lý thất lạc"));
+
+                if (isLostLuggageTopic)
+                {
+                    // Force the exact 3 tasks for Lost Luggage scenario
+                    tasks = CreateDefaultTasksForTopic(topic.Name);
+                }
+                else if (tasks.Count == 0)
                 {
                     _logger.LogWarning("No tasks returned from Gemini, using defaults");
                     tasks = CreateDefaultTasksForTopic(topic.Name);
                 }
+
+                // Limit to 3 tasks and normalize sequence 1..3
+                tasks = tasks
+                    .Where(t => !string.IsNullOrWhiteSpace(t.TaskDescription))
+                    .Take(3)
+                    .Select((t, index) => new ConversationTaskDto
+                    {
+                        TaskDescription = t.TaskDescription,
+                        TaskContext = t.TaskContext,
+                        TaskSequence = index + 1
+                    })
+                    .ToList();
 
                 int sequence = 1;
 
@@ -250,6 +276,12 @@ Never respond in Vietnamese or any other language, regardless of what language t
            
             return topicName.ToLower() switch
             {
+                var t when t.Contains("lost luggage") || t.Contains("lost baggage") || t.Contains("baggage claim") || t.Contains("mất hành lý") || t.Contains("hành lý thất lạc") => new List<ConversationTaskDto>
+        {
+            new() { TaskDescription = "Report your missing bag and describe it.", TaskSequence = 1 },
+            new() { TaskDescription = "Ask how and when it will be delivered.", TaskSequence = 2 },
+            new() { TaskDescription = "Provide contact details clearly.", TaskSequence = 3 }
+        },
                 var t when t.Contains("restaurant") || t.Contains("ẩm thực") => new List<ConversationTaskDto>
         {
             new() { TaskDescription = "Ask the waiter for a recommendation", TaskSequence = 1 },
@@ -1117,6 +1149,7 @@ Format as JSON with clear numeric scores.";
         {
             return topicName.ToLower() switch
             {
+                var topic when topic.Contains("lost luggage") || topic.Contains("lost baggage") || topic.Contains("baggage claim") || topic.Contains("mất hành lý") || topic.Contains("hành lý thất lạc") => "Baggage Service Agent",
                 var topic when topic.Contains("restaurant") || topic.Contains("ẩm thực") => "Restaurant Staff",
                 var topic when topic.Contains("travel") || topic.Contains("du lịch") => "Travel Guide",
                 var topic when topic.Contains("shopping") || topic.Contains("mua sắm") => "Shop Assistant",
