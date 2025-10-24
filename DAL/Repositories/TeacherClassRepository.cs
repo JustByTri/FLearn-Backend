@@ -113,5 +113,18 @@ namespace DAL.Repositories
                 .Take(pageSize)
                 .ToListAsync();
         }
+        public async Task<List<TeacherClass>> GetClassesStartingBetween(DateTime startDate, DateTime endDate)
+        {
+            return await _context.TeacherClasses
+                .Include(tc => tc.Language)
+                .Include(tc => tc.Teacher)
+                .Include(tc => tc.Enrollments)
+                    .ThenInclude(e => e.Student)
+                .Where(tc => tc.StartDateTime >= startDate &&
+                             tc.StartDateTime <= endDate &&
+                             (tc.Status == ClassStatus.Published || tc.Status == ClassStatus.Scheduled))
+                .OrderBy(tc => tc.StartDateTime)
+                .ToListAsync();
+        }
     }
 }

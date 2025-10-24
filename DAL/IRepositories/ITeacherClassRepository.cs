@@ -18,6 +18,7 @@ namespace DAL.IRepositories
         Task<List<TeacherClass>> GetAvailableClassesAsync(Guid? languageId = null);
         Task<int> GetAvailableClassesCountAsync(Guid? languageId = null);
         Task<List<TeacherClass>> GetAvailableClassesPaginatedAsync(Guid? languageId, int page, int pageSize);
+        Task<List<TeacherClass>> GetClassesStartingBetween(DateTime startDate, DateTime endDate);
 
     }
 }

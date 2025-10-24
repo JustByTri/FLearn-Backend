@@ -15,7 +15,6 @@ namespace Common.DTO.Teacher
         public string? LanguageName { get; set; }
         public DateTime StartDateTime { get; set; }
         public DateTime EndDateTime { get; set; }
-        public int MinStudents { get; set; }
         public int Capacity { get; set; }
         public decimal PricePerStudent { get; set; }
         public string? GoogleMeetLink { get; set; }

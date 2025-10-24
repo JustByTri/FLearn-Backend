@@ -30,5 +30,15 @@ namespace BLL.IServices.Auth
         /// <returns></returns>
         Task<bool> SendOtpResendAsync(string toEmail, string userName, string otpCode);
         Task<bool> SendPasswordResetOtpAsync(string toEmail, string userName, string otpCode);
+        Task<bool> SendRefundRequestInstructionAsync(
+     string toEmail,
+     string userName,
+     string className,
+     DateTime classStartDateTime);
+        Task<bool> SendRefundRequestConfirmationAsync(
+      string toEmail,
+      string userName,
+      string className,
+      string refundRequestId);
     }
 }

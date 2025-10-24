@@ -36,6 +36,7 @@ namespace DAL.Models
         public virtual TeacherClass Class { get; set; }
         public virtual User Student { get; set; }
         public virtual ICollection<ClassDispute> Disputes { get; set; }
+        public virtual ICollection<RefundRequest> RefundRequests { get; set; }
     }
 
     public enum EnrollmentStatus

@@ -54,7 +54,8 @@ namespace DAL.Models
         public virtual ICollection<ClassEnrollment> Enrollments { get; set; }
         public virtual ICollection<ClassDispute> Disputes { get; set; }
         public virtual ICollection<TeacherPayout> Payouts { get; set; }
-    
+        public virtual ICollection<RefundRequest> RefundRequests { get; set; }
+
         [NotMapped]
         public int CurrentEnrollments => Enrollments?.Count(e => e.Status == EnrollmentStatus.Paid) ?? 0;
 

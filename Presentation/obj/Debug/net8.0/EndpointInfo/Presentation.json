@@ -5569,12 +5569,11 @@
       },
       "CreateClassDto": {
         "required": [
-          "capacity",
-          "endDateTime",
+          "classDate",
+          "durationMinutes",
           "languageID",
-          "minStudents",
           "pricePerStudent",
-          "startDateTime",
+          "startTime",
           "title"
         ],
         "type": "object",
@@ -5593,23 +5592,15 @@
             "type": "string",
             "format": "uuid"
           },
-          "startDateTime": {
+          "classDate": {
             "type": "string",
             "format": "date-time"
           },
-          "endDateTime": {
+          "startTime": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-span"
           },
-          "minStudents": {
-            "maximum": 50,
-            "minimum": 1,
-            "type": "integer",
-            "format": "int32"
-          },
-          "capacity": {
-            "maximum": 100,
-            "minimum": 1,
+          "durationMinutes": {
             "type": "integer",
             "format": "int32"
           },
