@@ -214,23 +214,27 @@ Never respond in Vietnamese or any other language, regardless of what language t
                 await _unitOfWork.Users.UpdateAsync(user);
 
                 await _hubContext.Clients.Group($"User_{userId}")
-                    .SendAsync("ConversationStarted", new
-                    {
-                        sessionId = session.ConversationSessionID,
-                        sessionName = session.SessionName,
-                        languageName = language.LanguageName,
-                        topicName = topic.Name,
-                        scenario = generatedContent.ScenarioDescription,
+     .SendAsync("ConversationStarted", new
+     {
+         sessionId = session.ConversationSessionID,
+         sessionName = session.SessionName,
+         languageName = language.LanguageName,
+         topicName = topic.Name,
+         scenario = generatedContent.ScenarioDescription,
 
-                        tasks = session.Tasks.Select(t => new
-                        {
-                            t.TaskID,
-                            t.TaskDescription,
-                            t.TaskSequence,
-                            t.Status
-                        }),
-                        startedAt = DateTime.UtcNow
-                    });
+         tasks = session.Tasks
+             .GroupBy(t => t.TaskID) // Group by TaskID to remove duplicates
+             .Select(g => g.First()) // Take first of each group
+             .OrderBy(t => t.TaskSequence)
+             .Select(t => new
+             {
+                 t.TaskID,
+                 t.TaskDescription,
+                 t.TaskSequence,
+                 t.Status
+             }),
+         startedAt = DateTime.UtcNow
+     });
 
                 return MapToConversationSessionDto(session, new List<ConversationMessage> { firstMessage });
             }
@@ -775,16 +779,27 @@ Never respond in Vietnamese or any other language, regardless of what language t
                 tasks = CreateDefaultTasksForTopic(topicName);
             }
 
+            // Enhanced deduplication logic
             var unique = new HashSet<string>();
             var result = new List<ConversationTaskDto>(capacity: 3);
 
             foreach (var t in tasks.OrderBy(t => t.TaskSequence))
             {
                 if (string.IsNullOrWhiteSpace(t.TaskDescription)) continue;
+
                 var shortened = ShortenTask(t.TaskDescription);
-                var key = NormalizeForDedup(shortened);
-                if (key.Length == 0) continue;
-                if (!unique.Add(key)) continue;
+
+                // Improved key generation for multilingual content
+                var normalizedDescription = NormalizeForDedup(shortened);
+                var normalizedContext = NormalizeForDedup(t.TaskContext ?? "");
+                var key = $"{normalizedDescription}#{normalizedContext}";
+
+                if (string.IsNullOrWhiteSpace(normalizedDescription)) continue;
+                if (!unique.Add(key))
+                {
+                    _logger.LogDebug("Skipping duplicate task: {TaskDescription}", shortened);
+                    continue;
+                }
 
                 result.Add(new ConversationTaskDto
                 {
@@ -793,29 +808,36 @@ Never respond in Vietnamese or any other language, regardless of what language t
                     TaskSequence = result.Count + 1
                 });
 
-                if (result.Count == 3) break;
+                if (result.Count >= 3) break;
             }
 
-            // If still less than 3, top up with defaults while maintaining uniqueness
+         
             if (result.Count < 3)
             {
                 foreach (var dt in CreateDefaultTasksForTopic(topicName))
                 {
                     var shortened = ShortenTask(dt.TaskDescription);
-                    var key = NormalizeForDedup(shortened);
+                    var normalizedDescription = NormalizeForDedup(shortened);
+                    var normalizedContext = NormalizeForDedup(dt.TaskContext ?? "");
+                    var key = $"{normalizedDescription}#{normalizedContext}";
+
                     if (!unique.Add(key)) continue;
+
                     result.Add(new ConversationTaskDto
                     {
                         TaskDescription = shortened,
                         TaskContext = dt.TaskContext,
                         TaskSequence = result.Count + 1
                     });
-                    if (result.Count == 3) break;
+
+                    if (result.Count >= 3) break;
                 }
             }
 
+            _logger.LogDebug("Generated {TaskCount} unique tasks for topic: {TopicName}", result.Count, topicName);
             return result;
         }
+
 
         private string ShortenTask(string description)
         {
@@ -860,8 +882,14 @@ Never respond in Vietnamese or any other language, regardless of what language t
         private string NormalizeForDedup(string description)
         {
             if (string.IsNullOrWhiteSpace(description)) return string.Empty;
-            var lower = description.ToLowerInvariant();
+
+        
+            var pipeIndex = description.IndexOf('|');
+            var textToNormalize = pipeIndex > 0 ? description.Substring(0, pipeIndex) : description;
+
+            var lower = textToNormalize.ToLowerInvariant().Trim();
             var builder = new StringBuilder(lower.Length);
+
             foreach (var ch in lower)
             {
                 if (char.IsLetterOrDigit(ch) || char.IsWhiteSpace(ch))
@@ -869,10 +897,13 @@ Never respond in Vietnamese or any other language, regardless of what language t
                     builder.Append(ch);
                 }
             }
+
             var normalized = string.Join(' ', builder.ToString()
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
             return normalized;
         }
+
         private async Task<string> GenerateAIResponseAsync(ConversationSession session, string userMessage)
         {
             try
@@ -1273,22 +1304,7 @@ Format as JSON with clear numeric scores.";
 
             return GetDefaultRole(topicName ?? string.Empty);
         }
-
-        private string ResolveCharacterRole(string topicName, string aiRoleCandidate)
-        {
-            var topic = topicName?.ToLower() ?? string.Empty;
-            if (topic.Contains("interview") || topic.Contains("phỏng vấn") || topic.Contains("面接") || topic.Contains("採用"))
-            {
-                return "採用担当者（面接官） | Người quản lý tuyển dụng (Người phỏng vấn)";
-            }
-
-            if (!string.IsNullOrWhiteSpace(aiRoleCandidate))
-            {
-                return aiRoleCandidate.Trim();
-            }
-
-            return GetDefaultRole(topicName ?? string.Empty);
-        }
+    
 
         public async Task<ConversationUsageDto> GetConversationUsageAsync(Guid userId)
         {
@@ -1334,6 +1350,8 @@ Format as JSON with clear numeric scores.";
                 ScenarioDescription = session.GeneratedScenario ?? "",
                 Messages = messages.Select(MapToMessageDto).ToList(),
                 Tasks = session.Tasks
+                    .GroupBy(t => t.TaskID) // Group by TaskID to eliminate duplicates
+                    .Select(g => g.First()) // Take first occurrence of each group
                     .OrderBy(t => t.TaskSequence)
                     .Select(MapToTaskDto)
                     .ToList(),

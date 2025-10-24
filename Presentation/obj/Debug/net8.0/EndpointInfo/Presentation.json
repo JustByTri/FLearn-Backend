@@ -5627,35 +5627,26 @@
         "type": "object",
         "properties": {
           "promptName": {
-            "maxLength": 200,
-            "minLength": 0,
+            "minLength": 1,
             "type": "string"
           },
           "description": {
-            "maxLength": 1000,
-            "minLength": 0,
+            "minLength": 1,
             "type": "string"
           },
           "masterPromptTemplate": {
-            "maxLength": 5000,
-            "minLength": 0,
+            "minLength": 1,
             "type": "string"
           },
           "scenarioGuidelines": {
-            "maxLength": 2000,
-            "minLength": 0,
             "type": "string",
             "nullable": true
           },
           "roleplayInstructions": {
-            "maxLength": 1000,
-            "minLength": 0,
             "type": "string",
             "nullable": true
           },
           "evaluationCriteria": {
-            "maxLength": 1000,
-            "minLength": 0,
             "type": "string",
             "nullable": true
           },
