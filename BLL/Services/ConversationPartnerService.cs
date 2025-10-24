@@ -1,4 +1,4 @@
-﻿using BLL.Hubs;
+using BLL.Hubs;
 using BLL.IServices.AI;
 using BLL.IServices.Coversation;
 using Common.DTO.Conversation;
@@ -195,12 +195,16 @@ Never respond in Vietnamese or any other language, regardless of what language t
                     session.Tasks.Add(conversationTask);
                 }
 
+                var firstMessageText = EnsureTargetLanguageOnly(
+                    generatedContent.FirstMessage ?? GetDefaultFirstMessage(language.LanguageName, topic.Name, request.DifficultyLevel, language.LanguageCode)
+                );
+
                 var firstMessage = new ConversationMessage
                 {
                     ConversationMessageID = Guid.NewGuid(),
                     ConversationSessionID = session.ConversationSessionID,
                     Sender = MessageSender.AI,
-                    MessageContent = generatedContent.FirstMessage,
+                    MessageContent = firstMessageText,
                     MessageType = MessageType.Text,
                     SequenceOrder = 1,
                     SentAt = DateTime.UtcNow
@@ -376,12 +380,14 @@ Never respond in Vietnamese or any other language, regardless of what language t
                     session.Language?.LanguageCode ?? "EN"
                 );
 
+                var finalAIResponse = EnsureTargetLanguageOnly(enhancedAIResponse);
+
                 var aiMessage = new ConversationMessage
                 {
                     ConversationMessageID = Guid.NewGuid(),
                     ConversationSessionID = request.SessionId,
                     Sender = MessageSender.AI,
-                    MessageContent = enhancedAIResponse,
+                    MessageContent = finalAIResponse,
                     MessageType = MessageType.Text,
                     SequenceOrder = nextSequence + 1,
                     SentAt = DateTime.UtcNow
@@ -441,7 +447,15 @@ Never respond in Vietnamese or any other language, regardless of what language t
 
             var translationHint = GetTranslationHint(userMessage, targetLanguageCode);
 
-            return $"{aiResponse}\n\n📝 Gợi ý: {translationHint}";
+            var hintLabel = targetLanguageCode.ToUpper() switch
+            {
+                "EN" => "Hint",
+                "JP" => "ヒント",
+                "ZH" => "提示",
+                _ => "Hint"
+            };
+
+            return $"{aiResponse}\n\n{hintLabel}: {translationHint}";
         }
 
         private bool IsVietnamese(string text)
@@ -480,7 +494,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
 
                     translationTask.Wait(5000); // Wait max 5 seconds
                     return translationTask.IsCompletedSuccessfully
-                        ? $"Ý bạn là: {translationTask.Result}"
+                        ? (translationTask.Result ?? vietnameseText)
                         : GetSimpleTranslation(vietnameseText, targetLanguageCode);
                 }
                 catch (Exception ex)
@@ -678,6 +692,10 @@ Never respond in Vietnamese or any other language, regardless of what language t
                     CharacterRole = session.AICharacterRole ?? "",
                     ScenarioDescription = session.GeneratedScenario ?? "",
                     Messages = messages,
+                    Tasks = session.Tasks
+                        .OrderBy(t => t.TaskSequence)
+                        .Select(MapToTaskDto)
+                        .ToList(),
                     Status = session.Status,
                     StartedAt = session.StartedAt,
                     OverallScore = session.OverallScore,
@@ -737,7 +755,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
                     var enforcedSystemPrompt = $@"{session.GeneratedSystemPrompt}
 
 IMPORTANT: You MUST respond ONLY in {session.Language?.LanguageName ?? "English"}.
-Do NOT respond in Vietnamese, even if the user writes in Vietnamese.
+Do NOT respond in any other language (including Vietnamese), regardless of the user's input language.
 Always respond in {session.Language?.LanguageName ?? "English"} only.";
 
                     var context = new
@@ -1088,6 +1106,13 @@ Format as JSON with clear numeric scores.";
                 _ => "Hello! Let's start our conversation practice."
             };
         }
+        
+        private string EnsureTargetLanguageOnly(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return text;
+            var pipeIndex = text.IndexOf('|');
+            return pipeIndex > 0 ? text.Substring(0, pipeIndex).Trim() : text.Trim();
+        }
         private string GetDefaultRole(string topicName)
         {
             return topicName.ToLower() switch
@@ -1146,6 +1171,10 @@ Format as JSON with clear numeric scores.";
                 CharacterRole = session.AICharacterRole ?? "",
                 ScenarioDescription = session.GeneratedScenario ?? "",
                 Messages = messages.Select(MapToMessageDto).ToList(),
+                Tasks = session.Tasks
+                    .OrderBy(t => t.TaskSequence)
+                    .Select(MapToTaskDto)
+                    .ToList(),
                 Status = session.Status,
                 StartedAt = session.StartedAt,
                 OverallScore = session.OverallScore,
