@@ -145,6 +145,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
 
 
                 var generatedContent = await _geminiService.GenerateConversationContentAsync(conversationContext);
+                var characterRole = ResolveCharacterRole(topic.Name, generatedContent.AIRole);
 
                 var session = new ConversationSession
                 {
@@ -156,7 +157,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
                     DifficultyLevel = request.DifficultyLevel,
                     SessionName = $"{topic.Name} - {request.DifficultyLevel}",
                     GeneratedScenario = generatedContent.ScenarioDescription,
-                    AICharacterRole = generatedContent.AIRole,
+                    AICharacterRole = characterRole,
                     GeneratedSystemPrompt = generatedContent.SystemPrompt,
                     StartedAt = DateTime.UtcNow,
                     CreatedAt = DateTime.UtcNow,
@@ -166,39 +167,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
                 await _unitOfWork.ConversationSessions.CreateAsync(session);
 
 
-                var tasks = generatedContent.Tasks ?? new List<ConversationTaskDto>();
-
-                // Ensure we only return exactly 3 actionable tasks and
-                // provide deterministic tasks for specific scenarios
-                bool isLostLuggageTopic = topic.Name != null &&
-                    (topic.Name.ToLower().Contains("lost luggage") ||
-                     topic.Name.ToLower().Contains("lost baggage") ||
-                     topic.Name.ToLower().Contains("baggage claim") ||
-                     topic.Name.ToLower().Contains("mất hành lý") ||
-                     topic.Name.ToLower().Contains("hành lý thất lạc"));
-
-                if (isLostLuggageTopic)
-                {
-                    // Force the exact 3 tasks for Lost Luggage scenario
-                    tasks = CreateDefaultTasksForTopic(topic.Name);
-                }
-                else if (tasks.Count == 0)
-                {
-                    _logger.LogWarning("No tasks returned from Gemini, using defaults");
-                    tasks = CreateDefaultTasksForTopic(topic.Name);
-                }
-
-                // Limit to 3 tasks and normalize sequence 1..3
-                tasks = tasks
-                    .Where(t => !string.IsNullOrWhiteSpace(t.TaskDescription))
-                    .Take(3)
-                    .Select((t, index) => new ConversationTaskDto
-                    {
-                        TaskDescription = t.TaskDescription,
-                        TaskContext = t.TaskContext,
-                        TaskSequence = index + 1
-                    })
-                    .ToList();
+                var tasks = NormalizeAndSelectTasks(topic.Name, generatedContent.Tasks ?? new List<ConversationTaskDto>());
 
                 int sequence = 1;
 
@@ -276,6 +245,12 @@ Never respond in Vietnamese or any other language, regardless of what language t
            
             return topicName.ToLower() switch
             {
+                var t when t.Contains("interview") || t.Contains("phỏng vấn") || t.Contains("面接") || t.Contains("採用") => new List<ConversationTaskDto>
+        {
+            new() { TaskDescription = "Self-introduction and strengths", TaskSequence = 1 },
+            new() { TaskDescription = "Why our company", TaskSequence = 2 },
+            new() { TaskDescription = "Biggest technical challenge", TaskSequence = 3 }
+        },
                 var t when t.Contains("lost luggage") || t.Contains("lost baggage") || t.Contains("baggage claim") || t.Contains("mất hành lý") || t.Contains("hành lý thất lạc") => new List<ConversationTaskDto>
         {
             new() { TaskDescription = "Report your missing bag and describe it.", TaskSequence = 1 },
@@ -777,6 +752,127 @@ Never respond in Vietnamese or any other language, regardless of what language t
             }
         
         }
+        private List<ConversationTaskDto> NormalizeAndSelectTasks(string topicName, List<ConversationTaskDto> aiTasks)
+        {
+            var tasks = aiTasks ?? new List<ConversationTaskDto>();
+
+            // Scenario-specific override or fallback when none
+            bool isLostLuggageTopic = !string.IsNullOrWhiteSpace(topicName) &&
+                (topicName.ToLower().Contains("lost luggage") ||
+                 topicName.ToLower().Contains("lost baggage") ||
+                 topicName.ToLower().Contains("baggage claim") ||
+                 topicName.ToLower().Contains("mất hành lý") ||
+                 topicName.ToLower().Contains("hành lý thất lạc"));
+
+            bool isInterviewTopic = !string.IsNullOrWhiteSpace(topicName) &&
+                (topicName.ToLower().Contains("interview") ||
+                 topicName.ToLower().Contains("phỏng vấn") ||
+                 topicName.ToLower().Contains("面接") ||
+                 topicName.ToLower().Contains("採用"));
+
+            if (isLostLuggageTopic || isInterviewTopic || tasks.Count == 0)
+            {
+                tasks = CreateDefaultTasksForTopic(topicName);
+            }
+
+            var unique = new HashSet<string>();
+            var result = new List<ConversationTaskDto>(capacity: 3);
+
+            foreach (var t in tasks.OrderBy(t => t.TaskSequence))
+            {
+                if (string.IsNullOrWhiteSpace(t.TaskDescription)) continue;
+                var shortened = ShortenTask(t.TaskDescription);
+                var key = NormalizeForDedup(shortened);
+                if (key.Length == 0) continue;
+                if (!unique.Add(key)) continue;
+
+                result.Add(new ConversationTaskDto
+                {
+                    TaskDescription = shortened,
+                    TaskContext = t.TaskContext,
+                    TaskSequence = result.Count + 1
+                });
+
+                if (result.Count == 3) break;
+            }
+
+            // If still less than 3, top up with defaults while maintaining uniqueness
+            if (result.Count < 3)
+            {
+                foreach (var dt in CreateDefaultTasksForTopic(topicName))
+                {
+                    var shortened = ShortenTask(dt.TaskDescription);
+                    var key = NormalizeForDedup(shortened);
+                    if (!unique.Add(key)) continue;
+                    result.Add(new ConversationTaskDto
+                    {
+                        TaskDescription = shortened,
+                        TaskContext = dt.TaskContext,
+                        TaskSequence = result.Count + 1
+                    });
+                    if (result.Count == 3) break;
+                }
+            }
+
+            return result;
+        }
+
+        private string ShortenTask(string description)
+        {
+            if (string.IsNullOrWhiteSpace(description)) return string.Empty;
+            var s = description.Replace("\n", " ").Replace("\r", " ").Trim();
+
+            // Remove common fillers
+            foreach (var filler in new[] { "Please ", "Kindly ", "First, ", "Then, ", "Finally, ", "Next, " })
+            {
+                if (s.StartsWith(filler, StringComparison.OrdinalIgnoreCase))
+                {
+                    s = s.Substring(filler.Length).TrimStart();
+                }
+            }
+
+            // Cut at first sentence boundary if very long
+            var periodIndex = s.IndexOf('.');
+            if (periodIndex > 0 && s.Length > 70)
+            {
+                s = s.Substring(0, periodIndex).Trim();
+            }
+
+            // If still long, keep first 8 words
+            if (s.Length > 70)
+            {
+                var words = s.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                s = string.Join(' ', words.Take(8));
+            }
+
+            // Normalize punctuation
+            s = s.Trim().TrimEnd('.', '!', '、', '。');
+
+            // Capitalize first letter
+            if (s.Length > 0)
+            {
+                s = char.ToUpperInvariant(s[0]) + (s.Length > 1 ? s.Substring(1) : string.Empty);
+            }
+
+            return s;
+        }
+
+        private string NormalizeForDedup(string description)
+        {
+            if (string.IsNullOrWhiteSpace(description)) return string.Empty;
+            var lower = description.ToLowerInvariant();
+            var builder = new StringBuilder(lower.Length);
+            foreach (var ch in lower)
+            {
+                if (char.IsLetterOrDigit(ch) || char.IsWhiteSpace(ch))
+                {
+                    builder.Append(ch);
+                }
+            }
+            var normalized = string.Join(' ', builder.ToString()
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries));
+            return normalized;
+        }
         private async Task<string> GenerateAIResponseAsync(ConversationSession session, string userMessage)
         {
             try
@@ -1149,6 +1245,7 @@ Format as JSON with clear numeric scores.";
         {
             return topicName.ToLower() switch
             {
+                var topic when topic.Contains("interview") || topic.Contains("phỏng vấn") || topic.Contains("面接") || topic.Contains("採用") => "採用担当者（面接官） | Người quản lý tuyển dụng (Người phỏng vấn)",
                 var topic when topic.Contains("lost luggage") || topic.Contains("lost baggage") || topic.Contains("baggage claim") || topic.Contains("mất hành lý") || topic.Contains("hành lý thất lạc") => "Baggage Service Agent",
                 var topic when topic.Contains("restaurant") || topic.Contains("ẩm thực") => "Restaurant Staff",
                 var topic when topic.Contains("travel") || topic.Contains("du lịch") => "Travel Guide",
@@ -1159,6 +1256,38 @@ Format as JSON with clear numeric scores.";
                 var topic when topic.Contains("family") || topic.Contains("gia đình") => "Friend",
                 _ => "Conversation Partner"
             };
+        }
+
+        private string ResolveCharacterRole(string topicName, string aiRoleCandidate)
+        {
+            var topic = topicName?.ToLower() ?? string.Empty;
+            if (topic.Contains("interview") || topic.Contains("phỏng vấn") || topic.Contains("面接") || topic.Contains("採用"))
+            {
+                return "採用担当者（面接官） | Người quản lý tuyển dụng (Người phỏng vấn)";
+            }
+
+            if (!string.IsNullOrWhiteSpace(aiRoleCandidate))
+            {
+                return aiRoleCandidate.Trim();
+            }
+
+            return GetDefaultRole(topicName ?? string.Empty);
+        }
+
+        private string ResolveCharacterRole(string topicName, string aiRoleCandidate)
+        {
+            var topic = topicName?.ToLower() ?? string.Empty;
+            if (topic.Contains("interview") || topic.Contains("phỏng vấn") || topic.Contains("面接") || topic.Contains("採用"))
+            {
+                return "採用担当者（面接官） | Người quản lý tuyển dụng (Người phỏng vấn)";
+            }
+
+            if (!string.IsNullOrWhiteSpace(aiRoleCandidate))
+            {
+                return aiRoleCandidate.Trim();
+            }
+
+            return GetDefaultRole(topicName ?? string.Empty);
         }
 
         public async Task<ConversationUsageDto> GetConversationUsageAsync(Guid userId)
