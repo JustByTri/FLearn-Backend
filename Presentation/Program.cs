@@ -270,7 +270,9 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
             "https://f-learn.app",
-            "http://localhost:3000"
+            "http://localhost:3000",
+            "https://localhost:3000",
+            "http://10.0.2.2"
         )
         .AllowAnyHeader()
         .AllowAnyMethod()
