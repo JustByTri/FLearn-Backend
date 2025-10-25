@@ -5,11 +5,13 @@ using BLL.Settings;
 using Common.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Presentation.Filter;
 using Presentation.Middlewares;
+using System.Net;
 using System.Reflection;
 using System.Text;
 
@@ -270,18 +272,22 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
             "https://f-learn.app",
-            "http://localhost:3000",
-            "https://localhost:3000",
-            "http://10.0.2.2"
+            "http://localhost:3000"
         )
-        .WithHeaders("Content-Type", "Authorization", "x-signalr-user-agent")
+        .AllowAnyHeader()
         .AllowAnyMethod()
         .AllowCredentials();
     });
 });
 
-var app = builder.Build();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownProxies.Add(IPAddress.Parse("127.0.0.1"));
+});
 
+var app = builder.Build();
+app.UseForwardedHeaders();
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
