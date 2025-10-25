@@ -274,7 +274,7 @@ builder.Services.AddCors(options =>
             "https://localhost:3000",
             "http://10.0.2.2"
         )
-        .AllowAnyHeader()
+        .WithHeaders("Content-Type", "Authorization", "x-signalr-user-agent")
         .AllowAnyMethod()
         .AllowCredentials();
     });
