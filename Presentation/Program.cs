@@ -268,10 +268,13 @@ builder.Services.AddCors(options =>
     });
     options.AddPolicy("SignalRCors", policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod();
-
+        policy.WithOrigins(
+            "https://f-learn.app",
+            "http://localhost:3000"
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials();
     });
 });
 
@@ -294,6 +297,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<ConversationHub>("/conversationHub");
+app.MapHub<ConversationHub>("/conversationHub").RequireCors("SignalRCors");
 app.Run();
 
