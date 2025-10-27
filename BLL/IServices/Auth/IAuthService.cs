@@ -12,7 +12,7 @@ namespace BLL.IServices.Auth
         Task<AuthResponseDto> VerifyOtpAndCompleteRegistrationAsync(VerifyOtpDto verifyOtpDto);
         Task<bool> ChangeStaffPasswordAsync(Guid adminUserId, ChangeStaffPasswordDto changePasswordDto);
 
-     
+        Task<bool> ChangePasswordAsync(Guid userId, ChangePasswordDto changePasswordDto);
         Task<bool> ResendOtpAsync(ResendOtpDto resendOtpDto);
         Task<bool> ForgotPasswordAsync(ForgotPasswordDto forgotPasswordDto);
         Task<bool> ResetPasswordAsync(ResetPasswordDto resetPasswordDto);

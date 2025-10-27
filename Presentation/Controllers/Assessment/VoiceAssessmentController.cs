@@ -1303,7 +1303,7 @@ namespace Presentation.Controllers.Assessment
                     });
                 }
 
-            
+
                 var user = await _unitOfWork.Users.GetByIdAsync(userId);
                 if (user == null)
                     return Unauthorized();
@@ -1313,7 +1313,7 @@ namespace Presentation.Controllers.Assessment
                 _unitOfWork.Users.Update(user);
                 await _unitOfWork.SaveChangesAsync();
 
-              
+
                 var allLearnerLanguages = await _unitOfWork.LearnerLanguages.GetAllAsync();
                 var learnerLanguage = allLearnerLanguages.FirstOrDefault(ll =>
                     ll.UserId == userId && ll.LanguageId == languageId);
@@ -1382,6 +1382,71 @@ namespace Presentation.Controllers.Assessment
                     message = "Đã xảy ra lỗi",
                     error = ex.Message
                 });
+            }
+        }
+        public class RoadmapDetailDto
+        {
+            public Guid RoadmapDetailId { get; set; }
+            public Guid CourseId { get; set; }
+            public string CourseName { get; set; }
+            public string CourseDescription { get; set; }
+            public DateTime CreatedAt { get; set; }
+        }
+        [HttpGet("roadmap-details/{learnerLanguageId:guid}")]
+        public async Task<IActionResult> GetRoadmapDetails(Guid learnerLanguageId)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+                // Kiểm tra quyền sở hữu
+                var learnerLanguage = await _unitOfWork.LearnerLanguages.GetByIdAsync(learnerLanguageId);
+                if (learnerLanguage == null || learnerLanguage.UserId != userId)
+                    return Unauthorized(new { success = false, message = "Bạn không có quyền truy cập roadmap này" });
+
+                // Lấy roadmap
+                var allRoadmaps = await _unitOfWork.Roadmaps.GetAllAsync();
+                var roadmap = allRoadmaps.FirstOrDefault(r => r.LearnerLanguageId == learnerLanguageId);
+                if (roadmap == null)
+                    return NotFound(new { success = false, message = "Không tìm thấy roadmap cho ngôn ngữ này" });
+
+                // Lấy chi tiết roadmap
+                var allRoadmapDetails = await _unitOfWork.RoadmapDetails.GetAllAsync();
+                var roadmapDetails = allRoadmapDetails
+                    .Where(rd => rd.RoadmapID == roadmap.RoadmapID)
+                    .ToList();
+
+                // Lấy thông tin khóa học cho từng roadmap detail
+                var courseList = await _unitOfWork.Courses.GetAllAsync();
+                var detailDtos = roadmapDetails.Select(rd =>
+                {
+                    var course = courseList.FirstOrDefault(c => c.CourseID == rd.CourseId);
+                    return new RoadmapDetailDto
+                    {
+                        RoadmapDetailId = rd.RoadmapDetailID,
+                        CourseId = rd.CourseId,
+                        CourseName = course?.Title ?? "",
+                        CourseDescription = course?.Description ?? "",
+                        CreatedAt = rd.CreatedAt
+                    };
+                }).ToList();
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Lấy chi tiết roadmap thành công",
+                    data = new
+                    {
+                        learnerLanguageId,
+                        roadmapId = roadmap.RoadmapID,
+                        details = detailDtos
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting roadmap details for {LearnerLanguageId}", learnerLanguageId);
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi lấy chi tiết roadmap" });
             }
         }
     }
