@@ -397,6 +397,36 @@ namespace BLL.Services.Auth
                 CreatedAt = user.CreatedAt,
             };
         }
+        public async Task<bool> ChangePasswordAsync(Guid userId, ChangePasswordDto changePasswordDto)
+        {
+            // Lấy thông tin user
+            var user = await _unitOfWork.Users.GetByIdAsync(userId);
+            if (user == null || !user.Status)
+            {
+                throw new InvalidOperationException("Tài khoản không tồn tại hoặc đã bị khóa");
+            }
+
+            // Xác thực mật khẩu hiện tại
+            if (!VerifyPassword(changePasswordDto.CurrentPassword, user.PasswordHash, user.PasswordSalt))
+            {
+                throw new InvalidOperationException("Mật khẩu hiện tại không đúng");
+            }
+
+            // Tạo mật khẩu mới
+            var (newPasswordHash, newPasswordSalt) = CreatePasswordHash(changePasswordDto.NewPassword);
+
+            // Cập nhật mật khẩu
+            user.PasswordHash = newPasswordHash;
+            user.PasswordSalt = newPasswordSalt;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _unitOfWork.Users.UpdateAsync(user);
+
+            // Thu hồi tất cả refresh token để buộc đăng nhập lại
+            await _unitOfWork.RefreshTokens.RevokeAllUserTokensAsync(user.UserID);
+
+            return true;
+        }
         public async Task<bool> ChangeStaffPasswordAsync(Guid adminUserId, ChangeStaffPasswordDto changePasswordDto)
         {
 

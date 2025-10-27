@@ -1,8 +1,11 @@
 ﻿using BLL.IServices.Auth;
+using BLL.IServices.Upload;
 using Common.DTO.Auth;
+using DAL.UnitOfWork;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 
 namespace Presentation.Controllers.Auth
@@ -12,10 +15,13 @@ namespace Presentation.Controllers.Auth
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
-
-        public AuthController(IAuthService authService)
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly ICloudinaryService _cloudinaryService;
+        public AuthController(IAuthService authService, ICloudinaryService cloudinaryService, IUnitOfWork unitOfWork)
         {
             _authService = authService;
+            _cloudinaryService = cloudinaryService;
+            _unitOfWork = unitOfWork;
         }
 
 
@@ -169,14 +175,18 @@ namespace Presentation.Controllers.Auth
             try
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                var username = User.FindFirstValue(ClaimTypes.Name);
-                var email = User.FindFirstValue(ClaimTypes.Email);
-                var createdAt = User.FindFirstValue("created_at");
-                var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
 
-                
-                var avatar = User.Claims.FirstOrDefault(c => c.Type == "avatar")?.Value;
-                var fullname = User.Claims.FirstOrDefault(c => c.Type == "fullname")?.Value;
+               
+                var user = await _unitOfWork.Users.GetUserWithRolesAsync(Guid.Parse(userId));
+                if (user == null)
+                    return NotFound(new { success = false, message = "User not found" });
+
+                var username = user.UserName;
+                var email = user.Email;
+                var createdAt = user.CreatedAt;
+                var roles = user.UserRoles?.Select(c => c.Role.Name).ToList() ?? new List<string>();
+                var avatar = user.Avatar;
+                var fullname = user.FullName;
 
                 return Ok(new
                 {
@@ -191,6 +201,8 @@ namespace Presentation.Controllers.Auth
                         roles = roles,
                         avatar = avatar,
                         fullname = fullname,
+                        dailyConversationLimit = user.DailyConversationLimit,
+                        conversationsUsedToday = user.ConversationsUsedToday
                     }
                 });
             }
@@ -199,6 +211,53 @@ namespace Presentation.Controllers.Auth
                 return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi lấy thông tin người dùng" });
             }
         }
+        [Authorize]
+        [HttpPut("profile")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UpdateProfile([FromForm] UpdateProfileFormDto form)
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var user = await _unitOfWork.Users.GetByIdAsync(userId);
+            if (user == null)
+                return NotFound(new { success = false, message = "User not found" });
+
+            // Kiểm tra username đã tồn tại cho user khác chưa
+            if (!string.Equals(user.UserName, form.UserName, StringComparison.OrdinalIgnoreCase))
+            {
+                var isUsernameExists = await _unitOfWork.Users.IsUsernameExistsAsync(form.UserName);
+                if (isUsernameExists)
+                    return BadRequest(new { success = false, message = "Username đã tồn tại, vui lòng chọn tên khác." });
+                user.UserName = form.UserName;
+            }
+
+            user.FullName = form.FullName;
+
+            if (form.Avatar != null && form.Avatar.Length > 0)
+            {
+                var uploadResult = await _cloudinaryService.UploadImageAsync(form.Avatar, "avatars");
+                user.Avatar = uploadResult.Url;
+            }
+
+            user.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.Users.Update(user);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "Profile updated successfully", data = new { user.Avatar, user.UserName } });
+        }
+
+        public class UpdateProfileFormDto
+        {
+            
+            public string FullName { get; set; }
+
+            [Required]
+            [StringLength(100, MinimumLength = 3, ErrorMessage = "Username must be between 3 and 100 characters")]
+            public string UserName { get; set; }
+
+            public IFormFile? Avatar { get; set; }
+        }
+
+
         [AllowAnonymous]
         [HttpPost("google")]
         public async Task<IActionResult> LoginGoogle([FromBody] GoogleLoginRequest request)
@@ -309,6 +368,39 @@ namespace Presentation.Controllers.Auth
             catch (Exception ex)
             {
                 return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi đặt lại mật khẩu. Vui lòng thử lại!" });
+            }
+        }
+        /// <summary>
+        /// Thay đổi mật khẩu của user hiện tại
+        /// </summary>
+        [HttpPost("change-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto changePasswordDto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+                }
+
+                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+                await _authService.ChangePasswordAsync(userId, changePasswordDto);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Đổi mật khẩu thành công! Vui lòng đăng nhập lại với mật khẩu mới."
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi đổi mật khẩu. Vui lòng thử lại!" });
             }
         }
     }

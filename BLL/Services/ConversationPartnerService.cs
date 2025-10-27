@@ -466,7 +466,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
                 _ => "Hint"
             };
 
-            return $"{aiResponse}\n\n{hintLabel}: {translationHint}";
+            return $"{aiResponse}";
         }
 
         private bool IsVietnamese(string text)
