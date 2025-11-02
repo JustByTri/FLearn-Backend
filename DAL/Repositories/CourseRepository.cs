@@ -14,10 +14,10 @@ namespace DAL.Repositories
         {
             await using var context = new AppDbContext();
 
-            return await context.PurchaseDetails
-                .AnyAsync(pd => pd.CourseId == courseId &&
-                                pd.Purchase.UserId == userId &&
-                                pd.Purchase.Status == PurchaseStatus.Completed);
+            return await context.Purchases
+                .AnyAsync(p => p.CourseId == courseId &&
+                               p.UserId == userId &&
+                               p.Status == PurchaseStatus.Completed);
         }
     }
 }

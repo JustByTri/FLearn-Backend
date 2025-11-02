@@ -10,11 +10,11 @@ namespace DAL.Models
         [Required]
         public Guid CourseID { get; set; }
         [ForeignKey(nameof(CourseID))]
-        public virtual Course Course { get; set; }
+        public virtual Course Course { get; set; } = null!;
         [Required]
         public Guid TopicID { get; set; }
         [ForeignKey(nameof(TopicID))]
-        public virtual Topic Topic { get; set; }
+        public virtual Topic Topic { get; set; } = null!;
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }

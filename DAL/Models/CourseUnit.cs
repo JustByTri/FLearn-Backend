@@ -9,10 +9,10 @@ namespace DAL.Models
         public Guid CourseUnitID { get; set; }
         [Required]
         [StringLength(200)]
-        public string Title { get; set; }
+        public string Title { get; set; } = null!;
         [StringLength(500)]
-        public string? Description { get; set; }
-        [Range(1, 100, ErrorMessage = "Value for {0} must be between {1} and {2}.")]
+        public string Description { get; set; } = null!;
+        [Range(1, 100)]
         public int Position { get; set; } = 1;
         [Required]
         public Guid CourseID { get; set; }
@@ -23,5 +23,6 @@ namespace DAL.Models
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public virtual ICollection<Lesson> Lessons { get; set; } = new List<Lesson>();
+        public virtual ICollection<UnitProgress> UnitProgresses { get; set; } = new List<UnitProgress>();
     }
 }

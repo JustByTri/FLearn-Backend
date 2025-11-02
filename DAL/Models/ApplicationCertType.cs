@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using DAL.Helpers;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DAL.Models
@@ -7,15 +8,16 @@ namespace DAL.Models
     {
         [Key]
         public Guid ApplicationCertTypeId { get; set; }
+        [Required]
         public Guid ApplicationId { get; set; }
         [ForeignKey(nameof(ApplicationId))]
-        public virtual TeacherApplication Application { get; set; }
+        public virtual TeacherApplication TeacherApplication { get; set; } = null!;
         public Guid? CertificateTypeId { get; set; }
         [ForeignKey(nameof(CertificateTypeId))]
-        public virtual CertificateType? CertificateType { get; set; }
+        public virtual CertificateType CertificateType { get; set; } = null!;
         public string CertificateImageUrl { get; set; } = string.Empty;
         public string CertificateImagePublicId { get; set; } = string.Empty;
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
+        public DateTime CreatedAt { get; set; } = TimeHelper.GetVietnamTime();
+        public DateTime UpdatedAt { get; set; } = TimeHelper.GetVietnamTime();
     }
 }

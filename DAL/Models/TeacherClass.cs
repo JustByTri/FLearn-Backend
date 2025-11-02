@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using DAL.Helpers;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DAL.Models
 {
@@ -12,54 +8,38 @@ namespace DAL.Models
     {
         [Key]
         public Guid ClassID { get; set; }
-
         [ForeignKey("Teacher")]
         public Guid TeacherID { get; set; }
-
         [ForeignKey("Language")]
         public Guid LanguageID { get; set; }
-
         [Required]
         [StringLength(200)]
-        public string Title { get; set; }
-
+        public string? Title { get; set; }
         [StringLength(1000)]
-        public string Description { get; set; }
-
+        public string? Description { get; set; }
         [Required]
         public DateTime StartDateTime { get; set; }
-
         [Required]
         public DateTime EndDateTime { get; set; }
-
-    
         public int Capacity { get; set; } = 10;
-
         [Required]
         [Column(TypeName = "decimal(10,2)")]
         public decimal PricePerStudent { get; set; }
-
         [StringLength(500)]
-        public string GoogleMeetLink { get; set; }
-
+        public string? GoogleMeetLink { get; set; }
         [Required]
         public ClassStatus Status { get; set; } = ClassStatus.Draft;
-
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-
+        public DateTime CreatedAt { get; set; } = TimeHelper.GetVietnamTime();
+        public DateTime UpdatedAt { get; set; } = TimeHelper.GetVietnamTime();
         // Navigation properties
-        public virtual User Teacher { get; set; }
-        public virtual Language Language { get; set; }
-        public virtual ICollection<ClassEnrollment> Enrollments { get; set; }
-        public virtual ICollection<ClassDispute> Disputes { get; set; }
-        public virtual ICollection<TeacherPayout> Payouts { get; set; }
-        public virtual ICollection<RefundRequest> RefundRequests { get; set; }
-
+        public virtual User? Teacher { get; set; }
+        public virtual Language? Language { get; set; }
+        public virtual ICollection<ClassEnrollment> Enrollments { get; set; } = new List<ClassEnrollment>();
+        public virtual ICollection<ClassDispute> Disputes { get; set; } = new List<ClassDispute>();
+        public virtual ICollection<TeacherPayout> Payouts { get; set; } = new List<TeacherPayout>();
+        public virtual ICollection<RefundRequest> RefundRequests { get; set; } = new List<RefundRequest>();
         [NotMapped]
         public int CurrentEnrollments => Enrollments?.Count(e => e.Status == EnrollmentStatus.Paid) ?? 0;
-
-
     }
 
     public enum ClassStatus
@@ -74,6 +54,6 @@ namespace DAL.Models
         Cancelled_TeacherUnavailable = 7,
         Cancelled_Other = 8,
         Completed_Paid = 9,
-        Cancelled =10
+        Cancelled = 10
     }
 }

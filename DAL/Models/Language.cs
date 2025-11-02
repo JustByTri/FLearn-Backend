@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using DAL.Helpers;
+using System.ComponentModel.DataAnnotations;
 
 namespace DAL.Models
 {
@@ -8,23 +9,23 @@ namespace DAL.Models
         public Guid LanguageID { get; set; }
         [Required]
         [StringLength(100)]
-        public string LanguageName { get; set; }
+        public string LanguageName { get; set; } = string.Empty;
         [Required]
         [StringLength(10)]
-        public string LanguageCode { get; set; }
-        public bool Status { get; set; } = true; // Active by default or false for inactive
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
-        public virtual ICollection<LanguageLevel> LanguageLevels { get; set; } = new List<LanguageLevel>(); // Proficiency levels associated with this language
-        public virtual ICollection<User>? Users { get; set; } = new List<User>(); // Users who have this as their active language
-        public virtual ICollection<StaffLanguage>? StaffLanguages { get; set; } // Staff members associated with this language
-        public virtual ICollection<TeacherApplication>? TeacherApplications { get; set; } // Teacher applications for this language
-        public virtual ICollection<TeacherProfile>? TeacherProfiles { get; set; } // Teacher profiles for this language
-        public virtual ICollection<CertificateType> CertificateTypes { get; set; } = new List<CertificateType>(); // Certificate types associated with this language
-        public virtual ICollection<LearnerLanguage>? LearnerLanguages { get; set; } // Learners associated with this language
-        public virtual ICollection<Achievement>? Achievements { get; set; } // Achievements associated with this language
-        public virtual ICollection<Conversation>? Conversations { get; set; } // Conversations in this language
-        public virtual ICollection<Course>? Courses { get; set; }
-        public virtual ICollection<GlobalConversationPrompt>? GlobalConversationPrompts { get; set; } // Global conversation prompts in this language
+        public string LanguageCode { get; set; } = string.Empty;
+        public bool Status { get; set; } = true;
+        public DateTime CreatedAt { get; set; } = TimeHelper.GetVietnamTime();
+        public DateTime UpdatedAt { get; set; } = TimeHelper.GetVietnamTime();
+        public virtual ICollection<LanguageLevel> LanguageLevels { get; set; } = new List<LanguageLevel>();
+        public virtual ICollection<Program> Programs { get; set; } = new List<Program>();
+        public virtual ICollection<User> Users { get; set; } = new List<User>();
+        public virtual ICollection<TeacherApplication> TeacherApplications { get; set; } = new List<TeacherApplication>();
+        public virtual ICollection<TeacherProfile> TeacherProfiles { get; set; } = new List<TeacherProfile>();
+        public virtual ICollection<ManagerLanguage> ManagerLanguages { get; set; } = new List<ManagerLanguage>();
+        public virtual ICollection<LearnerLanguage> LearnerLanguages { get; set; } = new List<LearnerLanguage>();
+        public virtual ICollection<CertificateType> CertificateTypes { get; set; } = new List<CertificateType>();
+        public virtual ICollection<Achievement> Achievements { get; set; } = new List<Achievement>();
+        public virtual ICollection<Course> Courses { get; set; } = new List<Course>();
+        public virtual ICollection<ConversationSession> ConversationSessions { get; set; } = new List<ConversationSession>();
     }
 }

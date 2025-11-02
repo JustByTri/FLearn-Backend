@@ -184,7 +184,7 @@ namespace BLL.Services.Auth
                 Email = tempRegistration.Email,
                 PasswordHash = tempRegistration.PasswordHash,
                 PasswordSalt = tempRegistration.PasswordSalt,
-                BirthDate = DateTime.Now.AddYears(-18),
+                DateOfBirth = DateTime.Now.AddYears(-18),
                 Status = true,
                 CreatedAt = DateTime.UtcNow,
                 IsEmailConfirmed = true,
@@ -316,7 +316,7 @@ namespace BLL.Services.Auth
         new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
         new Claim(ClaimTypes.Name, user.UserName),
         new Claim(ClaimTypes.Email, user.Email),
-       
+
         new Claim("user_id", user.UserID.ToString()),
         new Claim("username", user.UserName),
         new Claim("email", user.Email),

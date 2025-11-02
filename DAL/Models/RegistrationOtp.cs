@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using DAL.Helpers;
+using System.ComponentModel.DataAnnotations;
 
 namespace DAL.Models
 {
@@ -9,13 +10,13 @@ namespace DAL.Models
         [Required]
         [EmailAddress]
         [StringLength(200)]
-        public string Email { get; set; }
+        public string Email { get; set; } = null!;
         [Required]
         [StringLength(6)]
-        public string OtpCode { get; set; }
+        public string OtpCode { get; set; } = null!;
         [Required]
         public DateTime ExpireAt { get; set; }
-        public DateTime CreateAt { get; set; }
+        public DateTime CreateAt { get; set; } = TimeHelper.GetVietnamTime();
         public bool IsUsed { get; set; } = false;
     }
 }

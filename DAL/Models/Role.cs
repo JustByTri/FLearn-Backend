@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using DAL.Helpers;
+using System.ComponentModel.DataAnnotations;
 
 namespace DAL.Models
 {
@@ -8,11 +9,11 @@ namespace DAL.Models
         public Guid RoleID { get; set; }
         [Required]
         [StringLength(100)]
-        public string Name { get; set; }
+        public string Name { get; set; } = null!;
         public string? Description { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
-        public bool Status { get; set; } = true; // Active by default or false for inactive
-        public virtual ICollection<UserRole>? UserRoles { get; set; } = new List<UserRole>();
+        public DateTime CreatedAt { get; set; } = TimeHelper.GetVietnamTime();
+        public DateTime UpdatedAt { get; set; } = TimeHelper.GetVietnamTime();
+        public bool Status { get; set; } = true;
+        public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     }
 }

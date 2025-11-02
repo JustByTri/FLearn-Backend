@@ -5,13 +5,14 @@ namespace DAL.UnitOfWork
     public interface IUnitOfWork : IDisposable
     {
         IAchievementRepository Achievements { get; }
-        IAIFeedBackRepository AIFeedBacks { get; }
         IApplicationCertTypeRepository ApplicationCertTypes { get; }
         ICertificateTypeRepository CertificateTypes { get; }
-        IContentIssueReportRepository ContentIssueReports { get; }
-        IConversationRepository Conversations { get; }
+        IClassDisputeRepository ClassDisputes { get; }
+        IClassEnrollmentRepository ClassEnrollments { get; }
+        IConversationMessageRepository ConversationMessages { get; }
+        IConversationSessionRepository ConversationSessions { get; }
+        IConversationTaskRepository ConversationTasks { get; }
         ICourseRepository Courses { get; }
-        ICourseGoalRepository CourseGoals { get; }
         ICourseReviewRepository CourseReviews { get; }
         ICourseSubmissionRepository CourseSubmissions { get; }
         ICourseTemplateRepository CourseTemplates { get; }
@@ -19,48 +20,44 @@ namespace DAL.UnitOfWork
         ICourseUnitRepository CourseUnits { get; }
         IEnrollmentRepository Enrollments { get; }
         IExerciseRepository Exercises { get; }
-        IExerciseEvaluationDetailRepository ExerciseEvaluationDetails { get; }
+        IExerciseGradingAssignmentRepository ExerciseGradingAssignments { get; }
         IExerciseSubmissionRepository ExerciseSubmissions { get; }
-        IGoalRepository Goals { get; }
+        IGlobalConversationPromptRepository GlobalConversationPrompts { get; }
         ILanguageRepository Languages { get; }
         ILanguageLevelRepository LanguageLevels { get; }
         ILearnerAchievementRepository LearnerAchievements { get; }
         ILearnerLanguageRepository LearnerLanguages { get; }
-        ILearnerProgressRepository LearnerProgresses { get; }
-        ILearnerGoalRepository LearnerGoals { get; }
         ILessonRepository Lessons { get; }
         ILessonActivityLogRepository LessonActivityLogs { get; }
-        ILessonBookingRepository LessonBookings { get; }
-        ILessonDisputeRepository LessonDisputes { get; }
-        ILessonReviewRepository LessonReviews { get; }
-        IMessageRepository Messages { get; }
+        ILessonProgressRepository LessonProgresses { get; }
+        ILevelRepository Levels { get; }
+        IManagerLanguageRepository ManagerLanguages { get; }
         IPasswordResetOtpRepository PasswordResetOtps { get; }
+        IPaymentTransactionRepository PaymentTransactions { get; }
+        IPayoutRequestRepository PayoutRequests { get; }
         IPurchaseRepository Purchases { get; }
-        IPurchaseDetailRepository PurchaseDetails { get; }
+        IProgramRepository Programs { get; }
         IRefreshTokenRepository RefreshTokens { get; }
+        IRefundRequestsRepository RefundRequests { get; }
         IRegistrationOtpRepository RegistrationOtps { get; }
         IReviewRepository Reviews { get; }
-        IRoadmapRepository Roadmaps { get; }
-        IRoadmapDetailRepository RoadmapDetails { get; }
         IRoleRepository Roles { get; }
-        IStaffLanguageRepository StaffLanguages { get; }
         ITeacherApplicationRepository TeacherApplications { get; }
+        ITeacherBankAccountRepository TeacherBankAccounts { get; }
+        ITeacherClassRepository TeacherClasses { get; }
+        ITeacherEarningAllocationRepository TeacherEarningAllocations { get; }
         ITeacherPayoutRepository TeacherPayouts { get; }
         ITeacherProfileRepository TeacherProfiles { get; }
+        ITeacherProgramAssignmentRepository TeacherProgramAssignments { get; }
         ITeacherReviewRepository TeacherReviews { get; }
         ITempRegistrationRepository TempRegistrations { get; }
         ITopicRepository Topics { get; }
-        ITransactionRepository UserTransactions { get; }
+        IUnitProgressRepository UnitProgresses { get; }
         IUserRepository Users { get; }
         IUserRoleRepository UserRoles { get; }
-        IGlobalConversationPromptRepository GlobalConversationPrompts { get; }
-        IConversationSessionRepository ConversationSessions { get; }
-        IConversationMessageRepository ConversationMessages { get; }
-        IConversationTaskRepository ConversationTasks { get; }
-        ITeacherClassRepository TeacherClasses { get; }
-        IClassDisputeRepository ClassDisputes { get; }
-        IClassEnrollmentRepository ClassEnrollments { get; }
-        IRefundRequestsRepository RefundRequests { get; }
+        IUserSubscriptionRepository UserSubscriptions { get; }
+        IWalletRepository Wallets { get; }
+        IWalletTransactionRepository WalletTransactions { get; }
         int SaveChanges();
         Task<int> SaveChangesAsync();
         void BeginTransaction();
