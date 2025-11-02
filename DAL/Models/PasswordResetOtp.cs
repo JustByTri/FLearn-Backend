@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using DAL.Helpers;
+using System.ComponentModel.DataAnnotations;
 
 namespace DAL.Models
 {
@@ -6,34 +7,21 @@ namespace DAL.Models
     {
         [Key]
         public Guid Id { get; set; }
-
         [Required]
         [StringLength(200)]
         public string Email { get; set; } = string.Empty;
-
         [Required]
         [StringLength(6)]
         public string OtpCode { get; set; } = string.Empty;
-
         [Required]
         public DateTime ExpireAt { get; set; }
-
         public bool IsUsed { get; set; } = false;
-
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-
+        public DateTime CreatedAt { get; set; } = TimeHelper.GetVietnamTime();
         [StringLength(45)]
         public string? IpAddress { get; set; }
-
-
         [StringLength(500)]
         public string? UserAgent { get; set; }
-
-
         public int FailedAttempts { get; set; } = 0;
-
-
         public DateTime? UsedAt { get; set; }
     }
 }

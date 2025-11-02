@@ -12,18 +12,18 @@ namespace DAL.Models
         [Required]
         public Guid LessonId { get; set; }
         [ForeignKey(nameof(LessonId))]
-        public Lesson Lesson { get; set; }
+        public Lesson Lesson { get; set; } = null!;
         [Required]
-        public Guid EnrollmentId { get; set; }   // which enrollment this log is for
-        [ForeignKey(nameof(EnrollmentId))]
-        public Enrollment Enrollment { get; set; }
+        public Guid LessonProgressId { get; set; }
+        [ForeignKey(nameof(LessonProgressId))]
+        public LessonProgress LessonProgress { get; set; } = null!;
         [Required]
-        public Guid LearnerId { get; set; }         // learner
+        public Guid LearnerId { get; set; }
         [ForeignKey(nameof(LearnerId))]
-        public LearnerLanguage Learner { get; set; }
+        public LearnerLanguage Learner { get; set; } = null!;
         public LessonLogType ActivityType { get; set; }
-        public double? Value { get; set; }       // percent/time/score as needed
-        public string? MetadataJson { get; set; } // optional free-form JSON
+        public double? Value { get; set; }
+        public string? MetadataJson { get; set; }
         public DateTime CreatedAt { get; set; } = TimeHelper.GetVietnamTime();
     }
 }

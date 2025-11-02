@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DAL.Models
 {
@@ -12,68 +7,46 @@ namespace DAL.Models
     {
         [Key]
         public Guid RefundRequestID { get; set; }
-
         [Required]
         [ForeignKey("ClassEnrollment")]
         public Guid EnrollmentID { get; set; }
-
         [Required]
         [ForeignKey("Student")]
         public Guid StudentID { get; set; }
-
         [Required]
         [ForeignKey("TeacherClass")]
         public Guid ClassID { get; set; }
-
         [Required]
         public RefundRequestType RequestType { get; set; }
-
         [Required]
         [StringLength(100)]
-        public string BankName { get; set; }
-
+        public string? BankName { get; set; }
         [Required]
         [StringLength(50)]
-        public string BankAccountNumber { get; set; }
-
+        public string? BankAccountNumber { get; set; }
         [Required]
         [StringLength(100)]
-        public string BankAccountHolderName { get; set; }
-
+        public string? BankAccountHolderName { get; set; }
         [StringLength(1000)]
-        public string Reason { get; set; }
-
+        public string? Reason { get; set; }
         [StringLength(500)]
-        public string ProofImageUrl { get; set; }
-
+        public string? ProofImageUrl { get; set; }
         [Required]
         public RefundRequestStatus Status { get; set; } = RefundRequestStatus.Pending;
-
         [StringLength(500)]
-        public string AdminNote { get; set; }
-
+        public string? AdminNote { get; set; }
         [Required]
         [Column(TypeName = "decimal(10,2)")]
         public decimal RefundAmount { get; set; }
-
         public DateTime RequestedAt { get; set; } = DateTime.UtcNow;
         public DateTime? ProcessedAt { get; set; }
-
         [ForeignKey("ProcessedByAdmin")]
         public Guid? ProcessedByAdminID { get; set; }
-
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-
-        // ✅ NAVIGATION PROPERTIES
-        public virtual ClassEnrollment ClassEnrollment { get; set; }
-
- 
-        public virtual User Student { get; set; }
-
-        public virtual TeacherClass TeacherClass { get; set; }
-
-      
-        public virtual User ProcessedByAdmin { get; set; }
+        public virtual ClassEnrollment ClassEnrollment { get; set; } = null!;
+        public virtual User Student { get; set; } = null!;
+        public virtual TeacherClass TeacherClass { get; set; } = null!;
+        public virtual User ProcessedByAdmin { get; set; } = null!;
     }
 
     public enum RefundRequestType

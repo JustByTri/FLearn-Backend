@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using DAL.Helpers;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DAL.Models
@@ -10,12 +11,12 @@ namespace DAL.Models
         [Required]
         public Guid UserID { get; set; }
         [ForeignKey("UserID")]
-        public virtual User User { get; set; }
+        public virtual User User { get; set; } = null!;
         [Required]
         public Guid RoleID { get; set; }
         [ForeignKey("RoleID")]
-        public virtual Role Role { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
+        public virtual Role Role { get; set; } = null!;
+        public DateTime CreatedAt { get; set; } = TimeHelper.GetVietnamTime();
+        public DateTime UpdatedAt { get; set; } = TimeHelper.GetVietnamTime();
     }
 }

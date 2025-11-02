@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using DAL.Helpers;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DAL.Models
 {
@@ -11,38 +8,30 @@ namespace DAL.Models
     {
         [Key]
         public Guid GlobalPromptID { get; set; }
-
         [Required]
         [StringLength(200)]
-        public string PromptName { get; set; }
-
+        public string? PromptName { get; set; }
         [StringLength(500)]
-        public string Description { get; set; }
-
+        public string? Description { get; set; }
         [Required]
-        public string MasterPromptTemplate { get; set; }
-
-        public string ScenarioGuidelines { get; set; }
-        public string RoleplayInstructions { get; set; }
-        public string EvaluationCriteria { get; set; }
-
-        // ✅ NEW: Status field - Draft, Active,
+        public string? MasterPromptTemplate { get; set; }
+        public string? ScenarioGuidelines { get; set; }
+        public string? RoleplayInstructions { get; set; }
+        public string? EvaluationCriteria { get; set; }
         [StringLength(50)]
-        public string Status { get; set; } = "Draft"; // Draft, Active, 
-
+        public string Status { get; set; } = "Draft";
         public bool IsActive { get; set; } = false;
         public bool IsDefault { get; set; } = false;
-
-    
-
         public int UsageCount { get; set; } = 0;
-
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-
-       
+        public DateTime CreatedAt { get; set; } = TimeHelper.GetVietnamTime();
+        public DateTime UpdatedAt { get; set; } = TimeHelper.GetVietnamTime();
         public Guid? CreatedByAdminId { get; set; }
+        [ForeignKey(nameof(CreatedByAdminId))]
+        public virtual User? CreatedByAdmin { get; set; }
         public Guid? LastModifiedByAdminId { get; set; }
+        [ForeignKey(nameof(LastModifiedByAdminId))]
+        public virtual User? LastModifiedByAdmin { get; set; }
+        public virtual ICollection<ConversationSession> ConversationSessions { get; set; } = new List<ConversationSession>();
     }
 }
 

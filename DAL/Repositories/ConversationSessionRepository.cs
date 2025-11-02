@@ -4,11 +4,6 @@ using DAL.IRepositories;
 using DAL.Models;
 using DAL.Type;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DAL.Repositories
 {
@@ -18,18 +13,20 @@ namespace DAL.Repositories
 
         public async Task<List<ConversationSession>> GetUserSessionsAsync(Guid userId)
         {
-            return await _context.ConversationSession
+            return await _context.ConversationSessions
                 .Include(s => s.Language)
                 .Include(s => s.Topic)
                 .Include(s => s.GlobalPrompt)
-                .Where(s => s.UserId == userId)
+                .Include(s => s.Learner)
+                    .ThenInclude(l => l.User)
+                .Where(s => s.Learner.User.UserID == userId)
                 .OrderByDescending(s => s.StartedAt)
             .ToListAsync();
         }
 
         public async Task<ConversationSession?> GetSessionWithMessagesAsync(Guid sessionId)
         {
-            return await _context.ConversationSession
+            return await _context.ConversationSessions
                 .Include(s => s.Language)
                 .Include(s => s.Topic)
                 .Include(s => s.GlobalPrompt)
@@ -39,20 +36,24 @@ namespace DAL.Repositories
 
         public async Task<List<ConversationSession>> GetCompletedSessionsAsync(Guid userId)
         {
-            return await _context.ConversationSession
+            return await _context.ConversationSessions
                 .Include(s => s.Language)
                 .Include(s => s.Topic)
-                .Where(s => s.UserId == userId && s.Status == ConversationSessionStatus.Completed)
+                .Include(s => s.Learner)
+                    .ThenInclude(l => l.User)
+                .Where(s => s.Learner.User.UserID == userId && s.Status == ConversationSessionStatus.Completed)
                 .OrderByDescending(s => s.EndedAt)
             .ToListAsync();
         }
 
         public async Task<List<ConversationSession>> GetActiveSessionsAsync(Guid userId)
         {
-            return await _context.ConversationSession
+            return await _context.ConversationSessions
                 .Include(s => s.Language)
                 .Include(s => s.Topic)
-                .Where(s => s.UserId == userId && s.Status == ConversationSessionStatus.Active)
+                .Include(s => s.Learner)
+                    .ThenInclude(l => l.User)
+                .Where(s => s.Learner.User.UserID == userId && s.Status == ConversationSessionStatus.Active)
                 .OrderByDescending(s => s.StartedAt)
                 .ToListAsync();
         }

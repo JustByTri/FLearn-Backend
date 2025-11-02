@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using DAL.Helpers;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DAL.Models
@@ -6,15 +7,15 @@ namespace DAL.Models
     public class TeacherProfile
     {
         [Key]
-        public Guid TeacherProfileId { get; set; }
+        public Guid TeacherId { get; set; }
         [Required]
         public Guid UserId { get; set; }
         [ForeignKey(nameof(UserId))]
-        public virtual User User { get; set; }
+        public virtual User User { get; set; } = null!;
         [Required]
         public Guid LanguageId { get; set; }
         [ForeignKey(nameof(LanguageId))]
-        public virtual Language Language { get; set; }
+        public virtual Language Language { get; set; } = null!;
         [Required]
         [StringLength(100)]
         public string FullName { get; set; } = string.Empty;
@@ -34,20 +35,26 @@ namespace DAL.Models
         [Phone]
         [StringLength(20)]
         public string PhoneNumber { get; set; } = string.Empty;
+        [Required]
+        [StringLength(50)]
+        public string ProficiencyCode = null!;
+        [Required]
+        public int ProficiencyOrder;
         public double AverageRating { get; set; } = 0.0;
         public int ReviewCount { get; set; } = 0;
         [Required]
         [StringLength(500)]
         public string MeetingUrl { get; set; } = string.Empty;
-        public bool Status { get; set; } = true; // Active by default or false for inactive
-        public bool? IsOpenToTeach { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
-        public virtual ICollection<TeacherReview>? TeacherReviews { get; set; } = new List<TeacherReview>();
-        public virtual ICollection<CourseSubmission>? CourseSubmissions { get; set; } = new List<CourseSubmission>();
-        public virtual ICollection<Course>? Courses { get; set; } = new List<Course>();
-        public virtual ICollection<LessonBooking>? LessonBookings { get; set; } = new List<LessonBooking>();
-        public virtual ICollection<LessonDispute>? LessonDisputes { get; set; } = new List<LessonDispute>();
-        public virtual ICollection<TeacherPayout>? TeacherPayouts { get; set; } = new List<TeacherPayout>();
+        public bool Status { get; set; } = true;
+        public DateTime CreatedAt { get; set; } = TimeHelper.GetVietnamTime();
+        public DateTime UpdatedAt { get; set; } = TimeHelper.GetVietnamTime();
+        public virtual Wallet? Wallet { get; set; }
+        public virtual ICollection<TeacherBankAccount> TeacherBankAccounts { get; set; } = new List<TeacherBankAccount>();
+        public virtual ICollection<PayoutRequest> PayoutRequests { get; set; } = new List<PayoutRequest>();
+        public virtual ICollection<TeacherProgramAssignment> TeacherProgramAssignments { get; set; } = new List<TeacherProgramAssignment>();
+        public virtual ICollection<ExerciseGradingAssignment> ExerciseGradingAssignments { get; set; } = new List<ExerciseGradingAssignment>();
+        public virtual ICollection<TeacherEarningAllocation> TeacherEarningAllocations { get; set; } = new List<TeacherEarningAllocation>();
+        public virtual ICollection<Course> Courses { get; set; } = new List<Course>();
+        public virtual ICollection<TeacherReview> TeacherReviews { get; set; } = new List<TeacherReview>();
     }
 }

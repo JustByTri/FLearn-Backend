@@ -15,7 +15,7 @@ namespace DAL.Models
         [Required]
         public Guid LanguageID { get; set; }
         [ForeignKey(nameof(LanguageID))]
-        public virtual Language Language { get; set; }
+        public virtual Language Language { get; set; } = null!;
         [Required]
         [StringLength(100)]
         public string FullName { get; set; } = string.Empty;
@@ -41,10 +41,15 @@ namespace DAL.Models
         [StringLength(500)]
         public string TeachingExperience { get; set; } = string.Empty;
         public string? RejectionReason { get; set; }
+        [Required]
+        [StringLength(50)]
+        public string ProficiencyCode { get; set; } = null!;
+        [Required]
+        public int ProficiencyOrder { get; set; }
         public ApplicationStatus Status { get; set; } = ApplicationStatus.Pending;
         public Guid? ReviewedBy { get; set; }
         [ForeignKey(nameof(ReviewedBy))]
-        public virtual StaffLanguage? Staff { get; set; }
+        public virtual ManagerLanguage ManagerLanguage { get; set; } = null!;
         public DateTime SubmittedAt { get; set; }
         public DateTime ReviewedAt { get; set; }
         public virtual ICollection<ApplicationCertType> Certificates { get; set; } = new List<ApplicationCertType>();

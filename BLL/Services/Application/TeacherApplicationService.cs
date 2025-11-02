@@ -1,781 +1,781 @@
-﻿using BLL.IServices.Application;
-using BLL.IServices.Auth;
-using BLL.IServices.Upload;
-using Common.DTO.ApiResponse;
-using Common.DTO.Application.Request;
-using Common.DTO.Application.Response;
-using Common.DTO.Certificate.Response;
-using Common.DTO.Language.Response;
-using Common.DTO.Paging.Request;
-using Common.DTO.Paging.Response;
-using Common.DTO.Upload;
-using DAL.Helpers;
-using DAL.Models;
-using DAL.Type;
-using DAL.UnitOfWork;
-using Microsoft.EntityFrameworkCore;
-
-namespace BLL.Services.Application
-{
-    public class TeacherApplicationService : ITeacherApplicationService
-    {
-        private readonly IUnitOfWork _unit;
-        private readonly ICloudinaryService _cloudinary;
-        private readonly IEmailService _email;
-        public TeacherApplicationService(IUnitOfWork unit, ICloudinaryService cloudinary, IEmailService email)
-        {
-            _unit = unit;
-            _cloudinary = cloudinary;
-            _email = email;
-        }
-
-        public async Task<BaseResponse<ApplicationResponse>> ApproveApplicationAsync(Guid staffId, Guid appplicationId)
-        {
-            var selectedStaff = await _unit.StaffLanguages.Query()
-                .Where(s => s.UserId == staffId)
-                .FirstOrDefaultAsync();
-
-            if (selectedStaff == null)
-            {
-                return BaseResponse<ApplicationResponse>.Fail("Staff does not exist.");
-            }
-
-            var existingApp = await _unit.TeacherApplications.Query()
-                .Include(a => a.Language)
-                .Include(a => a.User)
-                .Include(a => a.Certificates)
-                    .ThenInclude(c => c.CertificateType)
-                .Where(a => a.ApplicationID == appplicationId && a.Language.LanguageID == selectedStaff.LanguageId)
-                .FirstOrDefaultAsync();
-
-            if (existingApp == null)
-            {
-                return BaseResponse<ApplicationResponse>.Fail("Application not found or you are not allowed to approve this application.");
-            }
-
-            if (existingApp.Status != ApplicationStatus.Pending)
-            {
-                return BaseResponse<ApplicationResponse>.Fail("Only pending applications can be approved.");
-            }
-
-            existingApp.Status = ApplicationStatus.Approved;
-            existingApp.ReviewedAt = TimeHelper.GetVietnamTime();
-            existingApp.ReviewedBy = selectedStaff.StaffLanguageId;
-            existingApp.ReviewedAt = TimeHelper.GetVietnamTime();
-            await _unit.TeacherApplications.UpdateAsync(existingApp);
-            await _unit.SaveChangesAsync();
-
-            var role = await _unit.Roles.Query().Where(r => r.Name == "Teacher").FirstOrDefaultAsync();
-
-            var newUserRole = new UserRole
-            {
-                UserRoleID = Guid.NewGuid(),
-                RoleID = role.RoleID,
-                UserID = existingApp.UserID,
-                CreatedAt = TimeHelper.GetVietnamTime(),
-                UpdatedAt = TimeHelper.GetVietnamTime(),
-            };
-
-            await _unit.UserRoles.CreateAsync(newUserRole);
-
-
-            var teacherProfile = new TeacherProfile
-            {
-                TeacherProfileId = Guid.NewGuid(),
-                UserId = existingApp.UserID,
-                LanguageId = existingApp.LanguageID,
-                FullName = existingApp.FullName,
-                BirthDate = existingApp.BirthDate,
-                Bio = existingApp.Bio,
-                Avatar = existingApp.Avatar,
-                Email = existingApp.Email,
-                PhoneNumber = existingApp.PhoneNumber,
-                MeetingUrl = existingApp.MeetingUrl,
-                CreatedAt = TimeHelper.GetVietnamTime(),
-                UpdatedAt = TimeHelper.GetVietnamTime(),
-            };
-
-            await _unit.TeacherProfiles.CreateAsync(teacherProfile);
-
-            await _email.SendTeacherApplicationApprovedAsync(existingApp.Email, existingApp.User.UserName);
-
-            var response = new ApplicationResponse
-            {
-                ApplicationID = existingApp.ApplicationID,
-                UserID = existingApp.UserID,
-                LanguageID = existingApp.LanguageID,
-                FullName = existingApp.FullName,
-                BirthDate = existingApp.BirthDate,
-                Bio = existingApp.Bio,
-                Avatar = existingApp.Avatar,
-                Email = existingApp.Email,
-                PhoneNumber = existingApp.PhoneNumber,
-                MeetingUrl = existingApp.MeetingUrl,
-                TeachingExperience = existingApp.TeachingExperience,
-                Status = existingApp.Status.ToString(),
-                SubmittedAt = existingApp.SubmittedAt,
-                ReviewedAt = existingApp.ReviewedAt,
-                RejectionReason = existingApp.RejectionReason,
-                Language = existingApp.Language == null ? null : new LanguageResponse
-                {
-                    Id = existingApp.Language.LanguageID,
-                    LangName = existingApp.Language.LanguageName,
-                    LangCode = existingApp.Language.LanguageCode
-                },
-                User = existingApp.User == null ? null : new UserResponse
-                {
-                    UserId = existingApp.User.UserID,
-                    UserName = existingApp.User.UserName,
-                    Email = existingApp.User.Email
-                },
-                Certificates = existingApp.Certificates.Select(cert => new ApplicationCertTypeResponse
-                {
-                    ApplicationCertTypeId = cert.ApplicationCertTypeId,
-                    CertificateTypeId = cert.CertificateTypeId,
-                    CertificateImageUrl = cert.CertificateImageUrl,
-                    CertificateType = cert.CertificateType == null ? null : new CertificateResponse
-                    {
-                        CertificateId = cert.CertificateType.CertificateTypeId,
-                        Name = cert.CertificateType.Name,
-                        Description = cert.CertificateType.Description
-                    }
-                }).ToList()
-            };
-
-            return BaseResponse<ApplicationResponse>.Success(response, "Application approved successfully.");
-        }
-
-        public async Task<BaseResponse<ApplicationResponse>> CreateApplicationAsync(Guid userId, ApplicationRequest applicationRequest)
-        {
-            var selectedUser = await _unit.Users.GetByIdAsync(userId);
-
-            if (selectedUser == null)
-            {
-                return BaseResponse<ApplicationResponse>.Fail("User does not exist.");
-            }
-
-            // Check if user already submitted an application
-            var existingApp = await _unit.TeacherApplications
-                .FindAsync(a => a.UserID == userId &&
-                               (a.Status == ApplicationStatus.Pending || a.Status == ApplicationStatus.Approved));
-
-            if (existingApp != null)
-            {
-                return BaseResponse<ApplicationResponse>.Fail("You have already submitted an application.");
-            }
-
-            var selectedLang = await _unit.Languages.FindByLanguageCodeAsync(applicationRequest.LangCode);
-
-            if (selectedLang == null)
-            {
-                return BaseResponse<ApplicationResponse>.Fail("Language does not exist.");
-            }
-
-            var certificateTypeIds = applicationRequest.CertificateTypeIds
-                .SelectMany(x => x.Split(',', StringSplitOptions.RemoveEmptyEntries))
-                .Select(x => x.Trim())
-                .ToArray();
-
-            if (applicationRequest.CertificateImages.Length != certificateTypeIds.Length)
-            {
-                return BaseResponse<ApplicationResponse>.Fail("CertificateImages count must match CertificateTypeIds count.");
-            }
-
-            foreach (var idStr in certificateTypeIds)
-            {
-                if (!Guid.TryParse(idStr, out var certId))
-                    return BaseResponse<ApplicationResponse>.Fail($"Invalid CertificateTypeId: {idStr}");
-
-                var certType = await _unit.CertificateTypes.GetByIdAsync(certId);
-                if (certType == null)
-                    return BaseResponse<ApplicationResponse>.Fail($"CertificateTypeId {idStr} does not exist.");
-            }
-
-            var avatarUpload = await _cloudinary.UploadImageAsync(applicationRequest.Avatar, "avatars");
-            if (avatarUpload == null)
-                return BaseResponse<ApplicationResponse>.Fail("Avatar upload failed.");
-
-            var teacherApp = new TeacherApplication
-            {
-                ApplicationID = Guid.NewGuid(),
-                UserID = userId,
-                LanguageID = selectedLang.LanguageID,
-                FullName = applicationRequest.FullName,
-                BirthDate = applicationRequest.BirthDate,
-                Bio = applicationRequest.Bio,
-                Avatar = avatarUpload.Url,
-                Email = applicationRequest.Email,
-                PhoneNumber = applicationRequest.PhoneNumber,
-                MeetingUrl = applicationRequest.MeetingUrl,
-                TeachingExperience = applicationRequest.TeachingExperience,
-                Status = ApplicationStatus.Pending,
-                SubmittedAt = TimeHelper.GetVietnamTime()
-            };
-
-            await _unit.TeacherApplications.CreateAsync(teacherApp);
-
-
-            var certificateList = new List<ApplicationCertType>();
-            for (int i = 0; i < applicationRequest.CertificateImages.Length; i++)
-            {
-                var certFile = applicationRequest.CertificateImages[i];
-                var certId = Guid.Parse(certificateTypeIds[i]);
-
-                UploadResultDto uploadResult;
-                if (certFile.ContentType.Contains("image"))
-                    uploadResult = await _cloudinary.UploadImageAsync(certFile, "certificates");
-                else
-                    uploadResult = await _cloudinary.UploadDocumentAsync(certFile, "certificates");
-
-                if (uploadResult == null)
-                    return BaseResponse<ApplicationResponse>.Fail($"Upload failed for certificate index {i + 1}.");
-
-                var certEntity = new ApplicationCertType
-                {
-                    ApplicationCertTypeId = Guid.NewGuid(),
-                    ApplicationId = teacherApp.ApplicationID,
-                    CertificateTypeId = certId,
-                    CertificateImageUrl = uploadResult.Url,
-                    CertificateImagePublicId = uploadResult.PublicId,
-                    CreatedAt = TimeHelper.GetVietnamTime(),
-                    UpdatedAt = TimeHelper.GetVietnamTime()
-                };
-
-                certificateList.Add(certEntity);
-            }
-
-            await _unit.ApplicationCertTypes.AddRangeAsync(certificateList);
-            await _unit.SaveChangesAsync();
-
-            await _email.SendTeacherApplicationSubmittedAsync(applicationRequest.Email, selectedUser.UserName);
-
-            var response = new ApplicationResponse
-            {
-                ApplicationID = teacherApp.ApplicationID,
-                UserID = teacherApp.UserID,
-                LanguageID = teacherApp.LanguageID,
-                FullName = teacherApp.FullName,
-                BirthDate = teacherApp.BirthDate,
-                Bio = teacherApp.Bio,
-                Avatar = teacherApp.Avatar,
-                Email = teacherApp.Email,
-                PhoneNumber = teacherApp.PhoneNumber,
-                MeetingUrl = teacherApp.MeetingUrl,
-                TeachingExperience = teacherApp.TeachingExperience,
-                Status = teacherApp.Status.ToString(),
-                SubmittedAt = teacherApp.SubmittedAt,
-                Language = new LanguageResponse
-                {
-                    Id = selectedLang.LanguageID,
-                    LangName = selectedLang.LanguageName,
-                    LangCode = selectedLang.LanguageCode,
-                },
-                User = new UserResponse
-                {
-                    UserId = selectedUser.UserID,
-                    UserName = selectedUser.UserName,
-                    Email = selectedUser.Email,
-                },
-                Certificates = teacherApp.Certificates.Select(cert => new ApplicationCertTypeResponse
-                {
-                    ApplicationCertTypeId = cert.ApplicationCertTypeId,
-                    CertificateTypeId = cert.CertificateTypeId,
-                    CertificateImageUrl = cert.CertificateImageUrl,
-                    CertificateType = cert.CertificateType != null ? new CertificateResponse
-                    {
-                        CertificateId = cert.CertificateType.CertificateTypeId,
-                        Name = cert.CertificateType.Name,
-                        Description = cert.CertificateType.Description
-                    }
-                    : null
-                }).ToList()
-            };
-
-            return BaseResponse<ApplicationResponse>.Success(response, "Application created successfully.");
-        }
-
-        public async Task<PagedResponse<IEnumerable<ApplicationResponse>>> GetApplicationAsync(
-           Guid staffId, PagingRequest request, string status)
-        {
-            try
-            {
-                var selectedStaff = await _unit.Users.Query()
-                    .Include(u => u.StaffLanguage)
-                    .Where(u => u.UserID == staffId)
-                    .FirstOrDefaultAsync();
-
-                if (selectedStaff == null)
-                    return PagedResponse<IEnumerable<ApplicationResponse>>.Fail(null, "Staff does not exist.", 400);
-
-                if (selectedStaff.StaffLanguage == null)
-                    return PagedResponse<IEnumerable<ApplicationResponse>>.Fail(null, "Staff language is not assigned.", 400);
-
-                var query = _unit.TeacherApplications.Query()
-                    .Include(a => a.Language)
-                    .Include(a => a.User)
-                    .Include(a => a.Certificates)
-                        .ThenInclude(c => c.CertificateType)
-                    .Where(a => a.Language.LanguageID == selectedStaff.StaffLanguage.LanguageId);
-
-                if (!string.IsNullOrWhiteSpace(status) &&
-                    Enum.TryParse<ApplicationStatus>(status, true, out var parsedStatus))
-                {
-                    query = query.Where(a => a.Status == parsedStatus);
-                }
-
-                query = query.OrderByDescending(a => a.SubmittedAt);
-
-                var totalItems = await query.CountAsync();
-
-                var applications = await query
-                    .Skip((request.Page - 1) * request.PageSize)
-                    .Take(request.PageSize)
-                    .ToListAsync();
-
-                var responses = new List<ApplicationResponse>();
-
-                foreach (var teacherApp in applications)
-                {
-                    User staffReviewer = null;
-                    if (teacherApp.ReviewedBy.HasValue)
-                    {
-                        var staffLang = await _unit.StaffLanguages.Query()
-                            .Include(s => s.User)
-                            .Where(s => s.StaffLanguageId == teacherApp.ReviewedBy.Value)
-                            .FirstOrDefaultAsync();
-                        staffReviewer = staffLang?.User;
-                    }
-
-                    responses.Add(new ApplicationResponse
-                    {
-                        ApplicationID = teacherApp.ApplicationID,
-                        UserID = teacherApp.UserID,
-                        LanguageID = teacherApp.LanguageID,
-                        FullName = teacherApp.FullName,
-                        BirthDate = teacherApp.BirthDate,
-                        Bio = teacherApp.Bio,
-                        Avatar = teacherApp.Avatar,
-                        Email = teacherApp.Email,
-                        PhoneNumber = teacherApp.PhoneNumber,
-                        TeachingExperience = teacherApp.TeachingExperience,
-                        MeetingUrl = teacherApp.MeetingUrl,
-                        Status = teacherApp.Status.ToString(),
-                        ReviewedBy = teacherApp.ReviewedBy,
-                        ReviewedByName = staffReviewer?.UserName,
-                        SubmittedAt = teacherApp.SubmittedAt,
-                        ReviewedAt = teacherApp.ReviewedAt,
-                        RejectionReason = teacherApp.RejectionReason,
-                        Language = teacherApp.Language == null ? null : new LanguageResponse
-                        {
-                            Id = teacherApp.Language.LanguageID,
-                            LangName = teacherApp.Language.LanguageName,
-                            LangCode = teacherApp.Language.LanguageCode
-                        },
-                        User = teacherApp.User == null ? null : new UserResponse
-                        {
-                            UserId = teacherApp.User.UserID,
-                            UserName = teacherApp.User.UserName,
-                            Email = teacherApp.User.Email
-                        },
-                        Certificates = teacherApp.Certificates.Select(cert => new ApplicationCertTypeResponse
-                        {
-                            ApplicationCertTypeId = cert.ApplicationCertTypeId,
-                            CertificateTypeId = cert.CertificateTypeId,
-                            CertificateImageUrl = cert.CertificateImageUrl,
-                            CertificateType = cert.CertificateType == null ? null : new CertificateResponse
-                            {
-                                CertificateId = cert.CertificateType.CertificateTypeId,
-                                Name = cert.CertificateType.Name,
-                                Description = cert.CertificateType.Description
-                            }
-                        }).ToList()
-                    });
-                }
-
-                return PagedResponse<IEnumerable<ApplicationResponse>>.Success(
-                    responses,
-                    request.Page,
-                    request.PageSize,
-                    totalItems,
-                    "Applications retrieved successfully."
-                );
-            }
-            catch (Exception ex)
-            {
-                return PagedResponse<IEnumerable<ApplicationResponse>>.Error($"Unexpected error: {ex.Message}");
-            }
-        }
-
-        public async Task<PagedResponse<IEnumerable<ApplicationResponse>>> GetMyApplicationAsync(
-            Guid userId, PagingRequest request, string status)
-        {
-            try
-            {
-                var user = await _unit.Users.GetByIdAsync(userId);
-                if (user == null)
-                    return PagedResponse<IEnumerable<ApplicationResponse>>.Fail(null, "Access denied.", 403);
-
-                var query = _unit.TeacherApplications.Query()
-                    .Include(a => a.Language)
-                    .Include(a => a.User)
-                    .Include(a => a.Certificates)
-                        .ThenInclude(c => c.CertificateType)
-                    .Where(a => a.UserID == userId);
-
-                if (!string.IsNullOrWhiteSpace(status) &&
-                    Enum.TryParse<ApplicationStatus>(status, true, out var parsedStatus))
-                {
-                    query = query.Where(a => a.Status == parsedStatus);
-                }
-
-                query = query.OrderByDescending(a => a.SubmittedAt);
-
-                var totalItems = await query.CountAsync();
-
-                var applications = await query
-                    .Skip((request.Page - 1) * request.PageSize)
-                    .Take(request.PageSize)
-                    .ToListAsync();
-
-                var responses = new List<ApplicationResponse>();
-
-                foreach (var teacherApp in applications)
-                {
-                    User staff = null;
-                    if (teacherApp.ReviewedBy.HasValue)
-                    {
-                        var staffLang = await _unit.StaffLanguages.Query()
-                            .Include(s => s.User)
-                            .Where(s => s.StaffLanguageId == teacherApp.ReviewedBy.Value)
-                            .FirstOrDefaultAsync();
-                        staff = staffLang?.User;
-                    }
-
-                    responses.Add(new ApplicationResponse
-                    {
-                        ApplicationID = teacherApp.ApplicationID,
-                        UserID = teacherApp.UserID,
-                        LanguageID = teacherApp.LanguageID,
-                        FullName = teacherApp.FullName,
-                        BirthDate = teacherApp.BirthDate,
-                        Bio = teacherApp.Bio,
-                        Avatar = teacherApp.Avatar,
-                        Email = teacherApp.Email,
-                        PhoneNumber = teacherApp.PhoneNumber,
-                        TeachingExperience = teacherApp.TeachingExperience,
-                        MeetingUrl = teacherApp.MeetingUrl,
-                        Status = teacherApp.Status.ToString(),
-                        ReviewedBy = teacherApp.ReviewedBy,
-                        ReviewedByName = staff?.UserName,
-                        SubmittedAt = teacherApp.SubmittedAt,
-                        ReviewedAt = teacherApp.ReviewedAt,
-                        RejectionReason = teacherApp.RejectionReason,
-                        Language = teacherApp.Language == null ? null : new LanguageResponse
-                        {
-                            Id = teacherApp.Language.LanguageID,
-                            LangName = teacherApp.Language.LanguageName,
-                            LangCode = teacherApp.Language.LanguageCode
-                        },
-                        User = teacherApp.User == null ? null : new UserResponse
-                        {
-                            UserId = teacherApp.User.UserID,
-                            UserName = teacherApp.User.UserName,
-                            Email = teacherApp.User.Email
-                        },
-                        Certificates = teacherApp.Certificates.Select(cert => new ApplicationCertTypeResponse
-                        {
-                            ApplicationCertTypeId = cert.ApplicationCertTypeId,
-                            CertificateTypeId = cert.CertificateTypeId,
-                            CertificateImageUrl = cert.CertificateImageUrl,
-                            CertificateType = cert.CertificateType == null ? null : new CertificateResponse
-                            {
-                                CertificateId = cert.CertificateType.CertificateTypeId,
-                                Name = cert.CertificateType.Name,
-                                Description = cert.CertificateType.Description
-                            }
-                        }).ToList()
-                    });
-                }
-
-                return PagedResponse<IEnumerable<ApplicationResponse>>.Success(
-                    responses,
-                    request.Page,
-                    request.PageSize,
-                    totalItems,
-                    "Applications retrieved successfully."
-                );
-            }
-            catch (Exception ex)
-            {
-                return PagedResponse<IEnumerable<ApplicationResponse>>.Error($"Unexpected error: {ex.Message}");
-            }
-        }
-
-        public async Task<BaseResponse<ApplicationResponse>> RejectApplicationAsync(Guid staffId, Guid appplicationId, RejectApplicationRequest request)
-        {
-            var selectedStaff = await _unit.StaffLanguages.Query()
-                .Where(s => s.UserId == staffId)
-                .FirstOrDefaultAsync();
-
-            if (selectedStaff == null)
-            {
-                return BaseResponse<ApplicationResponse>.Fail("Staff does not exist.");
-            }
-
-            var existingApp = await _unit.TeacherApplications.Query()
-                .Include(a => a.Language)
-                .Include(a => a.User)
-                .Include(a => a.Certificates)
-                    .ThenInclude(c => c.CertificateType)
-                .Where(a => a.ApplicationID == appplicationId && a.Language.LanguageID == selectedStaff.LanguageId)
-                .FirstOrDefaultAsync();
-
-            if (existingApp == null)
-            {
-                return BaseResponse<ApplicationResponse>.Fail("Application not found or you are not allowed to reject this application.");
-            }
-
-            if (existingApp.Status != ApplicationStatus.Pending)
-            {
-                return BaseResponse<ApplicationResponse>.Fail("Only pending applications can be rejected.");
-            }
-
-            existingApp.Status = ApplicationStatus.Rejected;
-            existingApp.RejectionReason = request.Reason;
-            existingApp.ReviewedAt = TimeHelper.GetVietnamTime();
-            existingApp.ReviewedBy = selectedStaff.StaffLanguageId;
-
-            await _unit.TeacherApplications.UpdateAsync(existingApp);
-            await _unit.SaveChangesAsync();
-
-            await _email.SendTeacherApplicationRejectedAsync(existingApp.Email, existingApp.User.UserName, existingApp.RejectionReason);
-
-            var response = new ApplicationResponse
-            {
-                ApplicationID = existingApp.ApplicationID,
-                UserID = existingApp.UserID,
-                LanguageID = existingApp.LanguageID,
-                FullName = existingApp.FullName,
-                BirthDate = existingApp.BirthDate,
-                Bio = existingApp.Bio,
-                Avatar = existingApp.Avatar,
-                Email = existingApp.Email,
-                PhoneNumber = existingApp.PhoneNumber,
-                MeetingUrl = existingApp.MeetingUrl,
-                TeachingExperience = existingApp.TeachingExperience,
-                Status = existingApp.Status.ToString(),
-                SubmittedAt = existingApp.SubmittedAt,
-                ReviewedAt = existingApp.ReviewedAt,
-                RejectionReason = existingApp.RejectionReason,
-                Language = existingApp.Language == null ? null : new LanguageResponse
-                {
-                    Id = existingApp.Language.LanguageID,
-                    LangName = existingApp.Language.LanguageName,
-                    LangCode = existingApp.Language.LanguageCode
-                },
-                User = existingApp.User == null ? null : new UserResponse
-                {
-                    UserId = existingApp.User.UserID,
-                    UserName = existingApp.User.UserName,
-                    Email = existingApp.User.Email
-                },
-                Certificates = existingApp.Certificates.Select(cert => new ApplicationCertTypeResponse
-                {
-                    ApplicationCertTypeId = cert.ApplicationCertTypeId,
-                    CertificateTypeId = cert.CertificateTypeId,
-                    CertificateImageUrl = cert.CertificateImageUrl,
-                    CertificateType = cert.CertificateType == null ? null : new CertificateResponse
-                    {
-                        CertificateId = cert.CertificateType.CertificateTypeId,
-                        Name = cert.CertificateType.Name,
-                        Description = cert.CertificateType.Description
-                    }
-                }).ToList()
-            };
-
-            return BaseResponse<ApplicationResponse>.Success(response, "Application rejected successfully.");
-        }
-
-        public async Task<BaseResponse<ApplicationResponse>> UpdateApplicationAsync(Guid userId, ApplicationUpdateRequest applicationRequest)
-        {
-            var selectedUser = await _unit.Users.GetByIdAsync(userId);
-            if (selectedUser == null)
-                return BaseResponse<ApplicationResponse>.Fail("User does not exist.");
-
-            var existingApp = await _unit.TeacherApplications
-                .FindAsync(a => a.UserID == userId);
-
-            if (existingApp == null)
-                return BaseResponse<ApplicationResponse>.Fail("Application not found.");
-
-            User staff = null;
-            if (existingApp.ReviewedBy.HasValue)
-            {
-                var staffLang = await _unit.StaffLanguages.Query()
-                    .Include(s => s.User)
-                    .Where(s => s.StaffLanguageId == existingApp.ReviewedBy.Value)
-                    .FirstOrDefaultAsync();
-                staff = staffLang?.User;
-            }
-
-            if (existingApp.Status != ApplicationStatus.Pending)
-                return BaseResponse<ApplicationResponse>.Fail("Only pending applications can be updated.");
-
-            var selectedLang = await _unit.Languages.FindByLanguageCodeAsync(applicationRequest.LangCode);
-            if (selectedLang == null)
-                return BaseResponse<ApplicationResponse>.Fail("Language does not exist.");
-
-            existingApp.LanguageID = selectedLang.LanguageID;
-
-            // Update Avatar if new one provided
-            if (applicationRequest.Avatar != null)
-            {
-                var avatarUpload = await _cloudinary.UploadImageAsync(applicationRequest.Avatar, "avatars");
-                if (avatarUpload == null)
-                    return BaseResponse<ApplicationResponse>.Fail("Avatar upload failed.");
-
-                existingApp.Avatar = avatarUpload.Url;
-            }
-
-            // Update base info
-            if (!string.IsNullOrWhiteSpace(applicationRequest.FullName))
-                existingApp.FullName = applicationRequest.FullName;
-            if (applicationRequest.BirthDate.HasValue && applicationRequest.BirthDate.Value != default)
-                existingApp.BirthDate = applicationRequest.BirthDate.Value;
-            if (!string.IsNullOrWhiteSpace(applicationRequest.Bio))
-                existingApp.Bio = applicationRequest.Bio;
-            if (!string.IsNullOrWhiteSpace(applicationRequest.Email))
-                existingApp.Email = applicationRequest.Email;
-            if (!string.IsNullOrWhiteSpace(applicationRequest.PhoneNumber))
-                existingApp.PhoneNumber = applicationRequest.PhoneNumber;
-            if (!string.IsNullOrWhiteSpace(applicationRequest.MeetingUrl))
-                existingApp.MeetingUrl = applicationRequest.MeetingUrl;
-            if (!string.IsNullOrWhiteSpace(applicationRequest.TeachingExperience))
-                existingApp.TeachingExperience = applicationRequest.TeachingExperience;
-
-            existingApp.Status = ApplicationStatus.Pending;
-            existingApp.SubmittedAt = TimeHelper.GetVietnamTime();
-
-            // Handle certificates
-            if (applicationRequest.CertificateImages != null && applicationRequest.CertificateImages.Length > 0 && applicationRequest.CertificateTypeIds != null)
-            {
-                var certificateTypeIds = applicationRequest.CertificateTypeIds
-                .SelectMany(x => x.Split(',', StringSplitOptions.RemoveEmptyEntries))
-                .Select(x => x.Trim())
-                .ToArray();
-
-                if (applicationRequest.CertificateImages.Length != certificateTypeIds.Length)
-                {
-                    return BaseResponse<ApplicationResponse>.Fail("CertificateImages count must match CertificateTypeIds count.");
-                }
-
-                foreach (var idStr in certificateTypeIds)
-                {
-                    if (!Guid.TryParse(idStr, out var certId))
-                        return BaseResponse<ApplicationResponse>.Fail($"Invalid CertificateTypeId: {idStr}");
-
-                    var certType = await _unit.CertificateTypes.GetByIdAsync(certId);
-                    if (certType == null)
-                        return BaseResponse<ApplicationResponse>.Fail($"CertificateTypeId {idStr} does not exist.");
-                }
-
-                // Delete old certs (and Cloudinary files)
-                var oldCerts = await _unit.ApplicationCertTypes.FindAllAsync(x => x.ApplicationId == existingApp.ApplicationID);
-                foreach (var cert in oldCerts)
-                {
-                    if (!string.IsNullOrEmpty(cert.CertificateImagePublicId))
-                        await _cloudinary.DeleteFileAsync(cert.CertificateImagePublicId);
-                }
-                _unit.ApplicationCertTypes.DeleteRange(oldCerts);
-
-                // Upload new certs
-                var certificateList = new List<ApplicationCertType>();
-                for (int i = 0; i < applicationRequest.CertificateImages.Length; i++)
-                {
-                    var certFile = applicationRequest.CertificateImages[i];
-                    var certId = Guid.Parse(certificateTypeIds[i]);
-
-                    UploadResultDto uploadResult;
-                    if (certFile.ContentType.Contains("image"))
-                        uploadResult = await _cloudinary.UploadImageAsync(certFile, "certificates");
-                    else
-                        uploadResult = await _cloudinary.UploadDocumentAsync(certFile, "certificates");
-
-                    if (uploadResult == null)
-                        return BaseResponse<ApplicationResponse>.Fail($"Upload failed for certificate index {i + 1}.");
-
-                    certificateList.Add(new ApplicationCertType
-                    {
-                        ApplicationCertTypeId = Guid.NewGuid(),
-                        ApplicationId = existingApp.ApplicationID,
-                        CertificateTypeId = certId,
-                        CertificateImageUrl = uploadResult.Url,
-                        CertificateImagePublicId = uploadResult.PublicId,
-                        CreatedAt = TimeHelper.GetVietnamTime(),
-                        UpdatedAt = TimeHelper.GetVietnamTime()
-                    });
-                }
-
-                await _unit.ApplicationCertTypes.AddRangeAsync(certificateList);
-            }
-
-            await _unit.SaveChangesAsync();
-
-            // Build response
-            var certificates = await _unit.ApplicationCertTypes.Query()
-                .Include(a => a.CertificateType)
-                .Where(a => a.ApplicationId == existingApp.ApplicationID)
-                .ToListAsync();
-
-            var certResponses = certificates.Select(cert => new ApplicationCertTypeResponse
-            {
-                ApplicationCertTypeId = cert.ApplicationCertTypeId,
-                CertificateTypeId = cert.CertificateTypeId,
-                CertificateImageUrl = cert.CertificateImageUrl,
-                CertificateType = cert.CertificateType != null ? new CertificateResponse
-                {
-                    CertificateId = cert.CertificateType.CertificateTypeId,
-                    Name = cert.CertificateType.Name,
-                    Description = cert.CertificateType.Description
-                } : null
-            }).ToList();
-
-            var response = new ApplicationResponse
-            {
-                ApplicationID = existingApp.ApplicationID,
-                UserID = existingApp.UserID,
-                LanguageID = existingApp.LanguageID,
-                FullName = existingApp.FullName,
-                BirthDate = existingApp.BirthDate,
-                Bio = existingApp.Bio,
-                Avatar = existingApp.Avatar,
-                Email = existingApp.Email,
-                PhoneNumber = existingApp.PhoneNumber,
-                MeetingUrl = existingApp.MeetingUrl,
-                TeachingExperience = existingApp.TeachingExperience,
-                Status = existingApp.Status.ToString(),
-                ReviewedBy = existingApp.ReviewedBy,
-                ReviewedByName = staff?.UserName,
-                SubmittedAt = existingApp.SubmittedAt,
-                ReviewedAt = existingApp.ReviewedAt,
-                RejectionReason = existingApp.RejectionReason,
-                Language = new LanguageResponse
-                {
-                    Id = selectedLang.LanguageID,
-                    LangName = selectedLang.LanguageName,
-                    LangCode = selectedLang.LanguageCode
-                },
-                User = new UserResponse
-                {
-                    UserId = selectedUser.UserID,
-                    UserName = selectedUser.UserName,
-                    Email = selectedUser.Email
-                },
-                Certificates = certResponses
-            };
-
-            return BaseResponse<ApplicationResponse>.Success(response, "Application updated successfully.");
-        }
-
-    }
-}
+﻿//using BLL.IServices.Application;
+//using BLL.IServices.Auth;
+//using BLL.IServices.Upload;
+//using Common.DTO.ApiResponse;
+//using Common.DTO.Application.Request;
+//using Common.DTO.Application.Response;
+//using Common.DTO.Certificate.Response;
+//using Common.DTO.Language.Response;
+//using Common.DTO.Paging.Request;
+//using Common.DTO.Paging.Response;
+//using Common.DTO.Upload;
+//using DAL.Helpers;
+//using DAL.Models;
+//using DAL.Type;
+//using DAL.UnitOfWork;
+//using Microsoft.EntityFrameworkCore;
+
+//namespace BLL.Services.Application
+//{
+//    public class TeacherApplicationService : ITeacherApplicationService
+//    {
+//        private readonly IUnitOfWork _unit;
+//        private readonly ICloudinaryService _cloudinary;
+//        private readonly IEmailService _email;
+//        public TeacherApplicationService(IUnitOfWork unit, ICloudinaryService cloudinary, IEmailService email)
+//        {
+//            _unit = unit;
+//            _cloudinary = cloudinary;
+//            _email = email;
+//        }
+
+//        public async Task<BaseResponse<ApplicationResponse>> ApproveApplicationAsync(Guid staffId, Guid appplicationId)
+//        {
+//            var selectedStaff = await _unit.StaffLanguages.Query()
+//                .Where(s => s.UserId == staffId)
+//                .FirstOrDefaultAsync();
+
+//            if (selectedStaff == null)
+//            {
+//                return BaseResponse<ApplicationResponse>.Fail("Staff does not exist.");
+//            }
+
+//            var existingApp = await _unit.TeacherApplications.Query()
+//                .Include(a => a.Language)
+//                .Include(a => a.User)
+//                .Include(a => a.Certificates)
+//                    .ThenInclude(c => c.CertificateType)
+//                .Where(a => a.ApplicationID == appplicationId && a.Language.LanguageID == selectedStaff.LanguageId)
+//                .FirstOrDefaultAsync();
+
+//            if (existingApp == null)
+//            {
+//                return BaseResponse<ApplicationResponse>.Fail("Application not found or you are not allowed to approve this application.");
+//            }
+
+//            if (existingApp.Status != ApplicationStatus.Pending)
+//            {
+//                return BaseResponse<ApplicationResponse>.Fail("Only pending applications can be approved.");
+//            }
+
+//            existingApp.Status = ApplicationStatus.Approved;
+//            existingApp.ReviewedAt = TimeHelper.GetVietnamTime();
+//            existingApp.ReviewedBy = selectedStaff.StaffLanguageId;
+//            existingApp.ReviewedAt = TimeHelper.GetVietnamTime();
+//            await _unit.TeacherApplications.UpdateAsync(existingApp);
+//            await _unit.SaveChangesAsync();
+
+//            var role = await _unit.Roles.Query().Where(r => r.Name == "Teacher").FirstOrDefaultAsync();
+
+//            var newUserRole = new UserRole
+//            {
+//                UserRoleID = Guid.NewGuid(),
+//                RoleID = role.RoleID,
+//                UserID = existingApp.UserID,
+//                CreatedAt = TimeHelper.GetVietnamTime(),
+//                UpdatedAt = TimeHelper.GetVietnamTime(),
+//            };
+
+//            await _unit.UserRoles.CreateAsync(newUserRole);
+
+
+//            var teacherProfile = new TeacherProfile
+//            {
+//                TeacherProfileId = Guid.NewGuid(),
+//                UserId = existingApp.UserID,
+//                LanguageId = existingApp.LanguageID,
+//                FullName = existingApp.FullName,
+//                BirthDate = existingApp.BirthDate,
+//                Bio = existingApp.Bio,
+//                Avatar = existingApp.Avatar,
+//                Email = existingApp.Email,
+//                PhoneNumber = existingApp.PhoneNumber,
+//                MeetingUrl = existingApp.MeetingUrl,
+//                CreatedAt = TimeHelper.GetVietnamTime(),
+//                UpdatedAt = TimeHelper.GetVietnamTime(),
+//            };
+
+//            await _unit.TeacherProfiles.CreateAsync(teacherProfile);
+
+//            await _email.SendTeacherApplicationApprovedAsync(existingApp.Email, existingApp.User.UserName);
+
+//            var response = new ApplicationResponse
+//            {
+//                ApplicationID = existingApp.ApplicationID,
+//                UserID = existingApp.UserID,
+//                LanguageID = existingApp.LanguageID,
+//                FullName = existingApp.FullName,
+//                BirthDate = existingApp.BirthDate,
+//                Bio = existingApp.Bio,
+//                Avatar = existingApp.Avatar,
+//                Email = existingApp.Email,
+//                PhoneNumber = existingApp.PhoneNumber,
+//                MeetingUrl = existingApp.MeetingUrl,
+//                TeachingExperience = existingApp.TeachingExperience,
+//                Status = existingApp.Status.ToString(),
+//                SubmittedAt = existingApp.SubmittedAt,
+//                ReviewedAt = existingApp.ReviewedAt,
+//                RejectionReason = existingApp.RejectionReason,
+//                Language = existingApp.Language == null ? null : new LanguageResponse
+//                {
+//                    Id = existingApp.Language.LanguageID,
+//                    LangName = existingApp.Language.LanguageName,
+//                    LangCode = existingApp.Language.LanguageCode
+//                },
+//                User = existingApp.User == null ? null : new UserResponse
+//                {
+//                    UserId = existingApp.User.UserID,
+//                    UserName = existingApp.User.UserName,
+//                    Email = existingApp.User.Email
+//                },
+//                Certificates = existingApp.Certificates.Select(cert => new ApplicationCertTypeResponse
+//                {
+//                    ApplicationCertTypeId = cert.ApplicationCertTypeId,
+//                    CertificateTypeId = cert.CertificateTypeId,
+//                    CertificateImageUrl = cert.CertificateImageUrl,
+//                    CertificateType = cert.CertificateType == null ? null : new CertificateResponse
+//                    {
+//                        CertificateId = cert.CertificateType.CertificateTypeId,
+//                        Name = cert.CertificateType.Name,
+//                        Description = cert.CertificateType.Description
+//                    }
+//                }).ToList()
+//            };
+
+//            return BaseResponse<ApplicationResponse>.Success(response, "Application approved successfully.");
+//        }
+
+//        public async Task<BaseResponse<ApplicationResponse>> CreateApplicationAsync(Guid userId, ApplicationRequest applicationRequest)
+//        {
+//            var selectedUser = await _unit.Users.GetByIdAsync(userId);
+
+//            if (selectedUser == null)
+//            {
+//                return BaseResponse<ApplicationResponse>.Fail("User does not exist.");
+//            }
+
+//            // Check if user already submitted an application
+//            var existingApp = await _unit.TeacherApplications
+//                .FindAsync(a => a.UserID == userId &&
+//                               (a.Status == ApplicationStatus.Pending || a.Status == ApplicationStatus.Approved));
+
+//            if (existingApp != null)
+//            {
+//                return BaseResponse<ApplicationResponse>.Fail("You have already submitted an application.");
+//            }
+
+//            var selectedLang = await _unit.Languages.FindByLanguageCodeAsync(applicationRequest.LangCode);
+
+//            if (selectedLang == null)
+//            {
+//                return BaseResponse<ApplicationResponse>.Fail("Language does not exist.");
+//            }
+
+//            var certificateTypeIds = applicationRequest.CertificateTypeIds
+//                .SelectMany(x => x.Split(',', StringSplitOptions.RemoveEmptyEntries))
+//                .Select(x => x.Trim())
+//                .ToArray();
+
+//            if (applicationRequest.CertificateImages.Length != certificateTypeIds.Length)
+//            {
+//                return BaseResponse<ApplicationResponse>.Fail("CertificateImages count must match CertificateTypeIds count.");
+//            }
+
+//            foreach (var idStr in certificateTypeIds)
+//            {
+//                if (!Guid.TryParse(idStr, out var certId))
+//                    return BaseResponse<ApplicationResponse>.Fail($"Invalid CertificateTypeId: {idStr}");
+
+//                var certType = await _unit.CertificateTypes.GetByIdAsync(certId);
+//                if (certType == null)
+//                    return BaseResponse<ApplicationResponse>.Fail($"CertificateTypeId {idStr} does not exist.");
+//            }
+
+//            var avatarUpload = await _cloudinary.UploadImageAsync(applicationRequest.Avatar, "avatars");
+//            if (avatarUpload == null)
+//                return BaseResponse<ApplicationResponse>.Fail("Avatar upload failed.");
+
+//            var teacherApp = new TeacherApplication
+//            {
+//                ApplicationID = Guid.NewGuid(),
+//                UserID = userId,
+//                LanguageID = selectedLang.LanguageID,
+//                FullName = applicationRequest.FullName,
+//                BirthDate = applicationRequest.BirthDate,
+//                Bio = applicationRequest.Bio,
+//                Avatar = avatarUpload.Url,
+//                Email = applicationRequest.Email,
+//                PhoneNumber = applicationRequest.PhoneNumber,
+//                MeetingUrl = applicationRequest.MeetingUrl,
+//                TeachingExperience = applicationRequest.TeachingExperience,
+//                Status = ApplicationStatus.Pending,
+//                SubmittedAt = TimeHelper.GetVietnamTime()
+//            };
+
+//            await _unit.TeacherApplications.CreateAsync(teacherApp);
+
+
+//            var certificateList = new List<ApplicationCertType>();
+//            for (int i = 0; i < applicationRequest.CertificateImages.Length; i++)
+//            {
+//                var certFile = applicationRequest.CertificateImages[i];
+//                var certId = Guid.Parse(certificateTypeIds[i]);
+
+//                UploadResultDto uploadResult;
+//                if (certFile.ContentType.Contains("image"))
+//                    uploadResult = await _cloudinary.UploadImageAsync(certFile, "certificates");
+//                else
+//                    uploadResult = await _cloudinary.UploadDocumentAsync(certFile, "certificates");
+
+//                if (uploadResult == null)
+//                    return BaseResponse<ApplicationResponse>.Fail($"Upload failed for certificate index {i + 1}.");
+
+//                var certEntity = new ApplicationCertType
+//                {
+//                    ApplicationCertTypeId = Guid.NewGuid(),
+//                    ApplicationId = teacherApp.ApplicationID,
+//                    CertificateTypeId = certId,
+//                    CertificateImageUrl = uploadResult.Url,
+//                    CertificateImagePublicId = uploadResult.PublicId,
+//                    CreatedAt = TimeHelper.GetVietnamTime(),
+//                    UpdatedAt = TimeHelper.GetVietnamTime()
+//                };
+
+//                certificateList.Add(certEntity);
+//            }
+
+//            await _unit.ApplicationCertTypes.AddRangeAsync(certificateList);
+//            await _unit.SaveChangesAsync();
+
+//            await _email.SendTeacherApplicationSubmittedAsync(applicationRequest.Email, selectedUser.UserName);
+
+//            var response = new ApplicationResponse
+//            {
+//                ApplicationID = teacherApp.ApplicationID,
+//                UserID = teacherApp.UserID,
+//                LanguageID = teacherApp.LanguageID,
+//                FullName = teacherApp.FullName,
+//                BirthDate = teacherApp.BirthDate,
+//                Bio = teacherApp.Bio,
+//                Avatar = teacherApp.Avatar,
+//                Email = teacherApp.Email,
+//                PhoneNumber = teacherApp.PhoneNumber,
+//                MeetingUrl = teacherApp.MeetingUrl,
+//                TeachingExperience = teacherApp.TeachingExperience,
+//                Status = teacherApp.Status.ToString(),
+//                SubmittedAt = teacherApp.SubmittedAt,
+//                Language = new LanguageResponse
+//                {
+//                    Id = selectedLang.LanguageID,
+//                    LangName = selectedLang.LanguageName,
+//                    LangCode = selectedLang.LanguageCode,
+//                },
+//                User = new UserResponse
+//                {
+//                    UserId = selectedUser.UserID,
+//                    UserName = selectedUser.UserName,
+//                    Email = selectedUser.Email,
+//                },
+//                Certificates = teacherApp.Certificates.Select(cert => new ApplicationCertTypeResponse
+//                {
+//                    ApplicationCertTypeId = cert.ApplicationCertTypeId,
+//                    CertificateTypeId = cert.CertificateTypeId,
+//                    CertificateImageUrl = cert.CertificateImageUrl,
+//                    CertificateType = cert.CertificateType != null ? new CertificateResponse
+//                    {
+//                        CertificateId = cert.CertificateType.CertificateTypeId,
+//                        Name = cert.CertificateType.Name,
+//                        Description = cert.CertificateType.Description
+//                    }
+//                    : null
+//                }).ToList()
+//            };
+
+//            return BaseResponse<ApplicationResponse>.Success(response, "Application created successfully.");
+//        }
+
+//        public async Task<PagedResponse<IEnumerable<ApplicationResponse>>> GetApplicationAsync(
+//           Guid staffId, PagingRequest request, string status)
+//        {
+//            try
+//            {
+//                var selectedStaff = await _unit.Users.Query()
+//                    .Include(u => u.StaffLanguage)
+//                    .Where(u => u.UserID == staffId)
+//                    .FirstOrDefaultAsync();
+
+//                if (selectedStaff == null)
+//                    return PagedResponse<IEnumerable<ApplicationResponse>>.Fail(null, "Staff does not exist.", 400);
+
+//                if (selectedStaff.StaffLanguage == null)
+//                    return PagedResponse<IEnumerable<ApplicationResponse>>.Fail(null, "Staff language is not assigned.", 400);
+
+//                var query = _unit.TeacherApplications.Query()
+//                    .Include(a => a.Language)
+//                    .Include(a => a.User)
+//                    .Include(a => a.Certificates)
+//                        .ThenInclude(c => c.CertificateType)
+//                    .Where(a => a.Language.LanguageID == selectedStaff.StaffLanguage.LanguageId);
+
+//                if (!string.IsNullOrWhiteSpace(status) &&
+//                    Enum.TryParse<ApplicationStatus>(status, true, out var parsedStatus))
+//                {
+//                    query = query.Where(a => a.Status == parsedStatus);
+//                }
+
+//                query = query.OrderByDescending(a => a.SubmittedAt);
+
+//                var totalItems = await query.CountAsync();
+
+//                var applications = await query
+//                    .Skip((request.Page - 1) * request.PageSize)
+//                    .Take(request.PageSize)
+//                    .ToListAsync();
+
+//                var responses = new List<ApplicationResponse>();
+
+//                foreach (var teacherApp in applications)
+//                {
+//                    User staffReviewer = null;
+//                    if (teacherApp.ReviewedBy.HasValue)
+//                    {
+//                        var staffLang = await _unit.StaffLanguages.Query()
+//                            .Include(s => s.User)
+//                            .Where(s => s.StaffLanguageId == teacherApp.ReviewedBy.Value)
+//                            .FirstOrDefaultAsync();
+//                        staffReviewer = staffLang?.User;
+//                    }
+
+//                    responses.Add(new ApplicationResponse
+//                    {
+//                        ApplicationID = teacherApp.ApplicationID,
+//                        UserID = teacherApp.UserID,
+//                        LanguageID = teacherApp.LanguageID,
+//                        FullName = teacherApp.FullName,
+//                        BirthDate = teacherApp.BirthDate,
+//                        Bio = teacherApp.Bio,
+//                        Avatar = teacherApp.Avatar,
+//                        Email = teacherApp.Email,
+//                        PhoneNumber = teacherApp.PhoneNumber,
+//                        TeachingExperience = teacherApp.TeachingExperience,
+//                        MeetingUrl = teacherApp.MeetingUrl,
+//                        Status = teacherApp.Status.ToString(),
+//                        ReviewedBy = teacherApp.ReviewedBy,
+//                        ReviewedByName = staffReviewer?.UserName,
+//                        SubmittedAt = teacherApp.SubmittedAt,
+//                        ReviewedAt = teacherApp.ReviewedAt,
+//                        RejectionReason = teacherApp.RejectionReason,
+//                        Language = teacherApp.Language == null ? null : new LanguageResponse
+//                        {
+//                            Id = teacherApp.Language.LanguageID,
+//                            LangName = teacherApp.Language.LanguageName,
+//                            LangCode = teacherApp.Language.LanguageCode
+//                        },
+//                        User = teacherApp.User == null ? null : new UserResponse
+//                        {
+//                            UserId = teacherApp.User.UserID,
+//                            UserName = teacherApp.User.UserName,
+//                            Email = teacherApp.User.Email
+//                        },
+//                        Certificates = teacherApp.Certificates.Select(cert => new ApplicationCertTypeResponse
+//                        {
+//                            ApplicationCertTypeId = cert.ApplicationCertTypeId,
+//                            CertificateTypeId = cert.CertificateTypeId,
+//                            CertificateImageUrl = cert.CertificateImageUrl,
+//                            CertificateType = cert.CertificateType == null ? null : new CertificateResponse
+//                            {
+//                                CertificateId = cert.CertificateType.CertificateTypeId,
+//                                Name = cert.CertificateType.Name,
+//                                Description = cert.CertificateType.Description
+//                            }
+//                        }).ToList()
+//                    });
+//                }
+
+//                return PagedResponse<IEnumerable<ApplicationResponse>>.Success(
+//                    responses,
+//                    request.Page,
+//                    request.PageSize,
+//                    totalItems,
+//                    "Applications retrieved successfully."
+//                );
+//            }
+//            catch (Exception ex)
+//            {
+//                return PagedResponse<IEnumerable<ApplicationResponse>>.Error($"Unexpected error: {ex.Message}");
+//            }
+//        }
+
+//        public async Task<PagedResponse<IEnumerable<ApplicationResponse>>> GetMyApplicationAsync(
+//            Guid userId, PagingRequest request, string status)
+//        {
+//            try
+//            {
+//                var user = await _unit.Users.GetByIdAsync(userId);
+//                if (user == null)
+//                    return PagedResponse<IEnumerable<ApplicationResponse>>.Fail(null, "Access denied.", 403);
+
+//                var query = _unit.TeacherApplications.Query()
+//                    .Include(a => a.Language)
+//                    .Include(a => a.User)
+//                    .Include(a => a.Certificates)
+//                        .ThenInclude(c => c.CertificateType)
+//                    .Where(a => a.UserID == userId);
+
+//                if (!string.IsNullOrWhiteSpace(status) &&
+//                    Enum.TryParse<ApplicationStatus>(status, true, out var parsedStatus))
+//                {
+//                    query = query.Where(a => a.Status == parsedStatus);
+//                }
+
+//                query = query.OrderByDescending(a => a.SubmittedAt);
+
+//                var totalItems = await query.CountAsync();
+
+//                var applications = await query
+//                    .Skip((request.Page - 1) * request.PageSize)
+//                    .Take(request.PageSize)
+//                    .ToListAsync();
+
+//                var responses = new List<ApplicationResponse>();
+
+//                foreach (var teacherApp in applications)
+//                {
+//                    User staff = null;
+//                    if (teacherApp.ReviewedBy.HasValue)
+//                    {
+//                        var staffLang = await _unit.StaffLanguages.Query()
+//                            .Include(s => s.User)
+//                            .Where(s => s.StaffLanguageId == teacherApp.ReviewedBy.Value)
+//                            .FirstOrDefaultAsync();
+//                        staff = staffLang?.User;
+//                    }
+
+//                    responses.Add(new ApplicationResponse
+//                    {
+//                        ApplicationID = teacherApp.ApplicationID,
+//                        UserID = teacherApp.UserID,
+//                        LanguageID = teacherApp.LanguageID,
+//                        FullName = teacherApp.FullName,
+//                        BirthDate = teacherApp.BirthDate,
+//                        Bio = teacherApp.Bio,
+//                        Avatar = teacherApp.Avatar,
+//                        Email = teacherApp.Email,
+//                        PhoneNumber = teacherApp.PhoneNumber,
+//                        TeachingExperience = teacherApp.TeachingExperience,
+//                        MeetingUrl = teacherApp.MeetingUrl,
+//                        Status = teacherApp.Status.ToString(),
+//                        ReviewedBy = teacherApp.ReviewedBy,
+//                        ReviewedByName = staff?.UserName,
+//                        SubmittedAt = teacherApp.SubmittedAt,
+//                        ReviewedAt = teacherApp.ReviewedAt,
+//                        RejectionReason = teacherApp.RejectionReason,
+//                        Language = teacherApp.Language == null ? null : new LanguageResponse
+//                        {
+//                            Id = teacherApp.Language.LanguageID,
+//                            LangName = teacherApp.Language.LanguageName,
+//                            LangCode = teacherApp.Language.LanguageCode
+//                        },
+//                        User = teacherApp.User == null ? null : new UserResponse
+//                        {
+//                            UserId = teacherApp.User.UserID,
+//                            UserName = teacherApp.User.UserName,
+//                            Email = teacherApp.User.Email
+//                        },
+//                        Certificates = teacherApp.Certificates.Select(cert => new ApplicationCertTypeResponse
+//                        {
+//                            ApplicationCertTypeId = cert.ApplicationCertTypeId,
+//                            CertificateTypeId = cert.CertificateTypeId,
+//                            CertificateImageUrl = cert.CertificateImageUrl,
+//                            CertificateType = cert.CertificateType == null ? null : new CertificateResponse
+//                            {
+//                                CertificateId = cert.CertificateType.CertificateTypeId,
+//                                Name = cert.CertificateType.Name,
+//                                Description = cert.CertificateType.Description
+//                            }
+//                        }).ToList()
+//                    });
+//                }
+
+//                return PagedResponse<IEnumerable<ApplicationResponse>>.Success(
+//                    responses,
+//                    request.Page,
+//                    request.PageSize,
+//                    totalItems,
+//                    "Applications retrieved successfully."
+//                );
+//            }
+//            catch (Exception ex)
+//            {
+//                return PagedResponse<IEnumerable<ApplicationResponse>>.Error($"Unexpected error: {ex.Message}");
+//            }
+//        }
+
+//        public async Task<BaseResponse<ApplicationResponse>> RejectApplicationAsync(Guid staffId, Guid appplicationId, RejectApplicationRequest request)
+//        {
+//            var selectedStaff = await _unit.StaffLanguages.Query()
+//                .Where(s => s.UserId == staffId)
+//                .FirstOrDefaultAsync();
+
+//            if (selectedStaff == null)
+//            {
+//                return BaseResponse<ApplicationResponse>.Fail("Staff does not exist.");
+//            }
+
+//            var existingApp = await _unit.TeacherApplications.Query()
+//                .Include(a => a.Language)
+//                .Include(a => a.User)
+//                .Include(a => a.Certificates)
+//                    .ThenInclude(c => c.CertificateType)
+//                .Where(a => a.ApplicationID == appplicationId && a.Language.LanguageID == selectedStaff.LanguageId)
+//                .FirstOrDefaultAsync();
+
+//            if (existingApp == null)
+//            {
+//                return BaseResponse<ApplicationResponse>.Fail("Application not found or you are not allowed to reject this application.");
+//            }
+
+//            if (existingApp.Status != ApplicationStatus.Pending)
+//            {
+//                return BaseResponse<ApplicationResponse>.Fail("Only pending applications can be rejected.");
+//            }
+
+//            existingApp.Status = ApplicationStatus.Rejected;
+//            existingApp.RejectionReason = request.Reason;
+//            existingApp.ReviewedAt = TimeHelper.GetVietnamTime();
+//            existingApp.ReviewedBy = selectedStaff.StaffLanguageId;
+
+//            await _unit.TeacherApplications.UpdateAsync(existingApp);
+//            await _unit.SaveChangesAsync();
+
+//            await _email.SendTeacherApplicationRejectedAsync(existingApp.Email, existingApp.User.UserName, existingApp.RejectionReason);
+
+//            var response = new ApplicationResponse
+//            {
+//                ApplicationID = existingApp.ApplicationID,
+//                UserID = existingApp.UserID,
+//                LanguageID = existingApp.LanguageID,
+//                FullName = existingApp.FullName,
+//                BirthDate = existingApp.BirthDate,
+//                Bio = existingApp.Bio,
+//                Avatar = existingApp.Avatar,
+//                Email = existingApp.Email,
+//                PhoneNumber = existingApp.PhoneNumber,
+//                MeetingUrl = existingApp.MeetingUrl,
+//                TeachingExperience = existingApp.TeachingExperience,
+//                Status = existingApp.Status.ToString(),
+//                SubmittedAt = existingApp.SubmittedAt,
+//                ReviewedAt = existingApp.ReviewedAt,
+//                RejectionReason = existingApp.RejectionReason,
+//                Language = existingApp.Language == null ? null : new LanguageResponse
+//                {
+//                    Id = existingApp.Language.LanguageID,
+//                    LangName = existingApp.Language.LanguageName,
+//                    LangCode = existingApp.Language.LanguageCode
+//                },
+//                User = existingApp.User == null ? null : new UserResponse
+//                {
+//                    UserId = existingApp.User.UserID,
+//                    UserName = existingApp.User.UserName,
+//                    Email = existingApp.User.Email
+//                },
+//                Certificates = existingApp.Certificates.Select(cert => new ApplicationCertTypeResponse
+//                {
+//                    ApplicationCertTypeId = cert.ApplicationCertTypeId,
+//                    CertificateTypeId = cert.CertificateTypeId,
+//                    CertificateImageUrl = cert.CertificateImageUrl,
+//                    CertificateType = cert.CertificateType == null ? null : new CertificateResponse
+//                    {
+//                        CertificateId = cert.CertificateType.CertificateTypeId,
+//                        Name = cert.CertificateType.Name,
+//                        Description = cert.CertificateType.Description
+//                    }
+//                }).ToList()
+//            };
+
+//            return BaseResponse<ApplicationResponse>.Success(response, "Application rejected successfully.");
+//        }
+
+//        public async Task<BaseResponse<ApplicationResponse>> UpdateApplicationAsync(Guid userId, ApplicationUpdateRequest applicationRequest)
+//        {
+//            var selectedUser = await _unit.Users.GetByIdAsync(userId);
+//            if (selectedUser == null)
+//                return BaseResponse<ApplicationResponse>.Fail("User does not exist.");
+
+//            var existingApp = await _unit.TeacherApplications
+//                .FindAsync(a => a.UserID == userId);
+
+//            if (existingApp == null)
+//                return BaseResponse<ApplicationResponse>.Fail("Application not found.");
+
+//            User staff = null;
+//            if (existingApp.ReviewedBy.HasValue)
+//            {
+//                var staffLang = await _unit.StaffLanguages.Query()
+//                    .Include(s => s.User)
+//                    .Where(s => s.StaffLanguageId == existingApp.ReviewedBy.Value)
+//                    .FirstOrDefaultAsync();
+//                staff = staffLang?.User;
+//            }
+
+//            if (existingApp.Status != ApplicationStatus.Pending)
+//                return BaseResponse<ApplicationResponse>.Fail("Only pending applications can be updated.");
+
+//            var selectedLang = await _unit.Languages.FindByLanguageCodeAsync(applicationRequest.LangCode);
+//            if (selectedLang == null)
+//                return BaseResponse<ApplicationResponse>.Fail("Language does not exist.");
+
+//            existingApp.LanguageID = selectedLang.LanguageID;
+
+//            // Update Avatar if new one provided
+//            if (applicationRequest.Avatar != null)
+//            {
+//                var avatarUpload = await _cloudinary.UploadImageAsync(applicationRequest.Avatar, "avatars");
+//                if (avatarUpload == null)
+//                    return BaseResponse<ApplicationResponse>.Fail("Avatar upload failed.");
+
+//                existingApp.Avatar = avatarUpload.Url;
+//            }
+
+//            // Update base info
+//            if (!string.IsNullOrWhiteSpace(applicationRequest.FullName))
+//                existingApp.FullName = applicationRequest.FullName;
+//            if (applicationRequest.BirthDate.HasValue && applicationRequest.BirthDate.Value != default)
+//                existingApp.BirthDate = applicationRequest.BirthDate.Value;
+//            if (!string.IsNullOrWhiteSpace(applicationRequest.Bio))
+//                existingApp.Bio = applicationRequest.Bio;
+//            if (!string.IsNullOrWhiteSpace(applicationRequest.Email))
+//                existingApp.Email = applicationRequest.Email;
+//            if (!string.IsNullOrWhiteSpace(applicationRequest.PhoneNumber))
+//                existingApp.PhoneNumber = applicationRequest.PhoneNumber;
+//            if (!string.IsNullOrWhiteSpace(applicationRequest.MeetingUrl))
+//                existingApp.MeetingUrl = applicationRequest.MeetingUrl;
+//            if (!string.IsNullOrWhiteSpace(applicationRequest.TeachingExperience))
+//                existingApp.TeachingExperience = applicationRequest.TeachingExperience;
+
+//            existingApp.Status = ApplicationStatus.Pending;
+//            existingApp.SubmittedAt = TimeHelper.GetVietnamTime();
+
+//            // Handle certificates
+//            if (applicationRequest.CertificateImages != null && applicationRequest.CertificateImages.Length > 0 && applicationRequest.CertificateTypeIds != null)
+//            {
+//                var certificateTypeIds = applicationRequest.CertificateTypeIds
+//                .SelectMany(x => x.Split(',', StringSplitOptions.RemoveEmptyEntries))
+//                .Select(x => x.Trim())
+//                .ToArray();
+
+//                if (applicationRequest.CertificateImages.Length != certificateTypeIds.Length)
+//                {
+//                    return BaseResponse<ApplicationResponse>.Fail("CertificateImages count must match CertificateTypeIds count.");
+//                }
+
+//                foreach (var idStr in certificateTypeIds)
+//                {
+//                    if (!Guid.TryParse(idStr, out var certId))
+//                        return BaseResponse<ApplicationResponse>.Fail($"Invalid CertificateTypeId: {idStr}");
+
+//                    var certType = await _unit.CertificateTypes.GetByIdAsync(certId);
+//                    if (certType == null)
+//                        return BaseResponse<ApplicationResponse>.Fail($"CertificateTypeId {idStr} does not exist.");
+//                }
+
+//                // Delete old certs (and Cloudinary files)
+//                var oldCerts = await _unit.ApplicationCertTypes.FindAllAsync(x => x.ApplicationId == existingApp.ApplicationID);
+//                foreach (var cert in oldCerts)
+//                {
+//                    if (!string.IsNullOrEmpty(cert.CertificateImagePublicId))
+//                        await _cloudinary.DeleteFileAsync(cert.CertificateImagePublicId);
+//                }
+//                _unit.ApplicationCertTypes.DeleteRange(oldCerts);
+
+//                // Upload new certs
+//                var certificateList = new List<ApplicationCertType>();
+//                for (int i = 0; i < applicationRequest.CertificateImages.Length; i++)
+//                {
+//                    var certFile = applicationRequest.CertificateImages[i];
+//                    var certId = Guid.Parse(certificateTypeIds[i]);
+
+//                    UploadResultDto uploadResult;
+//                    if (certFile.ContentType.Contains("image"))
+//                        uploadResult = await _cloudinary.UploadImageAsync(certFile, "certificates");
+//                    else
+//                        uploadResult = await _cloudinary.UploadDocumentAsync(certFile, "certificates");
+
+//                    if (uploadResult == null)
+//                        return BaseResponse<ApplicationResponse>.Fail($"Upload failed for certificate index {i + 1}.");
+
+//                    certificateList.Add(new ApplicationCertType
+//                    {
+//                        ApplicationCertTypeId = Guid.NewGuid(),
+//                        ApplicationId = existingApp.ApplicationID,
+//                        CertificateTypeId = certId,
+//                        CertificateImageUrl = uploadResult.Url,
+//                        CertificateImagePublicId = uploadResult.PublicId,
+//                        CreatedAt = TimeHelper.GetVietnamTime(),
+//                        UpdatedAt = TimeHelper.GetVietnamTime()
+//                    });
+//                }
+
+//                await _unit.ApplicationCertTypes.AddRangeAsync(certificateList);
+//            }
+
+//            await _unit.SaveChangesAsync();
+
+//            // Build response
+//            var certificates = await _unit.ApplicationCertTypes.Query()
+//                .Include(a => a.CertificateType)
+//                .Where(a => a.ApplicationId == existingApp.ApplicationID)
+//                .ToListAsync();
+
+//            var certResponses = certificates.Select(cert => new ApplicationCertTypeResponse
+//            {
+//                ApplicationCertTypeId = cert.ApplicationCertTypeId,
+//                CertificateTypeId = cert.CertificateTypeId,
+//                CertificateImageUrl = cert.CertificateImageUrl,
+//                CertificateType = cert.CertificateType != null ? new CertificateResponse
+//                {
+//                    CertificateId = cert.CertificateType.CertificateTypeId,
+//                    Name = cert.CertificateType.Name,
+//                    Description = cert.CertificateType.Description
+//                } : null
+//            }).ToList();
+
+//            var response = new ApplicationResponse
+//            {
+//                ApplicationID = existingApp.ApplicationID,
+//                UserID = existingApp.UserID,
+//                LanguageID = existingApp.LanguageID,
+//                FullName = existingApp.FullName,
+//                BirthDate = existingApp.BirthDate,
+//                Bio = existingApp.Bio,
+//                Avatar = existingApp.Avatar,
+//                Email = existingApp.Email,
+//                PhoneNumber = existingApp.PhoneNumber,
+//                MeetingUrl = existingApp.MeetingUrl,
+//                TeachingExperience = existingApp.TeachingExperience,
+//                Status = existingApp.Status.ToString(),
+//                ReviewedBy = existingApp.ReviewedBy,
+//                ReviewedByName = staff?.UserName,
+//                SubmittedAt = existingApp.SubmittedAt,
+//                ReviewedAt = existingApp.ReviewedAt,
+//                RejectionReason = existingApp.RejectionReason,
+//                Language = new LanguageResponse
+//                {
+//                    Id = selectedLang.LanguageID,
+//                    LangName = selectedLang.LanguageName,
+//                    LangCode = selectedLang.LanguageCode
+//                },
+//                User = new UserResponse
+//                {
+//                    UserId = selectedUser.UserID,
+//                    UserName = selectedUser.UserName,
+//                    Email = selectedUser.Email
+//                },
+//                Certificates = certResponses
+//            };
+
+//            return BaseResponse<ApplicationResponse>.Success(response, "Application updated successfully.");
+//        }
+
+//    }
+//}

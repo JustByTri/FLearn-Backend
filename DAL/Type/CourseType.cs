@@ -2,7 +2,7 @@
 {
     public enum CourseType
     {
-        Free,
-        Paid
+        Free = 1,
+        Paid = 2
     }
 }

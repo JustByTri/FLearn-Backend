@@ -1,9 +1,9 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using DAL.Helpers;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DAL.Models
 {
-    // User reviews of the app
     public class Review
     {
         [Key]
@@ -11,10 +11,13 @@ namespace DAL.Models
         [Required]
         public Guid UserId { get; set; }
         [ForeignKey(nameof(UserId))]
-        public virtual User User { get; set; }
+        public virtual User User { get; set; } = null!;
         [Required]
-        public string Content { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
+        [Range(1, 5)]
+        public int Rating { get; set; }
+        [Required]
+        public string Content { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; } = TimeHelper.GetVietnamTime();
+        public DateTime UpdatedAt { get; set; } = TimeHelper.GetVietnamTime();
     }
 }
