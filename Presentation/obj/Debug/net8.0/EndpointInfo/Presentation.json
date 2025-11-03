@@ -4129,6 +4129,30 @@
         }
       }
     },
+    "/api/languages/{languageId}/levels": {
+      "get": {
+        "tags": [
+          "Language"
+        ],
+        "summary": "Lấy tất cả các cấp độ (A1, N5, HSK1...) theo một ngôn ngữ",
+        "parameters": [
+          {
+            "name": "languageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/lesson-logs": {
       "post": {
         "tags": [

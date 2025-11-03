@@ -6,5 +6,6 @@ namespace BLL.IServices.Language
     public interface ILanguageService
     {
         Task<BaseResponse<IEnumerable<LanguageResponse>>> GetAllAsync();
+        Task<IEnumerable<LanguageLevelDto>> GetLanguageLevelsAsync(Guid languageId);
     }
 }
