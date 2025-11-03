@@ -532,6 +532,11 @@
         "IsRequired": false
       },
       {
+        "Name": "ProficiencyCode",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
         "Name": "MeetingUrl",
         "Type": "System.String",
         "IsRequired": false
@@ -551,66 +556,79 @@
   },
   {
     "ContainingType": "Presentation.Controllers.Application.ApplicationController",
-    "Method": "Update",
+    "Method": "GetAllApplications",
     "RelativePath": "api/applications",
-    "HttpMethod": "PUT",
+    "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
     "Parameters": [
       {
-        "Name": "LangCode",
+        "Name": "status",
         "Type": "System.String",
         "IsRequired": false
       },
       {
-        "Name": "FullName",
-        "Type": "System.String",
+        "Name": "Page",
+        "Type": "System.Int32",
         "IsRequired": false
       },
       {
-        "Name": "BirthDate",
-        "Type": "System.Nullable\u00601[[System.DateTime, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "Name": "PageSize",
+        "Type": "System.Int32",
         "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Application.ApplicationController",
+    "Method": "GetApplicationById",
+    "RelativePath": "api/applications/{applicationId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "applicationId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Application.ApplicationController",
+    "Method": "ApproveApplication",
+    "RelativePath": "api/applications/{applicationId}/approve",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "applicationId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Application.ApplicationController",
+    "Method": "RejectApplication",
+    "RelativePath": "api/applications/{applicationId}/reject",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "applicationId",
+        "Type": "System.Guid",
+        "IsRequired": true
       },
       {
-        "Name": "Bio",
-        "Type": "System.String",
-        "IsRequired": false
-      },
-      {
-        "Name": "Avatar",
-        "Type": "Microsoft.AspNetCore.Http.IFormFile",
-        "IsRequired": false
-      },
-      {
-        "Name": "Email",
-        "Type": "System.String",
-        "IsRequired": false
-      },
-      {
-        "Name": "PhoneNumber",
-        "Type": "System.String",
-        "IsRequired": false
-      },
-      {
-        "Name": "TeachingExperience",
-        "Type": "System.String",
-        "IsRequired": false
-      },
-      {
-        "Name": "MeetingUrl",
-        "Type": "System.String",
-        "IsRequired": false
-      },
-      {
-        "Name": "CertificateImages",
-        "Type": "Microsoft.AspNetCore.Http.IFormFile[]",
-        "IsRequired": false
-      },
-      {
-        "Name": "CertificateTypeIds",
-        "Type": "System.String[]",
-        "IsRequired": false
+        "Name": "request",
+        "Type": "Common.DTO.Application.Request.RejectApplicationRequest",
+        "IsRequired": true
       }
     ],
     "ReturnTypes": []
@@ -2286,69 +2304,6 @@
       {
         "Name": "req",
         "Type": "Common.DTO.LessonProgress.Request.StartLessonRequest",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "Presentation.Controllers.Application.ApplicationController",
-    "Method": "GetAllApplications",
-    "RelativePath": "api/staff/applications",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "status",
-        "Type": "System.String",
-        "IsRequired": false
-      },
-      {
-        "Name": "Page",
-        "Type": "System.Int32",
-        "IsRequired": false
-      },
-      {
-        "Name": "PageSize",
-        "Type": "System.Int32",
-        "IsRequired": false
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "Presentation.Controllers.Application.ApplicationController",
-    "Method": "ApproveApplication",
-    "RelativePath": "api/staff/applications/{id}/approve",
-    "HttpMethod": "PUT",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "id",
-        "Type": "System.Guid",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "Presentation.Controllers.Application.ApplicationController",
-    "Method": "RejectApplication",
-    "RelativePath": "api/staff/applications/{id}/reject",
-    "HttpMethod": "PUT",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "id",
-        "Type": "System.Guid",
-        "IsRequired": true
-      },
-      {
-        "Name": "request",
-        "Type": "Common.DTO.Application.Request.RejectApplicationRequest",
         "IsRequired": true
       }
     ],

@@ -266,6 +266,41 @@ namespace BLL.Services.Upload
                 Folder = folder
             };
         }
+
+        public async Task<ImageUploadResult?> UploadImagesAsync(object fileInput, string folder)
+        {
+            if (fileInput == null)
+                return null;
+
+            Stream? stream = null;
+            string fileName;
+
+            if (fileInput is IFormFile formFile)
+            {
+                stream = formFile.OpenReadStream();
+                fileName = formFile.FileName;
+            }
+            else if (fileInput is string filePath && File.Exists(filePath))
+            {
+                stream = File.OpenRead(filePath);
+                fileName = Path.GetFileName(filePath);
+            }
+            else
+            {
+                throw new ArgumentException("Invalid file input. Must be IFormFile or valid file path.");
+            }
+
+            using (stream)
+            {
+                var uploadParams = new ImageUploadParams
+                {
+                    File = new FileDescription(fileName, stream),
+                    Folder = folder
+                };
+
+                return await _cloudinary.UploadAsync(uploadParams);
+            }
+        }
     }
 }
 

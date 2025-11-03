@@ -37,9 +37,9 @@ namespace DAL.Models
         public string PhoneNumber { get; set; } = string.Empty;
         [Required]
         [StringLength(50)]
-        public string ProficiencyCode = null!;
+        public string ProficiencyCode { get; set; } = null!;
         [Required]
-        public int ProficiencyOrder;
+        public int ProficiencyOrder { get; set; }
         public double AverageRating { get; set; } = 0.0;
         public int ReviewCount { get; set; } = 0;
         [Required]

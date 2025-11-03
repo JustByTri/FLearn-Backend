@@ -512,6 +512,9 @@
                   "TeachingExperience": {
                     "type": "string"
                   },
+                  "ProficiencyCode": {
+                    "type": "string"
+                  },
                   "MeetingUrl": {
                     "type": "string"
                   },
@@ -543,62 +546,37 @@
           }
         }
       },
-      "put": {
+      "get": {
         "tags": [
           "Application"
         ],
-        "summary": "Updates an existing teacher application (only if it is still Pending or Rejected).",
-        "description": "This endpoint allows resubmission of an application when the previous one was rejected or pending.\r\nCertificates and profile information will be revalidated and updated accordingly.",
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "LangCode": {
-                    "type": "string"
-                  },
-                  "FullName": {
-                    "type": "string"
-                  },
-                  "BirthDate": {
-                    "type": "string"
-                  },
-                  "Bio": {
-                    "type": "string"
-                  },
-                  "Avatar": {
-                    "type": "string",
-                    "format": "binary"
-                  },
-                  "Email": {
-                    "type": "string"
-                  },
-                  "PhoneNumber": {
-                    "type": "string"
-                  },
-                  "TeachingExperience": {
-                    "type": "string"
-                  },
-                  "MeetingUrl": {
-                    "type": "string"
-                  },
-                  "CertificateImages": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "format": "binary"
-                    }
-                  },
-                  "CertificateTypeIds": {
-                    "type": "string"
-                  }
-                }
-              }
+        "summary": "Get all teacher applications (Manager only)",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Optional: Filter by status (pending, approved, rejected)",
+            "schema": {
+              "type": "string"
             }
           },
-          "required": true
-        },
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -645,53 +623,14 @@
         }
       }
     },
-    "/api/staff/applications": {
-      "get": {
-        "tags": [
-          "Application"
-        ],
-        "summary": "Get all teacher applications (Staff only)",
-        "parameters": [
-          {
-            "name": "status",
-            "in": "query",
-            "description": "Optional: Filter by status (pending, approved, rejected)",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "Page",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "PageSize",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/staff/applications/{id}/approve": {
-      "put": {
+    "/api/applications/{applicationId}/approve": {
+      "post": {
         "tags": [
           "Application"
         ],
         "parameters": [
           {
-            "name": "id",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -707,14 +646,14 @@
         }
       }
     },
-    "/api/staff/applications/{id}/reject": {
-      "put": {
+    "/api/applications/{applicationId}/reject": {
+      "patch": {
         "tags": [
           "Application"
         ],
         "parameters": [
           {
-            "name": "id",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -742,6 +681,29 @@
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/applications/{applicationId}": {
+      "get": {
+        "tags": [
+          "Application"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"
