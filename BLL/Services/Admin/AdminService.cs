@@ -4,6 +4,7 @@ using BLL.Settings;
 using Common.DTO.Admin;
 using DAL.Models;
 using DAL.UnitOfWork;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace BLL.Services.Admin
@@ -14,13 +15,14 @@ namespace BLL.Services.Admin
         private readonly JwtSettings _jwtSettings;
         private readonly IEmailService _emailService;
         private readonly IAuthService _authService;
-
-        public AdminService(IUnitOfWork unitOfWork, IOptions<JwtSettings> jwtSettings, IEmailService emailService, IAuthService authService)
+        private readonly ILogger<AdminService> _logger;
+        public AdminService(IUnitOfWork unitOfWork, IOptions<JwtSettings> jwtSettings, IEmailService emailService, IAuthService authService, ILogger<AdminService> logger)
         {
             _unitOfWork = unitOfWork;
             _jwtSettings = jwtSettings.Value;
             _emailService = emailService;
             _authService = authService;
+            _logger =  logger;
         }
 
         public async Task<List<UserListDto>> GetAllUsersAsync(Guid adminUserId)
@@ -146,7 +148,7 @@ namespace BLL.Services.Admin
                 ScenarioGuidelines = createPromptDto.ScenarioGuidelines,
                 RoleplayInstructions = createPromptDto.RoleplayInstructions,
                 EvaluationCriteria = createPromptDto.EvaluationCriteria,
-                
+
                 Status = "Draft",
                 IsActive = false,
                 IsDefault = false,
@@ -159,7 +161,7 @@ namespace BLL.Services.Admin
             await _unitOfWork.GlobalConversationPrompts.CreateAsync(newPrompt);
             await _unitOfWork.SaveChangesAsync();
 
-         
+
 
             return MapToDto(newPrompt);
         }
@@ -200,7 +202,7 @@ namespace BLL.Services.Admin
             await _unitOfWork.GlobalConversationPrompts.UpdateAsync(prompt);
             await _unitOfWork.SaveChangesAsync();
 
-            
+
 
             return MapToDto(prompt);
         }
@@ -230,7 +232,7 @@ namespace BLL.Services.Admin
                 ScenarioGuidelines = prompt.ScenarioGuidelines,
                 RoleplayInstructions = prompt.RoleplayInstructions,
                 EvaluationCriteria = prompt.EvaluationCriteria,
-                Status = prompt.Status, 
+                Status = prompt.Status,
                 IsActive = prompt.IsActive,
                 IsDefault = prompt.IsDefault,
                 UsageCount = prompt.UsageCount,
@@ -334,7 +336,7 @@ namespace BLL.Services.Admin
             return true;
         }
 
-       
+
 
         public async Task<GlobalConversationPromptDto> GetGlobalPromptByIdAsync(Guid adminUserId, Guid promptId)
         {
@@ -366,7 +368,199 @@ namespace BLL.Services.Admin
                 UpdatedAt = prompt.UpdatedAt
             };
         }
+
+
+        public async Task<IEnumerable<AdminProgramDetailDto>> GetProgramsByLanguageAsync(Guid languageId)
+        {
+         
+            var language = await _unitOfWork.Languages.GetByIdAsync(languageId);
+            var languageName = language?.LanguageName ?? "Không rõ";
+
+          
+            var allPrograms = await _unitOfWork.Programs.GetAllAsync();
+            var programsInLanguage = allPrograms.Where(p => p.LanguageId == languageId).ToList();
+
+     
+            var allLevels = await _unitOfWork.Levels.GetAllAsync();
+
+           
+            var result = new List<AdminProgramDetailDto>();
+            foreach (var program in programsInLanguage)
+            {
+               
+                var programLevels = allLevels
+                    .Where(l => l.ProgramId == program.ProgramId)
+                    .OrderBy(l => l.OrderIndex)
+                    .Select(l => new AdminProgramLevelDto
+                    {
+                        LevelId = l.LevelId,
+                        Name = l.Name,
+                        Description = l.Description ?? "",
+                        OrderIndex = l.OrderIndex,
+                        Status = l.Status
+                    }).ToList();
+
+              
+                result.Add(new AdminProgramDetailDto
+                {
+                    ProgramId = program.ProgramId,
+                    LanguageId = program.LanguageId,
+                    LanguageName = languageName, 
+                    Name = program.Name,
+                    Description = program.Description ?? "",
+                    Status = program.Status,
+                    CreatedAt = program.CreatedAt,
+                    UpdatedAt = program.UpdatedAt,
+                    Levels = programLevels
+                });
+            }
+
+            return result;
+        }
+
+        public async Task<Program?> GetProgramByIdAsync(Guid programId)
+        {
+            return await _unitOfWork.Programs.GetByIdAsync(programId);
+        }
+
+        public async Task<Program> CreateProgramAsync(ProgramCreateDto dto)
+        {
+            var language = await _unitOfWork.Languages.GetByIdAsync(dto.LanguageId);
+            if (language == null)
+                throw new ArgumentException("LanguageId không tồn tại.");
+
+            var newProgram = new Program
+            {
+                ProgramId = Guid.NewGuid(),
+                LanguageId = dto.LanguageId,
+                Name = dto.Name,
+                Description = dto.Description,
+                Status = true, // Mặc định là active
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.Programs.CreateAsync(newProgram);
+            await _unitOfWork.SaveChangesAsync();
+            return newProgram;
+        }
+
+        public async Task<Program> UpdateProgramAsync(Guid programId, ProgramUpdateDto dto)
+        {
+            var program = await _unitOfWork.Programs.GetByIdAsync(programId);
+            if (program == null)
+                throw new KeyNotFoundException("Không tìm thấy chương trình.");
+
+            program.Name = dto.Name;
+            program.Description = dto.Description;
+            program.Status = dto.Status;
+            program.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.Programs.Update(program);
+            await _unitOfWork.SaveChangesAsync();
+            return program;
+        }
+
+        public async Task SoftDeleteProgramAsync(Guid programId)
+        {
+            var program = await _unitOfWork.Programs.GetByIdAsync(programId);
+            if (program == null)
+                throw new KeyNotFoundException("Không tìm thấy chương trình.");
+
+            var allCourses = await _unitOfWork.Courses.GetAllAsync();
+            bool hasCourses = allCourses.Any(c => c.ProgramId == programId);
+
+            if (hasCourses)
+            {
+                _logger.LogWarning("Admin cố gắng xóa Program {ProgramId} nhưng vẫn còn khóa học.", programId);
+                throw new InvalidOperationException("Không thể xóa chương trình này. Vẫn còn các khóa học đang liên kết với nó.");
+            }
+
+          
+            program.Status = false;
+            program.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.Programs.Update(program);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+
+        public async Task<IEnumerable<Level>> GetLevelsByProgramAsync(Guid programId)
+        {
+            var levels = await _unitOfWork.Levels.GetAllAsync();
+            return levels.Where(l => l.ProgramId == programId).OrderBy(l => l.OrderIndex);
+        }
+
+        public async Task<Level?> GetLevelByIdAsync(Guid levelId)
+        {
+            return await _unitOfWork.Levels.GetByIdAsync(levelId);
+        }
+
+        public async Task<Level> CreateLevelAsync(LevelCreateDto dto)
+        {
+            var program = await _unitOfWork.Programs.GetByIdAsync(dto.ProgramId);
+            if (program == null)
+                throw new ArgumentException("ProgramId không tồn tại.");
+
+            var newLevel = new Level
+            {
+                LevelId = Guid.NewGuid(),
+                ProgramId = dto.ProgramId,
+                Name = dto.Name,
+                Description = dto.Description,
+                OrderIndex = dto.OrderIndex,
+                Status = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.Levels.CreateAsync(newLevel);
+            await _unitOfWork.SaveChangesAsync();
+            return newLevel;
+        }
+
+        public async Task<Level> UpdateLevelAsync(Guid levelId, LevelUpdateDto dto)
+        {
+            var level = await _unitOfWork.Levels.GetByIdAsync(levelId);
+            if (level == null)
+                throw new KeyNotFoundException("Không tìm thấy cấp độ.");
+
+            level.Name = dto.Name;
+            level.Description = dto.Description;
+            level.OrderIndex = dto.OrderIndex;
+            level.Status = dto.Status;
+            level.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.Levels.Update(level);
+            await _unitOfWork.SaveChangesAsync();
+            return level;
+        }
+
+        public async Task SoftDeleteLevelAsync(Guid levelId)
+        {
+            var level = await _unitOfWork.Levels.GetByIdAsync(levelId);
+            if (level == null)
+                throw new KeyNotFoundException("Không tìm thấy cấp độ.");
+
+          
+            var allCourses = await _unitOfWork.Courses.GetAllAsync();
+            bool hasCourses = allCourses.Any(c => c.LevelId == levelId);
+
+            if (hasCourses)
+            {
+                _logger.LogWarning("Admin cố gắng xóa Level {LevelId} nhưng vẫn còn khóa học.", levelId);
+                throw new InvalidOperationException("Không thể xóa cấp độ này. Vẫn còn các khóa học đang liên kết với nó.");
+            }
+
+           
+            level.Status = false;
+            level.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.Levels.Update(level);
+            await _unitOfWork.SaveChangesAsync();
+        }
     }
 }
+
 
 
