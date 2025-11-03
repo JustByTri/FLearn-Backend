@@ -1,4 +1,5 @@
-﻿using Common.DTO.Upload;
+﻿using CloudinaryDotNet.Actions;
+using Common.DTO.Upload;
 using Microsoft.AspNetCore.Http;
 
 namespace BLL.IServices.Upload
@@ -13,5 +14,6 @@ namespace BLL.IServices.Upload
         Task<List<UploadResultDto>> UploadMultipleFilesAsync(IList<IFormFile> files, string folder = "general");
         Task<UploadResultDto> UploadVideoAsync(IFormFile file, string folder = "videos");
         Task<UploadResultDto> UploadAudioAsync(IFormFile file, string folder = "audios");
+        Task<ImageUploadResult?> UploadImagesAsync(object fileInput, string folder);
     }
 }

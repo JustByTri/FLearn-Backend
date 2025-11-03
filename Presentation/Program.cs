@@ -3,6 +3,8 @@ using BLL.Background;
 using BLL.Hubs;
 using BLL.Settings;
 using Common.Authorization;
+using Hangfire;
+using Hangfire.MySql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -17,6 +19,23 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddHangfire(config =>
+    config.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+          .UseSimpleAssemblyNameTypeSerializer()
+          .UseRecommendedSerializerSettings()
+          .UseStorage(new MySqlStorage(builder.Configuration.GetConnectionString("DefaultConnection"),
+              new MySqlStorageOptions
+              {
+                  TablesPrefix = "Hangfire_",
+                  TransactionIsolationLevel = System.Transactions.IsolationLevel.ReadCommitted,
+                  QueuePollInterval = TimeSpan.FromSeconds(15),
+                  JobExpirationCheckInterval = TimeSpan.FromHours(1),
+                  CountersAggregateInterval = TimeSpan.FromMinutes(5),
+                  PrepareSchemaIfNecessary = true,
+              }))
+);
+
+builder.Services.AddHangfireServer();
 
 builder.Services.Configure<FormOptions>(options =>
 {
@@ -296,6 +315,12 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
     c.DisplayRequestDuration();
     c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
+});
+
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    DashboardTitle = "FLearn Platform - Hangfire Dashboard",
+    Authorization = []
 });
 
 app.UseHttpsRedirection();

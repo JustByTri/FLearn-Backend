@@ -1,6 +1,7 @@
 ﻿using BLL.Background;
 using BLL.IServices.Admin;
 using BLL.IServices.AI;
+using BLL.IServices.Application;
 using BLL.IServices.Assessment;
 using BLL.IServices.Auth;
 using BLL.IServices.Certificate;
@@ -14,6 +15,7 @@ using BLL.IServices.Topic;
 using BLL.IServices.Upload;
 using BLL.Services.Admin;
 using BLL.Services.AI;
+using BLL.Services.Application;
 using BLL.Services.Assessment;
 using BLL.Services.Auth;
 using BLL.Services.Certificate;
@@ -103,7 +105,7 @@ namespace BLL
             services.AddScoped<ICertificateService, CertificateService>();
             //services.AddScoped<ICourseRecommendationService, CourseRecommendationService>();
             services.AddSingleton<IAuthorizationHandler, ExclusiveRoleHandler>();
-            //services.AddScoped<ITeacherApplicationService, TeacherApplicationService>();
+            services.AddScoped<ITeacherApplicationService, TeacherApplicationService>();
             //services.AddScoped<ICourseService, CourseService>();
             //services.AddScoped<ICourseUnitService, CourseUnitService>();
             //services.AddScoped<ILessonService, LessonService>();

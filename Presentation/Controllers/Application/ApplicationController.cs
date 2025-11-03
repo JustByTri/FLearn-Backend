@@ -4,7 +4,7 @@ using Common.DTO.Application.Request;
 using Common.DTO.Paging.Request;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
+using Presentation.Helpers;
 
 namespace Presentation.Controllers.Application
 {
@@ -36,27 +36,60 @@ namespace Presentation.Controllers.Application
         [HttpPost("applications")]
         public async Task<IActionResult> Create([FromForm] ApplicationRequest request)
         {
-            var userIdClaim = User.FindFirstValue("user_id")
-                                 ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (string.IsNullOrEmpty(userIdClaim))
-            {
-                return Unauthorized("Teacher ID not found in token.");
-            }
-
-            if (!Guid.TryParse(userIdClaim, out Guid userId))
-            {
-                return BadRequest("Invalid user ID format in token.");
-            }
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
 
             if (!ModelState.IsValid)
             {
-                return BadRequest(BaseResponse<object>.Fail("Invalid request data."));
+                return BadRequest(BaseResponse<object>.Fail(ModelState));
             }
+
+            var validationError = ValidateProficiency(request.LangCode, request.ProficiencyCode);
+            if (validationError != null)
+                return BadRequest(BaseResponse<object>.Fail(validationError));
 
             var result = await _teacherApplicationService.CreateApplicationAsync(userId, request);
 
             return StatusCode(result.Code, result);
+        }
+        private string? ValidateProficiency(string langCode, string proficiencyCode)
+        {
+            langCode = langCode.ToLower();
+
+            return langCode switch
+            {
+                "en" => ValidateEnglishProficiency(proficiencyCode),
+                "ja" => ValidateJapaneseProficiency(proficiencyCode),
+                "zh" => ValidateChineseProficiency(proficiencyCode),
+                _ => $"Unsupported language code: {langCode}. Allowed: en, ja, zh."
+            };
+        }
+        private string? ValidateEnglishProficiency(string code)
+        {
+            var allowed = new[] { "A1", "A2", "B1", "B2", "C1", "C2" };
+
+            if (!allowed.Contains(code.ToUpper()))
+                return "Invalid proficiency code for English. Allowed: A1, A2, B1, B2, C1, C2.";
+
+            return null;
+        }
+        private string? ValidateJapaneseProficiency(string code)
+        {
+            var allowed = new[] { "N5", "N4", "N3", "N2", "N1" };
+
+            if (!allowed.Contains(code.ToUpper()))
+                return "Invalid proficiency code for Japanese. Allowed: N5, N4, N3, N2, N1.";
+
+            return null;
+        }
+        private string? ValidateChineseProficiency(string code)
+        {
+            var allowed = new[] { "HSK1", "HSK2", "HSK3", "HSK4", "HSK5", "HSK6" };
+
+            if (!allowed.Contains(code.ToUpper()))
+                return "Invalid proficiency code for Chinese. Allowed: HSK1–HSK6.";
+
+            return null;
         }
         /// <summary>
         /// Get the paginated teacher applications of the currently logged-in user.
@@ -68,121 +101,58 @@ namespace Presentation.Controllers.Application
         [HttpGet("applications/me")]
         public async Task<IActionResult> GetMyApplications([FromQuery] PagingRequest request, [FromQuery] string? status)
         {
-            var userIdClaim = User.FindFirstValue("user_id")
-                                 ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (string.IsNullOrEmpty(userIdClaim))
-            {
-                return Unauthorized("User ID not found in token.");
-            }
-
-            if (!Guid.TryParse(userIdClaim, out Guid userId))
-            {
-                return BadRequest("Invalid user ID format in token.");
-            }
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
 
             var result = await _teacherApplicationService.GetMyApplicationAsync(userId, request, status);
-
-            return StatusCode(result.Code, result);
-        }
-
-        /// <summary>
-        /// Updates an existing teacher application (only if it is still Pending or Rejected).
-        /// </summary>
-        /// <param name="request">The updated application form data.</param>
-        /// <returns>Returns an updated application response if successful.</returns>
-        /// <remarks>
-        /// This endpoint allows resubmission of an application when the previous one was rejected or pending.
-        /// Certificates and profile information will be revalidated and updated accordingly.
-        /// </remarks>
-        [Authorize(Policy = "OnlyLearner")]
-        [HttpPut("applications")]
-        public async Task<IActionResult> Update([FromForm] ApplicationUpdateRequest request)
-        {
-            var userIdClaim = User.FindFirstValue("user_id")
-                                 ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (string.IsNullOrEmpty(userIdClaim))
-            {
-                return Unauthorized("Teacher ID not found in token.");
-            }
-
-
-            if (!Guid.TryParse(userIdClaim, out Guid userId))
-            {
-                return BadRequest("Invalid user ID format in token.");
-            }
-
-            var result = await _teacherApplicationService.UpdateApplicationAsync(userId, request);
-
             return StatusCode(result.Code, result);
         }
         /// <summary>
-        /// Get all teacher applications (Staff only)
+        /// Get all teacher applications (Manager only)
         /// </summary>
         /// <param name="status">Optional: Filter by status (pending, approved, rejected)</param>
-        /// <param name="page">Page number (default: 1)</param>
-        /// <param name="pageSize">Number of items per page (default: 10)</param>
+        /// <param name="request"></param>
         /// <returns>Paginated list of teacher applications</returns>
-        [Authorize(Roles = "Staff")]
-        [HttpGet("staff/applications")]
+        [Authorize(Roles = "Manager")]
+        [HttpGet("applications")]
         public async Task<IActionResult> GetAllApplications(
             [FromQuery] string? status,
             [FromQuery] PagingRequest request)
         {
-            var userIdClaim = User.FindFirstValue("user_id")
-                                 ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (string.IsNullOrEmpty(userIdClaim))
-            {
-                return Unauthorized("Teacher ID not found in token.");
-            }
-
-            if (!Guid.TryParse(userIdClaim, out Guid userId))
-            {
-                return BadRequest("Invalid user ID format in token.");
-            }
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
 
             var result = await _teacherApplicationService.GetApplicationAsync(userId, request, status);
-
             return StatusCode(result.Code, result);
         }
-        [Authorize(Roles = "Staff")]
-        [HttpPut("staff/applications/{id}/approve")]
-        public async Task<IActionResult> ApproveApplication(Guid id)
+        [Authorize(Roles = "Manager")]
+        [HttpPost("applications/{applicationId:guid}/approve")]
+        public async Task<IActionResult> ApproveApplication(Guid applicationId)
         {
-            var userIdClaim = User.FindFirstValue("user_id")
-                                 ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
 
-            if (string.IsNullOrEmpty(userIdClaim))
-            {
-                return Unauthorized("Teacher ID not found in token.");
-            }
-
-            if (!Guid.TryParse(userIdClaim, out Guid userId))
-            {
-                return BadRequest("Invalid user ID format in token.");
-            }
-            var result = await _teacherApplicationService.ApproveApplicationAsync(userId, id);
+            var result = await _teacherApplicationService.ApproveApplicationAsync(userId, applicationId);
             return StatusCode(result.Code, result);
         }
-        [Authorize(Roles = "Staff")]
-        [HttpPut("staff/applications/{id}/reject")]
-        public async Task<IActionResult> RejectApplication(Guid id, [FromBody] RejectApplicationRequest request)
+        [Authorize(Roles = "Manager")]
+        [HttpPatch("applications/{applicationId:guid}/reject")]
+        public async Task<IActionResult> RejectApplication(Guid applicationId, [FromBody] RejectApplicationRequest request)
         {
-            var userIdClaim = User.FindFirstValue("user_id")
-                                ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
 
-            if (string.IsNullOrEmpty(userIdClaim))
-            {
-                return Unauthorized("Teacher ID not found in token.");
-            }
+            var result = await _teacherApplicationService.RejectApplicationAsync(userId, applicationId, request);
+            return StatusCode(result.Code, result);
+        }
+        [Authorize(Roles = "Manager, Teacher, Learner")]
+        [HttpGet("applications/{applicationId:guid}")]
+        public async Task<IActionResult> GetApplicationById(Guid applicationId)
+        {
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
 
-            if (!Guid.TryParse(userIdClaim, out Guid userId))
-            {
-                return BadRequest("Invalid user ID format in token.");
-            }
-            var result = await _teacherApplicationService.RejectApplicationAsync(userId, id, request);
+            var result = await _teacherApplicationService.GetApplicationByIdAsync(applicationId);
             return StatusCode(result.Code, result);
         }
     }

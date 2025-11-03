@@ -6,6 +6,6 @@ namespace Common.DTO.Application.Request
     {
         [Required]
         [StringLength(500)]
-        public string Reason { get; set; }
+        public string? Reason { get; set; }
     }
 }

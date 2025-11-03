@@ -408,3 +408,10 @@ Migrations/
 CopilotSnapshots/
 **CopilotSnapshots/
 
+# Ignore all files inside uploads folders
+Presentation/uploads/avatars/*
+Presentation/uploads/certificates/*
+
+# Ignore compiled build outputs
+bin/
+obj/
