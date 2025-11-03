@@ -8,6 +8,8 @@ using DAL.UnitOfWork;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using System.Text;
+using Common.Constants;
+using System.Globalization;
 
 namespace BLL.Services
 {
@@ -475,15 +477,35 @@ Never respond in Vietnamese or any other language, regardless of what language t
                 .FirstOrDefault(s => s.IsActive && s.StartDate <= DateTime.UtcNow && (s.EndDate == null || s.EndDate > DateTime.UtcNow));
 
                 var dailyLimit = activeSubscription?.ConversationQuota ?? user.DailyConversationLimit;
-                var subscriptionType = activeSubscription?.SubscriptionType ?? "Free";
+                var subscriptionType = activeSubscription?.SubscriptionType ?? SubscriptionConstants.FREE;
 
-                return new ConversationUsageDto
+                decimal? planPrice = null;
+                string? planPriceVnd = null;
+                if (activeSubscription != null && SubscriptionConstants.SubscriptionPrices.TryGetValue(activeSubscription.SubscriptionType, out var price))
+                {
+                    planPrice = price;
+                    // Format VND, no decimals, with thousand separators
+                    planPriceVnd = string.Format(new CultureInfo("vi-VN"), "{0:C0}", price *1000000m /1000000m).Replace("₫", "đ");
+                    // if prices are already in VND in constants, remove the *1000000m logic and use price directly
+                    planPriceVnd = string.Format(new CultureInfo("vi-VN"), "{0:C0}", price).Replace("₫", "đ");
+                }
+
+                var dto = new ConversationUsageDto
                 {
                     ConversationsUsedToday = user.ConversationsUsedToday,
                     DailyLimit = dailyLimit,
                     SubscriptionType = subscriptionType,
-                    ResetDate = user.LastConversationResetDate.Date.AddDays(1)
+                    ResetDate = user.LastConversationResetDate.Date.AddDays(1),
+                    HasActiveSubscription = activeSubscription != null,
+                    CurrentPlan = activeSubscription?.SubscriptionType,
+                    PlanDailyQuota = activeSubscription?.ConversationQuota,
+                    PlanPrice = planPrice,
+                    PlanPriceVndFormatted = planPriceVnd,
+                    PlanStartDate = activeSubscription?.StartDate,
+                    PlanEndDate = activeSubscription?.EndDate
                 };
+
+                return dto;
             }
             catch (Exception ex)
             {
@@ -883,7 +905,7 @@ Always respond in {session.Language?.LanguageName ?? "English"} only.";
         {
             var translations = new Dictionary<string, Dictionary<string, string>>
  {
- { "EN", new Dictionary<string, string> { { "xin chào", "Hello" }, { "tạm biệt", "Goodbye" }, { "cảmơn", "Thank you" }, { "không", "No" }, { "có", "Yes" }, { "tôi tên là", "My name is" }, { "bạn khỏe không", "How are you" }, { "rất vui gặp bạn", "Nice to meet you" } } },
+ { "EN", new Dictionary<string, string> { { "xin chào", "Hello" }, { "tạm biệt", "Goodbye" }, { "cảm ơn", "Thank you" }, { "không", "No" }, { "có", "Yes" }, { "tôi tên là", "My name is" }, { "bạn khỏe không", "How are you" }, { "rất vui gặp bạn", "Nice to meet you" } } },
  { "JP", new Dictionary<string, string> { { "xin chào", "こんにちは" }, { "tạm biệt", "さようなら" }, { "cảm ơn", "ありがとう" }, { "không", "いいえ" }, { "có", "はい" }, { "tôi tên là", "私の名前は" }, { "bạn khỏe không", "元気ですか" }, { "rất vui gặp bạn", "お会いして嬉しいです" } } },
  { "ZH", new Dictionary<string, string> { { "xin chào", "你好" }, { "tạm biệt", "再见" }, { "cảm ơn", "谢谢" }, { "không", "不" }, { "có", "是" }, { "tôi tên là", "我叫" }, { "bạn khỏe không", "你好吗" }, { "rất vui gặp bạn", "很高兴认识你" } } }
  };

@@ -4342,6 +4342,19 @@
         }
       }
     },
+    "/api/subscriptions/plans": {
+      "get": {
+        "tags": [
+          "Plans"
+        ],
+        "summary": "Danh sách gói l??t nói và giá hi?n t?i (hi?n th? VN?)",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Refund/admin/notify-student": {
       "post": {
         "tags": [
@@ -4521,6 +4534,68 @@
           }
         },
         "deprecated": true
+      }
+    },
+    "/api/subscriptions/purchase": {
+      "post": {
+        "tags": [
+          "Subscription"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSubscriptionPurchaseDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSubscriptionPurchaseDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSubscriptionPurchaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/subscriptions/callback": {
+      "post": {
+        "tags": [
+          "Subscription"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionCallbackDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionCallbackDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionCallbackDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
       }
     },
     "/api/teacher/classes": {
@@ -5761,6 +5836,19 @@
         },
         "additionalProperties": false
       },
+      "CreateSubscriptionPurchaseDto": {
+        "required": [
+          "plan"
+        ],
+        "type": "object",
+        "properties": {
+          "plan": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "DifficultyLevel": {
         "enum": [
           1,
@@ -6675,6 +6763,36 @@
           "enrollmentId": {
             "type": "string",
             "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SubscriptionCallbackDto": {
+        "required": [
+          "status",
+          "transactionId"
+        ],
+        "type": "object",
+        "properties": {
+          "transactionId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "signature": {
+            "type": "string",
+            "nullable": true
+          },
+          "plan": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

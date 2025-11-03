@@ -26,9 +26,9 @@ namespace Common.Constants
         public static Dictionary<string, decimal> SubscriptionPrices = new()
         {
             { FREE, 0 },
-            { BASIC_5, 2.99m },
-            { BASIC_10, 4.99m },
-            { BASIC_15, 6.99m },
+            { BASIC_5, 10},
+            { BASIC_10, 28 },
+            { BASIC_15, 35 },
      
         };
     }

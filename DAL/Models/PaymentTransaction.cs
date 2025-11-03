@@ -9,14 +9,21 @@ namespace DAL.Models
     {
         [Key]
         public Guid TransactionId { get; set; }
-        [Required]
-        public Guid PurchaseId { get; set; }
+
+        // Make PurchaseId optional to support non-course payments (e.g., subscription plans)
+        public Guid? PurchaseId { get; set; }
         [ForeignKey(nameof(PurchaseId))]
-        public virtual Purchase Purchase { get; set; } = null!;
+        public virtual Purchase? Purchase { get; set; }
+
+        // Link to subscription purchase when applicable
+        public Guid? SubscriptionId { get; set; }
+        [ForeignKey(nameof(SubscriptionId))]
+        public virtual UserSubscription? Subscription { get; set; }
+
         [Required]
         public decimal Amount { get; set; }
         [StringLength(100)]
-        public string TransactionRef { get; set; } = null!;
+        public string TransactionRef { get; set; } = null!; // External orderCode/reference from gateway
         [Required]
         public TransactionStatus TransactionStatus { get; set; } = TransactionStatus.Pending;
         [Required]
