@@ -32,7 +32,7 @@ namespace BLL.Services.Assessment
             _logger = logger;
         }
 
-        // 1. Bắt đầu bài đánh giá
+        //1. Bắt đầu bài đánh giá
         public async Task<VoiceAssessmentDto> StartProgramAssessmentAsync(Guid userId, Guid languageId, Guid programId)
         {
             _logger.LogInformation("Bắt đầu Program Assessment: User {UserId}, Program {ProgramId}", userId, programId);
@@ -57,6 +57,7 @@ namespace BLL.Services.Assessment
 
             await ClearOldAssessmentData(userId, languageId);
 
+            // Generate questions with increasing difficulty and program context
             var questions = await _geminiService.GenerateVoiceAssessmentQuestionsAsync(
                 language.LanguageCode,
                 language.LanguageName,
@@ -66,6 +67,12 @@ namespace BLL.Services.Assessment
             if (questions == null || !questions.Any())
                 throw new InvalidOperationException($"Không thể tạo câu hỏi cho {program.Name}");
 
+            // Ensure difficulty is ascending if AI failed to enforce
+            questions = questions
+                .OrderBy(q => MapDifficultyOrder(q.Difficulty, programLevelNames))
+                .Select((q, idx) => { q.QuestionNumber = idx +1; return q; })
+                .ToList();
+
             var assessment = new VoiceAssessmentDto
             {
                 AssessmentId = Guid.NewGuid(),
@@ -74,7 +81,7 @@ namespace BLL.Services.Assessment
                 LanguageName = language.LanguageName,
                 Questions = questions,
                 CreatedAt = DateTime.UtcNow,
-                CurrentQuestionIndex = 0,
+                CurrentQuestionIndex =0,
                 ProgramId = programId,
                 ProgramName = program.Name,
                 ProgramLevelNames = programLevelNames,
@@ -85,7 +92,6 @@ namespace BLL.Services.Assessment
             return assessment;
         }
 
-   
         public async Task<VoiceAssessmentQuestion> GetCurrentQuestionAsync(Guid assessmentId)
         {
             var assessment = await RestoreAssessmentFromIdAsync(assessmentId);
@@ -98,7 +104,7 @@ namespace BLL.Services.Assessment
             return assessment.Questions[assessment.CurrentQuestionIndex];
         }
 
-        // 3. Nộp câu trả lời
+        //3. Nộp câu trả lời
         public async Task SubmitVoiceResponseAsync(Guid assessmentId, VoiceAssessmentResponseDto response)
         {
             var assessment = await RestoreAssessmentFromIdAsync(assessmentId);
@@ -114,13 +120,14 @@ namespace BLL.Services.Assessment
             if (!response.IsSkipped && response.AudioFile != null)
             {
                 question.AudioFilePath = await SaveAudioFileAsync(response.AudioFile, assessmentId, response.QuestionNumber);
+                question.AudioMimeType = response.AudioFile.ContentType; // preserve mime type for AI
             }
 
-            assessment.CurrentQuestionIndex++;
+            assessment.CurrentQuestionIndex = Math.Max(assessment.CurrentQuestionIndex, response.QuestionNumber);
             await _redisService.SetVoiceAssessmentAsync(assessment);
         }
         /// <summary>
-        /// 4. Hoàn thành bài đánh giá (Đánh giá AI, Gợi ý khóa học)
+        ///4. Hoàn thành bài đánh giá (Đánh giá AI, Gợi ý khóa học)
         /// </summary>
         public async Task<VoiceAssessmentResultDto> CompleteProgramAssessmentAsync(Guid assessmentId)
         {
@@ -134,53 +141,49 @@ namespace BLL.Services.Assessment
             if (language == null)
                 throw new ArgumentException("Ngôn ngữ không tồn tại.");
 
-       
+            // Only pass questions with audio or explicitly skipped
+            var completedQuestions = assessment.Questions.Where(q => !q.IsSkipped && !string.IsNullOrEmpty(q.AudioFilePath)).ToList();
+
             BatchVoiceEvaluationResult evaluationResult;
-            var completedQuestions = assessment.Questions.Where(q => !q.IsSkipped).ToList();
-
-            if (completedQuestions.Count == 0)
+            if (completedQuestions.Count ==0)
             {
-            
-                _logger.LogWarning("Tất cả câu hỏi đã bị bỏ qua. Gán level thấp nhất.");
+                _logger.LogWarning("Không có audio được nộp hoặc tất cả bị bỏ qua. Gán level thấp nhất.");
 
-              
                 var allLevels = await _unitOfWork.Levels.GetAllAsync();
                 var lowestLevel = allLevels
                     .Where(l => l.ProgramId == assessment.ProgramId.Value)
                     .OrderBy(l => l.OrderIndex)
                     .FirstOrDefault();
 
-               
-                string defaultLevel = lowestLevel?.Name ?? "Beginner";
+                string defaultLevel = lowestLevel?.Name ?? (assessment.ProgramLevelNames.FirstOrDefault() ?? "Beginner");
 
                 evaluationResult = new BatchVoiceEvaluationResult
                 {
-                    OverallLevel = defaultLevel, 
-                    OverallScore = 0, 
+                    OverallLevel = defaultLevel,
+                    OverallScore =0,
                     QuestionResults = assessment.Questions.Select(q => new QuestionEvaluationResult
                     {
                         QuestionNumber = q.QuestionNumber,
-                        Feedback = "Đã bỏ qua",
-                        AccuracyScore = 0,
-                        PronunciationScore = 0,
-                        FluencyScore = 0,
-                        GrammarScore = 0
+                        Feedback = q.IsSkipped ? "Đã bỏ qua" : "Không có audio",
+                        AccuracyScore =0,
+                        PronunciationScore =0,
+                        FluencyScore =0,
+                        GrammarScore =0
                     }).ToList(),
                     Strengths = new List<string>(),
-                    Weaknesses = new List<string> { "Bạn đã bỏ qua tất cả câu hỏi.", "Hãy thử lại để có kết quả chính xác." },
+                    Weaknesses = new List<string> { "Chưa có dữ liệu audio đủ để đánh giá." },
                     RecommendedCourses = new List<CourseRecommendation>(),
                     EvaluatedAt = DateTime.UtcNow
                 };
             }
             else
             {
-               
                 _logger.LogInformation("Đang gửi {Count} câu trả lời cho AI...", completedQuestions.Count);
                 evaluationResult = await _geminiService.EvaluateBatchVoiceResponsesAsync(
-                    assessment.Questions,
+                    assessment.Questions, // pass all so skipped are noted in prompt
                     language.LanguageCode,
                     language.LanguageName,
-                    assessment.ProgramLevelNames 
+                    assessment.ProgramLevelNames
                 );
             }
            
@@ -233,7 +236,25 @@ namespace BLL.Services.Assessment
             return resultDto;
         }
 
-        // 5. Chấp nhận kết quả
+        private int MapDifficultyOrder(string difficulty, List<string> programLevelNames)
+        {
+            if (string.IsNullOrWhiteSpace(difficulty)) return int.MaxValue;
+            var index = programLevelNames.FindIndex(l => l.Equals(difficulty, StringComparison.OrdinalIgnoreCase));
+            if (index >=0) return index;
+            // Fallback mapping CEFR
+            return difficulty.ToUpper() switch
+            {
+                "A1" =>0,
+                "A2" =>1,
+                "B1" =>2,
+                "B2" =>3,
+                "C1" =>4,
+                "C2" =>5,
+                _ => int.MaxValue
+            };
+        }
+
+        //5. Chấp nhận kết quả
         public async Task AcceptAssessmentAsync(Guid learnerLanguageId)
         {
             var learnerLanguage = await _unitOfWork.LearnerLanguages.GetByIdAsync(learnerLanguageId);
@@ -244,7 +265,6 @@ namespace BLL.Services.Assessment
 
             _logger.LogInformation("Chấp nhận Assessment: {Id}. Đặt Level = {Level}", learnerLanguageId, resultDto.DeterminedLevel);
 
-            // Chỉ cập nhật Level
             learnerLanguage.ProficiencyLevel = resultDto.DeterminedLevel;
             learnerLanguage.UpdatedAt = DateTime.UtcNow;
 
@@ -254,14 +274,12 @@ namespace BLL.Services.Assessment
             await ClearRedisDataAsync(learnerLanguageId);
         }
 
-        // 6. Từ chối kết quả
+        //6. Từ chối kết quả
         public async Task RejectAssessmentAsync(Guid learnerLanguageId)
         {
             _logger.LogInformation("Từ chối Assessment: {Id}", learnerLanguageId);
             await ClearRedisDataAsync(learnerLanguageId);
         }
-
-       
 
         public async Task<VoiceAssessmentResultDto?> GetAssessmentResultAsync(Guid learnerLanguageId)
         {
@@ -316,7 +334,7 @@ namespace BLL.Services.Assessment
 
                 int targetOrderIndex = determinedLevel?.OrderIndex
                     ?? programLevels.Min(l => (int?)l.OrderIndex)
-                    ?? 0;
+                    ??0;
 
                 var targetLevelIds = programLevels
                     .Where(l => l.OrderIndex >= targetOrderIndex)
@@ -373,7 +391,8 @@ namespace BLL.Services.Assessment
         {
             var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "voice-assessments");
             Directory.CreateDirectory(uploadsFolder);
-            var fileName = $"{assessmentId}_{questionNumber}_{Guid.NewGuid()}.mp3";
+            var extension = Path.GetExtension(audioFile.FileName);
+            var fileName = $"{assessmentId}_{questionNumber}_{Guid.NewGuid()}{extension}";
             var filePath = Path.Combine(uploadsFolder, fileName);
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
