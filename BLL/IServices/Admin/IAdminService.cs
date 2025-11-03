@@ -28,16 +28,16 @@ namespace BLL.IServices.Admin
 
 
         Task<IEnumerable<AdminProgramDetailDto>> GetProgramsByLanguageAsync(Guid languageId);
-        Task<Program?> GetProgramByIdAsync(Guid programId);
-        Task<Program> CreateProgramAsync(ProgramCreateDto dto);
-        Task<Program> UpdateProgramAsync(Guid programId, ProgramUpdateDto dto);
+        Task<AdminProgramDetailDto?> GetProgramByIdAsync(Guid programId);
+        Task<AdminProgramDetailDto> CreateProgramAsync(ProgramCreateDto dto);
+        Task<AdminProgramDetailDto> UpdateProgramAsync(Guid programId, ProgramUpdateDto dto);
         Task SoftDeleteProgramAsync(Guid programId);
 
-     
-        Task<IEnumerable<Level>> GetLevelsByProgramAsync(Guid programId);
-        Task<Level?> GetLevelByIdAsync(Guid levelId);
-        Task<Level> CreateLevelAsync(LevelCreateDto dto);
-        Task<Level> UpdateLevelAsync(Guid levelId, LevelUpdateDto dto);
+
+        Task<IEnumerable<AdminProgramLevelDto>> GetLevelsByProgramAsync(Guid programId);
+        Task<AdminProgramLevelDto?> GetLevelByIdAsync(Guid levelId);
+        Task<AdminProgramLevelDto> CreateLevelAsync(LevelCreateDto dto);
+        Task<AdminProgramLevelDto> UpdateLevelAsync(Guid levelId, LevelUpdateDto dto);
         Task SoftDeleteLevelAsync(Guid levelId);
 
 

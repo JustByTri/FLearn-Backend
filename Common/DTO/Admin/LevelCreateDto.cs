@@ -19,8 +19,5 @@ namespace Common.DTO.Admin
         [StringLength(500)]
         public string Description { get; set; } = string.Empty;
 
-        [Required]
-        [Range(1, 100, ErrorMessage = "Thứ tự phải từ 1 đến 100")]
-        public int OrderIndex { get; set; } 
     }
 }

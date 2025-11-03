@@ -2,6 +2,7 @@
 using BLL.IServices.Auth;
 using BLL.Settings;
 using Common.DTO.Admin;
+using DAL.Helpers;
 using DAL.Models;
 using DAL.UnitOfWork;
 using Microsoft.Extensions.Logging;
@@ -154,8 +155,8 @@ namespace BLL.Services.Admin
                 IsDefault = false,
 
                 CreatedByAdminId = adminUserId,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = TimeHelper.GetVietnamTime(),
+                UpdatedAt = TimeHelper.GetVietnamTime()
             };
 
             await _unitOfWork.GlobalConversationPrompts.CreateAsync(newPrompt);
@@ -188,7 +189,7 @@ namespace BLL.Services.Admin
             {
                 activePrompt.IsActive = false;
                 activePrompt.Status = "Archived";
-                activePrompt.UpdatedAt = DateTime.UtcNow;
+                activePrompt.UpdatedAt = TimeHelper.GetVietnamTime();;
                 await _unitOfWork.GlobalConversationPrompts.UpdateAsync(activePrompt);
             }
 
@@ -197,7 +198,7 @@ namespace BLL.Services.Admin
             prompt.Status = "Active";
             prompt.IsDefault = true;
             prompt.LastModifiedByAdminId = adminUserId;
-            prompt.UpdatedAt = DateTime.UtcNow;
+            prompt.UpdatedAt = TimeHelper.GetVietnamTime();;
 
             await _unitOfWork.GlobalConversationPrompts.UpdateAsync(prompt);
             await _unitOfWork.SaveChangesAsync();
@@ -266,7 +267,7 @@ namespace BLL.Services.Admin
             existingPrompt.RoleplayInstructions = updatePromptDto.RoleplayInstructions;
             existingPrompt.EvaluationCriteria = updatePromptDto.EvaluationCriteria;
             existingPrompt.IsActive = updatePromptDto.IsActive;
-            existingPrompt.UpdatedAt = DateTime.UtcNow;
+            existingPrompt.UpdatedAt = TimeHelper.GetVietnamTime();;
 
             await _unitOfWork.GlobalConversationPrompts.UpdateAsync(existingPrompt);
             await _unitOfWork.SaveChangesAsync();
@@ -328,7 +329,7 @@ namespace BLL.Services.Admin
             }
 
             existingPrompt.IsActive = !existingPrompt.IsActive;
-            existingPrompt.UpdatedAt = DateTime.UtcNow;
+            existingPrompt.UpdatedAt = TimeHelper.GetVietnamTime();;
 
             await _unitOfWork.GlobalConversationPrompts.UpdateAsync(existingPrompt);
             await _unitOfWork.SaveChangesAsync();
@@ -372,58 +373,48 @@ namespace BLL.Services.Admin
 
         public async Task<IEnumerable<AdminProgramDetailDto>> GetProgramsByLanguageAsync(Guid languageId)
         {
-
             var language = await _unitOfWork.Languages.GetByIdAsync(languageId);
             var languageName = language?.LanguageName ?? "Không rõ";
 
-
             var allPrograms = await _unitOfWork.Programs.GetAllAsync();
             var programsInLanguage = allPrograms.Where(p => p.LanguageId == languageId).ToList();
-
-
             var allLevels = await _unitOfWork.Levels.GetAllAsync();
-
 
             var result = new List<AdminProgramDetailDto>();
             foreach (var program in programsInLanguage)
             {
-
                 var programLevels = allLevels
                     .Where(l => l.ProgramId == program.ProgramId)
                     .OrderBy(l => l.OrderIndex)
-                    .Select(l => new AdminProgramLevelDto
-                    {
-                        LevelId = l.LevelId,
-                        Name = l.Name,
-                        Description = l.Description ?? "",
-                        OrderIndex = l.OrderIndex,
-                        Status = l.Status
-                    }).ToList();
+                    .Select(MapToLevelDto) 
+                    .ToList();
 
-
-                result.Add(new AdminProgramDetailDto
-                {
-                    ProgramId = program.ProgramId,
-                    LanguageId = program.LanguageId,
-                    LanguageName = languageName,
-                    Name = program.Name,
-                    Description = program.Description ?? "",
-                    Status = program.Status,
-                    CreatedAt = program.CreatedAt,
-                    UpdatedAt = program.UpdatedAt,
-                    Levels = programLevels
-                });
+                result.Add(MapToProgramDetailDto(program, languageName, programLevels));
             }
-
             return result;
         }
 
-        public async Task<Program?> GetProgramByIdAsync(Guid programId)
+        public async Task<AdminProgramDetailDto?> GetProgramByIdAsync(Guid programId)
         {
-            return await _unitOfWork.Programs.GetByIdAsync(programId);
+            var program = await _unitOfWork.Programs.GetByIdAsync(programId);
+            if (program == null) return null;
+
+            // Lấy tên ngôn ngữ
+            var language = await _unitOfWork.Languages.GetByIdAsync(program.LanguageId);
+            var languageName = language?.LanguageName ?? "Không rõ";
+
+            // Lấy Levels
+            var allLevels = await _unitOfWork.Levels.GetAllAsync();
+            var programLevels = allLevels
+                .Where(l => l.ProgramId == program.ProgramId)
+                .OrderBy(l => l.OrderIndex)
+                .Select(MapToLevelDto)
+                .ToList();
+
+            return MapToProgramDetailDto(program, languageName, programLevels);
         }
 
-        public async Task<Program> CreateProgramAsync(ProgramCreateDto dto)
+        public async Task<AdminProgramDetailDto> CreateProgramAsync(ProgramCreateDto dto)
         {
             var language = await _unitOfWork.Languages.GetByIdAsync(dto.LanguageId);
             if (language == null)
@@ -435,29 +426,19 @@ namespace BLL.Services.Admin
                 LanguageId = dto.LanguageId,
                 Name = dto.Name,
                 Description = dto.Description,
-                Status = true, // Mặc định là active
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                Status = true,
+                CreatedAt = TimeHelper.GetVietnamTime(),
+                UpdatedAt = TimeHelper.GetVietnamTime()
             };
 
             await _unitOfWork.Programs.CreateAsync(newProgram);
             await _unitOfWork.SaveChangesAsync();
 
-            var program = new Program
-            {
-                ProgramId = newProgram.ProgramId,
-                LanguageId = newProgram.LanguageId,
-                Name = newProgram.Name,
-                Description = newProgram.Description,
-                Status = newProgram.Status,
-                CreatedAt = newProgram.CreatedAt,
-                UpdatedAt = newProgram.UpdatedAt
-            };
-
-            return program;
+            // Trả về DTO (với danh sách Level rỗng và tên ngôn ngữ)
+            return MapToProgramDetailDto(newProgram, language.LanguageName, new List<AdminProgramLevelDto>());
         }
 
-        public async Task<Program> UpdateProgramAsync(Guid programId, ProgramUpdateDto dto)
+        public async Task<AdminProgramDetailDto> UpdateProgramAsync(Guid programId, ProgramUpdateDto dto)
         {
             var program = await _unitOfWork.Programs.GetByIdAsync(programId);
             if (program == null)
@@ -466,11 +447,13 @@ namespace BLL.Services.Admin
             program.Name = dto.Name;
             program.Description = dto.Description;
             program.Status = dto.Status;
-            program.UpdatedAt = DateTime.UtcNow;
+            program.UpdatedAt = TimeHelper.GetVietnamTime();;
 
             _unitOfWork.Programs.Update(program);
             await _unitOfWork.SaveChangesAsync();
-            return program;
+
+            // Lấy thông tin đầy đủ để trả về DTO
+            return await GetProgramByIdAsync(programId) ?? throw new Exception("Không thể tải lại Program sau khi cập nhật");
         }
 
         public async Task SoftDeleteProgramAsync(Guid programId)
@@ -488,31 +471,46 @@ namespace BLL.Services.Admin
                 throw new InvalidOperationException("Không thể xóa chương trình này. Vẫn còn các khóa học đang liên kết với nó.");
             }
 
-
             program.Status = false;
-            program.UpdatedAt = DateTime.UtcNow;
+            program.UpdatedAt = TimeHelper.GetVietnamTime();;
 
             _unitOfWork.Programs.Update(program);
             await _unitOfWork.SaveChangesAsync();
         }
 
+       
 
-        public async Task<IEnumerable<Level>> GetLevelsByProgramAsync(Guid programId)
+        public async Task<IEnumerable<AdminProgramLevelDto>> GetLevelsByProgramAsync(Guid programId)
         {
             var levels = await _unitOfWork.Levels.GetAllAsync();
-            return levels.Where(l => l.ProgramId == programId).OrderBy(l => l.OrderIndex);
+            return levels.Where(l => l.ProgramId == programId)
+                         .OrderBy(l => l.OrderIndex)
+                         .Select(MapToLevelDto); 
         }
 
-        public async Task<Level?> GetLevelByIdAsync(Guid levelId)
+        public async Task<AdminProgramLevelDto?> GetLevelByIdAsync(Guid levelId)
         {
-            return await _unitOfWork.Levels.GetByIdAsync(levelId);
+            var level = await _unitOfWork.Levels.GetByIdAsync(levelId);
+            return (level == null) ? null : MapToLevelDto(level); 
         }
 
-        public async Task<Level> CreateLevelAsync(LevelCreateDto dto)
+        public async Task<AdminProgramLevelDto> CreateLevelAsync(LevelCreateDto dto)
         {
             var program = await _unitOfWork.Programs.GetByIdAsync(dto.ProgramId);
             if (program == null)
                 throw new ArgumentException("ProgramId không tồn tại.");
+
+           
+            var allLevels = await _unitOfWork.Levels.GetAllAsync();
+            var levelsInProgram = allLevels.Where(l => l.ProgramId == dto.ProgramId);
+
+            int nextOrderIndex = 1; 
+            if (levelsInProgram.Any())
+            {
+               
+                nextOrderIndex = levelsInProgram.Max(l => l.OrderIndex) + 1;
+            }
+          
 
             var newLevel = new Level
             {
@@ -520,7 +518,7 @@ namespace BLL.Services.Admin
                 ProgramId = dto.ProgramId,
                 Name = dto.Name,
                 Description = dto.Description,
-                OrderIndex = dto.OrderIndex,
+                OrderIndex = nextOrderIndex, 
                 Status = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -528,10 +526,11 @@ namespace BLL.Services.Admin
 
             await _unitOfWork.Levels.CreateAsync(newLevel);
             await _unitOfWork.SaveChangesAsync();
-            return newLevel;
+
+            return MapToLevelDto(newLevel);
         }
 
-        public async Task<Level> UpdateLevelAsync(Guid levelId, LevelUpdateDto dto)
+        public async Task<AdminProgramLevelDto> UpdateLevelAsync(Guid levelId, LevelUpdateDto dto)
         {
             var level = await _unitOfWork.Levels.GetByIdAsync(levelId);
             if (level == null)
@@ -541,11 +540,12 @@ namespace BLL.Services.Admin
             level.Description = dto.Description;
             level.OrderIndex = dto.OrderIndex;
             level.Status = dto.Status;
-            level.UpdatedAt = DateTime.UtcNow;
+            level.UpdatedAt = TimeHelper.GetVietnamTime();;
 
             _unitOfWork.Levels.Update(level);
             await _unitOfWork.SaveChangesAsync();
-            return level;
+
+            return MapToLevelDto(level); // Dùng hàm Map
         }
 
         public async Task SoftDeleteLevelAsync(Guid levelId)
@@ -553,7 +553,6 @@ namespace BLL.Services.Admin
             var level = await _unitOfWork.Levels.GetByIdAsync(levelId);
             if (level == null)
                 throw new KeyNotFoundException("Không tìm thấy cấp độ.");
-
 
             var allCourses = await _unitOfWork.Courses.GetAllAsync();
             bool hasCourses = allCourses.Any(c => c.LevelId == levelId);
@@ -564,15 +563,44 @@ namespace BLL.Services.Admin
                 throw new InvalidOperationException("Không thể xóa cấp độ này. Vẫn còn các khóa học đang liên kết với nó.");
             }
 
-
             level.Status = false;
-            level.UpdatedAt = DateTime.UtcNow;
+            level.UpdatedAt = TimeHelper.GetVietnamTime();;
 
             _unitOfWork.Levels.Update(level);
             await _unitOfWork.SaveChangesAsync();
         }
+
+        private AdminProgramLevelDto MapToLevelDto(Level level)
+        {
+            return new AdminProgramLevelDto
+            {
+                LevelId = level.LevelId,
+                ProgramId = level.ProgramId,
+                Name = level.Name,
+                Description = level.Description ?? "",
+                OrderIndex = level.OrderIndex,
+                Status = level.Status
+            };
+        }
+
+        private AdminProgramDetailDto MapToProgramDetailDto(Program program, string languageName, List<AdminProgramLevelDto> levels)
+        {
+            return new AdminProgramDetailDto
+            {
+                ProgramId = program.ProgramId,
+                LanguageId = program.LanguageId,
+                LanguageName = languageName,
+                Name = program.Name,
+                Description = program.Description ?? "",
+                Status = program.Status,
+                CreatedAt = program.CreatedAt,
+                UpdatedAt = program.UpdatedAt,
+                Levels = levels
+            };
+        }
     }
 }
+
 
 
 

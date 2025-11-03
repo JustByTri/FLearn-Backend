@@ -5888,7 +5888,6 @@
       "LevelCreateDto": {
         "required": [
           "name",
-          "orderIndex",
           "programId"
         ],
         "type": "object",
@@ -5906,12 +5905,6 @@
             "maxLength": 500,
             "minLength": 0,
             "type": "string"
-          },
-          "orderIndex": {
-            "maximum": 100,
-            "minimum": 1,
-            "type": "integer",
-            "format": "int32"
           }
         },
         "additionalProperties": false
