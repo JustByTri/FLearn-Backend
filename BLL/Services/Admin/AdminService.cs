@@ -22,7 +22,7 @@ namespace BLL.Services.Admin
             _jwtSettings = jwtSettings.Value;
             _emailService = emailService;
             _authService = authService;
-            _logger =  logger;
+            _logger = logger;
         }
 
         public async Task<List<UserListDto>> GetAllUsersAsync(Guid adminUserId)
@@ -372,22 +372,22 @@ namespace BLL.Services.Admin
 
         public async Task<IEnumerable<AdminProgramDetailDto>> GetProgramsByLanguageAsync(Guid languageId)
         {
-         
+
             var language = await _unitOfWork.Languages.GetByIdAsync(languageId);
             var languageName = language?.LanguageName ?? "Không rõ";
 
-          
+
             var allPrograms = await _unitOfWork.Programs.GetAllAsync();
             var programsInLanguage = allPrograms.Where(p => p.LanguageId == languageId).ToList();
 
-     
+
             var allLevels = await _unitOfWork.Levels.GetAllAsync();
 
-           
+
             var result = new List<AdminProgramDetailDto>();
             foreach (var program in programsInLanguage)
             {
-               
+
                 var programLevels = allLevels
                     .Where(l => l.ProgramId == program.ProgramId)
                     .OrderBy(l => l.OrderIndex)
@@ -400,12 +400,12 @@ namespace BLL.Services.Admin
                         Status = l.Status
                     }).ToList();
 
-              
+
                 result.Add(new AdminProgramDetailDto
                 {
                     ProgramId = program.ProgramId,
                     LanguageId = program.LanguageId,
-                    LanguageName = languageName, 
+                    LanguageName = languageName,
                     Name = program.Name,
                     Description = program.Description ?? "",
                     Status = program.Status,
@@ -442,7 +442,19 @@ namespace BLL.Services.Admin
 
             await _unitOfWork.Programs.CreateAsync(newProgram);
             await _unitOfWork.SaveChangesAsync();
-            return newProgram;
+
+            var program = new Program
+            {
+                ProgramId = newProgram.ProgramId,
+                LanguageId = newProgram.LanguageId,
+                Name = newProgram.Name,
+                Description = newProgram.Description,
+                Status = newProgram.Status,
+                CreatedAt = newProgram.CreatedAt,
+                UpdatedAt = newProgram.UpdatedAt
+            };
+
+            return program;
         }
 
         public async Task<Program> UpdateProgramAsync(Guid programId, ProgramUpdateDto dto)
@@ -476,7 +488,7 @@ namespace BLL.Services.Admin
                 throw new InvalidOperationException("Không thể xóa chương trình này. Vẫn còn các khóa học đang liên kết với nó.");
             }
 
-          
+
             program.Status = false;
             program.UpdatedAt = DateTime.UtcNow;
 
@@ -542,7 +554,7 @@ namespace BLL.Services.Admin
             if (level == null)
                 throw new KeyNotFoundException("Không tìm thấy cấp độ.");
 
-          
+
             var allCourses = await _unitOfWork.Courses.GetAllAsync();
             bool hasCourses = allCourses.Any(c => c.LevelId == levelId);
 
@@ -552,7 +564,7 @@ namespace BLL.Services.Admin
                 throw new InvalidOperationException("Không thể xóa cấp độ này. Vẫn còn các khóa học đang liên kết với nó.");
             }
 
-           
+
             level.Status = false;
             level.UpdatedAt = DateTime.UtcNow;
 
