@@ -9,6 +9,7 @@ namespace Common.DTO.Admin
     public class AdminProgramLevelDto
     {
         public Guid LevelId { get; set; }
+        public Guid ProgramId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public int OrderIndex { get; set; }
