@@ -3267,5 +3267,21 @@
       }
     ],
     "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Assessment.VoiceAssessmentController",
+    "Method": "SwitchActiveLanguage",
+    "RelativePath": "api/VoiceAssessment/switch-language/{languageId}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "languageId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
   }
 ]

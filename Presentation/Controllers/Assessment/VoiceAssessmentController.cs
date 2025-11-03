@@ -23,22 +23,22 @@ namespace Presentation.Controllers.Assessment
         private readonly IVoiceAssessmentService _voiceAssessmentService;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<VoiceAssessmentController> _logger;
-      
+
         private readonly IRedisService _redisService;
 
-      
+
 
         public VoiceAssessmentController(
             IVoiceAssessmentService voiceAssessmentService,
             IUnitOfWork unitOfWork,
-   
+
             ILogger<VoiceAssessmentController> logger,
             IRedisService redisService)
         {
             _logger = logger;
             _voiceAssessmentService = voiceAssessmentService;
             _unitOfWork = unitOfWork;
-      
+
             _redisService = redisService;
         }
         /// <summary>
@@ -49,22 +49,22 @@ namespace Presentation.Controllers.Assessment
         {
             try
             {
-               
+
                 var language = await _unitOfWork.Languages.GetByIdAsync(languageId);
                 if (language == null)
                 {
                     return NotFound(new { success = false, message = "Không tìm thấy ngôn ngữ." });
                 }
 
-              
+
                 var allPrograms = await _unitOfWork.Programs.GetAllAsync();
 
-               
+
                 var programs = allPrograms
                     .Where(p => p.LanguageId == languageId && p.Status == true)
                     .Select(p => new
                     {
-                       
+
                         p.ProgramId,
                         p.Name,
                         p.Description
@@ -173,7 +173,7 @@ namespace Presentation.Controllers.Assessment
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi nộp bài");
-                return BadRequest(new { success = false,  ex.Message });
+                return BadRequest(new { success = false, ex.Message });
             }
         }
 
@@ -191,7 +191,7 @@ namespace Presentation.Controllers.Assessment
 
                 _logger.LogInformation("User {UserId} hoàn thành assessment {AssessmentId}", userId, assessmentId);
 
-          
+
                 var result = await _voiceAssessmentService.CompleteProgramAssessmentAsync(assessmentId);
 
                 var message = (result.RecommendedCourses?.Any() == true)
@@ -294,7 +294,95 @@ namespace Presentation.Controllers.Assessment
             }
         }
 
-        // ❌ ĐÃ LOẠI BỎ TẤT CẢ CÁC HÀM CŨ (GetRecommendedCoursesFromRedis, SaveAcceptedAssessmentToDatabase,...)
-        // vì logic đã được chuyển vào Service.
+        /// <summary>
+        /// Thay đổi ngôn ngữ học tập. Kiểm tra xem đã làm test cho ngôn ngữ mới chưa.
+        /// </summary>
+        [HttpPost("switch-language/{languageId:guid}")]
+        public async Task<IActionResult> SwitchActiveLanguage(Guid languageId)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+              
+                var language = await _unitOfWork.Languages.GetByIdAsync(languageId);
+                if (language == null)
+                {
+                    return NotFound(new { success = false, message = "Ngôn ngữ không tồn tại." });
+                }
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null) return Unauthorized();
+
+              
+                var allLearnerLangs = await _unitOfWork.LearnerLanguages.GetAllAsync();
+                var learnerLanguage = allLearnerLangs.FirstOrDefault(ll => ll.UserId == userId && ll.LanguageId == languageId);
+
+              
+                if (learnerLanguage == null)
+                {
+                    _logger.LogWarning("Switch failed: User {UserId} chưa có LearnerLanguage cho {LanguageId}", userId, languageId);
+                    return Ok(new
+                    {
+                        success = true,
+                        action = "REQUIRE_ASSESSMENT",
+                        message = $"Bạn cần hoàn thành bài đánh giá đầu vào cho {language.LanguageName}."
+                    });
+                }
+
+          
+                if (learnerLanguage.ProficiencyLevel == "Pending Assessment")
+                {
+                    _logger.LogWarning("Switch failed: User {UserId} có {LanguageId} đang 'Pending Assessment'", userId, languageId);
+
+                    var pendingResult = await _voiceAssessmentService.GetAssessmentResultAsync(learnerLanguage.LearnerLanguageId);
+                    if (pendingResult != null)
+                    {
+                      
+                        return Ok(new
+                        {
+                            success = true,
+                            action = "REVIEW_PENDING_ASSESSMENT", 
+                            message = $"Bạn có kết quả đánh giá cho {language.LanguageName} đang chờ chấp nhận.",
+                            data = pendingResult 
+                        });
+                    }
+
+                   
+                    return Ok(new
+                    {
+                        success = true,
+                        action = "REQUIRE_ASSESSMENT", 
+                        message = $"Bạn chưa hoàn thành bài đánh giá cho {language.LanguageName}."
+                    });
+                }
+
+      
+
+                _logger.LogInformation("Switch success: User {UserId} đổi ngôn ngữ sang {LanguageId}", userId, languageId);
+
+         
+                user.ActiveLanguageId = languageId;
+                _unitOfWork.Users.Update(user);
+                await _unitOfWork.SaveChangesAsync(); 
+
+                return Ok(new
+                {
+                    success = true,
+                    action = "PROCEED_TO_HOME",
+                    message = $"Chào mừng trở lại! Bạn đã sẵn sàng học {language.LanguageName}.",
+                    data = new
+                    {
+                        learnerLanguage.LearnerLanguageId,
+                        learnerLanguage.ProficiencyLevel
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi chuyển đổi ngôn ngữ cho User");
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống." });
+            }
+        }
     }
 }
+
