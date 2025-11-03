@@ -473,21 +473,40 @@ Never respond in Vietnamese or any other language, regardless of what language t
                 var user = await _unitOfWork.Users.GetByIdAsync(userId);
                 if (user == null) throw new ArgumentException("User not found");
 
-                var activeSubscription = user.Subscriptions?
-                .FirstOrDefault(s => s.IsActive && s.StartDate <= DateTime.UtcNow && (s.EndDate == null || s.EndDate > DateTime.UtcNow));
+                var now = DateTime.UtcNow;
+                // Load active subscription directly (avoid relying on navigation)
+                var activeSubscription = await _unitOfWork.UserSubscriptions.FindAsync(
+                    s => s.UserID == userId && s.IsActive && s.StartDate <= now && (s.EndDate == null || s.EndDate > now));
 
                 var dailyLimit = activeSubscription?.ConversationQuota ?? user.DailyConversationLimit;
-                var subscriptionType = activeSubscription?.SubscriptionType ?? SubscriptionConstants.FREE;
+
+                // Determine subscriptionType: prefer active subscription, else infer by quota
+                string subscriptionType;
+                if (activeSubscription != null)
+                {
+                    subscriptionType = activeSubscription.SubscriptionType;
+                }
+                else
+                {
+                    subscriptionType = SubscriptionConstants.SubscriptionQuotas
+ .FirstOrDefault(kv => kv.Value == dailyLimit).Key ?? SubscriptionConstants.FREE;
+                }
 
                 decimal? planPrice = null;
                 string? planPriceVnd = null;
-                if (activeSubscription != null && SubscriptionConstants.SubscriptionPrices.TryGetValue(activeSubscription.SubscriptionType, out var price))
+                if (!string.IsNullOrWhiteSpace(subscriptionType) && SubscriptionConstants.SubscriptionPrices.TryGetValue(subscriptionType, out var price))
                 {
                     planPrice = price;
-                    // Format VND, no decimals, with thousand separators
-                    planPriceVnd = string.Format(new CultureInfo("vi-VN"), "{0:C0}", price *1000000m /1000000m).Replace("₫", "đ");
-                    // if prices are already in VND in constants, remove the *1000000m logic and use price directly
                     planPriceVnd = string.Format(new CultureInfo("vi-VN"), "{0:C0}", price).Replace("₫", "đ");
+                }
+
+                int? inferredQuota = null;
+                if (activeSubscription == null)
+                {
+                    if (SubscriptionConstants.SubscriptionQuotas.TryGetValue(subscriptionType, out var q))
+                    {
+                        inferredQuota = (int?)q;
+                    }
                 }
 
                 var dto = new ConversationUsageDto
@@ -497,8 +516,8 @@ Never respond in Vietnamese or any other language, regardless of what language t
                     SubscriptionType = subscriptionType,
                     ResetDate = user.LastConversationResetDate.Date.AddDays(1),
                     HasActiveSubscription = activeSubscription != null,
-                    CurrentPlan = activeSubscription?.SubscriptionType,
-                    PlanDailyQuota = activeSubscription?.ConversationQuota,
+                    CurrentPlan = activeSubscription?.SubscriptionType ?? subscriptionType,
+                    PlanDailyQuota = activeSubscription?.ConversationQuota ?? inferredQuota,
                     PlanPrice = planPrice,
                     PlanPriceVndFormatted = planPriceVnd,
                     PlanStartDate = activeSubscription?.StartDate,
@@ -520,8 +539,9 @@ Never respond in Vietnamese or any other language, regardless of what language t
         {
             if (user == null) return false;
 
-            var activeSubscription = user.Subscriptions?
-            .FirstOrDefault(s => s.IsActive && s.StartDate <= DateTime.UtcNow && (s.EndDate == null || s.EndDate > DateTime.UtcNow));
+            var now = DateTime.UtcNow;
+            var activeSubscription = await _unitOfWork.UserSubscriptions.FindAsync(
+                s => s.UserID == user.UserID && s.IsActive && s.StartDate <= now && (s.EndDate == null || s.EndDate > now));
 
             if (activeSubscription != null)
             {
@@ -530,6 +550,8 @@ Never respond in Vietnamese or any other language, regardless of what language t
                 {
                     user.ConversationsUsedToday = 0;
                     user.LastConversationResetDate = DateTime.UtcNow;
+                    await _unitOfWork.Users.UpdateAsync(user);
+                    await _unitOfWork.SaveChangesAsync();
                 }
                 return user.ConversationsUsedToday < quota;
             }
