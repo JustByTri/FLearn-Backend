@@ -14,6 +14,7 @@ using BLL.IServices.Refund;
 using BLL.IServices.Teacher;
 using BLL.IServices.Topic;
 using BLL.IServices.Upload;
+using BLL.IServices.Subscription;
 using BLL.Services;
 using BLL.Services.Admin;
 using BLL.Services.AI;
@@ -29,6 +30,7 @@ using BLL.Services.Refund;
 using BLL.Services.Teacher;
 using BLL.Services.Topic;
 using BLL.Services.Upload;
+using BLL.Services.Subscription;
 using BLL.Settings;
 using Common.Authorization;
 using DAL;
@@ -123,6 +125,7 @@ namespace BLL
             services.AddScoped<ITeacherClassService, TeacherClassService>();
             services.AddHostedService<ClassEnrollmentCheckService>();
             services.AddScoped<IRefundRequestService, RefundRequestService>();
+            services.AddScoped<ISubscriptionService, SubscriptionService>();
             return services;
         }
     }

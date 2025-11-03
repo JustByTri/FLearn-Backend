@@ -3,12 +3,14 @@ using BLL.Background;
 using BLL.Hubs;
 using BLL.Settings;
 using Common.Authorization;
+using DAL.DBContext;
 using Hangfire;
 using Hangfire.MySql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Presentation.Filter;
@@ -144,7 +146,6 @@ builder.Services.AddSwaggerGen(c =>
  new List<string>()
  }
  });
-
 
  c.DocInclusionPredicate((docName, apiDesc) =>
  {
@@ -304,14 +305,20 @@ builder.Services.AddCors(options =>
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
-    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    options.KnownProxies.Add(IPAddress.Parse("127.0.0.1"));
-
-
+ options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+ options.KnownProxies.Add(IPAddress.Parse("127.0.0.1"));
 });
 
 var app = builder.Build();
 app.UseForwardedHeaders();
+
+// Apply EF Core migrations automatically at startup
+using (var scope = app.Services.CreateScope())
+{
+ var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+ db.Database.Migrate();
+}
+
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {

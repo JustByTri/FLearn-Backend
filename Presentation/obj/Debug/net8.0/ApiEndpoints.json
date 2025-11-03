@@ -2542,6 +2542,48 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "Presentation.Controllers.Subscription.SubscriptionController",
+    "Method": "Callback",
+    "RelativePath": "api/subscriptions/callback",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "callback",
+        "Type": "Common.DTO.Subscription.SubscriptionCallbackDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Subscription.PlansController",
+    "Method": "GetPlans",
+    "RelativePath": "api/subscriptions/plans",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Subscription.SubscriptionController",
+    "Method": "Purchase",
+    "RelativePath": "api/subscriptions/purchase",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "Common.DTO.Subscription.CreateSubscriptionPurchaseDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "Presentation.Controllers.Teacher.TeacherClassController",
     "Method": "CreateClass",
     "RelativePath": "api/teacher/classes",
