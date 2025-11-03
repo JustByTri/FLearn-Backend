@@ -1,4 +1,5 @@
 ﻿using Common.DTO.Admin;
+using DAL.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,6 +25,22 @@ namespace BLL.IServices.Admin
         Task<GlobalConversationPromptDto> ActivateGlobalPromptAsync(
    Guid adminUserId,
    Guid promptId);
+
+
+        Task<IEnumerable<AdminProgramDetailDto>> GetProgramsByLanguageAsync(Guid languageId);
+        Task<Program?> GetProgramByIdAsync(Guid programId);
+        Task<Program> CreateProgramAsync(ProgramCreateDto dto);
+        Task<Program> UpdateProgramAsync(Guid programId, ProgramUpdateDto dto);
+        Task SoftDeleteProgramAsync(Guid programId);
+
+     
+        Task<IEnumerable<Level>> GetLevelsByProgramAsync(Guid programId);
+        Task<Level?> GetLevelByIdAsync(Guid levelId);
+        Task<Level> CreateLevelAsync(LevelCreateDto dto);
+        Task<Level> UpdateLevelAsync(Guid levelId, LevelUpdateDto dto);
+        Task SoftDeleteLevelAsync(Guid levelId);
+
+
 
     }
 }

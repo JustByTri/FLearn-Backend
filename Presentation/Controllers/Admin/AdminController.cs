@@ -17,11 +17,12 @@ namespace Presentation.Controllers.Admin
     {
         private readonly IAdminService _adminService;
         private readonly IAuthService _authService;
-
-        public AdminController(IAdminService adminService, IAuthService authService)
+        private readonly ILogger<AdminController> _logger;
+        public AdminController(IAdminService adminService, IAuthService authService, ILogger<AdminController> logger)
         {
             _adminService = adminService;
             _authService = authService;
+            _logger=logger;
         }
 
         /// <summary>
@@ -412,8 +413,168 @@ namespace Presentation.Controllers.Admin
                 });
             }
         }
+        #region Program Endpoints
 
-     
+        [HttpGet("language/{languageId:guid}/programs")]
+        public async Task<IActionResult> GetPrograms(Guid languageId)
+        {
+         
+            var programs = await _adminService.GetProgramsByLanguageAsync(languageId);
+            return Ok(new { success = true, data = programs });
+        }
+
+        [HttpGet("program/{programId:guid}")]
+        public async Task<IActionResult> GetProgram(Guid programId)
+        {
+            var program = await _adminService.GetProgramByIdAsync(programId);
+            if (program == null) return NotFound(new { success = false, message = "Không tìm thấy chương trình." });
+            return Ok(new { success = true, data = program });
+        }
+
+        [HttpPost("program")]
+        public async Task<IActionResult> CreateProgram([FromBody] ProgramCreateDto dto)
+        {
+            try
+            {
+                var program = await _adminService.CreateProgramAsync(dto);
+                return CreatedAtAction(nameof(GetProgram), new { programId = program.ProgramId }, new { success = true, data = program });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi tạo Program");
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống." });
+            }
+        }
+
+        [HttpPut("program/{programId:guid}")]
+        public async Task<IActionResult> UpdateProgram(Guid programId, [FromBody] ProgramUpdateDto dto)
+        {
+            try
+            {
+                var program = await _adminService.UpdateProgramAsync(programId, dto);
+                return Ok(new { success = true, data = program });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật Program {ProgramId}", programId);
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống." });
+            }
+        }
+
+        [HttpDelete("program/{programId:guid}")]
+        public async Task<IActionResult> DeleteProgram(Guid programId)
+        {
+            try
+            {
+                await _adminService.SoftDeleteProgramAsync(programId);
+                return Ok(new { success = true, message = "Đã xóa (ẩn) chương trình thành công." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (InvalidOperationException ex) // Lỗi do còn khóa học
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa Program {ProgramId}", programId);
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống." });
+            }
+        }
+
+        #endregion
+
+        #region Level Endpoints
+
+        [HttpGet("program/{programId:guid}/levels")]
+        public async Task<IActionResult> GetLevels(Guid programId)
+        {
+            var levels = await _adminService.GetLevelsByProgramAsync(programId);
+            return Ok(new { success = true, data = levels });
+        }
+
+        [HttpGet("level/{levelId:guid}")]
+        public async Task<IActionResult> GetLevel(Guid levelId)
+        {
+            var level = await _adminService.GetLevelByIdAsync(levelId);
+            if (level == null) return NotFound(new { success = false, message = "Không tìm thấy cấp độ." });
+            return Ok(new { success = true, data = level });
+        }
+
+        [HttpPost("level")]
+        public async Task<IActionResult> CreateLevel([FromBody] LevelCreateDto dto)
+        {
+            try
+            {
+                var level = await _adminService.CreateLevelAsync(dto);
+                return CreatedAtAction(nameof(GetLevel), new { levelId = level.LevelId }, new { success = true, data = level });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi tạo Level");
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống." });
+            }
+        }
+
+        [HttpPut("level/{levelId:guid}")]
+        public async Task<IActionResult> UpdateLevel(Guid levelId, [FromBody] LevelUpdateDto dto)
+        {
+            try
+            {
+                var level = await _adminService.UpdateLevelAsync(levelId, dto);
+                return Ok(new { success = true, data = level });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi cập nhật Level {LevelId}", levelId);
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống." });
+            }
+        }
+
+        [HttpDelete("level/{levelId:guid}")]
+        public async Task<IActionResult> DeleteLevel(Guid levelId)
+        {
+            try
+            {
+                await _adminService.SoftDeleteLevelAsync(levelId);
+                return Ok(new { success = true, message = "Đã xóa (ẩn) cấp độ thành công." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (InvalidOperationException ex) // Lỗi do còn khóa học
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa Level {LevelId}", levelId);
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống." });
+            }
+        }
+
+        #endregion
+
+
     }
 }
 
