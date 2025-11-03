@@ -1872,6 +1872,22 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "Presentation.Controllers.Language.LanguageController",
+    "Method": "GetLanguageLevels",
+    "RelativePath": "api/languages/{languageId}/levels",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "languageId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "Presentation.Controllers.LessonActivityLog.LessonActivityLogsController",
     "Method": "AddLog",
     "RelativePath": "api/lesson-logs",

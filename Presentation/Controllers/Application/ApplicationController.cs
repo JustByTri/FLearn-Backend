@@ -17,6 +17,7 @@ namespace Presentation.Controllers.Application
         {
             _teacherApplicationService = teacherApplicationService;
         }
+
         /// <summary>
         /// Submits a new teacher application.
         /// </summary>
