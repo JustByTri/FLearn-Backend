@@ -5,28 +5,50 @@ namespace BLL.IServices.Assessment
 {
     public interface IVoiceAssessmentService
     {
-       
-        Task<VoiceAssessmentDto> StartVoiceAssessmentAsync(Guid userId, Guid languageId, List<int>? goalIds = null);
+        /// <summary>
+        /// Bắt đầu bài đánh giá giọng nói dựa trên Ngôn ngữ và Khung chương trình.
+        /// </summary>
+        Task<VoiceAssessmentDto> StartProgramAssessmentAsync(Guid userId, Guid languageId, Guid programId);
 
-        Task<VoiceAssessmentDto> StartVoiceAssessmentAsync(Guid userId, Guid languageId, int? goalId = null);
-
+        /// <summary>
+        /// Lấy câu hỏi hiện tại từ bài đánh giá trong Redis.
+        /// </summary>
         Task<VoiceAssessmentQuestion> GetCurrentQuestionAsync(Guid assessmentId);
+
+        /// <summary>
+        /// Nộp file audio hoặc bỏ qua một câu hỏi.
+        /// </summary>
         Task SubmitVoiceResponseAsync(Guid assessmentId, VoiceAssessmentResponseDto response);
-        Task<BatchVoiceEvaluationResult> CompleteVoiceAssessmentAsync(Guid assessmentId);
-        Task<VoiceAssessmentResultDto?> GetVoiceAssessmentResultAsync(Guid userId, Guid languageId);
-        Task<bool> HasCompletedVoiceAssessmentAsync(Guid userId, Guid languageId);
 
-        Task<List<VoiceAssessmentDto>> GetActiveAssessmentsDebugAsync();
+        /// <summary>
+        /// Hoàn thành bài đánh giá: Đánh giá bằng AI và Gợi ý khóa học.
+        /// </summary>
+        /// <returns>Kết quả đầy đủ (bao gồm các khóa học gợi ý).</returns>
+        Task<VoiceAssessmentResultDto> CompleteProgramAssessmentAsync(Guid assessmentId);
 
-        Task<Guid?> FindAssessmentIdAsync(Guid userId, Guid languageId);
-        Task<VoiceAssessmentDto?> RestoreAssessmentFromIdAsync(Guid assessmentId);
+        /// <summary>
+        /// Lấy kết quả (đã lưu tạm) từ Redis bằng LearnerLanguageId.
+        /// </summary>
+        Task<VoiceAssessmentResultDto?> GetAssessmentResultAsync(Guid learnerLanguageId);
+
+        /// <summary>
+        /// Chấp nhận kết quả: Lưu ProficiencyLevel vào LearnerLanguage.
+        /// </summary>
+        Task AcceptAssessmentAsync(Guid learnerLanguageId);
+
+        /// <summary>
+        /// Từ chối/Hủy kết quả: Xóa kết quả tạm thời khỏi Redis.
+        /// </summary>
+        Task RejectAssessmentAsync(Guid learnerLanguageId);
+
+        /// <summary>
+        /// Xác thực xem assessmentId có thuộc về userId hay không.
+        /// </summary>
         Task<bool> ValidateAssessmentIdAsync(Guid assessmentId, Guid userId);
 
         /// <summary>
-        /// Xóa kết quả assessment cũ khi đổi ngôn ngữ
+        /// Khôi phục bài đánh giá từ Redis (dùng nội bộ).
         /// </summary>
-        Task ClearAssessmentResultAsync(Guid userId, Guid languageId);
-        Task SaveRecommendedCoursesAsync(Guid userId, Guid languageId, List<CourseRecommendationDto> courses);
+        Task<VoiceAssessmentDto?> RestoreAssessmentFromIdAsync(Guid assessmentId);
     }
 }
-

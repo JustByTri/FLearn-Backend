@@ -12,9 +12,14 @@ namespace Common.DTO.Assement
         public string LanguageName { get; set; } = string.Empty;
         public Guid LaguageID { get; set; }
 
-        public string DeterminedLevel { get; set; } = string.Empty; // CEFR/HSK/JLPT
+        public Guid LearnerLanguageId { get; set; } 
+        public Guid? ProgramId { get; set; } 
+        public string? ProgramName { get; set; } 
+
+      
+        public string DeterminedLevel { get; set; } = string.Empty; 
         public int LevelConfidence { get; set; } 
-        public string AssessmentCompleteness { get; set; } = string.Empty; // "3/4 câu"
+        public string AssessmentCompleteness { get; set; } = string.Empty;
 
   
         public int OverallScore { get; set; }
@@ -30,8 +35,8 @@ namespace Common.DTO.Assement
         public string NextLevelRequirements { get; set; } = string.Empty;
 
     
-        public VoiceLearningRoadmapDto? Roadmap { get; set; }
-        public List<RecommendedCourseDto>? RecommendedCourses { get; set; } // NEW
+  
+        public List<RecommendedCourseDto>? RecommendedCourses { get; set; } 
 
         public DateTime CompletedAt { get; set; }
     }

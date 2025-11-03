@@ -13,5 +13,6 @@ namespace Common.DTO.Assement
         public string Level { get; set; } = string.Empty;
         public string MatchReason { get; set; } = string.Empty;
         public string? GoalName { get; set; }
+        public Guid UserId { get; set; }
     }
 }

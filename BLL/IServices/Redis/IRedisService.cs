@@ -17,15 +17,26 @@ namespace BLL.IServices.Redis
         Task<List<VoiceAssessmentDto>> GetUserAssessmentsAsync(Guid userId, Guid? languageId = null);
 
         // Voice Assessment Results
-        Task<VoiceAssessmentResultDto?> GetVoiceAssessmentResultAsync(Guid userId, Guid languageId);
-        Task SetVoiceAssessmentResultAsync(Guid userId, Guid languageId, VoiceAssessmentResultDto result);
-
-        // Utility
-        Task<int> ClearAllAssessmentsAsync();
         /// <summary>
-        /// Xóa kết quả voice assessment result
+        /// Lấy kết quả assessment đã hoàn thành từ Redis
+        /// (Keyed bằng LearnerLanguageId)
         /// </summary>
-        Task DeleteVoiceAssessmentResultAsync(Guid userId, Guid languageId);
+        Task<VoiceAssessmentResultDto?> GetVoiceAssessmentResultAsync(Guid learnerLanguageId);
+
+        /// <summary>
+        /// Lưu kết quả assessment đã hoàn thành vào Redis
+        /// (Keyed bằng LearnerLanguageId)
+        /// </summary>
+        Task SetVoiceAssessmentResultAsync(Guid learnerLanguageId, VoiceAssessmentResultDto result);
+
+        /// <summary>
+        /// Xóa kết quả assessment đã hoàn thành khỏi Redis
+        /// (Keyed bằng LearnerLanguageId)
+        /// </summary>
+        Task DeleteVoiceAssessmentResultAsync(Guid learnerLanguageId);
+
+        // ----- Hàm Debug (giữ nguyên) -----
+        Task<int> ClearAllAssessmentsAsync();
 
         /// <summary>
         /// Delete generic key

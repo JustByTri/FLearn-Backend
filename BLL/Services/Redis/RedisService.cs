@@ -15,13 +15,13 @@ namespace BLL.Services.Redis
     {
         private readonly IDistributedCache _distributedCache;
         private readonly IConnectionMultiplexer _redis;
-        private readonly RedisDatabase _database; // Fix: Use explicit alias
+        private readonly RedisDatabase _database; 
         private readonly ILogger<RedisService> _logger;
         private readonly RedisSettings _redisSettings;
 
-        // Cache key prefixes
+      
         private const string VOICE_ASSESSMENT_PREFIX = "voice_assessment:";
-        private const string VOICE_RESULT_PREFIX = "voice_result:";
+        private const string VOICE_RESULT_PREFIX = "voice_result:"; 
         private const string USER_ASSESSMENTS_PREFIX = "user_assessments:";
 
         public RedisService(
@@ -32,10 +32,59 @@ namespace BLL.Services.Redis
         {
             _distributedCache = distributedCache;
             _redis = redis;
-            _database = redis.GetDatabase(); // Fix: This now clearly uses StackExchange.Redis
+            _database = redis.GetDatabase();
             _logger = logger;
             _redisSettings = redisSettings.Value;
         }
+
+
+        public async Task<T?> GetAsync<T>(string key) where T : class
+        {
+            try
+            {
+                var cachedValue = await _database.StringGetAsync(key);
+                if (!cachedValue.HasValue)
+                {
+                    _logger.LogDebug("Key '{Key}' not found in Redis", key);
+                    return null;
+                }
+                return JsonSerializer.Deserialize<T>(cachedValue);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error getting key '{Key}' from Redis", key);
+                return null;
+            }
+        }
+
+        public async Task SetAsync<T>(string key, T value, TimeSpan? expiry = null)
+        {
+            try
+            {
+                var json = JsonSerializer.Serialize(value);
+                await _database.StringSetAsync(key, json, expiry);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error setting key '{Key}' in Redis", key);
+                throw;
+            }
+        }
+
+        public async Task DeleteAsync(string key)
+        {
+            try
+            {
+                await _database.KeyDeleteAsync(key);
+                _logger.LogDebug("🗑️ Deleted Redis key: {Key}", key);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting Redis key: {Key}", key);
+                throw;
+            }
+        }
+
 
         public async Task<VoiceAssessmentDto?> GetVoiceAssessmentAsync(Guid assessmentId)
         {
@@ -47,9 +96,7 @@ namespace BLL.Services.Redis
                 if (string.IsNullOrEmpty(cachedValue))
                     return null;
 
-                var assessment = JsonSerializer.Deserialize<VoiceAssessmentDto>(cachedValue);
-                _logger.LogDebug("Retrieved assessment {AssessmentId} from Redis", assessmentId);
-                return assessment;
+                return JsonSerializer.Deserialize<VoiceAssessmentDto>(cachedValue);
             }
             catch (Exception ex)
             {
@@ -57,44 +104,7 @@ namespace BLL.Services.Redis
                 return null;
             }
         }
-        public async Task<T?> GetAsync<T>(string key) where T : class
-        {
-            try
-            {
-                var cachedValue = await _database.StringGetAsync(key);
 
-                if (!cachedValue.HasValue)
-                {
-                    _logger.LogDebug("Key '{Key}' not found in Redis", key);
-                    return null;
-                }
-
-                var result = JsonSerializer.Deserialize<T>(cachedValue);
-                _logger.LogDebug("✅ Retrieved key '{Key}' from Redis", key);
-                return result;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Error getting key '{Key}' from Redis", key);
-                return null;
-            }
-        }
-        public async Task SetAsync<T>(string key, T value, TimeSpan? expiry = null)
-        {
-            try
-            {
-                var json = JsonSerializer.Serialize(value);
-                await _database.StringSetAsync(key, json, expiry);
-
-                _logger.LogInformation("✅ Set key '{Key}' in Redis with expiry {Expiry}",
-                    key, expiry?.ToString() ?? "none");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Error setting key '{Key}' in Redis", key);
-                throw;
-            }
-        }
         public async Task SetVoiceAssessmentAsync(VoiceAssessmentDto assessment)
         {
             try
@@ -112,8 +122,7 @@ namespace BLL.Services.Redis
                 // Add to user assessments index
                 await AddToUserAssessmentsIndexAsync(assessment.UserId, assessment.AssessmentId, assessment.LanguageId);
 
-                _logger.LogInformation("✅ Saved assessment {AssessmentId} to Redis with {Minutes} minutes expiry",
-                    assessment.AssessmentId, _redisSettings.VoiceAssessmentExpiryMinutes);
+                _logger.LogInformation("✅ Saved assessment {AssessmentId} to Redis", assessment.AssessmentId);
             }
             catch (Exception ex)
             {
@@ -145,38 +154,6 @@ namespace BLL.Services.Redis
             }
         }
 
-        public async Task<List<VoiceAssessmentDto>> GetActiveVoiceAssessmentsAsync()
-        {
-            try
-            {
-                var server = _redis.GetServer(_redis.GetEndPoints().First());
-                var keys = server.Keys(pattern: $"{VOICE_ASSESSMENT_PREFIX}*");
-
-                var assessments = new List<VoiceAssessmentDto>();
-
-                foreach (var key in keys)
-                {
-                    var cachedValue = await _distributedCache.GetStringAsync(key);
-                    if (!string.IsNullOrEmpty(cachedValue))
-                    {
-                        var assessment = JsonSerializer.Deserialize<VoiceAssessmentDto>(cachedValue);
-                        if (assessment != null)
-                        {
-                            assessments.Add(assessment);
-                        }
-                    }
-                }
-
-                _logger.LogDebug("Retrieved {Count} active assessments from Redis", assessments.Count);
-                return assessments;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting active assessments from Redis");
-                return new List<VoiceAssessmentDto>();
-            }
-        }
-
         public async Task<List<VoiceAssessmentDto>> GetUserAssessmentsAsync(Guid userId, Guid? languageId = null)
         {
             try
@@ -200,8 +177,6 @@ namespace BLL.Services.Redis
                         }
                     }
                 }
-
-                _logger.LogDebug("Retrieved {Count} assessments for user {UserId}", assessments.Count, userId);
                 return assessments;
             }
             catch (Exception ex)
@@ -210,40 +185,13 @@ namespace BLL.Services.Redis
                 return new List<VoiceAssessmentDto>();
             }
         }
-        public async Task DeleteVoiceAssessmentResultAsync(Guid userId, Guid languageId)
-        {
-            try
-            {
-                var key = $"voice_assessment_result:{userId}:{languageId}";
-                await _database.KeyDeleteAsync(key);
-                _logger.LogInformation("🗑️ Deleted voice assessment result: {Key}", key);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting voice assessment result for user {UserId}, language {LanguageId}",
-                    userId, languageId);
-                throw;
-            }
-        }
 
-        public async Task DeleteAsync(string key)
+     
+        public async Task<VoiceAssessmentResultDto?> GetVoiceAssessmentResultAsync(Guid learnerLanguageId)
         {
             try
             {
-                await _database.KeyDeleteAsync(key);
-                _logger.LogDebug("🗑️ Deleted Redis key: {Key}", key);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting Redis key: {Key}", key);
-                throw;
-            }
-        }
-        public async Task<VoiceAssessmentResultDto?> GetVoiceAssessmentResultAsync(Guid userId, Guid languageId)
-        {
-            try
-            {
-                var key = $"{VOICE_RESULT_PREFIX}{userId}_{languageId}";
+                var key = $"{VOICE_RESULT_PREFIX}{learnerLanguageId}"; // Key mới
                 var cachedValue = await _distributedCache.GetStringAsync(key);
 
                 if (string.IsNullOrEmpty(cachedValue))
@@ -253,16 +201,17 @@ namespace BLL.Services.Redis
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting assessment result for user {UserId}", userId);
+                _logger.LogError(ex, "Error getting assessment result for LearnerLanguageId {Id}", learnerLanguageId);
                 return null;
             }
         }
 
-        public async Task SetVoiceAssessmentResultAsync(Guid userId, Guid languageId, VoiceAssessmentResultDto result)
+     
+        public async Task SetVoiceAssessmentResultAsync(Guid learnerLanguageId, VoiceAssessmentResultDto result)
         {
             try
             {
-                var key = $"{VOICE_RESULT_PREFIX}{userId}_{languageId}";
+                var key = $"{VOICE_RESULT_PREFIX}{learnerLanguageId}"; // Key mới
                 var jsonValue = JsonSerializer.Serialize(result);
 
                 var options = new DistributedCacheEntryOptions
@@ -272,12 +221,61 @@ namespace BLL.Services.Redis
 
                 await _distributedCache.SetStringAsync(key, jsonValue, options);
 
-                _logger.LogInformation("✅ Saved assessment result for user {UserId}, language {LanguageId}", userId, languageId);
+                _logger.LogInformation("✅ Saved assessment result for LearnerLanguageId {Id}", learnerLanguageId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving assessment result for user {UserId}", userId);
+                _logger.LogError(ex, "Error saving assessment result for LearnerLanguageId {Id}", learnerLanguageId);
                 throw;
+            }
+        }
+
+   
+        public async Task DeleteVoiceAssessmentResultAsync(Guid learnerLanguageId)
+        {
+            try
+            {
+                var key = $"{VOICE_RESULT_PREFIX}{learnerLanguageId}"; // Key mới
+
+                // ✅ Sửa lỗi: Dùng _distributedCache.RemoveAsync để nhất quán
+                await _distributedCache.RemoveAsync(key);
+
+                _logger.LogInformation("🗑️ Deleted voice assessment result: {Key}", key);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting assessment result for LearnerLanguageId {Id}", learnerLanguageId);
+                throw;
+            }
+        }
+
+    
+
+        public async Task<List<VoiceAssessmentDto>> GetActiveVoiceAssessmentsAsync()
+        {
+            try
+            {
+                var server = _redis.GetServer(_redis.GetEndPoints().First());
+                var keys = server.Keys(pattern: $"{VOICE_ASSESSMENT_PREFIX}*");
+                var assessments = new List<VoiceAssessmentDto>();
+                foreach (var key in keys)
+                {
+                    var cachedValue = await _distributedCache.GetStringAsync(key);
+                    if (!string.IsNullOrEmpty(cachedValue))
+                    {
+                        var assessment = JsonSerializer.Deserialize<VoiceAssessmentDto>(cachedValue);
+                        if (assessment != null)
+                        {
+                            assessments.Add(assessment);
+                        }
+                    }
+                }
+                return assessments;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting active assessments from Redis");
+                return new List<VoiceAssessmentDto>();
             }
         }
 
@@ -319,9 +317,10 @@ namespace BLL.Services.Redis
 
                 var allKeys = assessmentKeys.Concat(resultKeys).Concat(userKeys).ToList();
 
-                foreach (var key in allKeys)
+                // Sử dụng _database.KeyDeleteAsync cho các key từ StackExchange.Redis
+                if (allKeys.Any())
                 {
-                    await _distributedCache.RemoveAsync(key);
+                    await _database.KeyDeleteAsync(allKeys.ToArray());
                 }
 
                 _logger.LogInformation("Cleared {Count} Redis keys", allKeys.Count());
@@ -332,9 +331,6 @@ namespace BLL.Services.Redis
                 _logger.LogError(ex, "Error clearing all assessments from Redis");
                 return 0;
             }
-
         }
-
     }
 }
-

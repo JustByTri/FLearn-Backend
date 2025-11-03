@@ -4532,10 +4532,247 @@
           }
         }
       }
+    },
+    "/api/VoiceAssessment/programs/{languageId}": {
+      "get": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "summary": "Lấy danh sách Khung chương trình (Programs) theo Ngôn ngữ.",
+        "parameters": [
+          {
+            "name": "languageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/start": {
+      "post": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "summary": "1. Bắt đầu bài đánh giá (Theo Program)",
+        "parameters": [
+          {
+            "name": "languageId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "programId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/{assessmentId}/current-question": {
+      "get": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "summary": "2. Lấy câu hỏi hiện tại",
+        "parameters": [
+          {
+            "name": "assessmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/{assessmentId}/submit-voice": {
+      "post": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "summary": "3. Nộp file audio hoặc bỏ qua",
+        "parameters": [
+          {
+            "name": "assessmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "questionNumber",
+                  "isSkipped"
+                ],
+                "type": "object",
+                "properties": {
+                  "questionNumber": {
+                    "type": "integer",
+                    "description": "Số thứ tự câu hỏi",
+                    "example": 1
+                  },
+                  "isSkipped": {
+                    "type": "boolean",
+                    "description": "Có bỏ qua câu hỏi không",
+                    "example": false
+                  },
+                  "audioFile": {
+                    "type": "string",
+                    "description": "File âm thanh (MP3, WAV, M4A, WebM - Max 10MB)",
+                    "format": "binary"
+                  },
+                  "recordingDurationSeconds": {
+                    "type": "integer",
+                    "description": "Thời lượng ghi âm (giây)",
+                    "example": 0
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/complete/{assessmentId}": {
+      "post": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "summary": "4. Hoàn thành bài đánh giá",
+        "parameters": [
+          {
+            "name": "assessmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/accept-assessment": {
+      "post": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "summary": "5. Chấp nhận kết quả (Lưu Level)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VoiceAssessment/reject-assessment": {
+      "post": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "summary": "6. Từ chối kết quả (Xóa Redis)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptVoiceAssessmentRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AcceptVoiceAssessmentRequestDto": {
+        "type": "object",
+        "properties": {
+          "learnerLanguageId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
       "CertificateResponse": {
         "type": "object",
         "properties": {

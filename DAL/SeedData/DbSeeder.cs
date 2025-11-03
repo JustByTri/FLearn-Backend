@@ -10,14 +10,30 @@ namespace DAL.SeedData
         {
             var now = TimeHelper.GetVietnamTime();
 
+            // Tạo các Guid cố định cho từng ngôn ngữ
+            var englishId = Guid.NewGuid();
+            var japaneseId = Guid.NewGuid();
+            var chineseId = Guid.NewGuid();
+
+            // Tạo các Guid cố định cho từng chương trình (Program)
+            var enProgram1_Reflex = Guid.NewGuid();
+            var enProgram2_Pronounce = Guid.NewGuid();
+            var enProgram3_TestPrep = Guid.NewGuid();
+            var enProgram4_Business = Guid.NewGuid();
+
+            var jaProgram1_Kaiwa = Guid.NewGuid();
+            var jaProgram2_Hatsuon = Guid.NewGuid();
+            var jaProgram3_Business = Guid.NewGuid();
+
+            var zhProgram1_Kouyu = Guid.NewGuid();
+            var zhProgram2_Tones = Guid.NewGuid();
+            var zhProgram3_HSKK = Guid.NewGuid();
+            var zhProgram4_Business = Guid.NewGuid();
+
             var adminRoleId = Guid.NewGuid();
             var managerRoleId = Guid.NewGuid();
             var teacherRoleId = Guid.NewGuid();
             var learnerRoleId = Guid.NewGuid();
-
-            var englishId = Guid.NewGuid();
-            var japaneseId = Guid.NewGuid();
-            var chineseId = Guid.NewGuid();
 
             var adminUserId = Guid.NewGuid();
             var managerEnUserId = Guid.NewGuid();
@@ -64,26 +80,26 @@ namespace DAL.SeedData
                     CreatedAt = now,
                     UpdatedAt = now
                 },
-                 new CertificateType
-                 {
-                     CertificateTypeId = Guid.NewGuid(),
-                     LanguageId = englishId,
-                     Name = "TOEIC",
-                     Description = "Test of English for International Communication",
-                     Status = true,
-                     CreatedAt = now,
-                     UpdatedAt = now
-                 },
-                 new CertificateType
-                 {
-                     CertificateTypeId = Guid.NewGuid(),
-                     LanguageId = englishId,
-                     Name = "Duolingo English Test",
-                     Description = "Online English proficiency test accepted by many universities",
-                     Status = true,
-                     CreatedAt = now,
-                     UpdatedAt = now
-                 },
+                new CertificateType
+                {
+                    CertificateTypeId = Guid.NewGuid(),
+                    LanguageId = englishId,
+                    Name = "TOEIC",
+                    Description = "Test of English for International Communication",
+                    Status = true,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                },
+                new CertificateType
+                {
+                    CertificateTypeId = Guid.NewGuid(),
+                    LanguageId = englishId,
+                    Name = "Duolingo English Test",
+                    Description = "Online English proficiency test accepted by many universities",
+                    Status = true,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                },
                 // Japanese certificates
                 new CertificateType
                 {
@@ -148,12 +164,12 @@ namespace DAL.SeedData
                 }
             );
 
-
             modelBuilder.Entity<Language>().HasData(
-                 new Language { LanguageID = englishId, LanguageName = "English", LanguageCode = "en", CreatedAt = now },
-                 new Language { LanguageID = japaneseId, LanguageName = "Japanese", LanguageCode = "ja", CreatedAt = now },
-                 new Language { LanguageID = chineseId, LanguageName = "Chinese", LanguageCode = "zh", CreatedAt = now }
-                 );
+                new Language { LanguageID = englishId, LanguageName = "English", LanguageCode = "en", CreatedAt = now },
+                new Language { LanguageID = japaneseId, LanguageName = "Japanese", LanguageCode = "ja", CreatedAt = now },
+                new Language { LanguageID = chineseId, LanguageName = "Chinese", LanguageCode = "zh", CreatedAt = now }
+            );
+
             var languageLevels = new List<LanguageLevel>
             {
                 new LanguageLevel
@@ -266,7 +282,7 @@ namespace DAL.SeedData
                     LanguageID = chineseId,
                     LevelName = "HSK 3",
                     Description = "Có thể giao tiếp bằng tiếng Trung trong các tình huống cơ bản của cuộc sống, học tập và công việc.",
-                   OrderIndex = 3
+                    OrderIndex = 3
                 },
                 new LanguageLevel
                 {
@@ -295,6 +311,178 @@ namespace DAL.SeedData
             };
             modelBuilder.Entity<LanguageLevel>().HasData(languageLevels);
 
+            // Seed bảng Program với các Guid đã định nghĩa ở trên
+            modelBuilder.Entity<Program>().HasData(
+                new Program
+                {
+                    ProgramId = enProgram1_Reflex,
+                    LanguageId = englishId,
+                    Name = "Phản xạ Giao tiếp (Communication & Reflex)",
+                    Description = "Lộ trình tập trung vào phản xạ nhanh, nói trôi chảy trong các tình huống đời thường.",
+                    Status = true,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                },
+                new Program
+                {
+                    ProgramId = enProgram2_Pronounce,
+                    LanguageId = englishId,
+                    Name = "Luyện Phát âm & Ngữ điệu (Pronunciation & Intonation)",
+                    Description = "Lộ trình sửa âm (IPA), trọng âm, nối âm và ngữ điệu tự nhiên.",
+                    Status = true,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                },
+                new Program
+                {
+                    ProgramId = enProgram3_TestPrep,
+                    LanguageId = englishId,
+                    Name = "Luyện thi Nói (Speaking Test Prep)",
+                    Description = "Lộ trình chiến lược, từ vựng và cấu trúc để đạt điểm cao trong các bài thi nói (IELTS, TOEIC Speaking).",
+                    Status = true,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                },
+                new Program
+                {
+                    ProgramId = enProgram4_Business,
+                    LanguageId = englishId,
+                    Name = "Thuyết trình & Thương mại (Public Speaking & Business)",
+                    Description = "Lộ trình rèn luyện kỹ năng thuyết trình, họp, đàm phán trong môi trường công sở.",
+                    Status = true,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                },
+                new Program
+                {
+                    ProgramId = jaProgram1_Kaiwa,
+                    LanguageId = japaneseId,
+                    Name = "Giao tiếp Hội thoại (General Kaiwa)",
+                    Description = "Lộ trình luyện Kaiwa (hội thoại) trôi chảy trong các tình huống đời sống.",
+                    Status = true,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                },
+                new Program
+                {
+                    ProgramId = jaProgram2_Hatsuon,
+                    LanguageId = japaneseId,
+                    Name = "Luyện Phát âm (Hatsuon)",
+                    Description = "Lộ trình luyện phát âm (Hatsuon) chuẩn, đúng ngữ điệu của người Nhật.",
+                    Status = true,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                },
+                new Program
+                {
+                    ProgramId = jaProgram3_Business,
+                    LanguageId = japaneseId,
+                    Name = "Hội thoại Thương mại & Kính ngữ (Business Kaiwa & Keigo)",
+                    Description = "Lộ trình chuyên sâu về Kính ngữ (Keigo), giao tiếp công sở và phỏng vấn.",
+                    Status = true,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                },
+                new Program
+                {
+                    ProgramId = zhProgram1_Kouyu,
+                    LanguageId = chineseId,
+                    Name = "Giao tiếp Khẩu ngữ (General Kouyu)",
+                    Description = "Lộ trình luyện Khẩu ngữ (Kouyu) trôi chảy, giao tiếp hàng ngày.",
+                    Status = true,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                },
+                new Program
+                {
+                    ProgramId = zhProgram2_Tones,
+                    LanguageId = chineseId,
+                    Name = "Luyện Phát âm & Thanh điệu (Pronunciation & Tones)",
+                    Description = "Lộ trình luyện Pinyin và Thanh điệu (Shengdiao) chuẩn.",
+                    Status = true,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                },
+                new Program
+                {
+                    ProgramId = zhProgram3_HSKK,
+                    LanguageId = chineseId,
+                    Name = "Luyện thi Nói (HSKK Preparation)",
+                    Description = "Lộ trình luyện thi HSKK (thi nói) các cấp Sơ, Trung, Cao cấp.",
+                    Status = true,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                },
+                new Program
+                {
+                    ProgramId = zhProgram4_Business,
+                    LanguageId = chineseId,
+                    Name = "Hội thoại Thương mại (Business Kouyu)",
+                    Description = "Lộ trình đàm phán, giao tiếp trong kinh doanh và thương mại.",
+                    Status = true,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                }
+            );
+
+
+            var levels = new List<Level>();
+
+          
+            var enLevels = languageLevels.Where(l => l.LanguageID == englishId);
+            var enPrograms = new[] { enProgram1_Reflex, enProgram2_Pronounce, enProgram3_TestPrep, enProgram4_Business };
+            foreach (var progId in enPrograms)
+            {
+                foreach (var langLevel in enLevels)
+                {
+                    levels.Add(new Level
+                    {
+                        LevelId = Guid.NewGuid(),
+                        ProgramId = progId,
+                        Name = langLevel.LevelName,
+               
+                        OrderIndex = langLevel.OrderIndex,
+                        Description = langLevel.Description
+                    });
+                }
+            }
+
+      
+            var jaLevels = languageLevels.Where(l => l.LanguageID == japaneseId);
+            var jaPrograms = new[] { jaProgram1_Kaiwa, jaProgram2_Hatsuon, jaProgram3_Business };
+            foreach (var progId in jaPrograms)
+            {
+                foreach (var langLevel in jaLevels)
+                {
+                    levels.Add(new Level
+                    {
+                        LevelId = Guid.NewGuid(),
+                        ProgramId = progId,
+                        Name = langLevel.LevelName,
+                        OrderIndex = langLevel.OrderIndex,
+                        Description = langLevel.Description
+                    });
+                }
+            }
+
+            var zhLevels = languageLevels.Where(l => l.LanguageID == chineseId);
+            var zhPrograms = new[] { zhProgram1_Kouyu, zhProgram2_Tones, zhProgram3_HSKK, zhProgram4_Business };
+            foreach (var progId in zhPrograms)
+            {
+                foreach (var langLevel in zhLevels)
+                {
+                    levels.Add(new Level
+                    {
+                        LevelId = Guid.NewGuid(),
+                        ProgramId = progId,
+                        Name = langLevel.LevelName,
+                        OrderIndex = langLevel.OrderIndex,
+                        Description = langLevel.Description
+                    });
+                }
+            }
+
+            modelBuilder.Entity<Level>().HasData(levels);
             modelBuilder.Entity<User>().HasData(
                 new User
                 {

@@ -1,6 +1,7 @@
 ﻿using BLL.Background;
 using BLL.IServices.Admin;
 using BLL.IServices.AI;
+using BLL.IServices.Assessment;
 using BLL.IServices.Auth;
 using BLL.IServices.Certificate;
 using BLL.IServices.Enrollment;
@@ -13,6 +14,7 @@ using BLL.IServices.Topic;
 using BLL.IServices.Upload;
 using BLL.Services.Admin;
 using BLL.Services.AI;
+using BLL.Services.Assessment;
 using BLL.Services.Auth;
 using BLL.Services.Certificate;
 using BLL.Services.Enrollment;
@@ -97,7 +99,7 @@ namespace BLL
             services.AddScoped<ITopicService, TopicService>();
             //services.AddScoped<ICourseTemplateService, CourseTemplateService>();
             services.AddScoped<ILanguageService, LanguageService>();
-            //services.AddScoped<IVoiceAssessmentService, VoiceAssessmentService>();
+            services.AddScoped<IVoiceAssessmentService, VoiceAssessmentService>();
             services.AddScoped<ICertificateService, CertificateService>();
             //services.AddScoped<ICourseRecommendationService, CourseRecommendationService>();
             services.AddSingleton<IAuthorizationHandler, ExclusiveRoleHandler>();
