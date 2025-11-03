@@ -2326,6 +2326,117 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "Presentation.Controllers.RefundController",
+    "Method": "GetRefundRequestById",
+    "RelativePath": "api/Refund/admin/{refundRequestId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "refundRequestId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.RefundController",
+    "Method": "GetRefundRequests",
+    "RelativePath": "api/Refund/admin/list",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "status",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.RefundController",
+    "Method": "NotifyStudentToCreateRefund",
+    "RelativePath": "api/Refund/admin/notify-student",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "Common.DTO.Refund.NotifyRefundRequestDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.RefundController",
+    "Method": "ProcessRefundRequest",
+    "RelativePath": "api/Refund/admin/process",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "RefundRequestId",
+        "Type": "System.Guid",
+        "IsRequired": false
+      },
+      {
+        "Name": "Action",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "AdminNote",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "ProofImage",
+        "Type": "Microsoft.AspNetCore.Http.IFormFile",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.RefundController",
+    "Method": "SendEmailToStudent",
+    "RelativePath": "api/Refund/admin/send-email",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "Common.DTO.Refund.RefundEmailDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.RefundController",
+    "Method": "SubmitRefundRequest",
+    "RelativePath": "api/Refund/submit",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "Common.DTO.Refund.CreateRefundRequestDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "Presentation.Controllers.Learner.ClassEnrollmentController",
     "Method": "EnrollClass",
     "RelativePath": "api/student/classes/{classId}/enroll",

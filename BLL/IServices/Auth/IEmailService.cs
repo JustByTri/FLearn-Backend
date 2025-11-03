@@ -30,15 +30,46 @@ namespace BLL.IServices.Auth
         /// <returns></returns>
         Task<bool> SendOtpResendAsync(string toEmail, string userName, string otpCode);
         Task<bool> SendPasswordResetOtpAsync(string toEmail, string userName, string otpCode);
+        
+    // ================== REFUND REQUEST EMAILS ==================
+        
+        /// <summary>
+        /// Admin gửi email thông báo học viên cần làm đơn hoàn tiền
+        /// </summary>
         Task<bool> SendRefundRequestInstructionAsync(
-     string toEmail,
-     string userName,
-     string className,
-     DateTime classStartDateTime);
+            string toEmail,
+            string userName,
+   string className,
+    DateTime classStartDateTime,
+     string? reason = null);
+
+     /// <summary>
+        /// Gửi email xác nhận đã nhận đơn hoàn tiền
+        /// </summary>
         Task<bool> SendRefundRequestConfirmationAsync(
-      string toEmail,
-      string userName,
-      string className,
-      string refundRequestId);
+  string toEmail,
+     string userName,
+   string className,
+            string refundRequestId);
+
+     /// <summary>
+  /// Gửi email thông báo đơn hoàn tiền đã được chấp nhận
+        /// </summary>
+        Task<bool> SendRefundRequestApprovedAsync(
+ string toEmail,
+        string userName,
+         string className,
+            decimal refundAmount,
+     string? proofImageUrl = null,
+    string? adminNote = null);
+
+      /// <summary>
+        /// Gửi email thông báo đơn hoàn tiền bị từ chối
+        /// </summary>
+  Task<bool> SendRefundRequestRejectedAsync(
+            string toEmail,
+         string userName,
+            string className,
+      string rejectionReason);
     }
 }

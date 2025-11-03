@@ -21,6 +21,7 @@ namespace Common.DTO.Assement
         public int MaxRecordingSeconds { get; set; }
         public bool IsSkipped { get; set; }
         public string? AudioFilePath { get; set; }
+        public string? AudioMimeType { get; set; } // NEW: preserve recorded audio MIME type for AI evaluation
     
 
     }

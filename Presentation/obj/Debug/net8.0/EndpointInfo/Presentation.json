@@ -4342,6 +4342,187 @@
         }
       }
     },
+    "/api/Refund/admin/notify-student": {
+      "post": {
+        "tags": [
+          "Refund"
+        ],
+        "summary": "[Admin] Bước 1: Gửi email thông báo học viên cần làm đơn hoàn tiền",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotifyRefundRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotifyRefundRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotifyRefundRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Refund/admin/list": {
+      "get": {
+        "tags": [
+          "Refund"
+        ],
+        "summary": "[Admin] Bước 3: Xem tất cả các đơn hoàn tiền (có thể lọc theo trạng thái)",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/RefundRequestStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Refund/admin/{refundRequestId}": {
+      "get": {
+        "tags": [
+          "Refund"
+        ],
+        "summary": "[Admin] Bước 3.1: Xem chi tiết một đơn hoàn tiền",
+        "parameters": [
+          {
+            "name": "refundRequestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Refund/admin/process": {
+      "post": {
+        "tags": [
+          "Refund"
+        ],
+        "summary": "[Admin] Bước 4: Xử lý đơn hoàn tiền (Approve hoặc Reject) và gửi email kết quả\r\n- Approve: Gửi kèm hình ảnh chứng minh đã chuyển khoản\r\n- Reject: Gửi kèm lý do từ chối",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "RefundRequestId": {
+                    "type": "string"
+                  },
+                  "Action": {
+                    "type": "string"
+                  },
+                  "AdminNote": {
+                    "type": "string"
+                  },
+                  "ProofImage": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Refund/submit": {
+      "post": {
+        "tags": [
+          "Refund"
+        ],
+        "summary": "[Học viên] Bước 2: Gửi đơn yêu cầu hoàn tiền\r\n\r\nHướng dẫn:\r\n1. Vào trang cá nhân\r\n2. Nhấn \"Gửi đơn hoàn tiền\"\r\n3. Chọn lý do hoàn tiền (Lớp bị hủy, Lý do cá nhân, Vấn đề chất lượng, Khác...)\r\n4. Điền thông tin ngân hàng (Tên ngân hàng, Số tài khoản, Tên chủ tài khoản)\r\n5. Gửi đơn",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRefundRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRefundRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRefundRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Refund/admin/send-email": {
+      "post": {
+        "tags": [
+          "Refund"
+        ],
+        "summary": "[DEPRECATED] Sử dụng POST /admin/process thay thế",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundEmailDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundEmailDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundEmailDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "deprecated": true
+      }
+    },
     "/api/teacher/classes": {
       "post": {
         "tags": [
@@ -5530,6 +5711,56 @@
         },
         "additionalProperties": false
       },
+      "CreateRefundRequestDto": {
+        "required": [
+          "bankAccountHolderName",
+          "bankAccountNumber",
+          "bankName",
+          "className",
+          "enrollmentID",
+          "requestType"
+        ],
+        "type": "object",
+        "properties": {
+          "enrollmentID": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requestType": {
+            "$ref": "#/components/schemas/RefundRequestType"
+          },
+          "bankName": {
+            "maxLength": 100,
+            "minLength": 0,
+            "type": "string"
+          },
+          "className": {
+            "maxLength": 100,
+            "minLength": 0,
+            "type": "string"
+          },
+          "classID": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bankAccountNumber": {
+            "minLength": 1,
+            "pattern": "^\\d{9,16}$",
+            "type": "string"
+          },
+          "bankAccountHolderName": {
+            "maxLength": 100,
+            "minLength": 0,
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 0,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "DifficultyLevel": {
         "enum": [
           1,
@@ -6002,6 +6233,40 @@
         "type": "integer",
         "format": "int32"
       },
+      "NotifyRefundRequestDto": {
+        "required": [
+          "classId",
+          "className",
+          "classStartDateTime",
+          "studentId"
+        ],
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "className": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "classStartDateTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "PagingMeta": {
         "type": "object",
         "properties": {
@@ -6117,6 +6382,14 @@
         },
         "additionalProperties": { }
       },
+      "ProcessAction": {
+        "enum": [
+          1,
+          2
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
       "ProgramCreateDto": {
         "required": [
           "languageId",
@@ -6176,6 +6449,53 @@
           }
         },
         "additionalProperties": false
+      },
+      "RefundEmailDto": {
+        "required": [
+          "body",
+          "refundRequestId",
+          "subject"
+        ],
+        "type": "object",
+        "properties": {
+          "refundRequestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subject": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "body": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RefundRequestStatus": {
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "RefundRequestType": {
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "type": "integer",
+        "format": "int32"
       },
       "RejectApplicationRequest": {
         "required": [

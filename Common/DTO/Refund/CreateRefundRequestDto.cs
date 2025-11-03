@@ -21,6 +21,10 @@ namespace Common.DTO.Refund
         [StringLength(100, ErrorMessage = "Tên ngân hàng không được vượt quá 100 ký tự")]
         public string BankName { get; set; }
 
+        [Required(ErrorMessage = "Tên lớp là bắt buộc")]
+        [StringLength(100, ErrorMessage = "Tên lớp không được vượt quá 100 ký tự")]
+        public string ClassName { get; set; }
+        public Guid ClassID { get; set; }
         [Required(ErrorMessage = "Số tài khoản ngân hàng là bắt buộc")]
         [RegularExpression(@"^\d{9,16}$", ErrorMessage = "Số tài khoản phải từ 9-16 chữ số")]
         public string BankAccountNumber { get; set; }
