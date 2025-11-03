@@ -5035,6 +5035,30 @@
           }
         }
       }
+    },
+    "/api/VoiceAssessment/switch-language/{languageId}": {
+      "post": {
+        "tags": [
+          "VoiceAssessment"
+        ],
+        "summary": "Thay đổi ngôn ngữ học tập. Kiểm tra xem đã làm test cho ngôn ngữ mới chưa.",
+        "parameters": [
+          {
+            "name": "languageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
     }
   },
   "components": {

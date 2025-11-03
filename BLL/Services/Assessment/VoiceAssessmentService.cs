@@ -85,7 +85,7 @@ namespace BLL.Services.Assessment
             return assessment;
         }
 
-        // 2. Lấy câu hỏi hiện tại
+   
         public async Task<VoiceAssessmentQuestion> GetCurrentQuestionAsync(Guid assessmentId)
         {
             var assessment = await RestoreAssessmentFromIdAsync(assessmentId);
