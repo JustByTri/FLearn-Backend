@@ -13,7 +13,7 @@ namespace BLL.IServices.AI
 {
     public interface IGeminiService
     {
-       
+
         Task<AiCourseRecommendationDto> GenerateCourseRecommendationsAsync(
             UserSurveyResponseDto survey,
             List<CourseInfoDto> availableCourses);
@@ -21,18 +21,32 @@ namespace BLL.IServices.AI
         Task<string> GenerateStudyPlanAsync(UserSurveyResponseDto survey);
         Task<List<string>> GenerateStudyTipsAsync(UserSurveyResponseDto survey);
 
-     
+
         Task<TeacherQualificationAnalysisDto> AnalyzeTeacherQualificationsAsync(
             TeacherApplicationDto application,
             List<TeacherCredentialDto> credentials);
 
+        /// <summary>
+        /// Đánh giá hàng loạt câu trả lời bằng giọng nói
+        /// </summary>
+        /// <param name="programLevelNames">Thang đo (ví dụ: ["A1", "A2", "B1"]) để AI trả về kết quả</param>
         Task<BatchVoiceEvaluationResult> EvaluateBatchVoiceResponsesAsync(
-   List<VoiceAssessmentQuestion> questions,
-   string languageCode,
-   string languageName);
-        Task<List<VoiceAssessmentQuestion>> GenerateVoiceAssessmentQuestionsAsync(string languageCode, string languageName);
+            List<VoiceAssessmentQuestion> questions,
+            string languageCode,
+            string languageName,
+            List<string>? programLevelNames = null); 
+
+        /// <summary>
+        /// Tạo câu hỏi đánh giá giọng nói
+        /// </summary>
+        /// <param name="programName">Tên của khung chương trình (ví dụ: "Tiếng Anh Giao Tiếp")</param>
+        Task<List<VoiceAssessmentQuestion>> GenerateVoiceAssessmentQuestionsAsync(
+            string languageCode,
+            string languageName,
+            string? programName = null); 
+
         Task<VoiceEvaluationResult> EvaluateVoiceResponseDirectlyAsync(VoiceAssessmentQuestion question, IFormFile audioFile, string languageCode);
-      
+
         Task<GeneratedConversationContentDto> GenerateConversationContentAsync(ConversationContextDto context);
         Task<string> GenerateResponseAsync(string systemPrompt, string userMessage, List<string> conversationHistory);
         Task<ConversationEvaluationResult> EvaluateConversationAsync(string evaluationPrompt);

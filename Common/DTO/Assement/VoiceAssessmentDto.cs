@@ -11,15 +11,9 @@ namespace Common.DTO.Assement
         public Guid AssessmentId { get; set; }
         public Guid UserId { get; set; }
         public Guid LanguageId { get; set; }
-
-   
-        public List<int> GoalIds { get; set; } = new();
-        public List<string> GoalNames { get; set; } = new();
-
-      
-        public int? GoalID => GoalIds.FirstOrDefault() == 0 ? null : GoalIds.FirstOrDefault();
-        public string GoalName => string.Join(", ", GoalNames);
-
+        public Guid? ProgramId { get; set; } 
+        public string? ProgramName { get; set; }
+        public List<string> ProgramLevelNames { get; set; } = new();
         public string LanguageName { get; set; } = string.Empty;
         public List<VoiceAssessmentQuestion> Questions { get; set; } = new();
         public DateTime CreatedAt { get; set; }
