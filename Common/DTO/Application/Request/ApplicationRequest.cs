@@ -8,7 +8,7 @@ namespace Common.DTO.Application.Request
     {
         [Required(ErrorMessage = "Language code is required.")]
         [AllowedLang]
-        public string LangCode { get; set; }
+        public string LangCode { get; set; } = string.Empty;
         [Required(ErrorMessage = "Full name is required.")]
         [StringLength(100, ErrorMessage = "Full name cannot exceed 100 characters.")]
         public string FullName { get; set; } = string.Empty;
@@ -30,7 +30,12 @@ namespace Common.DTO.Application.Request
         [Required(ErrorMessage = "Teaching experience is required.")]
         [StringLength(500, ErrorMessage = "Teaching experience cannot exceed 500 characters.")]
         public string TeachingExperience { get; set; } = string.Empty;
-        [Required(ErrorMessage = "Meeting url is required.")]
+        [Required(ErrorMessage = "Proficiency code is required.")]
+        [StringLength(50, ErrorMessage = "Proficiency code cannot exceed 50 characters.")]
+        public string ProficiencyCode { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Meeting URL is required.")]
+        [Url(ErrorMessage = "Meeting URL must be a valid URL.")]
+        [StringLength(500, ErrorMessage = "Meeting URL cannot exceed 500 characters.")]
         public string MeetingUrl { get; set; } = string.Empty;
         [Required(ErrorMessage = "At least one certificate image is required.")]
         public IFormFile[] CertificateImages { get; set; } = Array.Empty<IFormFile>();

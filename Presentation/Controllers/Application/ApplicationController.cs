@@ -4,6 +4,7 @@ using Common.DTO.Application.Request;
 using Common.DTO.Paging.Request;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Presentation.Helpers;
 using System.Security.Claims;
 
 namespace Presentation.Controllers.Application
@@ -36,27 +37,60 @@ namespace Presentation.Controllers.Application
         [HttpPost("applications")]
         public async Task<IActionResult> Create([FromForm] ApplicationRequest request)
         {
-            var userIdClaim = User.FindFirstValue("user_id")
-                                 ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (string.IsNullOrEmpty(userIdClaim))
-            {
-                return Unauthorized("Teacher ID not found in token.");
-            }
-
-            if (!Guid.TryParse(userIdClaim, out Guid userId))
-            {
-                return BadRequest("Invalid user ID format in token.");
-            }
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
 
             if (!ModelState.IsValid)
             {
-                return BadRequest(BaseResponse<object>.Fail("Invalid request data."));
+                return BadRequest(BaseResponse<object>.Fail(ModelState));
             }
+
+            var validationError = ValidateProficiency(request.LangCode, request.ProficiencyCode);
+            if (validationError != null)
+                return BadRequest(BaseResponse<object>.Fail(validationError));
 
             var result = await _teacherApplicationService.CreateApplicationAsync(userId, request);
 
             return StatusCode(result.Code, result);
+        }
+        private string? ValidateProficiency(string langCode, string proficiencyCode)
+        {
+            langCode = langCode.ToLower();
+
+            return langCode switch
+            {
+                "en" => ValidateEnglishProficiency(proficiencyCode),
+                "ja" => ValidateJapaneseProficiency(proficiencyCode),
+                "zh" => ValidateChineseProficiency(proficiencyCode),
+                _ => $"Unsupported language code: {langCode}. Allowed: en, ja, zh."
+            };
+        }
+        private string? ValidateEnglishProficiency(string code)
+        {
+            var allowed = new[] { "A1", "A2", "B1", "B2", "C1", "C2" };
+
+            if (!allowed.Contains(code.ToUpper()))
+                return "Invalid proficiency code for English. Allowed: A1, A2, B1, B2, C1, C2.";
+
+            return null;
+        }
+        private string? ValidateJapaneseProficiency(string code)
+        {
+            var allowed = new[] { "N5", "N4", "N3", "N2", "N1" };
+
+            if (!allowed.Contains(code.ToUpper()))
+                return "Invalid proficiency code for Japanese. Allowed: N5, N4, N3, N2, N1.";
+
+            return null;
+        }
+        private string? ValidateChineseProficiency(string code)
+        {
+            var allowed = new[] { "HSK1", "HSK2", "HSK3", "HSK4", "HSK5", "HSK6" };
+
+            if (!allowed.Contains(code.ToUpper()))
+                return "Invalid proficiency code for Chinese. Allowed: HSK1–HSK6.";
+
+            return null;
         }
         /// <summary>
         /// Get the paginated teacher applications of the currently logged-in user.
