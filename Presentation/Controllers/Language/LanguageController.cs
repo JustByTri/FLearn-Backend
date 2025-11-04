@@ -1,4 +1,6 @@
 ﻿using BLL.IServices.Language;
+using Common.DTO.Language;
+using Common.DTO.Paging.Request;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Presentation.Controllers.Language
@@ -35,9 +37,15 @@ namespace Presentation.Controllers.Language
             }
             catch (Exception ex)
             {
-               
+
                 return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống." });
             }
+        }
+        [HttpGet("{langCode}/programs")]
+        public async Task<IActionResult> GetProgramResponses([AllowedLang] string langCode, [FromQuery] PagingRequest pagingRequest)
+        {
+            var response = await _languageService.GetProgramResponsesAsync(langCode, pagingRequest);
+            return StatusCode(response.Code, response);
         }
     }
 }

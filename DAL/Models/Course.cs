@@ -52,7 +52,9 @@ namespace DAL.Models
         [Range(0, 5_000_000)]
         public decimal? DiscountPrice { get; set; }
         [Required]
-        public CourseType Type { get; set; }
+        public CourseType CourseType { get; set; } = CourseType.Free;
+        [Required]
+        public GradingType GradingType { get; set; } = GradingType.AIOnly;
         [Required]
         public int LearnerCount { get; set; } = 0;
         [Required]
@@ -63,6 +65,8 @@ namespace DAL.Models
         public int NumLessons { get; set; } = 0;
         [Required]
         public int NumUnits { get; set; } = 0;
+        public int DurationDays { get; set; } = 30;
+        public int EstimatedHours { get; set; } = 0;
         [Required]
         public CourseStatus Status { get; set; } = CourseStatus.Draft;
         public DateTime? PublishedAt { get; set; }
