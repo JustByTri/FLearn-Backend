@@ -59,7 +59,7 @@ namespace Presentation.Controllers.Course
         {
             try
             {
-                var response = await _courseService.GetAllCoursesAsync(request, status, lang);
+                var response = await _courseService.GetCoursesAsync(request, status, lang);
 
                 if (response.Data == null || !response.Data.Any())
                 {
@@ -265,7 +265,7 @@ namespace Presentation.Controllers.Course
                     });
                 }
 
-                var response = await _courseService.GetAllCoursesByTeacherIdAsync(userId, request, status);
+                var response = await _courseService.GetCoursesByTeacherAsync(userId, request, status);
 
                 if (response.Code == 404 || response.Data == null || !response.Data.Any())
                 {
@@ -420,7 +420,7 @@ namespace Presentation.Controllers.Course
                 });
             }
 
-            var result = await _courseService.GetAllCourseSubmissionsByStaffAsync(userId, request, status);
+            var result = await _courseService.GetCourseSubmissionsByStaffAsync(userId, request, status);
             return StatusCode(result.Code, result);
         }
         /// <summary>
@@ -451,7 +451,7 @@ namespace Presentation.Controllers.Course
                     Message = "Invalid user ID format in token."
                 });
             }
-            var result = await _courseService.GetAllCourseSubmissionsByTeacherAsync(userId, request, status ?? "Pending");
+            var result = await _courseService.GetCourseSubmissionsByTeacherAsync(userId, request, status ?? "Pending");
             return StatusCode(result.Code, result);
         }
     }

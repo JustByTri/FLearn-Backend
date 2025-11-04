@@ -60,5 +60,14 @@ namespace DAL.Repositories
                 .OrderByDescending(l => l.Position)
                 .FirstOrDefaultAsync();
         }
+
+        public async Task<List<Lesson>> GetByCourseIdAsync(Guid courseId)
+        {
+            return await _context.Lessons
+                .Include(l => l.CourseUnit)
+                .Where(l => l.CourseUnit.CourseID == courseId)
+                .OrderByDescending(l => l.Position)
+                .ToListAsync();
+        }
     }
 }

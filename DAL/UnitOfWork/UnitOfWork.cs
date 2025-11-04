@@ -1,7 +1,7 @@
 ﻿using DAL.DBContext;
 using DAL.IRepositories;
 using DAL.Repositories;
-
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace DAL.UnitOfWork
@@ -182,6 +182,50 @@ namespace DAL.UnitOfWork
             _transaction?.Dispose();
             _context.Dispose();
             GC.SuppressFinalize(this);
+        }
+
+        public async Task ExecuteInTransactionAsync(Func<Task> operation)
+        {
+            var strategy = CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    await operation();
+                    await transaction.CommitAsync();
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
+        }
+
+        public async Task<T> ExecuteInTransactionAsync<T>(Func<Task<T>> operation)
+        {
+            var strategy = CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    var result = await operation();
+                    await transaction.CommitAsync();
+                    return result;
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
+        }
+
+        public IExecutionStrategy CreateExecutionStrategy()
+        {
+            return _context.Database.CreateExecutionStrategy();
         }
         #endregion
     }

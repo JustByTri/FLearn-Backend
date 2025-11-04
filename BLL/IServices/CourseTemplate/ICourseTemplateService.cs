@@ -12,5 +12,6 @@ namespace BLL.IServices.CourseTemplate
         Task<BaseResponse<CourseTemplateResponse>> UpdateAsync(Guid templateId, CourseTemplateRequest request);
         Task<BaseResponse<CourseTemplateResponse>> GetByIdAsync(Guid templateId);
         Task<PagedResponse<IEnumerable<CourseTemplateResponse>>> GetAllAsync(PagingRequest request);
+        Task<PagedResponse<IEnumerable<CourseTemplateResponse>>> GetTemplatesByProgramAndLevelPagedAsync(Guid programId, Guid levelId, PagingRequest request);
     }
 }

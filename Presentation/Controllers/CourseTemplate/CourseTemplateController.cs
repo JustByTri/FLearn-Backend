@@ -107,5 +107,14 @@ namespace Presentation.Controllers.CourseTemplate
             var response = await _courseTemplateService.UpdateAsync(id, request);
             return StatusCode(response.Code, response);
         }
+        [HttpGet("by-program-and-level")]
+        public async Task<IActionResult> GetTemplatesByProgramAndLevelPaged(
+            [FromQuery] Guid programId,
+            [FromQuery] Guid levelId,
+            [FromQuery] PagingRequest request)
+        {
+            var result = await _courseTemplateService.GetTemplatesByProgramAndLevelPagedAsync(programId, levelId, request);
+            return StatusCode(result.Code, result);
+        }
     }
 }
