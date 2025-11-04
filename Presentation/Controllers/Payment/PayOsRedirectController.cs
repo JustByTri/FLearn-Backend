@@ -8,8 +8,8 @@ namespace Presentation.Controllers.Payment
 {
  [ApiController]
  [AllowAnonymous]
- [Route("payos")]
- public class PayOsRedirectController : ControllerBase
+[Route("api/payos")]
+    public class PayOsRedirectController : ControllerBase
  {
  private readonly IConfiguration _configuration;
  private readonly ILogger<PayOsRedirectController> _logger;

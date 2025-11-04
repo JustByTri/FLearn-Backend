@@ -2326,6 +2326,26 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "Presentation.Controllers.Payment.PayOsRedirectController",
+    "Method": "Cancel",
+    "RelativePath": "api/payos/cancel",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Presentation.Controllers.Payment.PayOsRedirectController",
+    "Method": "Return",
+    "RelativePath": "api/payos/return",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "Presentation.Controllers.RefundController",
     "Method": "GetRefundRequestById",
     "RelativePath": "api/Refund/admin/{refundRequestId}",
@@ -3451,26 +3471,6 @@
         "IsRequired": true
       }
     ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "Presentation.Controllers.Payment.PayOsRedirectController",
-    "Method": "Cancel",
-    "RelativePath": "payos/cancel",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "Presentation.Controllers.Payment.PayOsRedirectController",
-    "Method": "Return",
-    "RelativePath": "payos/return",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [],
     "ReturnTypes": []
   }
 ]
