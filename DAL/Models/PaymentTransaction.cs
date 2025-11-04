@@ -17,7 +17,8 @@ namespace DAL.Models
 
         // Link to subscription purchase when applicable
         public Guid? SubscriptionId { get; set; }
-        [ForeignKey(nameof(SubscriptionId))]
+       
+        [ForeignKeyAttribute(nameof(SubscriptionId))]
         public virtual UserSubscription? Subscription { get; set; }
 
         [Required]
