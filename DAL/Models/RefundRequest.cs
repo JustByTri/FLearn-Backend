@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using DAL.Helpers;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DAL.Models
@@ -7,15 +8,19 @@ namespace DAL.Models
     {
         [Key]
         public Guid RefundRequestID { get; set; }
-        [Required]
         [ForeignKey("ClassEnrollment")]
-        public Guid EnrollmentID { get; set; }
+        public Guid? EnrollmentID { get; set; }
         [Required]
         [ForeignKey("Student")]
         public Guid StudentID { get; set; }
-        [Required]
         [ForeignKey("TeacherClass")]
-        public Guid ClassID { get; set; }
+        public Guid? ClassID { get; set; }
+        public Guid? PurchaseId { get; set; }
+        [ForeignKey(nameof(PurchaseId))]
+        public virtual Purchase? Purchase { get; set; }
+        public Guid? CourseEnrollmentId { get; set; }
+        [ForeignKey(nameof(CourseEnrollmentId))]
+        public virtual Enrollment? CourseEnrollment { get; set; }
         [Required]
         public RefundRequestType RequestType { get; set; }
         [Required]
@@ -38,11 +43,12 @@ namespace DAL.Models
         [Required]
         [Column(TypeName = "decimal(10,2)")]
         public decimal RefundAmount { get; set; }
-        public DateTime RequestedAt { get; set; } = DateTime.UtcNow;
+        public DateTime RequestedAt { get; set; } = TimeHelper.GetVietnamTime();
         public DateTime? ProcessedAt { get; set; }
         [ForeignKey("ProcessedByAdmin")]
         public Guid? ProcessedByAdminID { get; set; }
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; } = TimeHelper.GetVietnamTime();
+        public DateTime UpdatedAt { get; set; } = TimeHelper.GetVietnamTime();
         public virtual ClassEnrollment ClassEnrollment { get; set; } = null!;
         public virtual User Student { get; set; } = null!;
         public virtual TeacherClass TeacherClass { get; set; } = null!;

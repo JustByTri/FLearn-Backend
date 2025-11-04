@@ -4,14 +4,7 @@ using BLL.IServices.Upload;
 using Common.DTO.Refund;
 using DAL.Models;
 using DAL.UnitOfWork;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BLL.Services.Refund
 {
@@ -145,7 +138,7 @@ namespace BLL.Services.Refund
             foreach (var request in sortedRequests)
             {
                 var student = await _unitOfWork.Users.GetByIdAsync(request.StudentID);
-                var teacherClass = await _unitOfWork.TeacherClasses.GetByIdAsync(request.ClassID);
+                var teacherClass = await _unitOfWork.TeacherClasses.FindAsync(c => c.ClassID == request.ClassID);
 
                 var dto = MapToDto(request, student?.UserName, teacherClass?.Title);
                 result.Add(dto);
@@ -166,7 +159,7 @@ namespace BLL.Services.Refund
             }
 
             var student = await _unitOfWork.Users.GetByIdAsync(request.StudentID);
-            var teacherClass = await _unitOfWork.TeacherClasses.GetByIdAsync(request.ClassID);
+            var teacherClass = await _unitOfWork.TeacherClasses.FindAsync(c => c.ClassID == request.ClassID);
 
             return MapToDto(request, student?.UserName, teacherClass?.Title);
         }
@@ -193,7 +186,7 @@ namespace BLL.Services.Refund
 
             // 2. Lấy thông tin học viên và lớp học
             var student = await _unitOfWork.Users.GetByIdAsync(request.StudentID);
-            var teacherClass = await _unitOfWork.TeacherClasses.GetByIdAsync(request.ClassID);
+            var teacherClass = await _unitOfWork.TeacherClasses.FindAsync(c => c.ClassID == request.ClassID);
 
             if (student == null || string.IsNullOrEmpty(student.Email))
             {
@@ -297,10 +290,10 @@ namespace BLL.Services.Refund
             return new RefundRequestDto
             {
                 RefundRequestID = request.RefundRequestID,
-                EnrollmentID = request.EnrollmentID,
+                EnrollmentID = (Guid)request.EnrollmentID,
                 StudentID = request.StudentID,
                 StudentName = studentName ?? request.Student?.UserName ?? "N/A",
-                ClassID = request.ClassID,
+                ClassID = (Guid)request.ClassID,
                 ClassName = className ?? request.TeacherClass?.Title ?? "N/A",
                 RequestType = request.RequestType,
                 Reason = request.Reason,

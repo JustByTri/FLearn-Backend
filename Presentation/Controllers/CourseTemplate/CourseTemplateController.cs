@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Presentation.Controllers.CourseTemplate
 {
-    [Route("api/coursetemplates")]
+    [Route("api/templates")]
     [ApiController]
     public class CourseTemplateController : ControllerBase
     {
@@ -57,7 +57,7 @@ namespace Presentation.Controllers.CourseTemplate
                 if (result.Data == null)
                     return BadRequest(result);
 
-                return CreatedAtAction(nameof(GetById), new { id = result.Data.Id }, result);
+                return CreatedAtAction(nameof(GetById), new { id = result.Data.TemplateId }, result);
             }
             catch (Exception ex)
             {

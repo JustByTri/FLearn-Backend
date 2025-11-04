@@ -3524,7 +3524,7 @@
         }
       }
     },
-    "/api/coursetemplates": {
+    "/api/templates": {
       "get": {
         "tags": [
           "CourseTemplate"
@@ -3640,7 +3640,7 @@
         }
       }
     },
-    "/api/coursetemplates/{id}": {
+    "/api/templates/{id}": {
       "get": {
         "tags": [
           "CourseTemplate"
@@ -4153,6 +4153,44 @@
         }
       }
     },
+    "/api/languages/{langCode}/programs": {
+      "get": {
+        "tags": [
+          "Language"
+        ],
+        "parameters": [
+          {
+            "name": "langCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/lesson-logs": {
       "post": {
         "tags": [
@@ -4615,6 +4653,18 @@
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/teachers/profile": {
+      "get": {
+        "tags": [
+          "Teacher"
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -5576,7 +5626,9 @@
       },
       "CourseTemplateRequest": {
         "required": [
-          "name"
+          "levelId",
+          "name",
+          "programId"
         ],
         "type": "object",
         "properties": {
@@ -5591,35 +5643,31 @@
             "type": "string",
             "nullable": true
           },
-          "requireGoal": {
-            "type": "boolean"
-          },
-          "requireLevel": {
-            "type": "boolean"
-          },
-          "requireTopic": {
-            "type": "boolean"
-          },
-          "requireLang": {
-            "type": "boolean"
-          },
-          "minUnits": {
+          "unitCount": {
             "maximum": 100,
-            "minimum": 0,
+            "minimum": 1,
             "type": "integer",
             "format": "int32"
           },
-          "minLessonsPerUnit": {
+          "lessonsPerUnit": {
             "maximum": 100,
-            "minimum": 0,
+            "minimum": 1,
             "type": "integer",
             "format": "int32"
           },
-          "minExercisesPerLesson": {
+          "exercisesPerLesson": {
             "maximum": 100,
-            "minimum": 0,
+            "minimum": 1,
             "type": "integer",
             "format": "int32"
+          },
+          "programId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "levelId": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false
@@ -5627,40 +5675,53 @@
       "CourseTemplateResponse": {
         "type": "object",
         "properties": {
-          "id": {
+          "templateId": {
             "type": "string",
             "format": "uuid"
           },
+          "program": {
+            "type": "string",
+            "nullable": true
+          },
+          "level": {
+            "type": "string",
+            "nullable": true
+          },
           "name": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "description": {
             "type": "string",
             "nullable": true
           },
-          "requireGoal": {
-            "type": "boolean"
-          },
-          "requireLevel": {
-            "type": "boolean"
-          },
-          "requireTopic": {
-            "type": "boolean"
-          },
-          "requireLang": {
-            "type": "boolean"
-          },
-          "minUnits": {
+          "unitCount": {
             "type": "integer",
             "format": "int32"
           },
-          "minLessonsPerUnit": {
+          "lessonsPerUnit": {
             "type": "integer",
             "format": "int32"
           },
-          "minExercisesPerLesson": {
+          "exercisesPerLesson": {
             "type": "integer",
             "format": "int32"
+          },
+          "scoringCriteriaJson": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "modifiedAt": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

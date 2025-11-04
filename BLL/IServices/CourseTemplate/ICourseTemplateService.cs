@@ -9,8 +9,8 @@ namespace BLL.IServices.CourseTemplate
     public interface ICourseTemplateService
     {
         Task<BaseResponse<CourseTemplateResponse>> CreateAsync(CourseTemplateRequest request);
-        Task<BaseResponse<CourseTemplateResponse>> UpdateAsync(Guid id, CourseTemplateRequest request);
-        Task<BaseResponse<CourseTemplateResponse>> GetByIdAsync(Guid id);
+        Task<BaseResponse<CourseTemplateResponse>> UpdateAsync(Guid templateId, CourseTemplateRequest request);
+        Task<BaseResponse<CourseTemplateResponse>> GetByIdAsync(Guid templateId);
         Task<PagedResponse<IEnumerable<CourseTemplateResponse>>> GetAllAsync(PagingRequest request);
     }
 }

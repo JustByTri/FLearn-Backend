@@ -490,7 +490,7 @@ namespace BLL.Services.Application
                         Reviewer = reviewer == null ? null : new UserResponse
                         {
                             UserId = reviewer.UserID,
-                            FullName = reviewer.FullName,
+                            FullName = reviewer.FullName ?? reviewer.UserName,
                             Email = reviewer.Email
                         },
                         Certificates = teacherApp.Certificates.Select(cert => new ApplicationCertTypeResponse

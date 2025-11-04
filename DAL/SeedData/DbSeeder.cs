@@ -428,7 +428,7 @@ namespace DAL.SeedData
 
             var levels = new List<Level>();
 
-          
+
             var enLevels = languageLevels.Where(l => l.LanguageID == englishId);
             var enPrograms = new[] { enProgram1_Reflex, enProgram2_Pronounce, enProgram3_TestPrep, enProgram4_Business };
             foreach (var progId in enPrograms)
@@ -440,14 +440,14 @@ namespace DAL.SeedData
                         LevelId = Guid.NewGuid(),
                         ProgramId = progId,
                         Name = langLevel.LevelName,
-               
+
                         OrderIndex = langLevel.OrderIndex,
                         Description = langLevel.Description
                     });
                 }
             }
 
-      
+
             var jaLevels = languageLevels.Where(l => l.LanguageID == japaneseId);
             var jaPrograms = new[] { jaProgram1_Kaiwa, jaProgram2_Hatsuon, jaProgram3_Business };
             foreach (var progId in jaPrograms)
@@ -534,6 +534,8 @@ namespace DAL.SeedData
                 }
             );
 
+            modelBuilder.Entity<Wallet>().HasData(
+                new Wallet { WalletId = Guid.NewGuid(), Name = "Admin's Wallet", OwnerId = adminUserId, OwnerType = Type.OwnerType.Admin });
 
             modelBuilder.Entity<UserRole>().HasData(
                 new UserRole { UserRoleID = Guid.NewGuid(), UserID = adminUserId, RoleID = adminRoleId },
