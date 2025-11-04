@@ -4342,6 +4342,30 @@
         }
       }
     },
+    "/payos/return": {
+      "get": {
+        "tags": [
+          "PayOsRedirect"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/payos/cancel": {
+      "get": {
+        "tags": [
+          "PayOsRedirect"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/subscriptions/plans": {
       "get": {
         "tags": [
