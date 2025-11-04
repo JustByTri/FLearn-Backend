@@ -4342,7 +4342,7 @@
         }
       }
     },
-    "/payos/return": {
+    "/api/payos/return": {
       "get": {
         "tags": [
           "PayOsRedirect"
@@ -4354,7 +4354,7 @@
         }
       }
     },
-    "/payos/cancel": {
+    "/api/payos/cancel": {
       "get": {
         "tags": [
           "PayOsRedirect"
