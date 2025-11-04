@@ -334,7 +334,7 @@ namespace Presentation.Controllers.Course
         /// <param name="submissionId">The ID of the submission to approve.</param>
         /// <returns>A response indicating whether the approval was successful.</returns>
         [HttpPut("submissions/{submissionId:guid}/approve")]
-        [Authorize(Roles = "Staff")]
+        [Authorize(Roles = "Manager")]
         public async Task<IActionResult> ApproveCourseSubmission(Guid submissionId)
         {
             var userIdClaim = User.FindFirstValue("user_id")
@@ -366,7 +366,7 @@ namespace Presentation.Controllers.Course
         /// <param name="request">The reason for rejecting the submission.</param>
         /// <returns>A response indicating whether the rejection was successful.</returns>
         [HttpPut("submissions/{submissionId:guid}/reject")]
-        [Authorize(Roles = "Staff")]
+        [Authorize(Roles = "Manager")]
         public async Task<IActionResult> RejectCourseSubmission(Guid submissionId, [FromBody] RejectApplicationRequest request)
         {
             var userIdClaim = User.FindFirstValue("user_id")
@@ -397,8 +397,8 @@ namespace Presentation.Controllers.Course
         /// <param name="request">Paging parameters (page number and page size).</param>
         /// <param name="status">Filter by submission status (Pending, Approved, Rejected).</param>
         /// <returns>A paginated list of course submissions.</returns>
-        [HttpGet("submissions/by-staff")]
-        [Authorize(Roles = "Staff")]
+        [HttpGet("submissions/by-manager")]
+        [Authorize(Roles = "Manager")]
         public async Task<IActionResult> GetAllCourseSubmissionsByStaff([FromQuery] PagingRequest request, [FromQuery] string? status)
         {
             var userIdClaim = User.FindFirstValue("user_id")
