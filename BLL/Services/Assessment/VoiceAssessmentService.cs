@@ -7,7 +7,6 @@ using DAL.Helpers;
 using DAL.Models;
 using DAL.Type;
 using DAL.UnitOfWork;
-using Hangfire;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Linq;
@@ -36,7 +35,7 @@ namespace BLL.Services.Assessment
             _stt = stt;
         }
 
-        //1. Bắt đầu bài đánh giá (ưu tiên nhanh: timeout AI2s rồi fallback)
+        //1. Bắt đầu bài đánh giá (ưu tiên nhanh: timeout AI6s rồi fallback)
         public async Task<VoiceAssessmentDto> StartProgramAssessmentAsync(Guid userId, Guid languageId, Guid programId)
         {
             _logger.LogInformation("Bắt đầu Program Assessment: User {UserId}, Program {ProgramId}", userId, programId);
@@ -49,28 +48,38 @@ namespace BLL.Services.Assessment
             if (language == null)
                 throw new ArgumentException("Ngôn ngữ không tồn tại.");
 
+            // Load program levels in ascending order
             var allLevels = await _unitOfWork.Levels.GetAllAsync();
-        
+            var programLevelNames = allLevels
+                .Where(l => l.ProgramId == programId)
+                .OrderBy(l => l.OrderIndex)
+                .Select(l => l.Name)
+                .ToList();
+            if (!programLevelNames.Any())
+            {
+                // still allow start, but map by language defaults
+                _logger.LogWarning("Program {ProgramId} chưa có levels, dùng thang mặc định theo ngôn ngữ", programId);
+            }
 
             await ClearOldAssessmentData(userId, languageId);
 
             List<VoiceAssessmentQuestion>? questions = null;
             try
             {
-           
+                // Wait up to6s so user can see AI-generated questions
                 var aiTask = _geminiService.GenerateVoiceAssessmentQuestionsAsync(
                     language.LanguageCode,
                     language.LanguageName,
                     program.Name
                 );
-                var completed = await Task.WhenAny(aiTask, Task.Delay(TimeSpan.FromSeconds(2)));
+                var completed = await Task.WhenAny(aiTask, Task.Delay(TimeSpan.FromSeconds(6)));
                 if (completed == aiTask)
                 {
-                    questions = aiTask.Result;
+                    questions = await aiTask;
                 }
                 else
                 {
-                    _logger.LogWarning("Tạo câu hỏi AI quá2s, dùng fallback ngay");
+                    _logger.LogWarning("Tạo câu hỏi AI quá6s, dùng fallback ngay");
                 }
             }
             catch (Exception ex)
@@ -80,17 +89,14 @@ namespace BLL.Services.Assessment
 
             if (questions == null || !questions.Any())
             {
-                questions = new List<VoiceAssessmentQuestion>
-                {
-                    new() { QuestionNumber =1, Question = $"Introduce yourself in {language.LanguageName}", PromptText = "Tell me your name and hobbies.", VietnameseTranslation = "Giới thiệu tên và sở thích.", MaxRecordingSeconds =30 },
-                    new() { QuestionNumber =2, Question = $"Daily routine in {language.LanguageName}", PromptText = "Describe your daily routine.", VietnameseTranslation = "Miêu tả lịch trình mỗi ngày.", MaxRecordingSeconds =60 },
-                    new() { QuestionNumber =3, Question = $"Recent experience in {language.LanguageName}", PromptText = "Talk about a recent experience.", VietnameseTranslation = "Kể về trải nghiệm gần đây.", MaxRecordingSeconds =90 },
-                    new() { QuestionNumber =4, Question = $"Give an opinion in {language.LanguageName}", PromptText = "Express your opinion about technology.", VietnameseTranslation = "Nêu ý kiến về công nghệ.", MaxRecordingSeconds =120 }
-                };
+                questions = BuildLocalizedFallbackQuestions(language.LanguageCode, language.LanguageName, programLevelNames);
             }
 
-           
-          
+            // Normalize difficulties and ensure ascending order using program levels then language scale
+            questions = questions
+                .OrderBy(q => MapDifficultyOrder(q.Difficulty, programLevelNames))
+                .Select((q, idx) => { q.QuestionNumber = idx +1; return q; })
+                .ToList();
 
             var assessment = new VoiceAssessmentDto
             {
@@ -103,11 +109,45 @@ namespace BLL.Services.Assessment
                 CurrentQuestionIndex =0,
                 ProgramId = programId,
                 ProgramName = program.Name,
-            
-              
+                ProgramLevelNames = programLevelNames
             };
-            BackgroundJob.Enqueue(() => _redisService.SetVoiceAssessmentAsync(assessment));
+
+            await _redisService.SetVoiceAssessmentAsync(assessment);
             return assessment;
+        }
+
+        private List<VoiceAssessmentQuestion> BuildLocalizedFallbackQuestions(string languageCode, string languageName, List<string> programLevelNames)
+        {
+            var diffs = programLevelNames.Count >=4 ? programLevelNames.Take(4).ToArray() : BuildDefaultDifficulties(languageCode);
+            var code = (languageCode ?? string.Empty).ToLowerInvariant();
+            if (code.StartsWith("ja"))
+            {
+                return new List<VoiceAssessmentQuestion>
+                {
+                    new() { QuestionNumber =1, Question = "自己紹介", PromptText = "あなたの名前と趣味を紹介してください。", VietnameseTranslation = "Giới thiệu tên và sở thích.", QuestionType = "speaking", Difficulty = diffs[0], MaxRecordingSeconds =30 },
+                    new() { QuestionNumber =2, Question = "一日の流れ", PromptText = "朝から夜までの一日の過ごし方を説明してください。", VietnameseTranslation = "Miêu tả lịch trình mỗi ngày.", QuestionType = "speaking", Difficulty = diffs[1], MaxRecordingSeconds =60 },
+                    new() { QuestionNumber =3, Question = "最近の経験", PromptText = "最近の出来事について話してください。", VietnameseTranslation = "Kể về trải nghiệm gần đây.", QuestionType = "speaking", Difficulty = diffs[2], MaxRecordingSeconds =90 },
+                    new() { QuestionNumber =4, Question = "意見を述べる", PromptText = "テクノロジーについてあなたの意見を述べてください。", VietnameseTranslation = "Nêu ý kiến về công nghệ.", QuestionType = "speaking", Difficulty = diffs[3], MaxRecordingSeconds =120 }
+                };
+            }
+            if (code.StartsWith("zh"))
+            {
+                return new List<VoiceAssessmentQuestion>
+                {
+                    new() { QuestionNumber =1, Question = "自我介绍", PromptText = "请介绍你的名字和爱好。", VietnameseTranslation = "Giới thiệu tên và sở thích.", QuestionType = "speaking", Difficulty = diffs[0], MaxRecordingSeconds =30 },
+                    new() { QuestionNumber =2, Question = "日常安排", PromptText = "请描述你每天的作息。", VietnameseTranslation = "Miêu tả lịch trình mỗi ngày.", QuestionType = "speaking", Difficulty = diffs[1], MaxRecordingSeconds =60 },
+                    new() { QuestionNumber =3, Question = "最近经历", PromptText = "请谈谈你最近的一次经历。", VietnameseTranslation = "Kể về trải nghiệm gần đây.", QuestionType = "speaking", Difficulty = diffs[2], MaxRecordingSeconds =90 },
+                    new() { QuestionNumber =4, Question = "表达观点", PromptText = "请谈谈你对科技的看法。", VietnameseTranslation = "Nêu ý kiến về công nghệ.", QuestionType = "speaking", Difficulty = diffs[3], MaxRecordingSeconds =120 }
+                };
+            }
+            // default (e.g., English)
+            return new List<VoiceAssessmentQuestion>
+            {
+                new() { QuestionNumber =1, Question = $"Introduce yourself in {languageName}", PromptText = "Tell me your name and hobbies.", VietnameseTranslation = "Giới thiệu tên và sở thích.", QuestionType = "speaking", Difficulty = diffs[0], MaxRecordingSeconds =30 },
+                new() { QuestionNumber =2, Question = $"Daily routine in {languageName}", PromptText = "Describe your daily routine.", VietnameseTranslation = "Miêu tả lịch trình mỗi ngày.", QuestionType = "speaking", Difficulty = diffs[1], MaxRecordingSeconds =60 },
+                new() { QuestionNumber =3, Question = $"Recent experience in {languageName}", PromptText = "Talk about a recent experience.", VietnameseTranslation = "Kể về trải nghiệm gần đây.", QuestionType = "speaking", Difficulty = diffs[2], MaxRecordingSeconds =90 },
+                new() { QuestionNumber =4, Question = $"Give an opinion in {languageName}", PromptText = "Express your opinion about technology.", VietnameseTranslation = "Nêu ý kiến về công nghệ.", QuestionType = "speaking", Difficulty = diffs[3], MaxRecordingSeconds =120 }
+            };
         }
 
         public async Task<VoiceAssessmentQuestion> GetCurrentQuestionAsync(Guid assessmentId)
@@ -158,6 +198,7 @@ namespace BLL.Services.Assessment
             assessment.CurrentQuestionIndex = Math.Max(assessment.CurrentQuestionIndex, response.QuestionNumber);
             await _redisService.SetVoiceAssessmentAsync(assessment);
         }
+
         /// <summary>
         ///4. Hoàn thành bài đánh giá (Đánh giá AI, Gợi ý khóa học)
         /// </summary>
@@ -272,14 +313,14 @@ namespace BLL.Services.Assessment
                 ProgramId = assessment.ProgramId,
                 ProgramName = assessment.ProgramName,
                 DeterminedLevel = determinedLevel,
-               
+                LevelConfidence = confidence,
                 AssessmentCompleteness = completeness,
                 OverallScore = Math.Max(1, evaluationResult.OverallScore),
                 PronunciationScore = Math.Max(1, avgPron),
                 FluencyScore = Math.Max(1, avgFlu),
                 GrammarScore = Math.Max(1, avgGra),
                 VocabularyScore = Math.Max(1, avgAcc),
-              
+                DetailedFeedback = BuildDetailedFeedback(evaluationResult, assessment),
                 KeyStrengths = evaluationResult.Strengths?.Any() == true ? evaluationResult.Strengths : new List<string> { "Có động lực tham gia", "Cố gắng hoàn thành bài" },
                 ImprovementAreas = evaluationResult.Weaknesses?.Any() == true ? evaluationResult.Weaknesses : new List<string> { "Tăng thời lượng luyện nói", "Cải thiện phát âm và ngữ điệu" },
                 NextLevelRequirements = "Hoàn thành thêm các bài luyện nói và cải thiện phát âm, ngữ pháp cơ bản.",
@@ -302,9 +343,53 @@ namespace BLL.Services.Assessment
             return resultDto;
         }
 
-    
+        // Map thứ tự độ khó theo program level, rồi CEFR/HSK/JLPT
+        private int MapDifficultyOrder(string difficulty, List<string> programLevelNames)
+        {
+            if (string.IsNullOrWhiteSpace(difficulty)) return int.MaxValue;
 
-   
+            // Ưu tiên map đúng level của chương trình
+            var idx = programLevelNames.FindIndex(l => l.Equals(difficulty, StringComparison.OrdinalIgnoreCase));
+            if (idx >=0) return idx;
+
+            var d = difficulty.Trim().ToUpperInvariant();
+
+            // HSK1..HSK6
+            if (d.StartsWith("HSK"))
+            {
+                var numStr = new string(d.Skip(3).TakeWhile(char.IsDigit).ToArray());
+                if (int.TryParse(numStr, out var n))
+                {
+                    return Math.Clamp(n -1,0,5);
+                }
+            }
+            // JLPT N5..N1 (N5 dễ nhất)
+            if (d.Length >=2 && d[0] == 'N' && char.IsDigit(d[1]))
+            {
+                var n = d[1] - '0';
+                return n switch {5 =>0,4 =>1,3 =>2,2 =>3,1 =>4, _ => int.MaxValue };
+            }
+            // CEFR
+            return d switch
+            {
+                "A1" =>0,
+                "A2" =>1,
+                "B1" =>2,
+                "B2" =>3,
+                "C1" =>4,
+                "C2" =>5,
+                _ => int.MaxValue
+            };
+        }
+
+        private static string[] BuildDefaultDifficulties(string languageCode)
+        {
+            var code = (languageCode ?? string.Empty).Trim().ToLowerInvariant();
+            if (code.StartsWith("zh")) return new[] { "HSK1", "HSK2", "HSK3", "HSK4" };
+            if (code.StartsWith("ja")) return new[] { "N5", "N4", "N3", "N2" };
+            return new[] { "A1", "A2", "B1", "B2" };
+        }
+
         public async Task<VoiceAssessmentResultDto?> GetAssessmentResultAsync(Guid learnerLanguageId)
         {
             return await _redisService.GetVoiceAssessmentResultAsync(learnerLanguageId);
