@@ -52,6 +52,8 @@ namespace BLL
             services.AddScoped<IAdminService, AdminService>();
             services.Configure<CloudinarySettings>(configuration.GetSection("CloudinarySettings"));
             services.Configure<RedisSettings>(configuration.GetSection("RedisSettings"));
+            services.Configure<AzureOpenAISettings>(configuration.GetSection("AzureOpenAISettings"));
+            services.Configure<SpeechSettings>(configuration.GetSection("SpeechSettings"));
 
             services.AddDalServices(configuration);
 
@@ -101,26 +103,19 @@ namespace BLL
             services.AddSignalR();
             services.AddScoped<IRedisService, RedisService>();
             services.AddScoped<ICloudinaryService, CloudinaryService>();
-            services.AddScoped<IGeminiService, GeminiService>();
-            services.AddHttpClient<IGeminiService, GeminiService>();
-            services.Configure<GeminiSettings>(configuration.GetSection("GeminiSettings"));
+
+            services.AddHttpClient<IGeminiService, AzureOpenAIService>();
+            services.AddHttpClient<ITranscriptionService, AzureOpenAITranscriptionService>();
+            services.AddScoped<ITranscriptionService, AzureSpeechTranscriptionService>();
+
             services.AddScoped<ITopicService, TopicService>();
             services.AddScoped<ICourseTemplateService, CourseTemplateService>();
             services.AddScoped<ILanguageService, LanguageService>();
             services.AddScoped<IVoiceAssessmentService, VoiceAssessmentService>();
             services.AddScoped<ICertificateService, CertificateService>();
-            //services.AddScoped<ICourseRecommendationService, CourseRecommendationService>();
             services.AddSingleton<IAuthorizationHandler, ExclusiveRoleHandler>();
             services.AddScoped<ITeacherApplicationService, TeacherApplicationService>();
-            //services.AddScoped<ICourseService, CourseService>();
-            //services.AddScoped<ICourseUnitService, CourseUnitService>();
-            //services.AddScoped<ILessonService, LessonService>();
-            //services.AddScoped<IExerciseService, ExerciseService>();
             services.AddScoped<IConversationPartnerService, ConversationPartnerService>();
-            services.AddHttpClient<IGeminiService, GeminiService>();
-            //services.AddScoped<IEnrollmentService, EnrollmentService>();
-            //services.AddScoped<ILessonActivityLogService, LessonActivityLogService>();
-            //services.AddScoped<IClassAdminService, ClassAdminService>();
             services.AddScoped<IClassEnrollmentService, ClassEnrollmentService>();
             services.AddScoped<IPayOSService, PayOSService>();
             services.AddHttpClient<PayOSService>();
