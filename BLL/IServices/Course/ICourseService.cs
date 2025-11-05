@@ -9,14 +9,15 @@ namespace BLL.IServices.Course
     public interface ICourseService
     {
         Task<BaseResponse<CourseResponse>> CreateCourseAsync(Guid userId, CourseRequest request);
-        Task<PagedResponse<IEnumerable<CourseResponse>>> GetAllCoursesAsync(PagingRequest request, string status, string lang);
-        Task<PagedResponse<IEnumerable<CourseResponse>>> GetAllCoursesByTeacherIdAsync(Guid userId, PagingRequest request, string status);
         Task<BaseResponse<CourseResponse>> GetCourseByIdAsync(Guid courseId);
+        Task<PagedResponse<IEnumerable<CourseResponse>>> GetCoursesByTeacherAsync(Guid userId, PagingRequest request, string status);
+        Task<PagedResponse<IEnumerable<CourseResponse>>> GetCoursesAsync(PagingRequest request, string status, string lang);
         Task<BaseResponse<CourseResponse>> UpdateCourseAsync(Guid userId, Guid courseId, UpdateCourseRequest request);
+        Task<bool> DeleteCourseAsync(Guid courseId);
+        Task<PagedResponse<IEnumerable<CourseSubmissionResponse>>> GetCourseSubmissionsByManagerAsync(Guid userId, PagingRequest request, string status);
+        Task<PagedResponse<IEnumerable<CourseSubmissionResponse>>> GetCourseSubmissionsByTeacherAsync(Guid userId, PagingRequest request, string status);
         Task<BaseResponse<object>> SubmitCourseForReviewAsync(Guid userId, Guid courseId);
         Task<BaseResponse<object>> ApproveCourseSubmissionAsync(Guid userId, Guid submissionId);
         Task<BaseResponse<object>> RejectCourseSubmissionAsync(Guid userId, Guid submissionId, string reason);
-        Task<PagedResponse<IEnumerable<CourseSubmissionResponse>>> GetAllCourseSubmissionsByStaffAsync(Guid userId, PagingRequest request, string status);
-        Task<PagedResponse<IEnumerable<CourseSubmissionResponse>>> GetAllCourseSubmissionsByTeacherAsync(Guid userId, PagingRequest request, string status);
     }
 }
