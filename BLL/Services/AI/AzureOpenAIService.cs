@@ -105,7 +105,7 @@ namespace BLL.Services.AI
             var rubric = BuildDifficultyRubric(context.DifficultyLevel);
             // Ask for shorter scenario and clear runtime rules
             var prompt = $@"Return a strict JSON object with keys:
-- scenarioDescription (in {context.Language},60-100 words, include: time/place, participants, clear objective,1 cultural note, and1 plausible challenge; write as a compact paragraph, no bullets)
+- scenarioDescription (in {context.Language},50-60 words, include: time/place, participants, clear objective,1 cultural note, and1 plausible challenge; write as a compact paragraph, no bullets)
 - aiRole (a short label in {context.Language}, max30 characters, no punctuation except spaces)
 - systemPrompt (compact rules: reply ONLY in {context.Language}; no emojis/markdown; do NOT prefix with 'AI:' or a role name; stay strictly on topic '{context.Topic}'; keep replies concise:1–2 sentences; gently steer user back to topic if off-topic)
 - firstMessage (in {context.Language},1–2 sentences, set the scene and invite a reply; no prefix labels)
