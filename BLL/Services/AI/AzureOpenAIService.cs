@@ -48,7 +48,7 @@ namespace BLL.Services.AI
             public object? response_format { get; set; }
         }
 
-        private async Task<string> ChatAsync(string systemPrompt, string userMessage, IEnumerable<string> history, bool jsonMode = false)
+        private async Task<string> ChatAsync(string systemPrompt, string userMessage, IEnumerable<string> history, bool jsonMode = false, int? maxTokens = null, double? temperature = null)
         {
             var messages = new List<object>();
             if (!string.IsNullOrWhiteSpace(systemPrompt))
@@ -59,11 +59,16 @@ namespace BLL.Services.AI
 
             var deployment = string.IsNullOrWhiteSpace(_settings.ChatDeployment) ? "gpt-4o-mini" : _settings.ChatDeployment;
             var url = $"openai/deployments/{deployment}/chat/completions?api-version={_settings.ApiVersion}";
+
+            // Lower token budget for JSON mode to reduce latency
+            var chosenMaxTokens = maxTokens ?? (jsonMode ? 320 : Math.Max(256, Math.Min(_settings.MaxOutputTokens, 2048)));
+            var chosenTemperature = temperature ?? _settings.Temperature;
+
             var body = new ChatPayload
             {
                 messages = messages.ToArray(),
-                temperature = _settings.Temperature,
-                max_tokens = Math.Max(512, Math.Min(_settings.MaxOutputTokens, 4096)),
+                temperature = chosenTemperature,
+                max_tokens = chosenMaxTokens,
                 response_format = jsonMode ? new { type = "json_object" } : null
             };
             var res = await _http.PostAsJsonAsync(url, body, _json);
@@ -158,8 +163,8 @@ Output must be valid JSON only.";
 
         public async Task<List<VoiceAssessmentQuestion>> GenerateVoiceAssessmentQuestionsAsync(string languageCode, string languageName, string? programName = null)
         {
-            var prompt = $"Return JSON array of4 VoiceAssessmentQuestion for {languageName} ({languageCode}) program '{programName}'. Fields: questionNumber, question, promptText, vietnameseTranslation, wordGuides, questionType, difficulty, maxRecordingSeconds.";
-            var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true);
+            var prompt = $"Return JSON array of4 VoiceAssessmentQuestion for {languageName} ({languageCode}) program '{programName}'. Fields: questionNumber, question, promptText, vietnameseTranslation, wordGuides, questionType, difficulty, maxRecordingSeconds. Keep each field concise.";
+            var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 320, temperature: 0.2);
             try { return JsonSerializer.Deserialize<List<VoiceAssessmentQuestion>>(json, _json) ?? new(); } catch { return new(); }
         }
 
@@ -168,14 +173,14 @@ Output must be valid JSON only.";
             var qJson = JsonSerializer.Serialize(questions, _json);
             var scale = programLevelNames != null && programLevelNames.Any() ? $"Use levels: {string.Join(",", programLevelNames)}" : "Use CEFR/HSK/JLPT scale";
             var prompt = $"Evaluate batch voice responses for {languageName} ({languageCode}). Input questions JSON: {qJson}. Return JSON BatchVoiceEvaluationResult. {scale}.";
-            var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true);
+            var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 500, temperature: 0.2);
             try { return JsonSerializer.Deserialize<BatchVoiceEvaluationResult>(json, _json) ?? new BatchVoiceEvaluationResult(); } catch { return new BatchVoiceEvaluationResult { OverallScore = 0, OverallLevel = "Unknown" }; }
         }
 
         public async Task<VoiceEvaluationResult> EvaluateVoiceResponseDirectlyAsync(VoiceAssessmentQuestion question, IFormFile audioFile, string languageCode)
         {
             var prompt = $"Evaluate recorded response for: {question.Question} ({question.Difficulty}). Provide JSON VoiceEvaluationResult.";
-            var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true);
+            var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 400, temperature: 0.2);
             try { return JsonSerializer.Deserialize<VoiceEvaluationResult>(json, _json) ?? new VoiceEvaluationResult(); } catch { return new VoiceEvaluationResult { OverallScore = 70 }; }
         }
 
@@ -183,27 +188,27 @@ Output must be valid JSON only.";
         {
             var payload = new { survey, availableCourses };
             var prompt = $"Recommend3-5 courses for the user below. Return JSON AiCourseRecommendationDto.\n{JsonSerializer.Serialize(payload, _json)}";
-            var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true);
+            var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 600, temperature: 0.2);
             try { return JsonSerializer.Deserialize<AiCourseRecommendationDto>(json, _json) ?? new AiCourseRecommendationDto(); } catch { return new AiCourseRecommendationDto(); }
         }
 
         public async Task<string> GenerateStudyPlanAsync(UserSurveyResponseDto survey)
         {
             var prompt = $"Create a weekly study plan as plain text for this learner: {JsonSerializer.Serialize(survey, _json)}";
-            return await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: false);
+            return await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: false, maxTokens: 800, temperature: 0.4);
         }
 
         public async Task<List<string>> GenerateStudyTipsAsync(UserSurveyResponseDto survey)
         {
             var prompt = $"Return8-10 study tips as a plain text list (one per line) for this learner: {JsonSerializer.Serialize(survey, _json)}";
-            var text = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: false);
+            var text = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: false, maxTokens: 300, temperature: 0.3);
             return text.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(s => s.TrimStart('-', ' ', '•').Trim()).ToList();
         }
 
         public async Task<TeacherQualificationAnalysisDto> AnalyzeTeacherQualificationsAsync(TeacherApplicationDto application, List<TeacherCredentialDto> credentials)
         {
             var prompt = $"Analyze teacher qualifications. Return JSON TeacherQualificationAnalysisDto.\nApplication: {JsonSerializer.Serialize(application, _json)}\nCredentials: {JsonSerializer.Serialize(credentials, _json)}";
-            var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true);
+            var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 700, temperature: 0.2);
             try { return JsonSerializer.Deserialize<TeacherQualificationAnalysisDto>(json, _json) ?? new TeacherQualificationAnalysisDto(); } catch { return new TeacherQualificationAnalysisDto(); }
         }
     }
