@@ -1,11 +1,6 @@
 ﻿using Common.DTO.Learner;
 using Common.DTO.Teacher;
 using DAL.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BLL.IServices.Teacher
 {
@@ -18,5 +13,6 @@ namespace BLL.IServices.Teacher
         Task<List<TeacherClassDto>> GetTeacherClassesAsync(Guid teacherId, ClassStatus? status = null);
         Task<TeacherClassDto> GetClassDetailsAsync(Guid teacherId, Guid classId);
         Task<List<ClassEnrollmentDto>> GetClassEnrollmentsAsync(Guid teacherId, Guid classId);
+        Task<List<TeacherAssignmentDto>> GetMyProgramAssignmentsAsync(Guid teacherId);
     }
 }

@@ -22,6 +22,7 @@ namespace Common.DTO.Assement
         public bool IsSkipped { get; set; }
         public string? AudioFilePath { get; set; }
         public string? AudioMimeType { get; set; } // NEW: preserve recorded audio MIME type for AI evaluation
+        public string? Transcript { get; set; } // New: transcript of the submitted audio (filled by STT before AI evaluation)
     
 
     }

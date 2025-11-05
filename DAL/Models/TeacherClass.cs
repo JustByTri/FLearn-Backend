@@ -13,6 +13,18 @@ namespace DAL.Models
         [ForeignKey("Language")]
         public Guid LanguageID { get; set; }
         [Required]
+        public Guid ProgramAssignmentId { get; set; }
+        [ForeignKey(nameof(ProgramAssignmentId))]
+        public virtual TeacherProgramAssignment ProgramAssignment { get; set; } = null!;
+        [Required]
+        public Guid ProgramId { get; set; }
+        [ForeignKey(nameof(ProgramId))]
+        public virtual Program Program { get; set; } = null!;
+        [Required]
+        public Guid LevelId { get; set; }
+        [ForeignKey(nameof(LevelId))]
+        public virtual Level Level { get; set; } = null!;
+        [Required]
         [StringLength(200)]
         public string? Title { get; set; }
         [StringLength(1000)]

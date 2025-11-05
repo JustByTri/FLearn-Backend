@@ -1192,10 +1192,10 @@ and strings: aiFeedback, improvements, strengths.";
         {
             return languageCode.ToUpper() switch
             {
-                "EN" => "I'm here to help you practice. Please continue!",
-                "JP" => "練習を手伝います。会話を続けてください！",
-                "ZH" => "我在这里帮助你练习。请继续！",
-                _ => "Let's continue our conversation practice!"
+                "EN" => "Anyway, let's get back to what we were talking about",
+                "JP" => "さて、話に戻りましょう !",
+                "ZH" => "总之，我们还是回到刚才的话题吧。!",
+               
             };
         }
     }
