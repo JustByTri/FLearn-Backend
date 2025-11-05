@@ -23,5 +23,6 @@ namespace Common.DTO.Conversation
         public string? AudioUrl { get; set; }
         public string? AudioPublicId { get; set; }
         public int? AudioDuration { get; set; }
+     
     }
 }

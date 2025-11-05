@@ -33,9 +33,10 @@ namespace BLL.Services.Auth
         {
             var user = await GetUserByEmailOrUsernameAsync(loginRequest.UsernameOrEmail);
 
-            if (user == null || !user.Status)
+            if (user == null )
+                throw new UnauthorizedAccessException("Tài khoản của bạn không tồn tại");
+            if (!user.Status)
                 throw new UnauthorizedAccessException("Tài khoản của bạn không khả dụng, liên hệ với quản trị viên");
-
             if (!VerifyPassword(loginRequest.Password, user.PasswordHash, user.PasswordSalt))
                 throw new UnauthorizedAccessException("Tài khoản hoặc mật khẩu của bạn không đúng");
 

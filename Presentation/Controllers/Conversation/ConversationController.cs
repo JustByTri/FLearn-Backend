@@ -1,6 +1,9 @@
 ﻿using BLL.IServices.Coversation;
 using BLL.IServices.Upload;
+using BLL.Background;
+using BLL.Services.AI;
 using Common.DTO.Conversation;
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -16,15 +19,21 @@ namespace Presentation.Controllers.Conversation
         private readonly IConversationPartnerService _conversationService;
         private readonly ICloudinaryService _cloudinaryService;
         private readonly ILogger<ConversationController> _logger;
+        private readonly IBackgroundJobClient _jobs;
+        private readonly ITranscriptionService _transcribe;
 
         public ConversationController(
             IConversationPartnerService conversationService,
             ICloudinaryService cloudinaryService,
-            ILogger<ConversationController> logger)
+            ILogger<ConversationController> logger,
+            IBackgroundJobClient jobs,
+            ITranscriptionService transcribe)
         {
             _conversationService = conversationService;
             _cloudinaryService = cloudinaryService;
             _logger = logger;
+            _jobs = jobs;
+            _transcribe = transcribe;
         }
 
         /// <summary>
@@ -198,7 +207,7 @@ namespace Presentation.Controllers.Conversation
         }
 
         /// <summary>
-        /// 🎤 Gửi voice message trong conversation với upload lên Cloudinary
+        /// 🎤 Gửi voice message: STT realtime (Azure Speech) + phản hồi AI ngay, upload Cloudinary chạy nền
         /// </summary>
         [HttpPost("send-voice")]
         [Consumes("multipart/form-data")]
@@ -221,106 +230,76 @@ namespace Presentation.Controllers.Conversation
                 // Validate audio file
                 if (formDto.AudioFile == null)
                 {
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = "Vui lòng chọn file audio"
-                    });
+                    return BadRequest(new { success = false, message = "Vui lòng chọn file audio" });
                 }
 
                 var allowedTypes = new[] { "audio/mp3", "audio/wav", "audio/m4a", "audio/webm", "audio/mpeg", "audio/ogg" };
                 if (!allowedTypes.Contains(formDto.AudioFile.ContentType.ToLower()))
                 {
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = "Chỉ hỗ trợ file audio: MP3, WAV, M4A, WebM, OGG"
-                    });
+                    return BadRequest(new { success = false, message = "Chỉ hỗ trợ file audio: MP3, WAV, M4A, WebM, OGG" });
                 }
 
-                if (formDto.AudioFile.Length > 10 * 1024 * 1024) // 10MB
+                if (formDto.AudioFile.Length >10 *1024 *1024) //10MB
                 {
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = "File audio không được vượt quá 10MB"
-                    });
+                    return BadRequest(new { success = false, message = "File audio không được vượt quá10MB" });
                 }
 
-                // 🎵 Upload audio to Cloudinary
-                string audioUrl;
-                string audioPublicId;
-                try
+                // Ensure session exists and belongs to user (avoid wasted STT work)
+                var session = await _conversationService.GetConversationSessionAsync(userId, formDto.SessionId);
+                if (session == null)
                 {
-                    var audioFolder = $"conversations/{userId}/{formDto.SessionId}/voice_messages";
-                    var uploadResult = await _cloudinaryService.UploadAudioAsync(formDto.AudioFile, audioFolder);
-
-                    audioUrl = uploadResult.Url;
-                    audioPublicId = uploadResult.PublicId;
-
-                    _logger.LogInformation("✅ Voice message uploaded to Cloudinary: {PublicId} - {Url}",
-                        audioPublicId, audioUrl);
+                    return NotFound(new { success = false, message = "Không tìm thấy session hoặc bạn không có quyền" });
                 }
-                catch (Exception uploadEx)
+
+                // Buffer file for STT and background upload
+                byte[] audioBytes;
+                await using (var ms = new MemoryStream())
                 {
-                    _logger.LogError(uploadEx, "❌ Failed to upload voice message to Cloudinary for session {SessionId}",
-                        formDto.SessionId);
-
-                    return StatusCode(500, new
-                    {
-                        success = false,
-                        message = "Lỗi upload voice message. Vui lòng thử lại.",
-                        errorCode = "VOICE_UPLOAD_FAILED"
-                    });
+                    await formDto.AudioFile.CopyToAsync(ms);
+                    audioBytes = ms.ToArray();
                 }
+                var fileName = Path.GetFileName(formDto.AudioFile.FileName);
+                var contentType = formDto.AudioFile.ContentType;
 
-                //  Create SendMessageRequestDto with voice data
+                // Map session language name to STT locale (best-effort)
+                string? sttLocale = null;
+                var lname = (session.LanguageName ?? string.Empty).ToLowerInvariant();
+                if (lname.Contains("english")) sttLocale = "en-US";
+                else if (lname.Contains("japanese") || lname.Contains("nihon") || lname.Contains("日本") || lname.Contains("jp")) sttLocale = "ja-JP";
+                else if (lname.Contains("chinese") || lname.Contains("中文") || lname.Contains("zh")) sttLocale = "zh-CN";
+
+                // Transcribe (if client didn't provide transcript)
+                var transcript = string.IsNullOrWhiteSpace(formDto.Transcript)
+                    ? await _transcribe.TranscribeAsync(audioBytes, fileName, contentType, sttLocale)
+                    : formDto.Transcript;
+
+                // Send to AI with transcript (fallback to placeholder if null)
                 var request = new SendMessageRequestDto
                 {
                     SessionId = formDto.SessionId,
-                    MessageContent = "[Voice Message]", // Placeholder text
+                    MessageContent = string.IsNullOrWhiteSpace(transcript) ? "[Voice Message]" : transcript!,
                     MessageType = DAL.Type.MessageType.Audio,
-                    AudioUrl = audioUrl,
-                    AudioPublicId = audioPublicId,
                     AudioDuration = formDto.AudioDuration
                 };
-
-                // Send through conversation service
                 var aiResponse = await _conversationService.SendMessageAsync(userId, request);
+
+                // Background upload to Cloudinary
+                _jobs.Enqueue<VoiceUploadJob>(job => job.UploadAudioAndAttachAsync(formDto.SessionId, userId, audioBytes, fileName, contentType, formDto.AudioDuration));
 
                 return Ok(new
                 {
                     success = true,
-                    message = "Gửi voice message thành công",
-                    data = new
-                    {
-                        aiResponse,
-                        voiceInfo = new
-                        {
-                            audioUrl,
-                            audioPublicId,
-                            audioDuration = formDto.AudioDuration,
-                            fileSize = formDto.AudioFile.Length,
-                            contentType = formDto.AudioFile.ContentType
-                        }
-                    }
+                    message = "Gửi voice thành công",
+                    data = new { aiResponse, transcript, upload = new { queued = true, size = formDto.AudioFile.Length, contentType, fileName } }
                 });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
+                return BadRequest(new { success = false, message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
+                return BadRequest(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -449,6 +428,10 @@ namespace Presentation.Controllers.Conversation
                 });
             }
         }
+
+        /// <summary>
+        /// Lấy thông tin mức sử dụng cuộc hội thoại của người dùng
+        /// </summary>
         [HttpGet("usage")]
         public async Task<IActionResult> GetConversationUsage()
         {
