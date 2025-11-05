@@ -7,6 +7,7 @@ using DAL.Helpers;
 using DAL.Models;
 using DAL.Type;
 using DAL.UnitOfWork;
+using Hangfire;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Linq;
@@ -105,8 +106,7 @@ namespace BLL.Services.Assessment
             
               
             };
-
-            await _redisService.SetVoiceAssessmentAsync(assessment);
+            BackgroundJob.Enqueue(() => _redisService.SetVoiceAssessmentAsync(assessment));
             return assessment;
         }
 
