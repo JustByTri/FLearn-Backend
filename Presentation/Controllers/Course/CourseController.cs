@@ -59,7 +59,7 @@ namespace Presentation.Controllers.Course
         {
             try
             {
-                var response = await _courseService.GetAllCoursesAsync(request, status, lang);
+                var response = await _courseService.GetCoursesAsync(request, status, lang);
 
                 if (response.Data == null || !response.Data.Any())
                 {
@@ -72,7 +72,7 @@ namespace Presentation.Controllers.Course
                     });
                 }
 
-                return Ok(response);
+                return StatusCode(response.Code, response);
             }
             catch (Exception ex)
             {
@@ -132,8 +132,6 @@ namespace Presentation.Controllers.Course
         /// </returns>
         /// <remarks>
         /// This endpoint is restricted to users with the <c>Teacher</c> role.
-        /// The method extracts the teacher's ID from the authentication token, validates the request,
-        /// and delegates course creation to <see cref="CourseService.CreateCourseAsync(Guid, CourseRequest)"/>.
         /// </remarks>
         [Authorize(Roles = "Teacher")]
         [HttpPost]
@@ -265,7 +263,7 @@ namespace Presentation.Controllers.Course
                     });
                 }
 
-                var response = await _courseService.GetAllCoursesByTeacherIdAsync(userId, request, status);
+                var response = await _courseService.GetCoursesByTeacherAsync(userId, request, status);
 
                 if (response.Code == 404 || response.Data == null || !response.Data.Any())
                 {
@@ -278,7 +276,7 @@ namespace Presentation.Controllers.Course
                     });
                 }
 
-                return Ok(response);
+                return StatusCode(response.Code, response);
             }
             catch (ArgumentException ex)
             {
@@ -420,7 +418,7 @@ namespace Presentation.Controllers.Course
                 });
             }
 
-            var result = await _courseService.GetAllCourseSubmissionsByStaffAsync(userId, request, status);
+            var result = await _courseService.GetCourseSubmissionsByManagerAsync(userId, request, status);
             return StatusCode(result.Code, result);
         }
         /// <summary>
@@ -451,7 +449,7 @@ namespace Presentation.Controllers.Course
                     Message = "Invalid user ID format in token."
                 });
             }
-            var result = await _courseService.GetAllCourseSubmissionsByTeacherAsync(userId, request, status ?? "Pending");
+            var result = await _courseService.GetCourseSubmissionsByTeacherAsync(userId, request, status ?? "Pending");
             return StatusCode(result.Code, result);
         }
     }

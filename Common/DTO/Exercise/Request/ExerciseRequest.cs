@@ -17,7 +17,7 @@ namespace Common.DTO.Exercise.Request
         public string? Content { get; set; }
         [StringLength(1000, ErrorMessage = "Expected answer must not exceed 1000 characters.")]
         public string? ExpectedAnswer { get; set; }
-        public IFormFile? MediaFile { get; set; }
+        public List<IFormFile>? MediaFiles { get; set; }
         [Required(ErrorMessage = "Exercise type is required.")]
         public SpeakingExerciseType Type { get; set; }
         [Required(ErrorMessage = "Difficulty level is required.")]

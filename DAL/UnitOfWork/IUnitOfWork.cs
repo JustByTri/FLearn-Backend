@@ -1,4 +1,5 @@
 ﻿using DAL.IRepositories;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace DAL.UnitOfWork
 {
@@ -66,5 +67,8 @@ namespace DAL.UnitOfWork
         Task BeginTransactionAsync();
         Task CommitTransactionAsync();
         Task RollbackTransactionAsync();
+        Task ExecuteInTransactionAsync(Func<Task> operation);
+        Task<T> ExecuteInTransactionAsync<T>(Func<Task<T>> operation);
+        IExecutionStrategy CreateExecutionStrategy();
     }
 }

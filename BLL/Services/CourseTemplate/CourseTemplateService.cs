@@ -246,5 +246,83 @@ namespace BLL.Services.CourseTemplate
                 return BaseResponse<CourseTemplateResponse>.Error($"Unexpected error while updating course template. \\ {ex.Message}");
             }
         }
+
+        public async Task<PagedResponse<IEnumerable<CourseTemplateResponse>>> GetTemplatesByProgramAndLevelPagedAsync(Guid programId, Guid levelId, PagingRequest request)
+        {
+            try
+            {
+                var program = await _unit.Programs.Query()
+                    .Include(p => p.Levels)
+                    .OrderByDescending(p => p.CreatedAt)
+                    .FirstOrDefaultAsync(p => p.ProgramId == programId && p.Status == true);
+
+                if (program == null)
+                    return PagedResponse<IEnumerable<CourseTemplateResponse>>.Fail(
+                        new { ProgramId = "Not found" },
+                        "Program not found",
+                        404);
+
+                var level = program.Levels.FirstOrDefault(l => l.LevelId == levelId && l.Status == true);
+                if (level == null)
+                    return PagedResponse<IEnumerable<CourseTemplateResponse>>.Fail(
+                        new { LevelId = "Not found" },
+                        "Level not found in the specified program",
+                        404);
+
+                var query = _unit.CourseTemplates.Query()
+                    .Include(t => t.Program)
+                    .Include(t => t.Level)
+                    .Where(t => t.Status == true &&
+                               t.ProgramId == programId &&
+                               t.LevelId == levelId);
+                var totalItems = await query.CountAsync();
+
+                var templates = await query
+                    .OrderBy(t => t.CreatedAt)
+                    .Skip((request.Page - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .Select(t => new CourseTemplateResponse
+                    {
+                        TemplateId = t.TemplateId,
+                        Name = t.Name,
+                        Description = t.Description,
+                        UnitCount = t.UnitCount,
+                        LessonsPerUnit = t.LessonsPerUnit,
+                        ExercisesPerLesson = t.ExercisesPerLesson,
+                        ScoringCriteriaJson = t.ScoringCriteriaJson,
+                        Level = t.Level.Name,
+                        Program = t.Program.Name,
+                        Version = t.Version,
+                        CreatedAt = t.CreatedAt.ToString("dd-MM-yyyy"),
+                        ModifiedAt = t.ModifiedAt.HasValue ? t.ModifiedAt.Value.ToString("dd-MM-yyyy") : null
+                    })
+                    .ToListAsync();
+
+                if (templates == null || !templates.Any())
+                {
+                    return PagedResponse<IEnumerable<CourseTemplateResponse>>.Success(
+                        new List<CourseTemplateResponse>(),
+                        request.Page,
+                        request.PageSize,
+                        totalItems,
+                        "No templates found for the specified program and level"
+                    );
+                }
+
+                return PagedResponse<IEnumerable<CourseTemplateResponse>>.Success(
+                    templates,
+                    request.Page,
+                    request.PageSize,
+                    totalItems,
+                    $"Found {templates.Count} template(s) for program '{program.Name}' and level '{level.Name}'"
+                );
+            }
+            catch (Exception ex)
+            {
+                return PagedResponse<IEnumerable<CourseTemplateResponse>>.Error(
+                    $"Error retrieving templates: {ex.Message}"
+                );
+            }
+        }
     }
 }
