@@ -72,7 +72,7 @@ namespace Presentation.Controllers.Course
                     });
                 }
 
-                return Ok(response);
+                return StatusCode(response.Code, response);
             }
             catch (Exception ex)
             {
@@ -132,8 +132,6 @@ namespace Presentation.Controllers.Course
         /// </returns>
         /// <remarks>
         /// This endpoint is restricted to users with the <c>Teacher</c> role.
-        /// The method extracts the teacher's ID from the authentication token, validates the request,
-        /// and delegates course creation to <see cref="CourseService.CreateCourseAsync(Guid, CourseRequest)"/>.
         /// </remarks>
         [Authorize(Roles = "Teacher")]
         [HttpPost]
@@ -278,7 +276,7 @@ namespace Presentation.Controllers.Course
                     });
                 }
 
-                return Ok(response);
+                return StatusCode(response.Code, response);
             }
             catch (ArgumentException ex)
             {
@@ -420,7 +418,7 @@ namespace Presentation.Controllers.Course
                 });
             }
 
-            var result = await _courseService.GetCourseSubmissionsByStaffAsync(userId, request, status);
+            var result = await _courseService.GetCourseSubmissionsByManagerAsync(userId, request, status);
             return StatusCode(result.Code, result);
         }
         /// <summary>

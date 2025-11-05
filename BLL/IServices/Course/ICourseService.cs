@@ -14,7 +14,7 @@ namespace BLL.IServices.Course
         Task<PagedResponse<IEnumerable<CourseResponse>>> GetCoursesAsync(PagingRequest request, string status, string lang);
         Task<BaseResponse<CourseResponse>> UpdateCourseAsync(Guid userId, Guid courseId, UpdateCourseRequest request);
         Task<bool> DeleteCourseAsync(Guid courseId);
-        Task<PagedResponse<IEnumerable<CourseSubmissionResponse>>> GetCourseSubmissionsByStaffAsync(Guid userId, PagingRequest request, string status);
+        Task<PagedResponse<IEnumerable<CourseSubmissionResponse>>> GetCourseSubmissionsByManagerAsync(Guid userId, PagingRequest request, string status);
         Task<PagedResponse<IEnumerable<CourseSubmissionResponse>>> GetCourseSubmissionsByTeacherAsync(Guid userId, PagingRequest request, string status);
         Task<BaseResponse<object>> SubmitCourseForReviewAsync(Guid userId, Guid courseId);
         Task<BaseResponse<object>> ApproveCourseSubmissionAsync(Guid userId, Guid submissionId);
