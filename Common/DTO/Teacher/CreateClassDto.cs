@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Common.DTO.Teacher
 {
@@ -11,20 +8,19 @@ namespace Common.DTO.Teacher
     {
         [Required(ErrorMessage = "Tiêu đề lớp học là bắt buộc")]
         [StringLength(200, ErrorMessage = "Tiêu đề không được vượt quá 200 ký tự")]
-        public string Title { get; set; }
+        public string Title { get; set; } = string.Empty;
 
         [StringLength(1000, ErrorMessage = "Mô tả không được vượt quá 1000 ký tự")]
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
-        [Required(ErrorMessage = "Ngôn ngữ là bắt buộc")]
-        public Guid LanguageID { get; set; }
+        // Program/Level/Language sẽ được suy ra từ TeacherProfile và TeacherProgramAssignment
+        // Không cần truyền từ client
 
-       
         [Required(ErrorMessage = "Ngày diễn ra là bắt buộc")]
-        public DateTime ClassDate { get; set; }  // Chỉ ngày: 2025-11-05
+        public DateTime ClassDate { get; set; }  // yyyy-MM-dd
 
         [Required(ErrorMessage = "Giờ bắt đầu là bắt buộc")]
-        public TimeSpan StartTime { get; set; }  // Chỉ giờ: 14:30:00
+        public TimeSpan StartTime { get; set; }  // HH:mm:ss
 
         [Required(ErrorMessage = "Thời lượng là bắt buộc")]
         [AllowedDuration]  // Custom validation
@@ -34,16 +30,17 @@ namespace Common.DTO.Teacher
         [Range(0.01, 10000000, ErrorMessage = "Giá học phí phải lớn hơn 0")]
         public decimal PricePerStudent { get; set; }
 
-        [StringLength(500, ErrorMessage = "Link Google Meet không được vượt quá 500 ký tự")]
-        public string GoogleMeetLink { get; set; }
+        // Gỡ link meet khỏi DTO. Lấy từ TeacherProfile.MeetingUrl khi tạo lớp
+
+        // Optional: cho phép chọn assignment cụ thể; nếu null hệ thống tự chọn assignment level cao nhất
+        public Guid? ProgramAssignmentId { get; set; }
     }
 
- 
     public class AllowedDurationAttribute : ValidationAttribute
     {
         private readonly int[] _allowedDurations = { 45, 60, 90, 120 };
 
-        protected override ValidationResult IsValid(object value, ValidationContext validationContext)
+        protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
         {
             if (value is int duration)
             {

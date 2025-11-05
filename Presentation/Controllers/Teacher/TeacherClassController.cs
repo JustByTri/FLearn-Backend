@@ -201,5 +201,27 @@ namespace Presentation.Controllers.Teacher
                 return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi lấy danh sách học sinh" });
             }
         }
+
+        /// <summary>
+        /// Danh sách Program Assignment của giáo viên (để chọn khi tạo class)
+        /// </summary>
+        [HttpGet("assignments")]
+        public async Task<IActionResult> GetMyAssignments()
+        {
+            try
+            {
+                var teacherId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                var items = await _teacherClassService.GetMyProgramAssignmentsAsync(teacherId);
+                return Ok(new { success = true, data = items, total = items.Count });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi lấy danh sách assignment" });
+            }
+        }
     }
 }
