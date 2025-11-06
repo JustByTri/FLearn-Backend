@@ -10,6 +10,8 @@ using DAL.UnitOfWork;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace BLL.Services.Assessment
 {
@@ -35,7 +37,7 @@ namespace BLL.Services.Assessment
             _stt = stt;
         }
 
-        //1. Bắt đầu bài đánh giá (ưu tiên nhanh: timeout AI6s rồi fallback)
+        //1. Bắt đầu bài đánh giá (ưu tiên nhanh: timeout AI6s rồi fallback + cache Redis)
         public async Task<VoiceAssessmentDto> StartProgramAssessmentAsync(Guid userId, Guid languageId, Guid programId)
         {
             _logger.LogInformation("Bắt đầu Program Assessment: User {UserId}, Program {ProgramId}", userId, programId);
@@ -57,46 +59,58 @@ namespace BLL.Services.Assessment
                 .ToList();
             if (!programLevelNames.Any())
             {
-                // still allow start, but map by language defaults
                 _logger.LogWarning("Program {ProgramId} chưa có levels, dùng thang mặc định theo ngôn ngữ", programId);
             }
 
             await ClearOldAssessmentData(userId, languageId);
 
-            List<VoiceAssessmentQuestion>? questions = null;
-            try
+            // Cache theo languageId+programId+version(hash levels)
+            var levelsVersion = ComputeLevelsHash(programLevelNames);
+            var cacheKey = $"voice_questions:{languageId}:{programId}:{levelsVersion}";
+            List<VoiceAssessmentQuestion>? questions = await _redisService.GetAsync<List<VoiceAssessmentQuestion>>(cacheKey);
+            if (questions != null && questions.Any())
             {
-                // Wait up to6s so user can see AI-generated questions
-                var aiTask = _geminiService.GenerateVoiceAssessmentQuestionsAsync(
-                    language.LanguageCode,
-                    language.LanguageName,
-                    program.Name
-                );
-                var completed = await Task.WhenAny(aiTask, Task.Delay(TimeSpan.FromSeconds(6)));
-                if (completed == aiTask)
+                _logger.LogInformation("Hit cache câu hỏi: {Key}", cacheKey);
+            }
+            else
+            {
+                try
                 {
-                    questions = await aiTask;
+                    // Wait up to6s so user can see AI-generated questions
+                    var aiTask = _geminiService.GenerateVoiceAssessmentQuestionsAsync(
+                        language.LanguageCode,
+                        language.LanguageName,
+                        program.Name
+                    );
+                    var completed = await Task.WhenAny(aiTask, Task.Delay(TimeSpan.FromSeconds(20)));
+                    if (completed == aiTask)
+                    {
+                        questions = await aiTask;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Tạo câu hỏi AI quá6s, dùng fallback ngay");
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    _logger.LogWarning("Tạo câu hỏi AI quá6s, dùng fallback ngay");
+                    _logger.LogError(ex, "AI generate questions failed, will fallback to defaults");
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "AI generate questions failed, will fallback to defaults");
-            }
 
-            if (questions == null || !questions.Any())
-            {
-                questions = BuildLocalizedFallbackQuestions(language.LanguageCode, language.LanguageName, programLevelNames);
-            }
+                if (questions == null || !questions.Any())
+                {
+                    questions = BuildLocalizedFallbackQuestions(language.LanguageCode, language.LanguageName, programLevelNames);
+                }
 
-            // Normalize difficulties and ensure ascending order using program levels then language scale
-            questions = questions
-                .OrderBy(q => MapDifficultyOrder(q.Difficulty, programLevelNames))
-                .Select((q, idx) => { q.QuestionNumber = idx +1; return q; })
-                .ToList();
+                // Chuẩn hóa và sắp xếp tăng dần
+                questions = questions
+                    .OrderBy(q => MapDifficultyOrder(q.Difficulty, programLevelNames))
+                    .Select((q, idx) => { q.QuestionNumber = idx +1; return q; })
+                    .ToList();
+
+                // Lưu cache9 giờ
+                await _redisService.SetAsync(cacheKey, questions, TimeSpan.FromHours(9));
+            }
 
             var assessment = new VoiceAssessmentDto
             {
@@ -104,8 +118,8 @@ namespace BLL.Services.Assessment
                 UserId = userId,
                 LanguageId = languageId,
                 LanguageName = language.LanguageName,
-                Questions = questions,
-                CreatedAt = DateTime.UtcNow,
+                Questions = questions!,
+                CreatedAt = TimeHelper.GetVietnamTime(),
                 CurrentQuestionIndex =0,
                 ProgramId = programId,
                 ProgramName = program.Name,
@@ -114,6 +128,14 @@ namespace BLL.Services.Assessment
 
             await _redisService.SetVoiceAssessmentAsync(assessment);
             return assessment;
+        }
+
+        private static string ComputeLevelsHash(List<string> programLevelNames)
+        {
+            var input = string.Join('|', programLevelNames.Select(s => s.Trim()));
+            using var sha = SHA256.Create();
+            var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(input));
+            return Convert.ToHexString(bytes).Substring(0,12);
         }
 
         private List<VoiceAssessmentQuestion> BuildLocalizedFallbackQuestions(string languageCode, string languageName, List<string> programLevelNames)
@@ -240,7 +262,7 @@ namespace BLL.Services.Assessment
                     Strengths = new List<string> { "Hoàn thành bài đánh giá" },
                     Weaknesses = new List<string> { "Thiếu dữ liệu audio hoặc transcript" },
                     RecommendedCourses = new List<CourseRecommendation>(),
-                    EvaluatedAt = DateTime.UtcNow
+                    EvaluatedAt = TimeHelper.GetVietnamTime()
                 };
             }
             else
@@ -249,7 +271,7 @@ namespace BLL.Services.Assessment
                 {
                     _logger.LogInformation("Đang gửi {Count} câu trả lời cho AI...", completedQuestions.Count);
                     evaluationResult = await _geminiService.EvaluateBatchVoiceResponsesAsync(
-                        assessment.Questions, // pass all so skipped are noted in prompt
+                        assessment.Questions,
                         language.LanguageCode,
                         language.LanguageName,
                         assessment.ProgramLevelNames
@@ -275,7 +297,7 @@ namespace BLL.Services.Assessment
                         Strengths = new List<string> { "Tham gia đầy đủ" },
                         Weaknesses = new List<string> { "Thiếu đánh giá chi tiết từ AI" },
                         RecommendedCourses = new List<CourseRecommendation>(),
-                        EvaluatedAt = DateTime.UtcNow
+                        EvaluatedAt = TimeHelper.GetVietnamTime()
                     };
                 }
             }
@@ -343,33 +365,22 @@ namespace BLL.Services.Assessment
             return resultDto;
         }
 
-        // Map thứ tự độ khó theo program level, rồi CEFR/HSK/JLPT
         private int MapDifficultyOrder(string difficulty, List<string> programLevelNames)
         {
             if (string.IsNullOrWhiteSpace(difficulty)) return int.MaxValue;
-
-            // Ưu tiên map đúng level của chương trình
-            var idx = programLevelNames.FindIndex(l => l.Equals(difficulty, StringComparison.OrdinalIgnoreCase));
-            if (idx >=0) return idx;
-
+            var index = programLevelNames.FindIndex(l => l.Equals(difficulty, StringComparison.OrdinalIgnoreCase));
+            if (index >=0) return index;
             var d = difficulty.Trim().ToUpperInvariant();
-
-            // HSK1..HSK6
             if (d.StartsWith("HSK"))
             {
                 var numStr = new string(d.Skip(3).TakeWhile(char.IsDigit).ToArray());
                 if (int.TryParse(numStr, out var n))
-                {
                     return Math.Clamp(n -1,0,5);
-                }
             }
-            // JLPT N5..N1 (N5 dễ nhất)
             if (d.Length >=2 && d[0] == 'N' && char.IsDigit(d[1]))
             {
-                var n = d[1] - '0';
-                return n switch {5 =>0,4 =>1,3 =>2,2 =>3,1 =>4, _ => int.MaxValue };
+                return d[1] switch { '5' =>0, '4' =>1, '3' =>2, '2' =>3, '1' =>4, _ => int.MaxValue };
             }
-            // CEFR
             return d switch
             {
                 "A1" =>0,
@@ -406,7 +417,7 @@ namespace BLL.Services.Assessment
             _logger.LogInformation("Chấp nhận Assessment: {Id}. Đặt Level = {Level}", learnerLanguageId, resultDto.DeterminedLevel);
 
             learnerLanguage.ProficiencyLevel = resultDto.DeterminedLevel;
-            learnerLanguage.UpdatedAt = DateTime.UtcNow;
+            learnerLanguage.UpdatedAt = TimeHelper.GetVietnamTime();
 
             _unitOfWork.LearnerLanguages.Update(learnerLanguage);
             await _unitOfWork.SaveChangesAsync();
@@ -507,8 +518,8 @@ namespace BLL.Services.Assessment
                     UserId = userId,
                     LanguageId = languageId,
                     ProficiencyLevel = "Pending Assessment",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    CreatedAt = TimeHelper.GetVietnamTime(),
+                    UpdatedAt = TimeHelper.GetVietnamTime()
                 };
                 await _unitOfWork.LearnerLanguages.CreateAsync(learnerLanguage);
                 await _unitOfWork.SaveChangesAsync();
