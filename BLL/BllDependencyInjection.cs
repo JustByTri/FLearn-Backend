@@ -115,6 +115,7 @@ namespace BLL
             services.AddHttpClient<IGeminiService, AzureOpenAIService>();
             services.AddHttpClient<ITranscriptionService, AzureOpenAITranscriptionService>();
             services.AddScoped<ITranscriptionService, AzureSpeechTranscriptionService>();
+            services.AddScoped<IPronunciationAssessmentService, AzureSpeechPronunciationAssessmentService>();
 
             // ensure VoiceAssessmentService gets STT
             services.AddScoped<IVoiceAssessmentService, VoiceAssessmentService>();
