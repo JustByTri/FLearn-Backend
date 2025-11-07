@@ -1,6 +1,7 @@
 ﻿using BLL.IServices.Course;
 using Common.DTO.ApiResponse;
 using Common.DTO.Application.Request;
+using Common.DTO.Course;
 using Common.DTO.Course.Request;
 using Common.DTO.Course.Response;
 using Common.DTO.Language;
@@ -8,6 +9,8 @@ using Common.DTO.Paging.Request;
 using Common.DTO.Paging.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
+using System.Net;
 using System.Security.Claims;
 
 namespace Presentation.Controllers.Course
@@ -452,5 +455,22 @@ namespace Presentation.Controllers.Course
             var result = await _courseService.GetCourseSubmissionsByTeacherAsync(userId, request, status ?? "Pending");
             return StatusCode(result.Code, result);
         }
+        /// <summary>
+        /// Lấy danh sách các khoá học phổ biến (public).
+        /// </summary>
+        /// <param name="count">Số lượng khoá học muốn lấy (mặc định 10, tối đa 50).</param>
+        /// <returns>Danh sách khoá học phổ biến.</returns>
+        [AllowAnonymous] // Cho phép tất cả mọi người truy cập
+        [HttpGet("popular")]
+        [ProducesResponseType(typeof(BaseResponse<IEnumerable<PopularCourseDto>>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> GetPopularCourses(
+            [FromQuery][Range(1, 50)] int count = 10)
+        {
+            var response = await _courseService.GetPopularCoursesAsync(count);
+
+
+            return StatusCode(response.Code, response);
+        }
     }
 }
+

@@ -1,4 +1,5 @@
 ﻿using Common.DTO.ApiResponse;
+using Common.DTO.Course;
 using Common.DTO.Course.Request;
 using Common.DTO.Course.Response;
 using Common.DTO.Paging.Request;
@@ -19,5 +20,7 @@ namespace BLL.IServices.Course
         Task<BaseResponse<object>> SubmitCourseForReviewAsync(Guid userId, Guid courseId);
         Task<BaseResponse<object>> ApproveCourseSubmissionAsync(Guid userId, Guid submissionId);
         Task<BaseResponse<object>> RejectCourseSubmissionAsync(Guid userId, Guid submissionId, string reason);
+        Task<BaseResponse<IEnumerable<PopularCourseDto>>> GetPopularCoursesAsync(int count = 10);
     }
+
 }
