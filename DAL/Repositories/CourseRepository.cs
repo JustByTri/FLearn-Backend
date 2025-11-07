@@ -12,9 +12,7 @@ namespace DAL.Repositories
         public CourseRepository(AppDbContext context) : base(context) { }
         public async Task<bool> HasUserPurchasedCourseAsync(Guid userId, Guid courseId)
         {
-            await using var context = new AppDbContext();
-
-            return await context.Purchases
+            return await _context.Purchases
                 .AnyAsync(p => p.CourseId == courseId &&
                                p.UserId == userId &&
                                p.Status == PurchaseStatus.Completed);

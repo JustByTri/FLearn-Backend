@@ -8,11 +8,6 @@ namespace DAL.Basic
     {
         protected AppDbContext _context;
 
-        public GenericRepository()
-        {
-            _context ??= new AppDbContext();
-        }
-
         public GenericRepository(AppDbContext context)
         {
             _context = context;
