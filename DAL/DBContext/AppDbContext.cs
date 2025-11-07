@@ -6,7 +6,6 @@ namespace DAL.DBContext
 {
     public class AppDbContext : DbContext
     {
-        public AppDbContext() { }
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
         public DbSet<Achievement> Achievements { get; set; }
         public DbSet<ApplicationCertType> ApplicationCertTypes { get; set; }

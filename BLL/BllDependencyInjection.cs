@@ -21,6 +21,7 @@ using BLL.IServices.Subscription;
 using BLL.IServices.Teacher;
 using BLL.IServices.Topic;
 using BLL.IServices.Upload;
+using BLL.IServices.Wallets;
 using BLL.Services;
 using BLL.Services.Admin;
 using BLL.Services.AI;
@@ -43,6 +44,7 @@ using BLL.Services.Subscription;
 using BLL.Services.Teacher;
 using BLL.Services.Topic;
 using BLL.Services.Upload;
+using BLL.Services.Wallets;
 using BLL.Settings;
 using Common.Authorization;
 using DAL;
@@ -142,6 +144,10 @@ namespace BLL
             services.AddScoped<ITeacherService, TeacherService>();
             services.AddScoped<IPurchaseService, PurchaseService>();
             services.AddScoped<IPaymentService, PayOSPaymentService>();
+            services.AddScoped<IWalletService, WalletService>();
+            services.AddScoped<WalletService>();
+            services.AddScoped<TeacherPayoutJobService>();
+            services.AddScoped<IEnrollmentService, EnrollmentService>();
             return services;
         }
     }

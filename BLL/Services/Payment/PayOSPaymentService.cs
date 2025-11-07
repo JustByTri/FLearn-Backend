@@ -1,9 +1,12 @@
 ﻿using BLL.IServices.Payment;
+using BLL.IServices.Wallets;
+using BLL.Services.Wallets;
 using Common.DTO.ApiResponse;
 using Common.DTO.Payment.Response;
 using DAL.Helpers;
 using DAL.Type;
 using DAL.UnitOfWork;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -18,11 +21,12 @@ namespace BLL.Services.Payment
     {
         private readonly IConfiguration _configuration;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IWalletService _walletService;
         private readonly ILogger<PayOSPaymentService> _logger;
         private readonly string _apiKey;
         private readonly string _clientId;
         private readonly string _checksumKey;
-        public PayOSPaymentService(IConfiguration configuration, IUnitOfWork unitOfWork, ILogger<PayOSPaymentService> logger)
+        public PayOSPaymentService(IConfiguration configuration, IUnitOfWork unitOfWork, ILogger<PayOSPaymentService> logger, IWalletService walletService)
         {
             _configuration = configuration;
             _unitOfWork = unitOfWork;
@@ -30,8 +34,8 @@ namespace BLL.Services.Payment
             _apiKey = _configuration["PayOs:ApiKey"] ?? string.Empty;
             _clientId = _configuration["PayOs:ClientID"] ?? string.Empty;
             _checksumKey = _configuration["PayOs:CheckSumKey"] ?? string.Empty;
+            _walletService = walletService;
         }
-
         public async Task<BaseResponse<PaymentCreateResponse>> CreatePaymentAsync(Guid purchaseId)
         {
             var strategy = _unitOfWork.CreateExecutionStrategy();
@@ -103,8 +107,8 @@ namespace BLL.Services.Payment
                         OrderCode = orderCode,
                         Amount = Convert.ToInt64(decimal.Truncate(purchase.FinalAmount)),
                         Description = "flearn hoc phi khoa hoc".ToUpper(),
-                        ReturnUrl = _configuration["PaymentOSCallBack:ReturnUrl"] ?? "",
-                        CancelUrl = _configuration["PaymentOSCallBack:CancelUrl"] ?? "",
+                        ReturnUrl = "https://f-learn.app/api/payments/return-url",
+                        CancelUrl = "https://f-learn.app/api/payments/return-url",
                         BuyerName = purchase.User?.FullName ?? purchase.User?.UserName,
                         BuyerEmail = purchase.User?.Email ?? string.Empty,
                         ExpiredAt = expiredAtSeconds
@@ -164,40 +168,69 @@ namespace BLL.Services.Payment
         }
         public async Task<BaseResponse<object>> HandleCallbackAsync(PayOSWebhookBody payload)
         {
-            if (payload?.Data == null)
-                return BaseResponse<object>.Fail("Invalid payload");
-
-            var orderCode = payload.Data.OrderCode.ToString();
-            var paymentLinkId = payload.Data.PaymentLinkId;
-
-            var transaction = await _unitOfWork.PaymentTransactions.Query()
-                .Include(t => t.Purchase)
-                .FirstOrDefaultAsync(t => t.TransactionRef == paymentLinkId
-                                       || (t.GatewayResponse != null && t.GatewayResponse.Contains(paymentLinkId)));
-
-            if (transaction == null)
+            var strategy = _unitOfWork.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
-                _logger.LogWarning($"Webhook received but no matching transaction. orderCode={orderCode}, paymentLinkId={paymentLinkId}");
-                return BaseResponse<object>.Fail("No transaction matched");
-            }
-
-            if (payload.Data.Code == "00")
-            {
-                transaction.TransactionStatus = TransactionStatus.Succeeded;
-                if (transaction.Purchase != null)
+                await _unitOfWork.BeginTransactionAsync();
+                try
                 {
-                    transaction.Purchase.Status = PurchaseStatus.Completed;
-                    transaction.Purchase.PaidAt = TimeHelper.GetVietnamTime();
+                    if (payload?.Data == null)
+                        return BaseResponse<object>.Success("Invalid payload");
+
+                    var orderCode = payload.Data.OrderCode.ToString();
+                    var paymentLinkId = payload.Data.PaymentLinkId;
+
+                    var transaction = await _unitOfWork.PaymentTransactions.Query()
+                        .Include(t => t.Purchase)
+                            .ThenInclude(p => p.Course)
+                        .FirstOrDefaultAsync(t => t.TransactionRef == paymentLinkId
+                                               || (t.GatewayResponse != null && t.GatewayResponse.Contains(paymentLinkId)));
+
+                    if (transaction == null)
+                    {
+                        _logger.LogWarning($"Webhook received but no matching transaction. orderCode={orderCode}, paymentLinkId={paymentLinkId}");
+                        return BaseResponse<object>.Success("No transaction matched");
+                    }
+
+                    if (payload.Data.Code == "00")
+                    {
+                        transaction.TransactionStatus = TransactionStatus.Succeeded;
+                        transaction.CompletedAt = TimeHelper.GetVietnamTime();
+
+                        if (transaction.Purchase != null)
+                        {
+                            transaction.Purchase.Status = PurchaseStatus.Completed;
+                            transaction.Purchase.PaidAt = TimeHelper.GetVietnamTime();
+                        }
+
+                        if (transaction.Purchase != null && transaction.Purchase.Course != null)
+                        {
+                            BackgroundJob.Enqueue<WalletService>(ws => ws.TransferToAdminWalletAsync(transaction.Purchase.PurchasesId));
+                            BackgroundJob.Schedule<TeacherPayoutJobService>(job => job.ProcessTeacherPayoutAsync(transaction.Purchase.PurchasesId), TimeSpan.FromDays(3));
+                        }
+                    }
+                    else
+                    {
+                        transaction.TransactionStatus = TransactionStatus.Failed;
+                        if (transaction.Purchase != null)
+                        {
+                            transaction.Purchase.Status = PurchaseStatus.Failed;
+                        }
+                    }
+
+                    await _unitOfWork.SaveChangesAsync();
+                    await _unitOfWork.CommitTransactionAsync();
+
+
+                    return BaseResponse<object>.Success("Callback handled");
                 }
-            }
-            else
-            {
-                transaction.TransactionStatus = TransactionStatus.Failed;
-            }
-
-            await _unitOfWork.SaveChangesAsync();
-
-            return BaseResponse<object>.Success("Callback handled");
+                catch (Exception ex)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    _logger.LogError(ex, "Error when handling callback: {Message}", ex.Message);
+                    return BaseResponse<object>.Success("System error while handling callbac");
+                }
+            });
         }
         public Task<BaseResponse<object>> ProcessRefundAsync(Guid paymentTransactionId, decimal amount)
         {

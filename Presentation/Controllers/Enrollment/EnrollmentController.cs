@@ -1,4 +1,5 @@
 ﻿using BLL.IServices.Enrollment;
+using BLL.IServices.Purchases;
 using Common.DTO.ApiResponse;
 using Common.DTO.Enrollment.Request;
 using Common.DTO.Language;
@@ -15,9 +16,11 @@ namespace Presentation.Controllers.Enrollment
     public class EnrollmentController : ControllerBase
     {
         private readonly IEnrollmentService _enrollmentService;
-        public EnrollmentController(IEnrollmentService enrollmentService)
+        private readonly IPurchaseService _purchaseService;
+        public EnrollmentController(IEnrollmentService enrollmentService, IPurchaseService purchaseService)
         {
             _enrollmentService = enrollmentService;
+            _purchaseService = purchaseService;
         }
         /// <summary>
         /// Enrolls the authenticated user into a specified course.
@@ -33,7 +36,7 @@ namespace Presentation.Controllers.Enrollment
         /// <response code="403">Access denied (account inactive, email not confirmed, or course not purchased).</response>
         /// <response code="404">The specified course was not found.</response>
         /// <response code="500">Internal server error occurred.</response>
-        [Authorize(Policy = "OnlyLearner")]
+        [Authorize(Roles = "Learner")]
         [HttpPost]
         public async Task<IActionResult> EnrollInCourseAsync([FromBody] EnrollmentRequest request)
         {
@@ -56,7 +59,6 @@ namespace Presentation.Controllers.Enrollment
             }
 
             var result = await _enrollmentService.EnrolCourseAsync(userId, request);
-
             return StatusCode(result.Code, result);
         }
         /// <summary>
@@ -68,7 +70,7 @@ namespace Presentation.Controllers.Enrollment
         /// <response code="200">Successfully retrieved enrolled courses.</response>
         /// <response code="401">Unauthorized request (user not authenticated).</response>
         /// <response code="500">Internal server error occurred.</response>
-        [Authorize(Policy = "OnlyLearner")]
+        [Authorize(Roles = "Learner")]
         [HttpGet]
         public async Task<IActionResult> GetEnrolledCoursesAsync([FromQuery] PagingRequest request, [FromQuery][AllowedLang] string lang)
         {
@@ -86,7 +88,26 @@ namespace Presentation.Controllers.Enrollment
             }
 
             var result = await _enrollmentService.GetEnrolledCoursesAsync(userId, lang, request);
+            return StatusCode(result.Code, result);
+        }
+        [Authorize(Roles = "Learner")]
+        [HttpGet("courses/{courseId}/access")]
+        public async Task<IActionResult> CheckCourseAccess(Guid courseId)
+        {
+            var userIdClaim = User.FindFirstValue("user_id")
+                     ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized("Teacher ID not found in token.");
+            }
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return BadRequest("Invalid user ID format in token.");
+            }
+
+            var result = await _purchaseService.CheckCourseAccessAsync(userId, courseId);
             return StatusCode(result.Code, result);
         }
     }
