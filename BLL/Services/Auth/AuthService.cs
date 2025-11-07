@@ -119,7 +119,7 @@ namespace BLL.Services.Auth
                 PasswordHash = passwordHash,
                 PasswordSalt = passwordSalt,
                 OtpCode = otp,
-                ExpireAt = DateTime.UtcNow.AddMinutes(5)
+                ExpireAt = TimeHelper.GetVietnamTime().AddMinutes(5)
             };
             await _unitOfWork.TempRegistrations.CreateAsync(tempRegistration);
 
@@ -151,7 +151,7 @@ namespace BLL.Services.Auth
                     tr.Email.ToLowerInvariant() == email.ToLowerInvariant() &&
                     tr.OtpCode == otpCode &&
                     !tr.IsUsed &&
-                    tr.ExpireAt > DateTime.UtcNow);
+                    tr.ExpireAt > TimeHelper.GetVietnamTime());
 
                 attempts++;
             }
@@ -187,7 +187,7 @@ namespace BLL.Services.Auth
                 PasswordSalt = tempRegistration.PasswordSalt,
                 DateOfBirth = DateTime.Now.AddYears(-18),
                 Status = true,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = TimeHelper.GetVietnamTime(),
                 IsEmailConfirmed = true,
             };
             await _unitOfWork.Users.CreateAsync(user);
@@ -231,7 +231,7 @@ namespace BLL.Services.Auth
         {
             var refreshTokenEntity = await _unitOfWork.RefreshTokens.GetByTokenAsync(refreshToken);
 
-            if (refreshTokenEntity == null || refreshTokenEntity.IsRevoked || refreshTokenEntity.ExpiresAt <= DateTime.UtcNow)
+            if (refreshTokenEntity == null || refreshTokenEntity.IsRevoked || refreshTokenEntity.ExpiresAt <= TimeHelper.GetVietnamTime())
                 throw new UnauthorizedAccessException("Refresh token không khả dụng hoặc hết hạn");
 
             var user = await _unitOfWork.Users.GetUserWithRolesAsync(refreshTokenEntity.UserID);
@@ -240,7 +240,7 @@ namespace BLL.Services.Auth
 
 
             refreshTokenEntity.IsRevoked = true;
-            refreshTokenEntity.RevokedAt = DateTime.UtcNow;
+            refreshTokenEntity.RevokedAt = TimeHelper.GetVietnamTime();
             await _unitOfWork.RefreshTokens.UpdateAsync(refreshTokenEntity);
 
 
@@ -336,7 +336,7 @@ namespace BLL.Services.Auth
                 }
             }
 
-            var expiresAtUtc = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
+            var expiresAtUtc = TimeHelper.GetVietnamTime().AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
 
             var token = new JwtSecurityToken(
                 issuer: _jwtSettings.Issuer,
@@ -419,7 +419,7 @@ namespace BLL.Services.Auth
             // Cập nhật mật khẩu
             user.PasswordHash = newPasswordHash;
             user.PasswordSalt = newPasswordSalt;
-            user.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = TimeHelper.GetVietnamTime();
 
             await _unitOfWork.Users.UpdateAsync(user);
 
@@ -486,8 +486,8 @@ namespace BLL.Services.Auth
                 PasswordHash = latestTempReg.PasswordHash,
                 PasswordSalt = latestTempReg.PasswordSalt,
                 OtpCode = newOtp,
-                ExpireAt = DateTime.UtcNow.AddMinutes(5),
-                CreatedAt = DateTime.UtcNow,
+                ExpireAt = TimeHelper.GetVietnamTime().AddMinutes(5),
+                CreatedAt = TimeHelper.GetVietnamTime(),
                 IsUsed = false
             };
 
@@ -522,9 +522,9 @@ namespace BLL.Services.Auth
                 Id = Guid.NewGuid(),
                 Email = user.Email,
                 OtpCode = resetOtp,
-                ExpireAt = DateTime.UtcNow.AddMinutes(10), // 10 phút cho reset password
+                ExpireAt = TimeHelper.GetVietnamTime().AddMinutes(10), // 10 phút cho reset password
                 IsUsed = false,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = TimeHelper.GetVietnamTime()
             };
 
             await _unitOfWork.PasswordResetOtps.CreateAsync(passwordResetOtp);

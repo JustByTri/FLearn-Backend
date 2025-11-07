@@ -11,7 +11,7 @@ namespace Common.DTO.Assement
         public Guid AssessmentId { get; set; }
         public Guid UserId { get; set; }
         public Guid LanguageId { get; set; }
-        public Guid? ProgramId { get; set; } 
+        public Guid? ProgramId { get; set; }
         public string? ProgramName { get; set; }
         public List<string> ProgramLevelNames { get; set; } = new();
         public string LanguageName { get; set; } = string.Empty;

@@ -21,6 +21,14 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Ensure console supports UTF-8 to avoid '????' for JP/ZH logs
+try
+{
+    Console.OutputEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+    Console.InputEncoding = Encoding.UTF8;
+}
+catch { }
+
 builder.Services.AddHangfire(config =>
  config.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
  .UseSimpleAssemblyNameTypeSerializer()
@@ -215,47 +223,47 @@ if (jwtSettings != null && !string.IsNullOrEmpty(jwtSettings.SecretKey))
         {
             OnAuthenticationFailed = context =>
          {
-             var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
 
-             logger.LogWarning("🚨 JWT Authentication failed: {Exception} at {Time}",
-          context.Exception.Message, DateTime.UtcNow);
+        logger.LogWarning("🚨 JWT Authentication failed: {Exception} at {Time}",
+     context.Exception.Message, DateTime.UtcNow);
 
-             if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
-             {
-                 context.Response.Headers.Add("Token-Expired", "true");
-                 logger.LogWarning("⏰ Token expired for user at {Time}", DateTime.UtcNow);
-             }
-             else if (context.Exception.GetType() == typeof(SecurityTokenInvalidIssuerException))
-             {
-                 context.Response.Headers.Add("Token-Invalid-Issuer", "true");
-                 logger.LogError("🔒 Invalid issuer: Expected {Expected}", jwtSettings.Issuer);
-             }
-             else if (context.Exception.GetType() == typeof(SecurityTokenInvalidAudienceException))
-             {
-                 context.Response.Headers.Add("Token-Invalid-Audience", "true");
-                 logger.LogError("🎯 Invalid audience: Expected {Expected}", jwtSettings.Audience);
-             }
+        if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+        {
+            context.Response.Headers.Add("Token-Expired", "true");
+            logger.LogWarning("⏰ Token expired for user at {Time}", DateTime.UtcNow);
+        }
+        else if (context.Exception.GetType() == typeof(SecurityTokenInvalidIssuerException))
+        {
+            context.Response.Headers.Add("Token-Invalid-Issuer", "true");
+            logger.LogError("🔒 Invalid issuer: Expected {Expected}", jwtSettings.Issuer);
+        }
+        else if (context.Exception.GetType() == typeof(SecurityTokenInvalidAudienceException))
+        {
+            context.Response.Headers.Add("Token-Invalid-Audience", "true");
+            logger.LogError("🎯 Invalid audience: Expected {Expected}", jwtSettings.Audience);
+        }
 
-             return Task.CompletedTask;
-         },
+        return Task.CompletedTask;
+    },
             OnTokenValidated = context =>
          {
-             var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-             var username = context.Principal?.Identity?.Name;
-             var expiry = context.SecurityToken.ValidTo;
+        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+        var username = context.Principal?.Identity?.Name;
+        var expiry = context.SecurityToken.ValidTo;
 
-             logger.LogInformation("✅ Token validated for user: {Username}, expires: {Expiry}",
-          username, expiry);
+        logger.LogInformation("✅ Token validated for user: {Username}, expires: {Expiry}",
+     username, expiry);
 
-             return Task.CompletedTask;
-         },
+        return Task.CompletedTask;
+    },
             OnChallenge = context =>
          {
-             var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-             logger.LogWarning("🔐 JWT Challenge triggered: {Error} - {Description}",
-          context.Error, context.ErrorDescription);
-             return Task.CompletedTask;
-         }
+        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogWarning("🔐 JWT Challenge triggered: {Error} - {Description}",
+     context.Error, context.ErrorDescription);
+        return Task.CompletedTask;
+    }
         };
     });
 

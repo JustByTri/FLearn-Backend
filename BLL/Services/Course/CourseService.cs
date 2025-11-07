@@ -1,6 +1,7 @@
 ﻿using BLL.IServices.Course;
 using BLL.IServices.Upload;
 using Common.DTO.ApiResponse;
+using Common.DTO.Course;
 using Common.DTO.Course.Request;
 using Common.DTO.Course.Response;
 using Common.DTO.CourseUnit.Response;
@@ -13,6 +14,7 @@ using DAL.Models;
 using DAL.Type;
 using DAL.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
 
 namespace BLL.Services.Course
 {
@@ -1171,6 +1173,33 @@ namespace BLL.Services.Course
                 };
                 await _unit.CourseTopics.CreateAsync(courseTopic);
             }
+        }
+        public async Task<BaseResponse<IEnumerable<PopularCourseDto>>> GetPopularCoursesAsync(int count = 10)
+        {
+            
+            var courses = await _unit.Courses.GetPopularCoursesAsync(count);
+
+            var popularCoursesDto = courses.Select(course => new PopularCourseDto
+            {
+                CourseId = course.CourseID,
+                Title = course.Title,
+                TeacherName = course.Teacher.FullName ?? "N/A",
+                Price = course.Price,
+                AverageRating = course.AverageRating,
+                ReviewCount = course.ReviewCount,
+                LearnerCount = course.LearnerCount,
+                ImageUrl = course.ImageUrl,
+                ProficiencyCode = course.Level?.Name ?? "N/A",
+                ProgramName = course.Program?.Name ?? "N/A"
+
+            });
+
+         
+            return BaseResponse<IEnumerable<PopularCourseDto>>.Success(
+                popularCoursesDto,
+                "Lấy danh sách khóa học phổ biến thành công.",
+                (int)HttpStatusCode.OK
+            );
         }
     }
 }

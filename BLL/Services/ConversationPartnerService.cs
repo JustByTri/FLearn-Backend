@@ -1,15 +1,16 @@
 using BLL.Hubs;
 using BLL.IServices.AI;
 using BLL.IServices.Coversation;
+using Common.Constants;
 using Common.DTO.Conversation;
+using DAL.Helpers;
 using DAL.Models;
 using DAL.Type;
 using DAL.UnitOfWork;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
-using System.Text;
-using Common.Constants;
 using System.Globalization;
+using System.Text;
 
 namespace BLL.Services
 {
@@ -168,9 +169,9 @@ Never respond in Vietnamese or any other language, regardless of what language t
                     GeneratedScenario = generatedContent.ScenarioDescription,
                     AICharacterRole = characterRole,
                     GeneratedSystemPrompt = generatedContent.SystemPrompt,
-                    StartedAt = DateTime.UtcNow,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    StartedAt = TimeHelper.GetVietnamTime(),
+                    CreatedAt = TimeHelper.GetVietnamTime(),
+                    UpdatedAt = TimeHelper.GetVietnamTime()
                 };
 
                 await _unitOfWork.ConversationSessions.CreateAsync(session);
@@ -189,8 +190,8 @@ Never respond in Vietnamese or any other language, regardless of what language t
                         TaskSequence = sequence++,
                         Status = "Pending",
                         IsCompleted = false,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
+                        CreatedAt = TimeHelper.GetVietnamTime(),
+                        UpdatedAt = TimeHelper.GetVietnamTime()
                     };
                     await _unitOfWork.ConversationTasks.CreateAsync(conversationTask);
                     session.Tasks.Add(conversationTask);
@@ -209,7 +210,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
                     MessageContent = firstMessageText,
                     MessageType = MessageType.Text,
                     SequenceOrder = 1,
-                    SentAt = DateTime.UtcNow
+                    SentAt = TimeHelper.GetVietnamTime()
                 };
                 await _unitOfWork.ConversationMessages.CreateAsync(firstMessage);
 
@@ -238,7 +239,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
      t.TaskSequence,
      t.Status
  }),
-     startedAt = DateTime.UtcNow
+     startedAt = TimeHelper.GetVietnamTime()
  });
 
                 return MapToConversationSessionDto(session, new List<ConversationMessage> { firstMessage });
@@ -276,7 +277,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
                     AudioPublicId = request.AudioPublicId,
                     AudioDuration = request.AudioDuration,
                     SequenceOrder = nextSequence,
-                    SentAt = DateTime.UtcNow
+                    SentAt = TimeHelper.GetVietnamTime()
                 };
                 await _unitOfWork.ConversationMessages.CreateAsync(userMessage);
 
@@ -292,12 +293,12 @@ Never respond in Vietnamese or any other language, regardless of what language t
                     MessageContent = finalAIResponse,
                     MessageType = MessageType.Text,
                     SequenceOrder = nextSequence + 1,
-                    SentAt = DateTime.UtcNow
+                    SentAt = TimeHelper.GetVietnamTime()
                 };
                 await _unitOfWork.ConversationMessages.CreateAsync(aiMessage);
 
                 session.MessageCount += 2;
-                session.UpdatedAt = DateTime.UtcNow;
+                session.UpdatedAt = TimeHelper.GetVietnamTime();
                 await _unitOfWork.ConversationSessions.UpdateAsync(session);
                 await _unitOfWork.SaveChangesAsync();
 
@@ -342,7 +343,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
                 var evaluation = await GenerateEvaluationAsync(session);
 
                 session.Status = ConversationSessionStatus.Completed;
-                session.EndedAt = DateTime.UtcNow;
+                session.EndedAt = TimeHelper.GetVietnamTime();
                 session.OverallScore = evaluation.OverallScore;
                 session.FluentScore = evaluation.FluentScore;
                 session.GrammarScore = evaluation.GrammarScore;
@@ -351,7 +352,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
                 session.AIFeedback = evaluation.AIFeedback;
                 session.Improvements = evaluation.Improvements;
                 session.Strengths = evaluation.Strengths;
-                session.Duration = (int)(DateTime.UtcNow - session.StartedAt).TotalSeconds;
+                session.Duration = (int)(TimeHelper.GetVietnamTime() - session.StartedAt).TotalSeconds;
 
                 await _unitOfWork.ConversationSessions.UpdateAsync(session);
                 await _unitOfWork.SaveChangesAsync();
@@ -366,7 +367,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
          feedback = evaluation.AIFeedback,
          strengths = evaluation.Strengths,
          improvements = evaluation.Improvements,
-         completedAt = DateTime.UtcNow
+         completedAt = TimeHelper.GetVietnamTime()
      }
  });
 
@@ -473,7 +474,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
                 var user = await _unitOfWork.Users.GetByIdAsync(userId);
                 if (user == null) throw new ArgumentException("User not found");
 
-                var now = DateTime.UtcNow;
+                var now = TimeHelper.GetVietnamTime();
                 // Load active subscription directly (avoid relying on navigation)
                 var activeSubscription = await _unitOfWork.UserSubscriptions.FindAsync(
                     s => s.UserID == userId && s.IsActive && s.StartDate <= now && (s.EndDate == null || s.EndDate > now));
@@ -539,27 +540,27 @@ Never respond in Vietnamese or any other language, regardless of what language t
         {
             if (user == null) return false;
 
-            var now = DateTime.UtcNow;
+            var now = TimeHelper.GetVietnamTime();
             var activeSubscription = await _unitOfWork.UserSubscriptions.FindAsync(
                 s => s.UserID == user.UserID && s.IsActive && s.StartDate <= now && (s.EndDate == null || s.EndDate > now));
 
             if (activeSubscription != null)
             {
                 var quota = activeSubscription.ConversationQuota;
-                if (user.LastConversationResetDate.Date < DateTime.UtcNow.Date)
+                if (user.LastConversationResetDate.Date < TimeHelper.GetVietnamTime().Date)
                 {
                     user.ConversationsUsedToday = 0;
-                    user.LastConversationResetDate = DateTime.UtcNow;
+                    user.LastConversationResetDate = TimeHelper.GetVietnamTime();
                     await _unitOfWork.Users.UpdateAsync(user);
                     await _unitOfWork.SaveChangesAsync();
                 }
                 return user.ConversationsUsedToday < quota;
             }
 
-            if (user.LastConversationResetDate.Date < DateTime.UtcNow.Date)
+            if (user.LastConversationResetDate.Date < TimeHelper.GetVietnamTime().Date)
             {
                 user.ConversationsUsedToday = 0;
-                user.LastConversationResetDate = DateTime.UtcNow;
+                user.LastConversationResetDate = TimeHelper.GetVietnamTime();
                 await _unitOfWork.Users.UpdateAsync(user);
                 await _unitOfWork.SaveChangesAsync();
             }
@@ -943,7 +944,7 @@ Always respond in {session.Language?.LanguageName ?? "English"} only.";
             try
             {
                 var messageCount = session.ConversationMessages?.Count(m => m.Sender == MessageSender.User) ?? 0;
-                var duration = (int)(DateTime.UtcNow - session.StartedAt).TotalSeconds;
+                var duration = (int)(TimeHelper.GetVietnamTime() - session.StartedAt).TotalSeconds;
 
                 if (_geminiService != null && messageCount > 0)
                 {
@@ -992,7 +993,7 @@ and strings: aiFeedback, improvements, strengths.";
             }
 
             var mc = session.ConversationMessages?.Count(m => m.Sender == MessageSender.User) ?? 0;
-            var dur = (int)(DateTime.UtcNow - session.StartedAt).TotalSeconds;
+            var dur = (int)(TimeHelper.GetVietnamTime() - session.StartedAt).TotalSeconds;
             return GenerateSimpleEvaluation(session, mc, dur);
         }
 
@@ -1192,10 +1193,10 @@ and strings: aiFeedback, improvements, strengths.";
         {
             return languageCode.ToUpper() switch
             {
-                "EN" => "I'm here to help you practice. Please continue!",
-                "JP" => "練習を手伝います。会話を続けてください！",
-                "ZH" => "我在这里帮助你练习。请继续！",
-                _ => "Let's continue our conversation practice!"
+                "EN" => "Anyway, let's get back to what we were talking about",
+                "JP" => "さて、話に戻りましょう !",
+                "ZH" => "总之，我们还是回到刚才的话题吧。!",
+               
             };
         }
     }

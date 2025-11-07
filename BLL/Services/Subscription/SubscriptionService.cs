@@ -134,16 +134,26 @@ namespace BLL.Services.Subscription
  var sub = await _unit.UserSubscriptions.GetByIdAsync(tx.SubscriptionId.Value);
  if (sub != null)
  {
+ // Activate the new subscription
  sub.IsActive = true;
  sub.StartDate = DateTime.UtcNow;
  sub.EndDate = DateTime.UtcNow.Date.AddDays(30); // default30 days validity
  await _unit.UserSubscriptions.UpdateAsync(sub);
 
- // Update user's daily conversation limit according to plan
+ // Deactivate other active subscriptions of this user
+ var allSubs = await _unit.UserSubscriptions.GetAllAsync();
+ foreach (var other in allSubs.Where(s => s.UserID == sub.UserID && s.IsActive && s.SubscriptionID != sub.SubscriptionID))
+ {
+ other.IsActive = false;
+ other.EndDate = DateTime.UtcNow;
+ await _unit.UserSubscriptions.UpdateAsync(other);
+ }
+
+ // Update user's daily conversation limit according to new plan
  var user = await _unit.Users.GetByIdAsync(sub.UserID);
  if (user != null)
  {
- user.DailyConversationLimit = sub.ConversationQuota; // e.g.,5 for Basic5
+ user.DailyConversationLimit = sub.ConversationQuota; // e.g.,15 for Basic15
  user.ConversationsUsedToday = Math.Min(user.ConversationsUsedToday, user.DailyConversationLimit);
  user.LastConversationResetDate = DateTime.UtcNow.Date;
  await _unit.Users.UpdateAsync(user);

@@ -3,13 +3,9 @@ using Common.DTO.Learner;
 using Common.DTO.Teacher;
 using DAL.Models;
 using DAL.UnitOfWork;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BLL.Services.Teacher
 {
@@ -94,42 +90,53 @@ namespace BLL.Services.Teacher
         {
             try
             {
-                // Validate teacher
-                var teacher = await _unitOfWork.Users.GetUserWithRolesAsync(teacherId);
-                if (teacher == null || !teacher.UserRoles.Any(ur => ur.Role.Name == "Teacher"))
-                {
+                var teacher = await _unitOfWork.TeacherProfiles.FindAsync(t => t.UserId == teacherId);
+                if (teacher == null)
                     throw new UnauthorizedAccessException("Chỉ giáo viên mới có thể tạo lớp học");
+
+                // Choose assignment: prefer the one provided, else highest level assigned
+                TeacherProgramAssignment? assignment = null;
+                if (createClassDto.ProgramAssignmentId.HasValue)
+                {
+                    assignment = await _unitOfWork.TeacherProgramAssignments.Query()
+                        .Include(a => a.Program)
+                        .Include(a => a.Level)
+                        .FirstOrDefaultAsync(a => a.ProgramAssignmentId == createClassDto.ProgramAssignmentId.Value
+                                                  && a.TeacherId == teacher.TeacherId && a.Status);
+                    if (assignment == null)
+                        throw new InvalidOperationException("Assignment không hợp lệ cho giáo viên");
+                }
+                else
+                {
+                    assignment = await _unitOfWork.TeacherProgramAssignments.Query()
+                        .Include(a => a.Program)
+                        .Include(a => a.Level)
+                        .Where(a => a.TeacherId == teacher.TeacherId && a.Status)
+                        .OrderByDescending(a => a.Level.OrderIndex)
+                        .FirstOrDefaultAsync();
+                    if (assignment == null)
+                        throw new InvalidOperationException("Giáo viên chưa được gán chương trình/level phù hợp");
                 }
 
-                // ✅ CHUYỂN ĐỔI: Từ ClassDate + StartTime + DurationMinutes
-                //              → StartDateTime và EndDateTime
                 var startDateTime = createClassDto.ClassDate.Date + createClassDto.StartTime;
                 var endDateTime = startDateTime.AddMinutes(createClassDto.DurationMinutes);
+                if (startDateTime <= DateTime.UtcNow.AddDays(7))
+                    throw new InvalidOperationException($"Thời gian bắt đầu phải sau ít nhất 7 ngày");
 
-                // Validate: Phải sau thời điểm hiện tại ít nhất 7 ngày
-                var minimumStartDate = DateTime.UtcNow.AddDays(7);
-                if (startDateTime <= minimumStartDate)
-                {
-                    throw new InvalidOperationException(
-                        $"Thời gian bắt đầu phải sau thời điểm hiện tại ít nhất 7 ngày (sau {minimumStartDate:dd/MM/yyyy HH:mm})"
-                    );
-                }
-
-                // ✅ TẠO MODEL với StartDateTime và EndDateTime đã tính toán
                 var teacherClass = new TeacherClass
                 {
                     ClassID = Guid.NewGuid(),
                     TeacherID = teacherId,
-                    LanguageID = createClassDto.LanguageID,
+                    LanguageID = teacher.LanguageId,
+                    ProgramAssignmentId = assignment.ProgramAssignmentId,
+                    ProgramId = assignment.ProgramId,
+                    LevelId = assignment.LevelId,
                     Title = createClassDto.Title,
                     Description = createClassDto.Description,
-
-                    // Lưu vào database với DateTime đầy đủ
                     StartDateTime = startDateTime,
                     EndDateTime = endDateTime,
-
                     PricePerStudent = createClassDto.PricePerStudent,
-                    GoogleMeetLink = createClassDto.GoogleMeetLink,
+                    GoogleMeetLink = teacher.MeetingUrl, // take from TeacherProfile
                     Status = ClassStatus.Draft,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -138,130 +145,12 @@ namespace BLL.Services.Teacher
                 await _unitOfWork.TeacherClasses.CreateAsync(teacherClass);
                 await _unitOfWork.SaveChangesAsync();
 
-                _logger.LogInformation(
-                    "📚 Teacher {TeacherId} created class {ClassId} - Start: {Start}, Duration: {Duration}min",
-                    teacherId,
-                    teacherClass.ClassID,
-                    startDateTime,
-                    createClassDto.DurationMinutes
-                );
-
-                var createdClass = await _unitOfWork.TeacherClasses
-                    .GetClassWithEnrollmentsAsync(teacherClass.ClassID);
-
+                var createdClass = await _unitOfWork.TeacherClasses.GetClassWithEnrollmentsAsync(teacherClass.ClassID);
                 return MapToTeacherClassDto(createdClass ?? teacherClass);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Error creating class for teacher {TeacherId}", teacherId);
-                throw;
-            }
-        }
-    
-        
-
-        // Áp dụng vào DTO
-        [Required(ErrorMessage = "Thời lượng là bắt buộc")]
-        [AllowedDuration]
-        public int DurationMinutes { get; set; }
-
-        public async Task<TeacherClassDto> GetClassDetailsAsync(Guid teacherId, Guid classId)
-        {
-            try
-            {
-                var teacherClass = await _unitOfWork.TeacherClasses.GetClassWithEnrollmentsAsync(classId);
-
-                if (teacherClass == null)
-                {
-                    throw new KeyNotFoundException("Lớp học không tồn tại");
-                }
-
-                if (teacherClass.TeacherID != teacherId)
-                {
-                    throw new UnauthorizedAccessException("Bạn không có quyền xem lớp học này");
-                }
-
-                _logger.LogInformation("📖 Teacher {TeacherId} viewed class details {ClassId}", teacherId, classId);
-
-                return MapToTeacherClassDto(teacherClass);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Error getting class details {ClassId} for teacher {TeacherId}", classId, teacherId);
-                throw;
-            }
-        }
-
-        public async Task<List<ClassEnrollmentDto>> GetClassEnrollmentsAsync(Guid teacherId, Guid classId)
-        {
-            try
-            {
-                // Verify teacher owns the class
-                var teacherClass = await _unitOfWork.TeacherClasses.GetByIdAsync(classId);
-                if (teacherClass == null)
-                {
-                    throw new KeyNotFoundException("Lớp học không tồn tại");
-                }
-
-                if (teacherClass.TeacherID != teacherId)
-                {
-                    throw new UnauthorizedAccessException("Bạn không có quyền xem danh sách học sinh của lớp học này");
-                }
-
-                // Get enrollments
-                var enrollments = await _unitOfWork.ClassEnrollments.GetEnrollmentsByClassAsync(classId);
-
-                var enrollmentDtos = enrollments.Select(e => new ClassEnrollmentDto
-                {
-                    EnrollmentID = e.EnrollmentID,
-                    ClassID = e.ClassID,
-                    StudentID = e.StudentID,
-                    StudentName = e.Student?.FullName ?? "Unknown Student",
-                    StudentEmail = e.Student?.Email ?? "",
-                    AmountPaid = e.AmountPaid,
-                    PaymentTransactionId = e.PaymentTransactionId,
-                    Status = e.Status.ToString(),
-                    EnrolledAt = e.EnrolledAt,
-                    UpdatedAt = e.UpdatedAt
-                }).ToList();
-
-                _logger.LogInformation("📋 Teacher {TeacherId} viewed {Count} enrollments for class {ClassId}",
-                    teacherId, enrollmentDtos.Count, classId);
-
-                return enrollmentDtos;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Error getting enrollments for class {ClassId} by teacher {TeacherId}", classId, teacherId);
-                throw;
-            }
-        }
-
-        public async Task<List<TeacherClassDto>> GetTeacherClassesAsync(Guid teacherId, ClassStatus? status = null)
-        {
-            try
-            {
-                List<TeacherClass> classes;
-
-                if (status.HasValue)
-                {
-                    classes = await _unitOfWork.TeacherClasses.GetTeacherClassesByStatusAsync(teacherId, status.Value);
-                }
-                else
-                {
-                    classes = await _unitOfWork.TeacherClasses.GetTeacherClassesAsync(teacherId);
-                }
-
-                var classDtos = classes.Select(MapToTeacherClassDto).ToList();
-
-                _logger.LogInformation("📚 Teacher {TeacherId} retrieved {Count} classes with status filter: {Status}",
-                    teacherId, classDtos.Count, status?.ToString() ?? "All");
-
-                return classDtos;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Error getting classes for teacher {TeacherId}", teacherId);
                 throw;
             }
         }
@@ -372,8 +261,6 @@ namespace BLL.Services.Teacher
                 // Only allow capacity/pricing changes if no enrollments yet
                 if (enrollmentCount == 0)
                 {
-                   
-
                     if (updateClassDto.PricePerStudent.HasValue)
                     {
                         teacherClass.PricePerStudent = updateClassDto.PricePerStudent.Value;
@@ -411,6 +298,134 @@ namespace BLL.Services.Teacher
                 _logger.LogError(ex, "❌ Error updating class {ClassId} by teacher {TeacherId}", classId, teacherId);
                 throw;
             }
+        }
+
+        public async Task<TeacherClassDto> GetClassDetailsAsync(Guid teacherId, Guid classId)
+        {
+            try
+            {
+                var teacherClass = await _unitOfWork.TeacherClasses.GetClassWithEnrollmentsAsync(classId);
+
+                if (teacherClass == null)
+                {
+                    throw new KeyNotFoundException("Lớp học không tồn tại");
+                }
+
+                if (teacherClass.TeacherID != teacherId)
+                {
+                    throw new UnauthorizedAccessException("Bạn không có quyền xem lớp học này");
+                }
+
+                _logger.LogInformation("📖 Teacher {TeacherId} viewed class details {ClassId}", teacherId, classId);
+
+                return MapToTeacherClassDto(teacherClass);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error getting class details {ClassId} for teacher {TeacherId}", classId, teacherId);
+                throw;
+            }
+        }
+
+        public async Task<List<ClassEnrollmentDto>> GetClassEnrollmentsAsync(Guid teacherId, Guid classId)
+        {
+            try
+            {
+                // Verify teacher owns the class
+                var teacherClass = await _unitOfWork.TeacherClasses.GetByIdAsync(classId);
+                if (teacherClass == null)
+                {
+                    throw new KeyNotFoundException("Lớp học không tồn tại");
+                }
+
+                if (teacherClass.TeacherID != teacherId)
+                {
+                    throw new UnauthorizedAccessException("Bạn không có quyền xem danh sách học sinh của lớp học này");
+                }
+
+                // Get enrollments
+                var enrollments = await _unitOfWork.ClassEnrollments.GetEnrollmentsByClassAsync(classId);
+
+                var enrollmentDtos = enrollments.Select(e => new ClassEnrollmentDto
+                {
+                    EnrollmentID = e.EnrollmentID,
+                    ClassID = e.ClassID,
+                    StudentID = e.StudentID,
+                    StudentName = e.Student?.FullName ?? "Unknown Student",
+                    StudentEmail = e.Student?.Email ?? "",
+                    AmountPaid = e.AmountPaid,
+                    PaymentTransactionId = e.PaymentTransactionId,
+                    Status = e.Status.ToString(),
+                    EnrolledAt = e.EnrolledAt,
+                    UpdatedAt = e.UpdatedAt
+                }).ToList();
+
+                _logger.LogInformation("📋 Teacher {TeacherId} viewed {Count} enrollments for class {ClassId}",
+                    teacherId, enrollmentDtos.Count, classId);
+
+                return enrollmentDtos;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error getting enrollments for class {ClassId} by teacher {TeacherId}", classId, teacherId);
+                throw;
+            }
+        }
+
+        public async Task<List<TeacherClassDto>> GetTeacherClassesAsync(Guid teacherId, ClassStatus? status = null)
+        {
+            try
+            {
+                List<TeacherClass> classes;
+
+                if (status.HasValue)
+                {
+                    classes = await _unitOfWork.TeacherClasses.GetTeacherClassesByStatusAsync(teacherId, status.Value);
+                }
+                else
+                {
+                    classes = await _unitOfWork.TeacherClasses.GetTeacherClassesAsync(teacherId);
+                }
+
+                var classDtos = classes.Select(MapToTeacherClassDto).ToList();
+
+                _logger.LogInformation("📚 Teacher {TeacherId} retrieved {Count} classes with status filter: {Status}",
+                    teacherId, classDtos.Count, status?.ToString() ?? "All");
+
+                return classDtos;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error getting classes for teacher {TeacherId}", teacherId);
+                throw;
+            }
+        }
+
+        public async Task<List<TeacherAssignmentDto>> GetMyProgramAssignmentsAsync(Guid userId)
+        {
+            // userId is the AspNet Users table id; map to TeacherProfile first
+            var teacher = await _unitOfWork.TeacherProfiles.FindAsync(t => t.UserId == userId);
+            if (teacher == null) throw new UnauthorizedAccessException("Chỉ giáo viên mới có thể xem chương trình được gán");
+
+            var list = await _unitOfWork.TeacherProgramAssignments.Query()
+                .Include(a => a.Program).ThenInclude(p => p.Language)
+                .Include(a => a.Level)
+                .Where(a => a.TeacherId == teacher.TeacherId)
+                .OrderBy(a => a.Program.Name).ThenBy(a => a.Level.OrderIndex)
+                .Select(a => new TeacherAssignmentDto
+                {
+                    ProgramAssignmentId = a.ProgramAssignmentId,
+                    ProgramId = a.ProgramId,
+                    ProgramName = a.Program.Name,
+                    LevelId = a.LevelId,
+                    LevelName = a.Level.Name,
+                    OrderIndex = a.Level.OrderIndex,
+                    LanguageName = a.Program.Language.LanguageName,
+                    LanguageCode = a.Program.Language.LanguageCode,
+                    Active = a.Status
+                }).ToListAsync();
+
+            return list;
         }
 
         // Helper method
