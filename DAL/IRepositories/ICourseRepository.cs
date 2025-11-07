@@ -6,5 +6,6 @@ namespace DAL.IRepositories
     public interface ICourseRepository : IGenericRepository<Course>
     {
         Task<bool> HasUserPurchasedCourseAsync(Guid userId, Guid courseId);
+        Task<IEnumerable<Course>> GetPopularCoursesAsync(int count);
     }
 }

@@ -19,6 +19,20 @@ namespace DAL.Repositories
                                p.UserId == userId &&
                                p.Status == PurchaseStatus.Completed);
         }
+        public async Task<IEnumerable<Course>> GetPopularCoursesAsync(int count)
+        {
+            return await _context.Courses
+                .AsNoTracking()
+                .Include(c => c.Teacher) 
+                    .ThenInclude(t => t.User) 
+                  .Include(c => c.Language)
+                  .Include(c => c.Program)
+                .Include(c => c.Level)
+                .Where(c => c.Status == CourseStatus.Published) 
+                .OrderByDescending(c => c.LearnerCount)
+                .Take(count) 
+                .ToListAsync();
+        }
     }
 }
 

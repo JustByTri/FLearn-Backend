@@ -1,6 +1,7 @@
 ﻿using BLL.IServices.Coversation;
 using BLL.IServices.Upload;
 using Common.DTO.Conversation;
+using DAL.Helpers;
 using DAL.Type;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -74,7 +75,7 @@ namespace BLL.Hubs
                     await Groups.AddToGroupAsync(Context.ConnectionId, $"Conversation_{sessionId}");
 
                     await Clients.Group($"Conversation_{sessionId}")
-                        .SendAsync("UserJoinedRoom", new { userId, sessionId, joinedAt = DateTime.UtcNow });
+                        .SendAsync("UserJoinedRoom", new { userId, sessionId, joinedAt = TimeHelper.GetVietnamTime()});
 
                     _logger.LogInformation("🚪 User {UserId} joined conversation room {SessionId}", userId, sessionId);
                 }
@@ -102,7 +103,7 @@ namespace BLL.Hubs
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"Conversation_{sessionId}");
 
                 await Clients.Group($"Conversation_{sessionId}")
-                    .SendAsync("UserLeftRoom", new { userId, sessionId, leftAt = DateTime.UtcNow });
+                    .SendAsync("UserLeftRoom", new { userId, sessionId, leftAt = TimeHelper.GetVietnamTime()});
 
                 _logger.LogInformation("🚪 User {UserId} left conversation room {SessionId}", userId, sessionId);
             }
