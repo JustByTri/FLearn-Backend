@@ -23,7 +23,7 @@ namespace Common.DTO.Course.Request
         [MinLength(1, ErrorMessage = "Must provide at least one topic.")]
         public string? TopicIds { get; set; }
         [Required(ErrorMessage = "Price is required.")]
-        [Range(10_000, 5_000_000, ErrorMessage = "Price must be between 10,000VND and 5,000,000VND.")]
+        [Range(0, 5_000_000, ErrorMessage = "Price must be between 0VND and 5,000,000VND.")]
         public decimal Price { get; set; }
         [Required(ErrorMessage = "Course type is required.")]
         public CourseType CourseType { get; set; }

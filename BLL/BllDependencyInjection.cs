@@ -14,6 +14,7 @@ using BLL.IServices.Exercise;
 using BLL.IServices.Language;
 using BLL.IServices.Lesson;
 using BLL.IServices.Payment;
+using BLL.IServices.Purchases;
 using BLL.IServices.Redis;
 using BLL.IServices.Refund;
 using BLL.IServices.Subscription;
@@ -35,6 +36,7 @@ using BLL.Services.Exercise;
 using BLL.Services.Languages;
 using BLL.Services.Lesson;
 using BLL.Services.Payment;
+using BLL.Services.Purchases;
 using BLL.Services.Redis;
 using BLL.Services.Refund;
 using BLL.Services.Subscription;
@@ -138,6 +140,8 @@ namespace BLL
             services.AddScoped<IRefundRequestService, RefundRequestService>();
             services.AddScoped<ISubscriptionService, SubscriptionService>();
             services.AddScoped<ITeacherService, TeacherService>();
+            services.AddScoped<IPurchaseService, PurchaseService>();
+            services.AddScoped<IPaymentService, PayOSPaymentService>();
             return services;
         }
     }

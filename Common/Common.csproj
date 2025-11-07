@@ -27,6 +27,9 @@
 
   <ItemGroup>
     <Folder Include="DTO\ExerciseSubmission\Response\" />
+    <Folder Include="DTO\Payment\Request\" />
+    <Folder Include="DTO\Wallet\Request\" />
+    <Folder Include="DTO\Wallet\Response\" />
   </ItemGroup>
 
 </Project>

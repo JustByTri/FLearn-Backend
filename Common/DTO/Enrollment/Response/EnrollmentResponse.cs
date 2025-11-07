@@ -2,34 +2,16 @@
 {
     public class EnrollmentResponse
     {
-        public Guid EnrollmentID { get; set; }
+        public Guid EnrollmentId { get; set; }
         public Guid CourseId { get; set; }
-        public Guid LearnerId { get; set; }
-        public string EnrolledAt { get; set; } = string.Empty;
-        public CourseBasicInfo Course { get; set; }
-        public string? Status { get; set; }
+        public string? CourseTitle { get; set; }
+        public string? CourseType { get; set; }
+        public decimal PricePaid { get; set; }
         public double ProgressPercent { get; set; }
-        public int CompletedLessons { get; set; }
-        public int TotalLessons { get; set; }
-    }
-    public class CourseBasicInfo
-    {
-        public Guid CourseID { get; set; }
-        public string Title { get; set; } = string.Empty;
-        public string? ImageUrl { get; set; }
-        public decimal Price { get; set; }
-        public string CourseType { get; set; } = string.Empty;
-        public string CourseLevel { get; set; } = string.Empty;
-        public string? LanguageCode { get; set; }
-        public string Status { get; set; } = string.Empty;
-        public TeacherInfo TeacherInfo { get; set; }
-    }
-    public class TeacherInfo
-    {
-        public Guid TeacherId { get; set; }
-        public string FullName { get; set; } = string.Empty;
-        public string Avatar { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public string PhoneNumber { get; set; } = string.Empty;
+        public string? EnrollmentDate { get; set; }
+        public string? AccessUntil { get; set; }
+        public string? EligibleForRefundUntil { get; set; }
+        public string? LastAccessedAt { get; set; }
+        public string? Status { get; set; }
     }
 }
