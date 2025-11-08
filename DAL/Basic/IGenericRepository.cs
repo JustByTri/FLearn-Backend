@@ -34,5 +34,6 @@ namespace DAL.Basic
         void DeleteRange(IEnumerable<T> entities);
         IQueryable<T> GetQuery();
         Task DeleteAsync(Guid id);
+        Task<IEnumerable<T>> GetByConditionAsync(Expression<Func<T, bool>> expression);
     }
 }
