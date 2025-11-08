@@ -2,6 +2,8 @@
 using BLL.IServices.Purchases;
 using Common.DTO.ApiResponse;
 using Common.DTO.Course.Response;
+using Common.DTO.Paging.Request;
+using Common.DTO.Paging.Response;
 using Common.DTO.Payment.Response;
 using Common.DTO.Purchases.Request;
 using Common.DTO.Purchases.Response;
@@ -132,6 +134,180 @@ namespace BLL.Services.Purchases
                 }
             });
         }
+        public async Task<BaseResponse<PurchaseDetailResponse>> GetPurchaseByIdAsync(Guid purchaseId, Guid userId)
+        {
+            try
+            {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null || !user.IsEmailConfirmed || !user.Status)
+                {
+                    return BaseResponse<PurchaseDetailResponse>.Fail(new object(), "Access denied", 403);
+                }
+
+                var purchaseData = await _unitOfWork.Purchases.Query()
+                    .Include(p => p.Course)
+                        .ThenInclude(c => c.Language)
+                    .Include(p => p.Course)
+                        .ThenInclude(c => c.Level)
+                    .Include(p => p.Enrollment)
+                    .Where(p => p.PurchasesId == purchaseId && p.UserId == userId)
+                    .Select(p => new
+                    {
+                        Purchase = p,
+                        Course = p.Course,
+                        Language = p.Course.Language,
+                        Level = p.Course.Level,
+                        Enrollment = p.Enrollment
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (purchaseData == null)
+                {
+                    return BaseResponse<PurchaseDetailResponse>.Fail("Purchase not found");
+                }
+
+                var now = TimeHelper.GetVietnamTime();
+                var purchase = purchaseData.Purchase;
+                var course = purchaseData.Course;
+                var language = purchaseData.Language;
+                var level = purchaseData.Level;
+                var enrollment = purchaseData.Enrollment;
+
+                var response = new PurchaseDetailResponse
+                {
+                    PurchaseId = purchase.PurchasesId,
+                    CourseId = purchase.CourseId ?? Guid.Empty,
+                    CourseName = course?.Title ?? "Unknown Course",
+                    CourseDescription = course?.Description ?? string.Empty,
+                    CourseThumbnail = course?.ImageUrl ?? string.Empty,
+                    CoursePrice = course?.Price ?? 0,
+                    CourseDiscountPrice = course?.DiscountPrice,
+                    CourseDurationDays = course?.DurationDays ?? 0,
+                    CourseLevel = level?.Name ?? "Unknown Level",
+                    CourseLanguage = language?.LanguageName ?? "Unknown Language",
+                    TotalAmount = purchase.TotalAmount,
+                    DiscountAmount = purchase.DiscountAmount ?? 0,
+                    FinalAmount = purchase.FinalAmount,
+                    PurchaseStatus = purchase.Status.ToString(),
+                    PaymentMethod = purchase.PaymentMethod.ToString() ?? "Unknown",
+                    CreatedAt = purchase.CreatedAt.ToString("dd-MM-yyyy HH:mm"),
+                    StartsAt = purchase.StartsAt?.ToString("dd-MM-yyyy"),
+                    ExpiresAt = purchase.ExpiresAt?.ToString("dd-MM-yyyy"),
+                    EligibleForRefundUntil = purchase.EligibleForRefundUntil?.ToString("dd-MM-yyyy"),
+                    IsRefundEligible = purchase.EligibleForRefundUntil.HasValue &&
+                                      now <= purchase.EligibleForRefundUntil.Value,
+                    DaysRemaining = purchase.ExpiresAt.HasValue ?
+                        (int)(purchase.ExpiresAt.Value - now).TotalDays : 0,
+                    EnrollmentId = purchase.EnrollmentId,
+                    EnrollmentStatus = enrollment?.Status.ToString() ?? "No Enrollment"
+                };
+
+                return BaseResponse<PurchaseDetailResponse>.Success(response, "Purchase details retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting purchase by id {PurchaseId} for user {UserId}", purchaseId, userId);
+                return BaseResponse<PurchaseDetailResponse>.Error("System error while retrieving purchase details");
+            }
+        }
+        public async Task<PagedResponse<List<PurchaseDetailResponse>>> GetPurchaseDetailsByUserIdAsync(Guid userId, PagingRequest request)
+        {
+            try
+            {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null || !user.IsEmailConfirmed || !user.Status)
+                {
+                    return PagedResponse<List<PurchaseDetailResponse>>.Fail(new object(), "Access denied", 403);
+                }
+
+                var query = _unitOfWork.Purchases.Query()
+                    .Include(p => p.Course)
+                        .ThenInclude(c => c.Language)
+                    .Include(p => p.Course)
+                        .ThenInclude(c => c.Level)
+                    .Include(p => p.Enrollment)
+                    .Where(p => p.UserId == userId)
+                    .OrderByDescending(p => p.CreatedAt)
+                    .AsQueryable();
+
+                if (!string.IsNullOrEmpty(request.SearchTerm))
+                {
+                    query = query.Where(p => p.Course.Title.Contains(request.SearchTerm));
+                }
+
+                if (!string.IsNullOrEmpty(request.Status) && Enum.TryParse<PurchaseStatus>(request.Status, out var status))
+                {
+                    query = query.Where(p => p.Status == status);
+                }
+
+                var totalItems = await query.CountAsync();
+
+                var purchaseData = await query
+                    .Skip((request.Page - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .Select(p => new
+                    {
+                        Purchase = p,
+                        Course = p.Course,
+                        Language = p.Course.Language,
+                        Level = p.Course.Level,
+                        Enrollment = p.Enrollment
+                    })
+                    .ToListAsync();
+
+                var now = TimeHelper.GetVietnamTime();
+                var purchases = purchaseData.Select(x =>
+                {
+                    var course = x.Course;
+                    var language = x.Language;
+                    var level = x.Level;
+                    var enrollment = x.Enrollment;
+                    var purchase = x.Purchase;
+
+                    return new PurchaseDetailResponse
+                    {
+                        PurchaseId = purchase.PurchasesId,
+                        CourseId = purchase.CourseId ?? Guid.Empty,
+                        CourseName = course?.Title ?? "Unknown Course",
+                        CourseDescription = course?.Description ?? string.Empty,
+                        CourseThumbnail = course?.ImageUrl ?? string.Empty,
+                        CoursePrice = course?.Price ?? 0,
+                        CourseDiscountPrice = course?.DiscountPrice,
+                        CourseDurationDays = course?.DurationDays ?? 0,
+                        CourseLevel = level?.Name ?? "Unknown Level",
+                        CourseLanguage = language?.LanguageName ?? "Unknown Language",
+                        TotalAmount = purchase.TotalAmount,
+                        DiscountAmount = purchase.DiscountAmount ?? 0,
+                        FinalAmount = purchase.FinalAmount,
+                        PurchaseStatus = purchase.Status.ToString(),
+                        PaymentMethod = purchase.PaymentMethod.ToString() ?? "Unknown",
+                        CreatedAt = purchase.CreatedAt.ToString("dd-MM-yyyy HH:mm"),
+                        StartsAt = purchase.StartsAt?.ToString("dd-MM-yyyy"),
+                        ExpiresAt = purchase.ExpiresAt?.ToString("dd-MM-yyyy"),
+                        EligibleForRefundUntil = purchase.EligibleForRefundUntil?.ToString("dd-MM-yyyy"),
+                        IsRefundEligible = purchase.EligibleForRefundUntil.HasValue &&
+                                          now <= purchase.EligibleForRefundUntil.Value,
+                        DaysRemaining = purchase.ExpiresAt.HasValue ?
+                            (int)(purchase.ExpiresAt.Value - now).TotalDays : 0,
+                        EnrollmentId = purchase.EnrollmentId,
+                        EnrollmentStatus = enrollment?.Status.ToString() ?? "No Enrollment"
+                    };
+                }).ToList();
+
+                return PagedResponse<List<PurchaseDetailResponse>>.Success(
+                    purchases,
+                    request.Page,
+                    request.PageSize,
+                    totalItems,
+                    $"Found {purchases.Count} purchase details"
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting purchase details for user {UserId}", userId);
+                return PagedResponse<List<PurchaseDetailResponse>>.Error("System error while retrieving purchase details");
+            }
+        }
         public async Task<BaseResponse<PurchaseCourseResponse>> PurchaseCourseAsync(Guid userId, PurchaseCourseRequest request)
         {
             var strategy = _unitOfWork.CreateExecutionStrategy();
@@ -210,136 +386,122 @@ namespace BLL.Services.Purchases
         #region Private Methods
         private async Task<CourseAccessResponse> CheckCourseAccessInternalAsync(Guid userId, Guid courseId)
         {
-            var strategy = _unitOfWork.CreateExecutionStrategy();
-            return await strategy.ExecuteAsync(async () =>
+            try
             {
-                try
+                var purchase = await _unitOfWork.Purchases
+                .FindAllAsync(p => p.UserId == userId &&
+                   p.CourseId == courseId);
+
+                if (!purchase.Any())
                 {
-                    await _unitOfWork.BeginTransactionAsync();
+                    return new CourseAccessResponse { HasAccess = false, AccessStatus = "NOT_PURCHASED" };
+                }
 
-                    var purchase = await _unitOfWork.Purchases
-                    .FindAllAsync(p => p.UserId == userId &&
-                       p.CourseId == courseId);
+                var latestPurchase = purchase.OrderByDescending(p => p.CreatedAt).First();
+                var now = TimeHelper.GetVietnamTime();
 
+                var enrollment = await _unitOfWork.Enrollments
+                    .FindAsync(e => e.EnrollmentID == latestPurchase.EnrollmentId);
 
+                switch (latestPurchase.Status)
+                {
+                    case PurchaseStatus.Refunded:
 
-                    if (!purchase.Any())
-                    {
-                        await _unitOfWork.CommitTransactionAsync();
-                        return new CourseAccessResponse { HasAccess = false, AccessStatus = "NOT_PURCHASED" };
-                    }
+                        if (enrollment != null && enrollment.Status != DAL.Type.EnrollmentStatus.Cancelled)
+                        {
+                            enrollment.Status = DAL.Type.EnrollmentStatus.Cancelled;
+                            await _unitOfWork.SaveChangesAsync();
+                        }
+                        return new CourseAccessResponse
+                        {
+                            HasAccess = false,
+                            AccessStatus = "REFUNDED",
+                            PurchaseId = latestPurchase.PurchasesId
+                        };
 
-                    var latestPurchase = purchase.OrderByDescending(p => p.CreatedAt).First();
-                    var now = TimeHelper.GetVietnamTime();
-
-                    var enrollment = await _unitOfWork.Enrollments
-                        .FindAsync(e => e.EnrollmentID == latestPurchase.EnrollmentId);
-
-                    switch (latestPurchase.Status)
-                    {
-                        case PurchaseStatus.Refunded:
-
-                            if (enrollment != null && enrollment.Status != DAL.Type.EnrollmentStatus.Cancelled)
-                            {
-                                enrollment.Status = DAL.Type.EnrollmentStatus.Cancelled;
-                                await _unitOfWork.SaveChangesAsync();
-                            }
-                            await _unitOfWork.CommitTransactionAsync();
-                            return new CourseAccessResponse
-                            {
-                                HasAccess = false,
-                                AccessStatus = "REFUNDED",
-                                PurchaseId = latestPurchase.PurchasesId
-                            };
-
-                        case PurchaseStatus.Expired:
-                            if (enrollment != null && enrollment.Status != DAL.Type.EnrollmentStatus.Expired)
-                            {
-                                enrollment.Status = DAL.Type.EnrollmentStatus.Expired;
-                                await _unitOfWork.SaveChangesAsync();
-                            }
-                            await _unitOfWork.CommitTransactionAsync();
-                            return new CourseAccessResponse
-                            {
-                                HasAccess = false,
-                                AccessStatus = "EXPIRED",
-                                ExpiresAt = latestPurchase.ExpiresAt?.ToString("dd-MM-yyyy"),
-                                DaysRemaining = 0,
-                                PurchaseId = latestPurchase.PurchasesId
-                            };
-
-                        case PurchaseStatus.Failed:
-                            await _unitOfWork.CommitTransactionAsync();
-                            return new CourseAccessResponse
-                            {
-                                HasAccess = false,
-                                AccessStatus = "PAYMENT_FAILED",
-                                PurchaseId = latestPurchase.PurchasesId
-                            };
-
-                        case PurchaseStatus.Pending:
-                            await _unitOfWork.CommitTransactionAsync();
-                            return new CourseAccessResponse
-                            {
-                                HasAccess = false,
-                                AccessStatus = "PENDING_PAYMENT",
-                                PurchaseId = latestPurchase.PurchasesId
-                            };
-                    }
-
-                    if (latestPurchase.ExpiresAt.HasValue && now > latestPurchase.ExpiresAt.Value)
-                    {
-                        latestPurchase.Status = PurchaseStatus.Expired;
-
+                    case PurchaseStatus.Expired:
                         if (enrollment != null && enrollment.Status != DAL.Type.EnrollmentStatus.Expired)
                         {
                             enrollment.Status = DAL.Type.EnrollmentStatus.Expired;
+                            await _unitOfWork.SaveChangesAsync();
                         }
-
-                        await _unitOfWork.SaveChangesAsync();
-                        await _unitOfWork.CommitTransactionAsync();
-
                         return new CourseAccessResponse
                         {
                             HasAccess = false,
                             AccessStatus = "EXPIRED",
-                            ExpiresAt = latestPurchase.ExpiresAt.Value.ToString("dd-MM-yyyy"),
+                            ExpiresAt = latestPurchase.ExpiresAt?.ToString("dd-MM-yyyy"),
                             DaysRemaining = 0,
                             PurchaseId = latestPurchase.PurchasesId
                         };
-                    }
 
-                    if (enrollment != null && enrollment.Status != DAL.Type.EnrollmentStatus.Active)
+                    case PurchaseStatus.Failed:
+                        await _unitOfWork.CommitTransactionAsync();
+                        return new CourseAccessResponse
+                        {
+                            HasAccess = false,
+                            AccessStatus = "PAYMENT_FAILED",
+                            PurchaseId = latestPurchase.PurchasesId
+                        };
+
+                    case PurchaseStatus.Pending:
+                        await _unitOfWork.CommitTransactionAsync();
+                        return new CourseAccessResponse
+                        {
+                            HasAccess = false,
+                            AccessStatus = "PENDING_PAYMENT",
+                            PurchaseId = latestPurchase.PurchasesId
+                        };
+                }
+
+                if (latestPurchase.ExpiresAt.HasValue && now > latestPurchase.ExpiresAt.Value)
+                {
+                    latestPurchase.Status = PurchaseStatus.Expired;
+
+                    if (enrollment != null && enrollment.Status != DAL.Type.EnrollmentStatus.Expired)
                     {
-                        enrollment.Status = DAL.Type.EnrollmentStatus.Active;
-                        await _unitOfWork.SaveChangesAsync();
+                        enrollment.Status = DAL.Type.EnrollmentStatus.Expired;
                     }
 
-                    bool isRefundEligible = latestPurchase.EligibleForRefundUntil.HasValue &&
-                           now <= latestPurchase.EligibleForRefundUntil.Value;
-
-                    var daysRemaining = latestPurchase.ExpiresAt.HasValue ?
-                        (int)(latestPurchase.ExpiresAt.Value - now).TotalDays : -1;
-
-                    await _unitOfWork.CommitTransactionAsync();
+                    await _unitOfWork.SaveChangesAsync();
 
                     return new CourseAccessResponse
                     {
-                        HasAccess = true,
-                        AccessStatus = isRefundEligible ? "ACTIVE_WITH_REFUND_ELIGIBLE" : "ACTIVE",
-                        ExpiresAt = latestPurchase.ExpiresAt?.ToString("dd-MM-yyyy"),
-                        DaysRemaining = daysRemaining,
-                        PurchaseId = latestPurchase.PurchasesId,
-                        RefundEligibleUntil = latestPurchase.EligibleForRefundUntil?.ToString("dd-MM-yyyy")
+                        HasAccess = false,
+                        AccessStatus = "EXPIRED",
+                        ExpiresAt = latestPurchase.ExpiresAt.Value.ToString("dd-MM-yyyy"),
+                        DaysRemaining = 0,
+                        PurchaseId = latestPurchase.PurchasesId
                     };
                 }
-                catch (Exception ex)
+
+                if (enrollment != null && enrollment.Status != DAL.Type.EnrollmentStatus.Active)
                 {
-                    await _unitOfWork.RollbackTransactionAsync();
-                    _logger.LogError(ex, "Error in CheckCourseAccessInternalAsync");
-                    throw;
+                    enrollment.Status = DAL.Type.EnrollmentStatus.Active;
+                    await _unitOfWork.SaveChangesAsync();
                 }
-            });
+
+                bool isRefundEligible = latestPurchase.EligibleForRefundUntil.HasValue &&
+                       now <= latestPurchase.EligibleForRefundUntil.Value;
+
+                var daysRemaining = latestPurchase.ExpiresAt.HasValue ?
+                    (int)(latestPurchase.ExpiresAt.Value - now).TotalDays : -1;
+
+
+                return new CourseAccessResponse
+                {
+                    HasAccess = true,
+                    AccessStatus = isRefundEligible ? "ACTIVE_WITH_REFUND_ELIGIBLE" : "ACTIVE",
+                    ExpiresAt = latestPurchase.ExpiresAt?.ToString("dd-MM-yyyy"),
+                    DaysRemaining = daysRemaining,
+                    PurchaseId = latestPurchase.PurchasesId,
+                    RefundEligibleUntil = latestPurchase.EligibleForRefundUntil?.ToString("dd-MM-yyyy")
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in CheckCourseAccessInternalAsync");
+                throw;
+            }
         }
         #endregion
     }

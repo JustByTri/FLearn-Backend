@@ -132,7 +132,7 @@ namespace BLL.Services.Payment
                     await _unitOfWork.PaymentTransactions.CreateAsync(paymentTransaction);
                     await _unitOfWork.SaveChangesAsync();
                     await _unitOfWork.CommitTransactionAsync();
-                    Console.WriteLine($"ExpiredAt raw: {paymentLink.ExpiredAt}");
+
                     var paymentResponse = new PaymentCreateResponse
                     {
                         PaymentUrl = paymentLink.CheckoutUrl,

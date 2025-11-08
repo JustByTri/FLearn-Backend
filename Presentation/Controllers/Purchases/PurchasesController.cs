@@ -1,6 +1,7 @@
 ﻿using BLL.IServices.Payment;
 using BLL.IServices.Purchases;
 using Common.DTO.ApiResponse;
+using Common.DTO.Paging.Request;
 using Common.DTO.Payment.Response;
 using Common.DTO.Purchases.Request;
 using Common.DTO.Refund.Request;
@@ -26,7 +27,7 @@ namespace Presentation.Controllers.Purchases
             _paymentService = paymentService;
             _configuration = configuration;
         }
-        [Authorize]
+        [Authorize(Roles = "Learner")]
         [HttpPost("purchases")]
         public async Task<IActionResult> PurchaseCourse([FromBody] PurchaseCourseRequest request)
         {
@@ -42,7 +43,27 @@ namespace Presentation.Controllers.Purchases
 
             return StatusCode(result.Code, result);
         }
-        [Authorize]
+        [Authorize(Roles = "Learner")]
+        [HttpGet("purchases")]
+        public async Task<IActionResult> GetUserPurchaseDetails([FromQuery] PagingRequest request)
+        {
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
+
+            var result = await _purchaseService.GetPurchaseDetailsByUserIdAsync(userId, request);
+            return StatusCode(result.Code, result);
+        }
+        [Authorize(Roles = "Learner")]
+        [HttpGet("purchases/{purchaseId:guid}/details")]
+        public async Task<IActionResult> GetPurchaseById(Guid purchaseId)
+        {
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
+
+            var result = await _purchaseService.GetPurchaseByIdAsync(purchaseId, userId);
+            return StatusCode(result.Code, result);
+        }
+        [Authorize(Roles = "Learner")]
         [HttpPost("purchases/{purchaseId}/payments")]
         public async Task<IActionResult> CreatePayment(Guid purchaseId)
         {
@@ -53,7 +74,7 @@ namespace Presentation.Controllers.Purchases
 
             return StatusCode(result.Code, result);
         }
-        [Authorize]
+        [Authorize(Roles = "Learner")]
         [HttpPost("payments/refund")]
         public async Task<IActionResult> CreateRefundRequest([FromBody] CreateRefundRequest request)
         {
