@@ -25,44 +25,38 @@ namespace Presentation.Controllers.Course
             _courseService = courseService;
         }
         /// <summary>
-        /// Retrieves a paginated list of courses, optionally filtered by course status.
+        /// Danh sách khoá học (có phân trang, lọc, sắp xếp).
         /// </summary>
-        /// <param name="request">
-        /// Pagination information: <c>Page</c>, <c>PageSize</c>.
-        /// </param>
-        /// <param name="status">
-        /// Optional filter by course status. Accepted values:
-        /// <list type="bullet">
-        /// <item><description><c>Draft</c></description></item>
-        /// <item><description><c>PendingApproval</c></description></item>
-        /// <item><description><c>Published</c></description></item>
-        /// <item><description><c>Rejected</c></description></item>
-        /// <item><description><c>Archived</c></description></item>
-        /// </list>
-        /// </param>
-        /// <param name="lang">
-        /// Optional filter by lang code. Accepted values:
-        /// <list type="bullet">
-        /// <item><description><c>en</c></description></item>
-        /// <item><description><c>ja</c></description></item>
-        /// <item><description><c>zh</c></description></item>
-        /// </list>
-        /// </param>
-        /// <returns>A paginated list of courses.</returns>
-        /// <response code="200">Successfully retrieved the list of courses.</response>
-        /// <response code="400">Invalid status value.</response>
-        /// <response code="404">No courses found.</response>
-        /// <response code="500">Server error during course retrieval.</response>
+        /// <param name="request">Thông tin phân trang, lọc (Status, SearchTerm) và sắp xếp (SortBy).</param>
+        /// <param name="lang">Mã ngôn ngữ (tùy chọn): en | ja | zh.</param>
+        /// <param name="programId">Lọc theo chương trình (GUID, tùy chọn).</param>
+        /// <param name="levelId">Lọc theo level (GUID, tùy chọn).</param>
+        /// <param name="teacherId">Lọc theo giáo viên (GUID, tùy chọn).</param>
+        /// <param name="title">Tìm theo tên (tùy chọn, ưu tiên hơn SearchTerm nếu được cung cấp).</param>
+        /// <returns>Danh sách khoá học theo trang.</returns>
         [HttpGet]
         [ProducesResponseType(typeof(PagedResponse<IEnumerable<CourseResponse>>), 200)]
         [ProducesResponseType(typeof(object), 400)]
         [ProducesResponseType(typeof(object), 404)]
         [ProducesResponseType(typeof(object), 500)]
-        public async Task<IActionResult> GetAllCourses([FromQuery] PagingRequest request, [FromQuery] string? status, [FromQuery][AllowedLang] string? lang)
+        public async Task<IActionResult> GetAllCourses(
+            [FromQuery] PagingRequest request,
+            [FromQuery][AllowedLang] string? lang,
+            [FromQuery] Guid? programId,
+            [FromQuery] Guid? levelId,
+            [FromQuery] Guid? teacherId,
+            [FromQuery] string? title) 
         {
             try
             {
-                var response = await _courseService.GetCoursesAsync(request, status, lang);
+              
+                var response = await _courseService.GetCoursesAsync(
+                    request,
+                    lang,   
+                    programId,
+                    levelId,
+                    teacherId,
+                    title);
 
                 if (response.Data == null || !response.Data.Any())
                 {
@@ -71,7 +65,7 @@ namespace Presentation.Controllers.Course
                         Message = "No courses found",
                         Page = request.Page,
                         PageSize = request.PageSize,
-                        TotalItems = response.Meta.TotalItems
+                        TotalItems = response.Meta?.TotalItems ?? 0
                     });
                 }
 
