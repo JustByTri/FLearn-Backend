@@ -328,21 +328,51 @@ namespace BLL.Services.Purchases
                         return BaseResponse<PurchaseCourseResponse>.Fail(new object(), "Course does not exist or is not available", 400);
                     }
 
-                    var existingPurchase = await _unitOfWork.Purchases.FindAllAsync(
-                        p => p.UserId == userId && p.CourseId == request.CourseId && p.Status == PurchaseStatus.Completed);
+                    var allPurchases = await _unitOfWork.Purchases.FindAllAsync(
+                        p => p.UserId == userId && p.CourseId == request.CourseId);
 
-                    if (existingPurchase.Any())
+                    if (allPurchases.Any())
                     {
-                        var activePurchase = existingPurchase.First();
-                        var accessCheck = await CheckCourseAccessInternalAsync(userId, request.CourseId);
-                        if (accessCheck.HasAccess)
+                        var latestPurchase = allPurchases.OrderByDescending(p => p.CreatedAt).First();
+
+                        var now = TimeHelper.GetVietnamTime();
+
+                        var isExpired = latestPurchase.ExpiresAt.HasValue &&
+                                       now > latestPurchase.ExpiresAt.Value;
+
+                        var allowNewPurchase = latestPurchase.Status == PurchaseStatus.Failed ||
+                                              latestPurchase.Status == PurchaseStatus.Cancelled ||
+                                              latestPurchase.Status == PurchaseStatus.Refunded ||
+                                              (latestPurchase.Status == PurchaseStatus.Completed && isExpired);
+
+                        if (!allowNewPurchase)
                         {
-                            return BaseResponse<PurchaseCourseResponse>.Fail(new object(), "You already own this course", 400);
+                            var accessCheck = await CheckCourseAccessInternalAsync(userId, request.CourseId);
+
+                            var purchaseResponse = new PurchaseCourseResponse
+                            {
+                                PurchaseId = accessCheck.PurchaseId ?? Guid.Empty,
+                                ExpiresAt = accessCheck.ExpiresAt,
+                                PurchaseStatus = accessCheck.AccessStatus
+                            };
+
+                            if (accessCheck.HasAccess)
+                            {
+                                return BaseResponse<PurchaseCourseResponse>.Success(purchaseResponse, "You already own this course", 200);
+                            }
+                            else
+                            {
+                                return BaseResponse<PurchaseCourseResponse>.Success(purchaseResponse, "Order has been created", 200);
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogInformation("Allowing new purchase for user {UserId}, course {CourseId} because latest purchase status is {Status} and expired: {IsExpired}",
+                                userId, request.CourseId, latestPurchase.Status, isExpired);
                         }
                     }
 
                     var finalPrice = course.DiscountPrice ?? course.Price;
-                    var now = TimeHelper.GetVietnamTime();
 
                     var purchase = new Purchase
                     {
@@ -352,11 +382,12 @@ namespace BLL.Services.Purchases
                         TotalAmount = course.Price,
                         DiscountAmount = course.Price - finalPrice,
                         FinalAmount = finalPrice,
-                        StartsAt = now,
-                        ExpiresAt = now.AddDays(course.DurationDays),
-                        EligibleForRefundUntil = now.AddDays(3),
+                        StartsAt = TimeHelper.GetVietnamTime(),
+                        ExpiresAt = TimeHelper.GetVietnamTime().AddDays(course.DurationDays),
+                        EligibleForRefundUntil = TimeHelper.GetVietnamTime().AddDays(3),
                         PaymentMethod = request.PaymentMethod,
-                        CreatedAt = now,
+                        CreatedAt = TimeHelper.GetVietnamTime(),
+                        Status = PurchaseStatus.Pending
                     };
 
                     await _unitOfWork.Purchases.CreateAsync(purchase);
@@ -373,7 +404,7 @@ namespace BLL.Services.Purchases
                         PurchaseStatus = purchase.Status.ToString(),
                     };
 
-                    return BaseResponse<PurchaseCourseResponse>.Success(response);
+                    return BaseResponse<PurchaseCourseResponse>.Success(response, "Purchase order created successfully");
                 }
                 catch (Exception ex)
                 {

@@ -91,7 +91,7 @@ namespace Presentation.Controllers.Purchases
             return StatusCode(result.Code, result);
         }
         [HttpGet("payments/return-url")]
-        public ContentResult PaymentReturn()
+        public async Task<ContentResult> PaymentReturn()
         {
             var code = Request.Query["code"].ToString();
             var id = Request.Query["id"].ToString();
@@ -111,6 +111,7 @@ namespace Presentation.Controllers.Purchases
             }
             else if (isCancelled)
             {
+                await _paymentService.ProcessPaymentFailedAsync(id);
                 htmlContent = GenerateCancelledPage(orderCode, status);
             }
             else if (isPending)

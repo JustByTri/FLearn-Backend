@@ -200,6 +200,12 @@ namespace BLL.Services.Payment
                         if (transaction.Purchase != null)
                         {
                             transaction.Purchase.Status = PurchaseStatus.Completed;
+                            transaction.Purchase.StartsAt = TimeHelper.GetVietnamTime();
+                            transaction.Purchase.EligibleForRefundUntil = TimeHelper.GetVietnamTime().AddDays(3);
+                            if (transaction.Purchase.Course != null)
+                            {
+                                transaction.Purchase.ExpiresAt = TimeHelper.GetVietnamTime().AddDays(transaction.Purchase.Course.DurationDays);
+                            }
                             transaction.Purchase.PaidAt = TimeHelper.GetVietnamTime();
                         }
 
@@ -232,6 +238,52 @@ namespace BLL.Services.Payment
                 }
             });
         }
+        public async Task ProcessPaymentFailedAsync(string transactionRef)
+        {
+            var strategy = _unitOfWork.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                await _unitOfWork.BeginTransactionAsync();
+                try
+                {
+                    var transaction = await _unitOfWork.PaymentTransactions.Query()
+                        .Include(t => t.Purchase)
+                            .ThenInclude(p => p.Course)
+                        .FirstOrDefaultAsync(t => t.TransactionRef == transactionRef
+                                               || (t.GatewayResponse != null && t.GatewayResponse.Contains(transactionRef)));
+
+                    if (transaction == null)
+                    {
+                        _logger.LogWarning("No matching transaction found. TransactionRef = {TransactionRef}", transactionRef);
+                        return;
+                    }
+
+                    transaction.TransactionStatus = TransactionStatus.Failed;
+                    transaction.CreatedAt = TimeHelper.GetVietnamTime();
+
+                    if (transaction.Purchase != null)
+                    {
+                        transaction.Purchase.Status = PurchaseStatus.Failed;
+
+                        _logger.LogInformation("Payment failed for purchase {PurchaseId}, course {CourseName}",
+                            transaction.Purchase.PurchasesId,
+                            transaction.Purchase.Course?.Title ?? "Unknown");
+                    }
+
+                    await _unitOfWork.SaveChangesAsync();
+                    await _unitOfWork.CommitTransactionAsync();
+
+                    _logger.LogInformation("Successfully processed payment failure for TransactionRef: {TransactionRef}", transactionRef);
+                }
+                catch (Exception ex)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    _logger.LogError(ex, "Error when processing payment failure for TransactionRef: {TransactionRef}", transactionRef);
+                    throw;
+                }
+            });
+        }
+
         public Task<BaseResponse<object>> ProcessRefundAsync(Guid paymentTransactionId, decimal amount)
         {
             throw new NotImplementedException();

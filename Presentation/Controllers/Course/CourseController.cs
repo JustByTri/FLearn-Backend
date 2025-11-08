@@ -118,6 +118,30 @@ namespace Presentation.Controllers.Course
                 });
             }
         }
+        [HttpGet("{courseId:guid}/details")]
+        [ProducesResponseType(typeof(BaseResponse<CourseResponse>), 200)]
+        [ProducesResponseType(typeof(object), 404)]
+        [ProducesResponseType(typeof(object), 500)]
+        public async Task<IActionResult> GetCourseDetailsById(Guid courseId)
+        {
+            try
+            {
+                var response = await _courseService.GetCourseDetailsByIdAsync(courseId);
+
+                if (response.Data == null)
+                    return NotFound(new { Message = "Course not found" });
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    Message = "An error occurred while fetching course details",
+                    Details = ex.Message
+                });
+            }
+        }
         /// <summary>
         /// Creates a new course submitted by an authorized teacher.
         /// </summary>

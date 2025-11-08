@@ -1176,7 +1176,7 @@ namespace BLL.Services.Course
         }
         public async Task<BaseResponse<IEnumerable<PopularCourseDto>>> GetPopularCoursesAsync(int count = 10)
         {
-            
+
             var courses = await _unit.Courses.GetPopularCoursesAsync(count);
 
             var popularCoursesDto = courses.Select(course => new PopularCourseDto
@@ -1194,12 +1194,110 @@ namespace BLL.Services.Course
 
             });
 
-         
+
             return BaseResponse<IEnumerable<PopularCourseDto>>.Success(
                 popularCoursesDto,
                 "Lấy danh sách khóa học phổ biến thành công.",
                 (int)HttpStatusCode.OK
             );
+        }
+        public async Task<BaseResponse<CourseResponse>> GetCourseDetailsByIdAsync(Guid courseId)
+        {
+            var course = await _unit.Courses.GetByIdAsync(courseId);
+            if (course == null)
+                return BaseResponse<CourseResponse>.Fail("Course not found");
+
+            var language = await _unit.Languages.GetByIdAsync(course.LanguageId);
+            var program = await _unit.Programs.GetByIdAsync(course.ProgramId);
+            var level = await _unit.Levels.GetByIdAsync(course.LevelId);
+            var teacher = await _unit.TeacherProfiles.GetByIdAsync(course.TeacherId);
+
+            var courseTopics = await _unit.CourseTopics.GetTopicsByCourseAsync(courseId);
+            var topics = new List<TopicResponse>();
+
+            foreach (var ct in courseTopics)
+            {
+                var topic = await _unit.Topics.GetByIdAsync(ct.TopicID);
+                if (topic != null)
+                    topics.Add(new TopicResponse
+                    {
+                        TopicId = topic.TopicID,
+                        TopicName = topic.Name ?? "Unknown name",
+                        TopicDescription = topic.Description ?? "No description",
+                        ImageUrl = topic.ImageUrl ?? "No image",
+                    });
+            }
+
+            var units = await _unit.CourseUnits.FindAllAsync(cu => cu.CourseID == courseId);
+            var unitResponses = new List<UnitResponse>();
+
+            foreach (var unit in units)
+            {
+                unitResponses.Add(new UnitResponse
+                {
+                    CourseUnitID = unit.CourseUnitID,
+                    Title = unit.Title,
+                    CourseID = unit.CourseID,
+                    CourseTitle = course.Title,
+                    Description = unit.Description,
+                    Position = unit.Position,
+                    TotalLessons = unit.TotalLessons ?? 0,
+                    IsPreview = unit.IsPreview ?? false,
+                });
+            }
+
+            var programResponse = new Common.DTO.Course.Response.Program
+            {
+                ProgramId = program.ProgramId,
+                Name = program.Name,
+                Description = program.Description,
+                Level = new Common.DTO.Course.Response.Level
+                {
+                    LevelId = level.LevelId,
+                    Description = level.Description,
+                    Name = level.Name,
+                }
+            };
+
+            var teacherResponse = new Common.DTO.Course.Response.Teacher
+            {
+                TeacherId = teacher.TeacherId,
+                Avatar = teacher.Avatar,
+                Email = teacher.Email,
+                Name = teacher.FullName,
+            };
+
+            var response = new CourseResponse
+            {
+                CourseId = course.CourseID,
+                TemplateId = course.TemplateId,
+                Language = language.LanguageName,
+                Program = programResponse,
+                Teacher = teacherResponse,
+                Title = course.Title,
+                Description = course.Description,
+                LearningOutcome = course.LearningOutcome,
+                ImageUrl = course.ImageUrl,
+                Price = course.Price,
+                DiscountPrice = course.DiscountPrice,
+                CourseType = course.CourseType.ToString(),
+                GradingType = course.GradingType.ToString(),
+                LearnerCount = course.LearnerCount,
+                AverageRating = course.AverageRating,
+                ReviewCount = course.ReviewCount,
+                NumLessons = course.NumLessons,
+                NumUnits = course.NumUnits,
+                DurationDays = course.DurationDays,
+                EstimatedHours = course.EstimatedHours,
+                CourseStatus = course.Status.ToString(),
+                PublishedAt = course.PublishedAt?.ToString("dd-MM-yyyy"),
+                CreatedAt = course.CreatedAt.ToString("dd-MM-yyyy"),
+                ModifiedAt = course.UpdatedAt.ToString("dd-MM-yyyy"),
+                Topics = topics,
+                Units = unitResponses
+            };
+
+            return BaseResponse<CourseResponse>.Success(response);
         }
     }
 }
