@@ -101,7 +101,19 @@ builder.Services.AddSwaggerGen(c =>
         c.IncludeXmlComments(xmlPath);
     }
 
-
+    try
+    {
+        var commonXmlFile = $"{typeof(Common.DTO.Paging.Request.PagingRequest).Assembly.GetName().Name}.xml";
+        var commonXmlPath = Path.Combine(AppContext.BaseDirectory, commonXmlFile);
+        if (File.Exists(commonXmlPath))
+        {
+            c.IncludeXmlComments(commonXmlPath);
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error loading Common XML comments: {ex.Message}");
+    }
     c.SupportNonNullableReferenceTypes();
 
     c.MapType<IFormFile>(() => new OpenApiSchema
