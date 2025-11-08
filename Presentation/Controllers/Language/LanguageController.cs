@@ -1,8 +1,13 @@
 ﻿using BLL.IServices.Language;
+using Common.DTO.ApiResponse;
 using Common.DTO.Language;
+using Common.DTO.Leaderboard;
 using Common.DTO.Paging.Request;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
+using System.ComponentModel.DataAnnotations;
+using System.Net;
+using Presentation.Helpers;
 namespace Presentation.Controllers.Language
 {
     [Route("api/languages")]
@@ -45,6 +50,42 @@ namespace Presentation.Controllers.Language
         public async Task<IActionResult> GetProgramResponses([AllowedLang] string langCode, [FromQuery] PagingRequest pagingRequest)
         {
             var response = await _languageService.GetProgramResponsesAsync(langCode, pagingRequest);
+            return StatusCode(response.Code, response);
+        }
+        /// <summary>
+        /// Lấy bảng xếp hạng (leaderboard) theo ngôn ngữ (dựa trên StreakDays).
+        /// </summary>s
+        /// <param name="languageId">ID của ngôn ngữ.</param>
+        /// <param name="count">Số lượng người dùng top đầu (mặc định 20, tối đa 100).</param>
+        [AllowAnonymous] 
+        [HttpGet("{languageId}/leaderboard")]
+        [ProducesResponseType(typeof(BaseResponse<IEnumerable<LeaderboardEntryDto>>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(BaseResponse<object>), (int)HttpStatusCode.NotFound)]
+        public async Task<IActionResult> GetLeaderboard(
+            [FromRoute] Guid languageId,
+            [FromQuery][Range(1, 100)] int count = 20)
+        {
+            var response = await _languageService.GetLeaderboardByLanguageAsync(languageId, count);
+            return StatusCode(response.Code, response);
+        }
+
+        /// <summary>
+        /// Lấy thứ hạng và StreakDays hiện tại của người dùng đang đăng nhập cho một ngôn ngữ.
+        /// </summary>
+        /// <param name="languageId">ID của ngôn ngữ.</param>
+        [Authorize(Roles = "Learner")]
+        [HttpGet("{languageId}/my-rank")]
+        [ProducesResponseType(typeof(BaseResponse<MyRankDto>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(BaseResponse<object>), (int)HttpStatusCode.NotFound)]
+        [ProducesResponseType(typeof(BaseResponse<object>), (int)HttpStatusCode.Unauthorized)]
+        public async Task<IActionResult> GetMyRank([FromRoute] Guid languageId)
+        {
+            if (!this.TryGetUserId(out Guid userId, out var errorResult))
+            {
+                return errorResult!;
+            }
+
+            var response = await _languageService.GetMyRankAsync(languageId, userId);
             return StatusCode(response.Code, response);
         }
     }

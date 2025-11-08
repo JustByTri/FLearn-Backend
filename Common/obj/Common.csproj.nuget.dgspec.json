@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "E:\\SEP490\\flearn-language-api\\FLearn-Backend\\Common\\Common.csproj": {}
+    "D:\\F-Learn\\F-Learn-BackEnd\\Common\\Common.csproj": {}
   },
   "projects": {
-    "E:\\SEP490\\flearn-language-api\\FLearn-Backend\\Common\\Common.csproj": {
+    "D:\\F-Learn\\F-Learn-BackEnd\\Common\\Common.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "E:\\SEP490\\flearn-language-api\\FLearn-Backend\\Common\\Common.csproj",
+        "projectUniqueName": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\Common.csproj",
         "projectName": "Common",
-        "projectPath": "E:\\SEP490\\flearn-language-api\\FLearn-Backend\\Common\\Common.csproj",
-        "packagesPath": "C:\\Users\\User\\.nuget\\packages\\",
-        "outputPath": "E:\\SEP490\\flearn-language-api\\FLearn-Backend\\Common\\obj\\",
+        "projectPath": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\Common.csproj",
+        "packagesPath": "C:\\Users\\triho\\.nuget\\packages\\",
+        "outputPath": "D:\\F-Learn\\F-Learn-BackEnd\\Common\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\User\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\triho\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -26,14 +26,15 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "E:\\SEP490\\flearn-language-api\\FLearn-Backend\\DAL\\DAL.csproj": {
-                "projectPath": "E:\\SEP490\\flearn-language-api\\FLearn-Backend\\DAL\\DAL.csproj"
+              "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\DAL.csproj": {
+                "projectPath": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\DAL.csproj"
               }
             }
           }
@@ -103,20 +104,20 @@
         }
       }
     },
-    "E:\\SEP490\\flearn-language-api\\FLearn-Backend\\DAL\\DAL.csproj": {
+    "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\DAL.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "E:\\SEP490\\flearn-language-api\\FLearn-Backend\\DAL\\DAL.csproj",
+        "projectUniqueName": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\DAL.csproj",
         "projectName": "DAL",
-        "projectPath": "E:\\SEP490\\flearn-language-api\\FLearn-Backend\\DAL\\DAL.csproj",
-        "packagesPath": "C:\\Users\\User\\.nuget\\packages\\",
-        "outputPath": "E:\\SEP490\\flearn-language-api\\FLearn-Backend\\DAL\\obj\\",
+        "projectPath": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\DAL.csproj",
+        "packagesPath": "C:\\Users\\triho\\.nuget\\packages\\",
+        "outputPath": "D:\\F-Learn\\F-Learn-BackEnd\\DAL\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\User\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\triho\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -125,6 +126,7 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {

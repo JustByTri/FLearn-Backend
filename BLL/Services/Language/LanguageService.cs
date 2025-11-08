@@ -1,10 +1,12 @@
 ﻿using BLL.IServices.Language;
 using Common.DTO.ApiResponse;
 using Common.DTO.Language.Response;
+using Common.DTO.Leaderboard;
 using Common.DTO.Paging.Request;
 using Common.DTO.Paging.Response;
 using DAL.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
 
 namespace BLL.Services.Languages
 {
@@ -106,6 +108,62 @@ namespace BLL.Services.Languages
                     code: 500,
                     errors: new { Exception = ex.Message });
             }
+        }
+        public async Task<BaseResponse<IEnumerable<LeaderboardEntryDto>>> GetLeaderboardByLanguageAsync(Guid languageId, int count = 20)
+        {
+            var language = await _unit.Languages.GetByIdAsync(languageId);
+            if (language == null)
+            {
+                return BaseResponse<IEnumerable<LeaderboardEntryDto>>.Fail(null, "Không tìm thấy ngôn ngữ.", (int)HttpStatusCode.NotFound);
+            }
+
+            var learners = await _unit.LearnerLanguages.GetLeaderboardAsync(languageId, count);
+
+            int rank = 1;
+            var leaderboard = learners.Select(ll => new LeaderboardEntryDto
+            {
+                Rank = rank++,
+                LearnerId = ll.UserId,
+                FullName = ll.User.FullName ?? "N/A",
+                Avatar = ll.User.Avatar,
+                StreakDays = ll.StreakDays, 
+                Level = ll.ProficiencyLevel 
+            });
+
+            return BaseResponse<IEnumerable<LeaderboardEntryDto>>.Success(
+                leaderboard,
+                $"Lấy bảng xếp hạng cho ngôn ngữ {language.LanguageName} thành công.",
+                (int)HttpStatusCode.OK
+            );
+        }
+
+        public async Task<BaseResponse<MyRankDto>> GetMyRankAsync(Guid languageId, Guid userId)
+        {
+            var learnerLangs = await _unit.LearnerLanguages
+                .GetByConditionAsync(ll => ll.UserId == userId && ll.LanguageId == languageId);
+            var learnerLang = learnerLangs.FirstOrDefault();
+
+            if (learnerLang == null)
+            {
+                return BaseResponse<MyRankDto>.Fail(null, "Bạn chưa bắt đầu học ngôn ngữ này.", (int)HttpStatusCode.NotFound);
+            }
+
+            int currentStreak = learnerLang.StreakDays; 
+            int rank = await _unit.LearnerLanguages.GetRankAsync(languageId, currentStreak);
+
+            var myRankDto = new MyRankDto
+            {
+                LanguageId = languageId,
+                StreakDays = currentStreak,
+                Rank = rank,
+                Level = learnerLang.ProficiencyLevel
+            };
+
+            return BaseResponse<MyRankDto>.Success(
+                myRankDto,
+                "Lấy thông tin xếp hạng thành công.",
+                (int)HttpStatusCode.OK
+            );
         }
     }
 }

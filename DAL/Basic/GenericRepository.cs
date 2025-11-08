@@ -7,10 +7,12 @@ namespace DAL.Basic
     public class GenericRepository<T> : IGenericRepository<T> where T : class
     {
         protected AppDbContext _context;
+        protected readonly DbSet<T> _dbSet;
 
         public GenericRepository(AppDbContext context)
         {
             _context = context;
+            _dbSet = context.Set<T>();
         }
 
         public List<T> GetAll()
@@ -172,6 +174,13 @@ namespace DAL.Basic
             {
                 await RemoveAsync(entity);
             }
+        }
+        public async Task<IEnumerable<T>> GetByConditionAsync(Expression<Func<T, bool>> expression)
+        {
+            return await _dbSet
+                .AsNoTracking() 
+                .Where(expression) 
+                .ToListAsync();
         }
     }
 }
