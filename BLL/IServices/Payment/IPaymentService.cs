@@ -9,5 +9,6 @@ namespace BLL.IServices.Payment
         Task<BaseResponse<object>> HandleCallbackAsync(PayOSWebhookBody payload);
         Task<BaseResponse<object>> VerifyPaymentAsync(string transactionReference);
         Task<BaseResponse<object>> ProcessRefundAsync(Guid paymentTransactionId, decimal amount);
+        Task ProcessPaymentFailedAsync(string transactionRef);
     }
 }
