@@ -77,7 +77,9 @@ namespace BLL.Services.Enrollment
                         EnrolledAt = TimeHelper.GetVietnamTime()
                     };
 
-                    var purchase = new Purchase();
+                    await _unitOfWork.Enrollments.CreateAsync(enrollment);
+
+                    Purchase purchase = null;
                     if (response.Data != null && response.Data.PurchaseId != null)
                     {
                         purchase = await _unitOfWork.Purchases.GetByIdAsync((Guid)response.Data.PurchaseId);
@@ -88,7 +90,6 @@ namespace BLL.Services.Enrollment
                         }
                     }
 
-                    await _unitOfWork.Enrollments.CreateAsync(enrollment);
                     await _unitOfWork.SaveChangesAsync();
                     await _unitOfWork.CommitTransactionAsync();
 
