@@ -16,10 +16,6 @@ namespace DAL.Models
         public Guid GradingAssignmentId { get; set; }
         [ForeignKey(nameof(GradingAssignmentId))]
         public virtual ExerciseGradingAssignment? GradingAssignment { get; set; }
-        [Required]
-        public Guid ApprovedBy { get; set; }
-        [ForeignKey(nameof(ApprovedBy))]
-        public virtual ManagerLanguage? Manager { get; set; }
         public decimal? CourseCreationAmount { get; set; }
         public decimal? ExerciseGradingAmount { get; set; }
         [Required]
