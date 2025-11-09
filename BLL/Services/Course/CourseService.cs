@@ -398,7 +398,15 @@ namespace BLL.Services.Course
 
             return BaseResponse<CourseResponse>.Success(response);
         }
-        public async Task<PagedResponse<IEnumerable<CourseResponse>>> GetCoursesAsync(PagingRequest request, string status, string lang)
+     
+
+        public async Task<PagedResponse<IEnumerable<CourseResponse>>> GetCoursesAsync(
+            PagingRequest request,  
+            string? lang,  
+            Guid? programId, 
+            Guid? levelId,  
+            Guid? teacherId, 
+            string? title)   
         {
             try
             {
@@ -406,19 +414,67 @@ namespace BLL.Services.Course
                 if (request.PageSize <= 0) request.PageSize = 10;
 
                 var query = _unit.Courses.Query()
+                    .AsNoTracking()
                     .Include(c => c.Template)
                         .ThenInclude(t => t.Program)
                             .ThenInclude(p => p.Levels)
                     .Include(c => c.Teacher)
                     .Include(c => c.Language)
+                    .Include(c => c.Program)
+                    .Include(c => c.Level)  
                     .Include(c => c.CourseTopics)
                         .ThenInclude(ct => ct.Topic)
                     .AsSplitQuery()
                     .AsQueryable();
 
-                if (!string.IsNullOrWhiteSpace(status))
+             
+           
+
+    
+                if (!string.IsNullOrWhiteSpace(lang))
                 {
-                    if (Enum.TryParse<CourseStatus>(status, true, out var parsedStatus))
+                    query = query.Where(c => c.Language.LanguageCode.ToLower() == lang.ToLower());
+                }
+
+            
+                if (programId.HasValue)
+                {
+                    query = query.Where(c => c.ProgramId == programId.Value);
+                }
+
+              
+                if (levelId.HasValue)
+                {
+                    query = query.Where(c => c.LevelId == levelId.Value);
+                }
+
+          
+                if (teacherId.HasValue)
+                {
+                    query = query.Where(c => c.TeacherId == teacherId.Value);
+                }
+
+            
+                if (!string.IsNullOrWhiteSpace(title))
+                {
+               
+                    query = query.Where(c => c.Title.ToLower().Contains(title.ToLower()));
+                }
+                else if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+                {
+                  
+                    var searchTermLower = request.SearchTerm.ToLower();
+                    query = query.Where(c =>
+                        c.Title.ToLower().Contains(searchTermLower) ||
+                        c.Teacher.FullName.ToLower().Contains(searchTermLower) ||
+                        c.Program.Name.ToLower().Contains(searchTermLower) ||
+                        c.Level.Name.ToLower().Contains(searchTermLower)
+                    );
+                }
+
+                if (!string.IsNullOrWhiteSpace(request.Status))
+                {
+                    if (Enum.TryParse<CourseStatus>(request.Status, true, out var parsedStatus))
                     {
                         query = query.Where(c => c.Status == parsedStatus);
                     }
@@ -426,26 +482,80 @@ namespace BLL.Services.Course
                     {
                         return PagedResponse<IEnumerable<CourseResponse>>.Fail(
                             errors: new object(),
-                            message: $"Invalid course status: '{status}'. Allowed values: {string.Join(", ", Enum.GetNames(typeof(CourseStatus)))}",
+                            message: $"Invalid course status: '{request.Status}'.",
                             code: 400
                         );
                     }
                 }
 
-                if (!string.IsNullOrWhiteSpace(lang))
-                {
-                    query = query.Where(c => c.Language.LanguageCode.ToLower() == lang.ToLower());
-                }
 
                 var totalCount = await query.CountAsync();
 
+            
+
+             
+                IOrderedQueryable<DAL.Models.Course> orderedQuery;
+
+                switch (request.SortBy?.ToLower())
+                {
+                    case "oldest":
+                    case "created_asc":
+                        orderedQuery = query.OrderBy(c => c.CreatedAt);
+                        break;
+
+                    case "mostlearned":
+                    case "learners_desc":
+                        orderedQuery = query.OrderByDescending(c => c.LearnerCount);
+                        break;
+
+                    case "learners_asc":
+                        orderedQuery = query.OrderBy(c => c.LearnerCount);
+                        break;
+
+                    case "rating_desc":
+                        orderedQuery = query.OrderByDescending(c => c.AverageRating);
+                        break;
+
+                    case "rating_asc":
+                        orderedQuery = query.OrderBy(c => c.AverageRating);
+                        break;
+
+                    case "price_asc":
+                        orderedQuery = query.OrderBy(c => c.Price);
+                        break;
+
+                    case "price_desc":
+                        orderedQuery = query.OrderByDescending(c => c.Price);
+                        break;
+
+                    case "title_asc":
+                    case "name":
+                        orderedQuery = query.OrderBy(c => c.Title);
+                        break;
+
+                    case "title_desc":
+                    case "name_desc":
+                        orderedQuery = query.OrderByDescending(c => c.Title);
+                        break;
+
+                    case "newest":
+                    case "created_desc":
+                    default:
+                        orderedQuery = query.OrderByDescending(c => c.CreatedAt);
+                        break;
+                }
+
+            
+
                 var skip = (request.Page - 1) * request.PageSize;
-                var courses = await query
-                    .OrderByDescending(c => c.CreatedAt)
+
+              
+                var courses = await orderedQuery
                     .Skip(skip)
                     .Take(request.PageSize)
                     .ToListAsync();
 
+         
                 var responses = new List<CourseResponse>();
                 foreach (var course in courses)
                 {
@@ -504,6 +614,7 @@ namespace BLL.Services.Course
                     };
                     responses.Add(response);
                 }
+
                 return PagedResponse<IEnumerable<CourseResponse>>.Success(
                     responses,
                     request.Page,
@@ -512,7 +623,7 @@ namespace BLL.Services.Course
             }
             catch (Exception ex)
             {
-                return PagedResponse<IEnumerable<CourseResponse>>.Error($"An unexpected error occurred while fetching courses. Please try again later.\\{ex.Message}");
+                return PagedResponse<IEnumerable<CourseResponse>>.Error($"An unexpected error occurred while fetching courses. Please try again later. Details: {ex.Message}");
             }
         }
         public async Task<PagedResponse<IEnumerable<CourseResponse>>> GetCoursesByTeacherAsync(Guid userId, PagingRequest request, string status)
