@@ -14,6 +14,7 @@ using BLL.IServices.Exercise;
 using BLL.IServices.Language;
 using BLL.IServices.Lesson;
 using BLL.IServices.Payment;
+using BLL.IServices.ProgressTracking;
 using BLL.IServices.Purchases;
 using BLL.IServices.Redis;
 using BLL.IServices.Refund;
@@ -37,6 +38,7 @@ using BLL.Services.Exercise;
 using BLL.Services.Languages;
 using BLL.Services.Lesson;
 using BLL.Services.Payment;
+using BLL.Services.ProgressTracking;
 using BLL.Services.Purchases;
 using BLL.Services.Redis;
 using BLL.Services.Refund;
@@ -151,6 +153,9 @@ namespace BLL
             services.AddScoped<WalletService>();
             services.AddScoped<TeacherPayoutJobService>();
             services.AddScoped<IEnrollmentService, EnrollmentService>();
+            services.AddScoped<IAssessmentService, AssessmentService>();
+            services.AddScoped<IProgressTrackingService, ProgressTrackingService>();
+            services.AddScoped<IExerciseGradingService, ExerciseGradingService>();
             return services;
         }
     }
