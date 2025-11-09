@@ -310,6 +310,78 @@ namespace BLL.Services.Assessment
                 return new CommonResponse { IsSuccess = false, Content = "Failed to parse transcript." };
             }
         }
+        private async Task<CommonResponse> TranscribeSpeechByGeminiAsync(string audioUrl)
+        {
+            string apiKey = "AIzaSyAsAA8w7QSEdW5k2CcbuWuEhXLV17hiYHI";
+
+            if (string.IsNullOrWhiteSpace(audioUrl))
+                return new CommonResponse { IsSuccess = false, Content = "Invalid audio URL." };
+
+            byte[] audioBytes;
+            using (var client = new HttpClient())
+            {
+                try
+                {
+                    audioBytes = await client.GetByteArrayAsync(audioUrl);
+                }
+                catch
+                {
+                    return new CommonResponse { IsSuccess = false, Content = "Failed to download audio." };
+                }
+            }
+
+            string audioBase64 = Convert.ToBase64String(audioBytes);
+
+            string mimeType = GetMimeType(audioUrl);
+
+            var payload = new
+            {
+                contents = new[]
+                {
+                    new {
+                        parts = new object[]
+                        {
+                            new { text = "Please transcribe this audio into text accurately:" },
+                            new {
+                                inline_data = new {
+                                    mime_type = mimeType,
+                                    data = audioBase64
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var json = JsonSerializer.Serialize(payload);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            using var geminiClient = new HttpClient();
+            geminiClient.DefaultRequestHeaders.Add("x-goog-api-key", apiKey);
+
+            var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+            var response = await geminiClient.PostAsync(url, content);
+            var responseText = await response.Content.ReadAsStringAsync();
+
+            try
+            {
+                using var doc = JsonDocument.Parse(responseText);
+                var transcript = doc.RootElement
+                    .GetProperty("candidates")[0]
+                    .GetProperty("content")
+                    .GetProperty("parts")[0]
+                    .GetProperty("text")
+                    .GetString();
+
+                return !string.IsNullOrWhiteSpace(transcript)
+                    ? new CommonResponse { IsSuccess = true, Content = transcript }
+                    : new CommonResponse { IsSuccess = false, Content = "No response" };
+            }
+            catch
+            {
+                return new CommonResponse { IsSuccess = false, Content = "Failed to parse transcript." };
+            }
+        }
         private async Task<CommonResponse> DescribeImagesByAzureAsync(string[] imageUrls)
         {
             try
@@ -418,11 +490,17 @@ namespace BLL.Services.Assessment
             var result = string.Join("\n---\n", descriptions);
             return !string.IsNullOrWhiteSpace(result) ? new CommonResponse { IsSuccess = true, Content = result } : new CommonResponse { IsSuccess = false, Content = "No response" };
         }
-        private int ComputeOverall(ExtendedScores s)
+        private string GetMimeType(string url)
         {
-            double overall = s.Pronunciation * 0.15 + s.Fluency * 0.20 + s.Coherence * 0.20
-                + s.Accuracy * 0.25 + s.Intonation * 0.10 + s.Grammar * 0.05 + s.Vocabulary * 0.05;
-            return (int)Math.Round(overall / 10.0 * 10);
+            var ext = Path.GetExtension(url).ToLower();
+            return ext switch
+            {
+                ".wav" => "audio/wav",
+                ".mp3" => "audio/mpeg",
+                ".m4a" => "audio/m4a",
+                ".ogg" => "audio/ogg",
+                _ => "audio/wav"
+            };
         }
         private string[] ExtractImageUrls(string input)
         {

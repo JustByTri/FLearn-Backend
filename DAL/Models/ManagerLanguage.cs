@@ -19,6 +19,5 @@ namespace DAL.Models
         public virtual ICollection<TeacherApplication> TeacherApplications { get; set; } = new List<TeacherApplication>();
         public virtual ICollection<CourseSubmission> CourseSubmissions { get; set; } = new List<CourseSubmission>();
         public virtual ICollection<ExerciseGradingAssignment> ExerciseGradingAssignments { get; set; } = new List<ExerciseGradingAssignment>();
-        public virtual ICollection<TeacherEarningAllocation> TeacherEarningAllocations { get; set; } = new List<TeacherEarningAllocation>();
     }
 }

@@ -198,10 +198,14 @@ namespace BLL.Services.ProgressTracking
                 return BaseResponse<bool>.Error($"AI grading failed: {ex.Message}");
             }
         }
-        public async Task<BaseResponse<bool>> ProcessTeacherGradingAsync(Guid exerciseSubmissionId, Guid teacherId, double score, string feedback)
+        public async Task<BaseResponse<bool>> ProcessTeacherGradingAsync(Guid exerciseSubmissionId, Guid userId, double score, string feedback)
         {
             return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
+                var teacher = await _unitOfWork.TeacherProfiles.FindAsync(t => t.UserId == userId);
+                if (teacher == null)
+                    return BaseResponse<bool>.Fail(new object(), "Access denied", 403);
+
                 var submission = await _unitOfWork.ExerciseSubmissions
                     .Query()
                     .Include(es => es.Exercise)
@@ -212,7 +216,7 @@ namespace BLL.Services.ProgressTracking
                     return BaseResponse<bool>.Fail(false, "Exercise submission not found", 404);
 
                 var assignment = submission.ExerciseGradingAssignments
-                    .FirstOrDefault(a => a.AssignedTeacherId == teacherId &&
+                    .FirstOrDefault(a => a.AssignedTeacherId == teacher.TeacherId &&
                                        a.Status == GradingStatus.Assigned);
 
                 if (assignment == null)
@@ -253,9 +257,8 @@ namespace BLL.Services.ProgressTracking
                 var earningAllocation = new TeacherEarningAllocation
                 {
                     AllocationId = Guid.NewGuid(),
-                    TeacherId = teacherId,
+                    TeacherId = teacher.TeacherId,
                     GradingAssignmentId = assignment.GradingAssignmentId,
-                    ApprovedBy = Guid.NewGuid(),
                     ExerciseGradingAmount = CalculateGradingFee(submission.Exercise.Difficulty.ToString()),
                     EarningType = EarningType.ExerciseGrading,
                     ApprovedAt = TimeHelper.GetVietnamTime(),
@@ -263,6 +266,7 @@ namespace BLL.Services.ProgressTracking
                     CreatedAt = TimeHelper.GetVietnamTime(),
                     UpdatedAt = TimeHelper.GetVietnamTime()
                 };
+
                 await _unitOfWork.TeacherEarningAllocations.CreateAsync(earningAllocation);
 
                 await _unitOfWork.SaveChangesAsync();
