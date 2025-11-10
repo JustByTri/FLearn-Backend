@@ -1,4 +1,5 @@
 ﻿using BLL.IServices.Auth;
+using DAL.Helpers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System;
@@ -78,7 +79,7 @@ namespace BLL.Services.Auth
                                     <a href='mailto:support@flearn.com' style='color: #667eea; text-decoration: none;'>support@flearn.com</a>
                                 </p>
                                 <p style='color: #6c757d; margin:0; font-size:12px;'>
-                                    ©2024 Flearn - Nền tảng học ngôn ngữ thông minh<br/>
+                                    ©2025 Flearn - Nền tảng học ngôn ngữ thông minh<br/>
                                     📧 Bạn nhận được email này vì đã đăng ký tài khoản Flearn
                                 </p>
                             </div>
@@ -158,7 +159,7 @@ namespace BLL.Services.Auth
                                     <a href='mailto:support@flearn.com' style='color: #ff6b6b; text-decoration: none;'>support@flearn.com</a>
                                 </p>
                                 <p style='color: #6c757d; margin:0; font-size:12px;'>
-                                    ©2024 Flearn - Nền tảng học ngôn ngữ thông minh
+                                    ©2025 Flearn - Nền tảng học ngôn ngữ thông minh
                                 </p>
                             </div>
                         </div>
@@ -242,7 +243,7 @@ namespace BLL.Services.Auth
                                     <a href='mailto:support@flearn.com' style='color: #3498db; text-decoration: none;'>support@flearn.com</a>
                                 </p>
                                 <p style='color: #6c757d; margin:0; font-size:12px;'>
-                                    ©2024 Flearn - Nền tảng học ngôn ngữ thông minh<br/>
+                                    ©2025 Flearn - Nền tảng học ngôn ngữ thông minh<br/>
                                     📧 Bạn nhận được email này vì đã yêu cầu đăng ký tài khoản Flearn
                                 </p>
                             </div>
@@ -255,6 +256,72 @@ namespace BLL.Services.Auth
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error sending OTP email to {Email}", toEmail);
+                return false;
+            }
+        }
+
+        // New: resend OTP
+        public async Task<bool> SendOtpResendAsync(string toEmail, string userName, string otpCode)
+        {
+            try
+            {
+                var subject = "🔁 Mã OTP - Flearn (Gửi lại)";
+                var body = $@"
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset='UTF-8'>
+                        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+                        <title>Mã OTP</title>
+                    </head>
+                    <body style='margin:0;padding:0;font-family:Arial,sans-serif;background:#f0f2f5;'>
+                        <div style='max-width:600px;margin:0 auto;background:#ffffff;padding:30px;border-radius:8px;'>
+                            <h2 style='color:#2c3e50;'>Xin chào {userName},</h2>
+                            <p style='color:#333;'>Bạn đã yêu cầu gửi lại mã OTP. Mã OTP của bạn là:</p>
+                            <div style='font-size:32px;font-weight:bold;background:#3498db;color:#fff;padding:16px;border-radius:8px;display:inline-block;margin:10px0;'>{otpCode}</div>
+                            <p style='color:#6c757d;'>Mã sẽ hết hạn sau 5 phút. Nếu bạn không yêu cầu, vui lòng bỏ qua email này.</p>
+                        </div>
+                    </body>
+                    </html>";
+
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending OTP resend email to {Email}", toEmail);
+                return false;
+            }
+        }
+
+        // New: password reset OTP
+        public async Task<bool> SendPasswordResetOtpAsync(string toEmail, string userName, string otpCode)
+        {
+            try
+            {
+                var subject = "🔐 Mã OTP đặt lại mật khẩu - Flearn";
+                var body = $@"
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset='UTF-8'>
+                        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+                        <title>Mã OTP đặt lại mật khẩu</title>
+                    </head>
+                    <body style='margin:0;padding:0;font-family:Arial,sans-serif;background:#f8f9fa;'>
+                        <div style='max-width:600px;margin:0 auto;background:#ffffff;padding:30px;border-radius:8px;'>
+                            <h2 style='color:#2c3e50;'>Xin chào {userName},</h2>
+                            <p style='color:#333;'>Bạn đã yêu cầu đặt lại mật khẩu. Vui lòng sử dụng mã OTP sau để xác nhận:</p>
+                            <div style='font-size:32px;font-weight:bold;background:#ff6b6b;color:#fff;padding:16px;border-radius:8px;display:inline-block;margin:10px0;'>{otpCode}</div>
+                            <p style='color:#6c757d;'>Mã sẽ hết hạn sau 5 phút. Nếu bạn không yêu cầu, hãy bỏ qua email này.</p>
+                        </div>
+                    </body>
+                    </html>";
+
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending password reset OTP to {Email}", toEmail);
                 return false;
             }
         }
@@ -351,7 +418,7 @@ namespace BLL.Services.Auth
                     <a href='mailto:support@flearn.com' style='color: #28a745; text-decoration: none;'>support@flearn.com</a>
                     </p>
                     <p style='color: #6c757d; margin:0; font-size:12px;'>
-                    ©2024 Flearn - Nền tảng học ngôn ngữ thông minh
+                    ©2025 Flearn - Nền tảng học ngôn ngữ thông minh
                     </p>
                     </div>
                     </div>
@@ -425,7 +492,7 @@ namespace BLL.Services.Auth
                     <a href='mailto:support@flearn.com' style='color: #ffc107; text-decoration: none;'>support@flearn.com</a>
                     </p>
                     <p style='color: #6c757d; margin:0; font-size:12px;'>
-                    ©2024 Flearn - Nền tảng học ngôn ngữ thông minh
+                    ©2025 Flearn - Nền tảng học ngôn ngữ thông minh
                     </p>
                     </div>
                     </div>
@@ -499,7 +566,7 @@ namespace BLL.Services.Auth
                                     <a href='mailto:support@flearn.com' style='color: #6c757d; text-decoration: none;'>support@flearn.com</a>
                                 </p>
                                 <p style='color: #6c757d; margin:0; font-size:12px;'>
-                                    ©2024 Flearn - Nền tảng học ngôn ngữ thông minh
+                                    ©2025 Flearn - Nền tảng học ngôn ngữ thông minh
                                 </p>
                             </div>
                         </div>
@@ -511,164 +578,6 @@ namespace BLL.Services.Auth
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error sending teacher application rejected email to {Email}", toEmail);
-                return false;
-            }
-        }
-
-        public async Task<bool> SendOtpResendAsync(string toEmail, string userName, string otpCode)
-        {
-            try
-            {
-                var subject = "🔁 Mã OTP mới - Flearn";
-                var body = $@"
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset='UTF-8'>
-                        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-                        <title>Mã OTP mới</title>
-                    </head>
-                    <body style='margin:0; padding:0; font-family: Arial, sans-serif; background: linear-gradient(135deg, #17a2b80%, #138496100%);'>
-                        <div style='max-width:600px; margin:0 auto; background-color: #ffffff;'>
-                            <!-- Header -->
-                            <div style='background: linear-gradient(135deg, #17a2b80%, #138496100%); padding:40px20px; text-align: center;'>
-                                <h1 style='color: white; margin:0; font-size:28px; font-weight:700;'>🔁 Flearn</h1>
-                                <p style='color: rgba(255,255,255,0.9); margin:10px000; font-size:16px;'>Mã OTP mới</p>
-                            </div>
-                            
-                            <!-- Content -->
-                            <div style='padding:40px30px;'>
-                                <div style='text-align: center; margin-bottom:30px;'>
-                                    <div style='background: linear-gradient(135deg, #17a2b80%, #138496100%); width:80px; height:80px; border-radius:50%; margin:0 auto20px; display: flex; align-items: center; justify-content: center;'>
-                                        <span style='font-size:36px; color: white;'>📱</span>
-                                    </div>
-                                    <h2 style='color: #2c3e50; margin:0; font-size:24px; font-weight:600;'>Xin chào {userName}!</h2>
-                                </div>
-                                
-                                <div style='background-color: #e7f6ff; padding:25px; border-radius:12px; margin:25px0; border-left:4px solid #17a2b8;'>
-                                    <p style='font-size:16px; line-height:1.6; color: #333; margin:0015px0;'>
-                                        Bạn đã yêu cầu gửi lại mã OTP. Đây là mã OTP mới của bạn:
-                                    </p>
-                                </div>
-                                
-                                <!-- OTP Code -->
-                                <div style='text-align: center; margin:40px0;'>
-                                    <div style='background: linear-gradient(135deg, #17a2b80%, #138496100%); color: white; font-size:36px; font-weight: bold; padding:25px20px; border-radius:15px; letter-spacing:12px; display: inline-block; box-shadow:08px25px rgba(23,162,184,0.3);'>
-                                        {otpCode}
-                                    </div>
-                                    <p style='color: #7f8c8d; margin:15px000; font-size:14px;'>Mã OTP mới của bạn</p>
-                                </div>
-                                
-                                <div style='background-color: #fff3cd; border:1px solid #ffeaa7; padding:20px; border-radius:8px; margin:25px0;'>
-                                    <p style='margin:0010px0; color: #856404; font-weight: bold; font-size:14px;'>⚠️ Lưu ý quan trọng:</p>
-                                    <ul style='margin:0; padding-left:20px; color: #856404; font-size:14px;'>
-                                        <li>Mã này sẽ hết hạn sau <strong>5 phút</strong></li>
-                                        <li>Mã OTP cũ đã không còn hiệu lực</li>
-                                        <li>Không chia sẻ mã này với bất kỳ ai</li>
-                                    </ul>
-                                </div>
-                            </div>
-                            
-                            <!-- Footer -->
-                            <div style='background-color: #f8f9fa; padding:30px; text-align: center; border-top:1px solid #e9ecef;'>
-                                <p style='color: #6c757d; margin:0010px0; font-size:14px;'>
-                                    Cần hỗ trợ? Liên hệ với chúng tôi tại 
-                                    <a href='mailto:support@flearn.com' style='color: #17a2b8; text-decoration: none;'>support@flearn.com</a>
-                                </p>
-                                <p style='color: #6c757d; margin:0; font-size:12px;'>
-                                    ©2024 Flearn - Nền tảng học ngôn ngữ thông minh
-                                </p>
-                            </div>
-                        </div>
-                    </body>
-                    </html>";
-
-                return await SendEmailAsync(toEmail, subject, body);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending resend OTP email to {Email}", toEmail);
-                return false;
-            }
-        }
-
-        public async Task<bool> SendPasswordResetOtpAsync(string toEmail, string userName, string otpCode)
-        {
-            try
-            {
-                var subject = "🔑 Mã OTP đặt lại mật khẩu - Flearn";
-                var body = $@"
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset='UTF-8'>
-                        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-                        <title>Mã OTP đặt lại mật khẩu</title>
-                    </head>
-                    <body style='margin:0; padding:0; font-family: Arial, sans-serif; background: linear-gradient(135deg, #fd7e140%, #e55a00100%);'>
-                        <div style='max-width:600px; margin:0 auto; background-color: #ffffff;'>
-                            <!-- Header -->
-                            <div style='background: linear-gradient(135deg, #fd7e140%, #e55a00100%); padding:40px20px; text-align: center;'>
-                                <h1 style='color: white; margin:0; font-size:28px; font-weight:700;'>🔑 Flearn</h1>
-                                <p style='color: rgba(255,255,255,0.9); margin:10px000; font-size:16px;'>Đặt lại mật khẩu</p>
-                            </div>
-                            
-                            <!-- Content -->
-                            <div style='padding:40px30px;'>
-                                <div style='text-align: center; margin-bottom:30px;'>
-                                    <div style='background: linear-gradient(135deg, #fd7e140%, #e55a00100%); width:80px; height:80px; border-radius:50%; margin:0 auto20px; display: flex; align-items: center; justify-content: center;'>
-                                        <span style='font-size:36px; color: white;'>🔐</span>
-                                    </div>
-                                    <h2 style='color: #2c3e50; margin:0; font-size:24px; font-weight:600;'>Xin chào {userName}!</h2>
-                                </div>
-                                
-                                <div style='background-color: #fff5f0; padding:25px; border-radius:12px; margin:25px0; border-left:4px solid #fd7e14;'>
-                                    <p style='font-size:16px; line-height:1.6; color: #333; margin:0015px0;'>
-                                        Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.
-                                    </p>
-                                    <p style='font-size:16px; line-height:1.6; color: #333; margin:0;'>
-                                        Sử dụng mã OTP bên dưới để xác thực và đặt lại mật khẩu:
-                                    </p>
-                                </div>
-                                
-                                <!-- OTP Code -->
-                                <div style='text-align: center; margin:40px0;'>
-                                    <div style='background: linear-gradient(135deg, #fd7e140%, #e55a00100%); color: white; font-size:36px; font-weight: bold; padding:25px20px; border-radius:15px; letter-spacing:12px; display: inline-block; box-shadow:08px25px rgba(253, 126, 20, 0.3);'>
-                                        {otpCode}
-                                    </div>
-                                    <p style='color: #7f8c8d; margin:15px000; font-size:14px;'>Mã OTP đặt lại mật khẩu</p>
-                                </div>
-                                
-                                <div style='background-color: #f8d7da; border:1px solid #f5c6cb; padding:20px; border-radius:8px; margin:25px0;'>
-                                    <p style='margin:0010px0; color: #721c24; font-weight: bold; font-size:14px;'>🔒 Bảo mật quan trọng:</p>
-                                    <ul style='margin:0; padding-left:20px; color: #721c24; font-size:14px;'>
-                                        <li>Mã này sẽ hết hạn sau <strong>10 phút</strong></li>
-                                        <li>Chỉ sử dụng mã này nếu bạn đã yêu cầu đặt lại mật khẩu</li>
-                                        <li>Không chia sẻ mã này với bất kỳ ai</li>
-                                        <li>Nếu không phải bạn yêu cầu, hãy bỏ qua email này</li>
-                                    </ul>
-                                </div>
-                            </div>
-                            
-                            <!-- Footer -->
-                            <div style='background-color: #f8f9fa; padding:30px; text-align: center; border-top:1px solid #e9ecef;'>
-                                <p style='color: #6c757d; margin:0010px0; font-size:14px;'>
-                                    Cần hỗ trợ? Liên hệ với chúng tôi tại 
-                                    <a href='mailto:support@flearn.com' style='color: #fd7e14; text-decoration: none;'>support@flearn.com</a>
-                                </p>
-                                <p style='color: #6c757d; margin:0; font-size:12px;'>
-                                    ©2024 Flearn - Nền tảng học ngôn ngữ thông minh
-                                </p>
-                            </div>
-                        </div>
-                    </body>
-                    </html>";
-
-                return await SendEmailAsync(toEmail, subject, body);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending password reset OTP email to {Email}", toEmail);
                 return false;
             }
         }
@@ -779,7 +688,7 @@ namespace BLL.Services.Auth
                                         <a href='mailto:support@flearn.com' style='color: #667eea; text-decoration: none;'>support@flearn.com</a>
                                     </p>
                                     <p style='color: #6c757d; margin:0; font-size:12px;'>
-                                        ©2024 Flearn - Nền tảng học ngôn ngữ thông minh
+                                        ©2025 Flearn - Nền tảng học ngôn ngữ thông minh
                                     </p>
                                 </div>
                             </div>
@@ -828,8 +737,10 @@ namespace BLL.Services.Auth
  </div>
  </div>
  <div style='background:#f8f9fa;padding:30px;text-align:center;border-top:1px solid #e9ecef;'>
- <p style='color:#6c757d;margin:0010px0;font-size:14px;'>Cần hỗ trợ? Liên hệ <a href='mailto:support@flearn.com' style='color:#20c997;text-decoration:none;'>support@flearn.com</a></p>
- <p style='color:#6c757d;margin:0;font-size:12px;'>©2024 Flearn</p>
+ <p style='color:#6c757d;margin:0010px0;font-size:14px;'>
+ Cần hỗ trợ? Liên hệ <a href='mailto:support@flearn.com' style='color:#20c997;text-decoration:none;'>support@flearn.com</a>
+ </p>
+ <p style='color:#6c757d;margin:0;font-size:12px;'>©2025 Flearn</p>
  </div>
  </div>
 </body>
@@ -844,6 +755,166 @@ namespace BLL.Services.Auth
             }
         }
 
+        // Renamed: this method previously had incorrect name/signature. Now matches IEmailService.SendPayoutRequestApprovedAsync
+        public async Task<bool> SendPayoutRequestApprovedAsync(
+            string toEmail,
+            string teacherName,
+            decimal amount,
+            string bankName,
+            string accountNumber,
+            string? transactionRef = null,
+            string? adminNote = null)
+        {
+            try
+            {
+                var subject = "✅ Yêu cầu rút tiền đã được duyệt - Flearn";
+
+                var transactionSection = !string.IsNullOrWhiteSpace(transactionRef)
+                    ? $"<p style='margin:10px0;color:#333;line-height:1.6;'><strong>Mã giao dịch:</strong> <span style='color:#28a745;font-family:monospace;'>{transactionRef}</span></p>"
+                    : string.Empty;
+
+                var noteSection = !string.IsNullOrWhiteSpace(adminNote)
+                    ? $"<div style='background:#e7f3ff;border-left:4px solid #007bff;padding:16px;border-radius:8px;margin:20px0;'><p style='margin:0;color:#004085;font-size:14px;'><strong>Ghi chú từ Admin:</strong> {adminNote}</p></div>"
+                    : string.Empty;
+
+                var body = $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Rút tiền được duyệt</title>
+</head>
+<body style='margin:0;padding:0;font-family:Arial,sans-serif;background:linear-gradient(135deg,#28a7450%,#20c997100%);'>
+    <div style='max-width:600px;margin:0 auto;background:#ffffff;'>
+        <div style='background:linear-gradient(135deg,#28a7450%,#20c997100%);padding:40px20px;text-align:center;'>
+            <h1 style='color:#fff;margin:0;font-size:28px;font-weight:700;'>💰 Flearn</h1>
+      <p style='color:rgba(255,255,255,0.95);margin:10px000;font-size:16px;'>Yêu cầu rút tiền đã được duyệt</p>
+    </div>
+        <div style='padding:40px30px;'>
+     <div style='text-align:center;margin-bottom:30px;'>
+       <div style='background:linear-gradient(135deg,#28a7450%,#20c997100%);width:80px;height:80px;border-radius:50%;margin:0 auto20px;display:flex;align-items:center;justify-content:center;'>
+     <span style='font-size:40px;'>✅</span>
+            </div>
+       <h2 style='color:#2c3e50;margin:0;font-size:24px;font-weight:600;'>Chúc mừng {teacherName}!</h2>
+     </div>
+            <div style='background:#d4edda;border:1px solid #c3e6cb;padding:25px;border-radius:12px;margin:25px0;>
+  <p style='margin:0010px0;color:#155724;font-size:16px;line-height:1.6;'>
+              Yêu cầu rút tiền của bạn đã được <strong>duyệt thành công</strong>.
+         </p>
+       <p style='margin:0;color:#155724;font-size:16px;line-height:1.6;'>
+Tiền sẽ được chuyển vào tài khoản ngân hàng của bạn trong vòng <strong>1-3 ngày làm việc</strong>.
+   </p>
+            </div>
+            <div style='background:#f8f9fa;padding:25px;border-radius:12px;margin:25px0;border:1px solid #dee2e6;'>
+        <h3 style='margin:0015px0;color:#495057;font-size:18px;'>📋 Thông tin giao dịch</h3>
+    <div style='border-top:1px solid #dee2e6;padding-top:15px;'>
+            <p style='margin:10px0;color:#333;line-height:1.6;'><strong>Số tiền:</strong> <span style='color:#28a745;font-size:20px;font-weight:bold;'>{amount:N0} VNĐ</span></p>
+       <p style='margin:10px0;color:#333;line-height:1.6;'><strong>Ngân hàng:</strong> {bankName}</p>
+            <p style='margin:10px0;color:#333;line-height:1.6;'><strong>Số tài khoản:</strong> {accountNumber}</p>
+     {transactionSection}
+     <p style='margin:10px00;color:#6c757d;font-size:14px;'><strong>Thời gian duyệt:</strong> {TimeHelper.GetVietnamTime():dd/MM/yyyy HH:mm}</p>
+      </div>
+            </div>
+   {noteSection}
+   <div style='background:#fff3cd;border:1px solid #ffeeba;padding:20px;border-radius:8px;margin:25px0;'>
+      <p style='margin:0010px0;color:#856404;font-weight:bold;font-size:14px;'>💡 Lưu ý quan trọng:</p>
+   <ul style='margin:0;padding-left:20px;color:#856404;font-size:14px;line-height:1.6;'>
+      <li>Vui lòng kiểm tra tài khoản ngân hàng trong vòng 1-3 ngày làm việc</li>
+ <li>Nếu quá thời gian trên chưa nhận được tiền, vui lòng liên hệ support</li>
+         <li>Lưu lại email này để tra cứu giao dịch</li>
+  </ul>
+            </div>
+   </div>
+        <div style='background:#f8f9fa;padding:30px;text-align:center;border-top:1px solid #e9ecef;'>
+      <p style='color:#6c757d;margin:0010px0;font-size:14px;'>
+       Cần hỗ trợ? Liên hệ 
+        <a href='mailto:support@flearn.com' style='color:#28a745;text-decoration:none;'>support@flearn.com</a>
+  </p>
+   <p style='color:#6c757d;margin:0;font-size:12px;'>
+           ©2025 Flearn - Nền tảng học ngôn ngữ thông minh
+            </p>
+        </div>
+    </div>
+</body>
+</html>";
+
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending payout approved email to {Email}", toEmail);
+                return false;
+            }
+        }
+
+        public async Task<bool> SendPayoutRequestRejectedAsync(
+   string toEmail,
+    string teacherName,
+         decimal amount,
+            string rejectionReason)
+        {
+            try
+            {
+                var subject = "❌ Yêu cầu rút tiền bị từ chối - Flearn";
+
+                var body = $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Rút tiền bị từ chối</title>
+</head>
+<body style='margin:0;padding:0;font-family:Arial,sans-serif;background:linear-gradient(135deg,#dc35450%,#c82333100%);'>
+    <div style='max-width:600px;margin:0 auto;background:#ffffff;padding:30px;border-radius:8px;'>
+    <h2 style='color:#2c3e50;'>Xin chào {teacherName}!</h2>
+    <p style='color:#333;'>Rất tiếc, yêu cầu rút tiền của bạn đã bị <strong>từ chối</strong>.</p>
+    <p style='color:#333;'><strong>Số tiền hoàn:</strong> <span style='color:#dc3545;font-weight:bold;'>{amount:N0} VNĐ</span></p>
+    
+    <div style='background:#fff3cd;padding:15px;border-radius:8px;margin:15px0;border-left:4px solid #ffc107;'>
+       <p style='margin:0;color:#856404;'><strong>Lý do:</strong> {rejectionReason}</p>
+    </div>
+    
+    <div style='background:#d1ecf1;border:1px solid #bee5eb;padding:20px;border-radius:8px;margin:25px0;'>
+      <p style='margin:0010px0;color:#0c5460;font-weight:bold;font-size:14px;'>💰 Thông tin ví:</p>
+      <p style='margin:0;color:#0c5460;font-size:14px;line-height:1.6;'>
+        Số tiền <strong>{amount:N0} VNĐ</strong> đã được cộng trở lại vào số dư khả dụng của bạn. 
+     Bạn có thể tạo yêu cầu rút tiền mới sau khi khắc phục các vấn đề.
+     </p>
+         </div>
+         <div style='background:#e7f3ff;border:1px solid #b8daff;padding:20px;border-radius:8px;margin:25px0;'>
+    <p style='margin:0010px0;color:#004085;font-weight:bold;font-size:14px;'>📌 Hành động tiếp theo:</p>
+         <ul style='margin:0;padding-left:20px;color:#004085;font-size:14px;line-height:1.6;'>
+             <li>Kiểm tra và cập nhật thông tin tài khoản ngân hàng nếu cần</li>
+     <li>Đảm bảo đáp ứng các điều kiện rút tiền</li>
+         <li>Liên hệ support nếu cần hỗ trợ thêm</li>
+     <li>Có thể tạo yêu cầu rút tiền mới sau khi khắc phục</li>
+        </ul>
+            </div>
+        <div style='background:#f8f9fa;padding:30px;text-align:center;border-top:1px solid #e9ecef;'>
+  <p style='color:#6c757d;margin:0010px0;font-size:14px;'>
+  Cần hỗ trợ? Liên hệ 
+        <a href='mailto:support@flearn.com' style='color:#dc3545;text-decoration:none;'>support@flearn.com</a>
+ </p>
+   <p style='color:#6c757d;margin:0;font-size:12px;'>
+        ©2025 Flearn - Nền tảng học ngôn ngữ thông minh
+     </p>
+        </div>
+    </div>
+</body>
+</html>";
+
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending payout rejected email to {Email}", toEmail);
+                return false;
+            }
+        }
+
+
         public async Task<bool> SendRefundRequestApprovedAsync(
             string toEmail,
             string userName,
@@ -854,12 +925,14 @@ namespace BLL.Services.Auth
         {
             try
             {
-                var subject = "🎉 Yêu cầu hoàn tiền đã được chấp nhận - Flearn";
+                var subject = "✅ Yêu cầu hoàn tiền đã được chấp nhận - Flearn";
+
                 var proofSection = !string.IsNullOrWhiteSpace(proofImageUrl)
-                    ? $"<div style='text-align:center;margin:20px0;'><img src='{proofImageUrl}' alt='Chứng từ hoàn tiền' style='max-width:100%;border-radius:8px;border:1px solid #e9ecef;'/></div>"
+                    ? $"<p style='margin:10px0;'><strong>Chứng từ:</strong> <a href='{proofImageUrl}' target='_blank'>Xem</a></p>"
                     : string.Empty;
+
                 var noteSection = !string.IsNullOrWhiteSpace(adminNote)
-                    ? $"<div style='background:#fff8e1;border-left:4px solid #ffc107;padding:16px;border-radius:8px;margin-top:10px;'><p style='margin:0;color:#856404;font-size:14px;'><strong>Ghi chú:</strong> {adminNote}</p></div>"
+                    ? $"<div style='background:#e7f3ff;border-left:4px solid #007bff;padding:16px;border-radius:8px;margin:20px0;'><p style='margin:0;color:#004085;font-size:14px;'><strong>Ghi chú từ Admin:</strong> {adminNote}</p></div>"
                     : string.Empty;
 
                 var body = $@"
@@ -870,24 +943,14 @@ namespace BLL.Services.Auth
  <meta name='viewport' content='width=device-width, initial-scale=1.0'>
  <title>Hoàn tiền được chấp nhận</title>
 </head>
-<body style='margin:0;padding:0;font-family:Arial,sans-serif;background:#fff7e6;'>
- <div style='max-width:600px;margin:0 auto;background:#ffffff;'>
- <div style='background:linear-gradient(135deg,#ffc1070%,#ff8800100%);padding:40px20px;text-align:center;'>
- <h1 style='color:#fff;margin:0;font-size:28px;font-weight:700;'>Flearn</h1>
- <p style='color:rgba(255,255,255,0.9);margin:10px000;font-size:16px;'>Hoàn tiền được chấp nhận</p>
- </div>
- <div style='padding:40px30px;'>
- <h2 style='color:#2c3e50;margin:0010px0;font-size:22px;font-weight:600;'>Xin chúc mừng {userName}!</h2>
- <p style='color:#333;line-height:1.6;'>Yêu cầu hoàn tiền của bạn cho lớp <strong>{className}</strong> đã được <strong>chấp nhận</strong>.</p>
- <p style='color:#333;line-height:1.6;'>Số tiền hoàn: <strong>{refundAmount}</strong></p>
- {noteSection}
+<body style='margin:0;padding:0;font-family:Arial,sans-serif;background:#f0f2f5;'>
+ <div style='max-width:600px;margin:0 auto;background:#ffffff;padding:30px;border-radius:8px;'>
+ <h2 style='color:#2c3e50;'>Xin chào {userName},</h2>
+ <p style='color:#333;'>Yêu cầu hoàn tiền cho lớp <strong>{className}</strong> đã được <strong>chấp nhận</strong>.</p>
+ <p style='color:#333;'><strong>Số tiền hoàn:</strong> <span style='color:#28a745;font-weight:bold;'>{refundAmount:N0} VNĐ</span></p>
  {proofSection}
- <p style='color:#6c757d;font-size:14px;'>Nếu có thắc mắc, vui lòng phản hồi email này.</p>
- </div>
- <div style='background:#f8f9fa;padding:30px;text-align:center;border-top:1px solid #e9ecef;'>
- <p style='color:#6c757d;margin:0010px0;font-size:14px;'>Cần hỗ trợ? Liên hệ <a href='mailto:support@flearn.com' style='color:#ff8800;text-decoration:none;'>support@flearn.com</a></p>
- <p style='color:#6c757d;margin:0;font-size:12px;'>©2024 Flearn</p>
- </div>
+ {noteSection}
+ <p style='color:#6c757d;'>Số tiền sẽ được hoàn vào tài khoản đã đăng ký trong vòng 3-5 ngày làm việc.</p>
  </div>
 </body>
 </html>";
@@ -900,6 +963,7 @@ namespace BLL.Services.Auth
                 return false;
             }
         }
+
 
         public async Task<bool> SendRefundRequestRejectedAsync(
             string toEmail,
@@ -918,24 +982,14 @@ namespace BLL.Services.Auth
  <meta name='viewport' content='width=device-width, initial-scale=1.0'>
  <title>Hoàn tiền bị từ chối</title>
 </head>
-<body style='margin:0;padding:0;font-family:Arial,sans-serif;background:#f3f4f6;'>
- <div style='max-width:600px;margin:0 auto;background:#ffffff;'>
- <div style='background:linear-gradient(135deg,#6c757d0%,#495057100%);padding:40px20px;text-align:center;'>
- <h1 style='color:#fff;margin:0;font-size:28px;font-weight:700;'>Flearn</h1>
- <p style='color:rgba(255,255,255,0.9);margin:10px000;font-size:16px;'>Kết quả yêu cầu hoàn tiền</p>
+<body style='margin:0;padding:0;font-family:Arial,sans-serif;background:#fff3f3;'>
+ <div style='max-width:600px;margin:0 auto;background:#ffffff;padding:30px;border-radius:8px;'>
+ <h2 style='color:#2c3e50;'>Xin chào {userName},</h2>
+ <p style='color:#333;'>Rất tiếc, yêu cầu hoàn tiền cho lớp <strong>{className}</strong> đã bị <strong>từ chối</strong>.</p>
+ <div style='background:#fff3cd;padding:15px;border-radius:8px;margin:15px0;border-left:4px solid #ffc107;'>
+ <p style='margin:0;color:#856404;'><strong>Lý do:</strong> {rejectionReason}</p>
  </div>
- <div style='padding:40px30px;'>
- <h2 style='color:#2c3e50;margin:0010px0;font-size:22px;font-weight:600;'>Xin chào {userName},</h2>
- <p style='color:#333;line-height:1.6;'>Rất tiếc, yêu cầu hoàn tiền cho lớp <strong>{className}</strong> chưa thể được chấp nhận.</p>
- <div style='background:#f8d7da;border-left:4px solid #dc3545;padding:16px;border-radius:8px;margin:16px0;'>
- <p style='margin:0;color:#721c24;font-size:14px;'><strong>Lý do:</strong> {rejectionReason}</p>
- </div>
- <p style='color:#6c757d;font-size:14px;'>Bạn có thể cập nhật thông tin và gửi lại sau nếu cần.</p>
- </div>
- <div style='background:#f8f9fa;padding:30px;text-align:center;border-top:1px solid #e9ecef;'>
- <p style='color:#6c757d;margin:0010px0;font-size:14px;'>Cần hỗ trợ? Liên hệ <a href='mailto:support@flearn.com' style='color:#6c757d;text-decoration:none;'>support@flearn.com</a></p>
- <p style='color:#6c757d;margin:0;font-size:12px;'>©2024 Flearn</p>
- </div>
+ <p style='color:#6c757d;'>Nếu bạn cần hỗ trợ thêm, vui lòng liên hệ support.</p>
  </div>
 </body>
 </html>";

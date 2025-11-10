@@ -64,6 +64,8 @@ namespace BLL
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IAdminService, AdminService>();
+            services.AddScoped<IClassAdminService, ClassAdminService>();
+            services.AddScoped<IPayoutAdminService, PayoutAdminService>();
             services.Configure<CloudinarySettings>(configuration.GetSection("CloudinarySettings"));
             services.Configure<RedisSettings>(configuration.GetSection("RedisSettings"));
             services.Configure<AzureOpenAISettings>(configuration.GetSection("AzureOpenAISettings"));
