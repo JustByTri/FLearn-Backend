@@ -74,6 +74,8 @@ namespace BLL.Services.Enrollment
                         EnrollmentID = Guid.NewGuid(),
                         CourseId = request.CourseId,
                         LearnerId = learner.LearnerLanguageId,
+                        TotalUnits = course.NumUnits,
+                        TotalLessons = course.NumLessons,
                         EnrolledAt = TimeHelper.GetVietnamTime()
                     };
 
@@ -241,5 +243,498 @@ namespace BLL.Services.Enrollment
                 );
             }
         }
+        public async Task<PagedResponse<IEnumerable<EnrolledCourseOverviewResponse>>> GetEnrolledCoursesOverviewAsync(Guid userId, PagingRequest request)
+        {
+            try
+            {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null || !user.IsEmailConfirmed || !user.Status)
+                    return PagedResponse<IEnumerable<EnrolledCourseOverviewResponse>>.Fail(new object(), "Access denied", 403);
+
+                var learner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId);
+                if (learner == null)
+                    return PagedResponse<IEnumerable<EnrolledCourseOverviewResponse>>.Fail(new object(), "Access denied", 403);
+
+                var query = _unitOfWork.Enrollments.Query()
+                    .Where(e => e.LearnerId == learner.LearnerLanguageId)
+                    .Include(e => e.Course)
+                        .ThenInclude(c => c.Teacher)
+                    .Include(e => e.Course)
+                        .ThenInclude(c => c.Language)
+                    .Include(e => e.Course)
+                        .ThenInclude(c => c.Level)
+                    .Include(e => e.UnitProgresses)
+                    .AsNoTracking();
+
+                query = query.Where(e => e.Course.LanguageId == user.ActiveLanguageId);
+
+                if (!string.IsNullOrEmpty(request.Status) && Enum.TryParse<DAL.Type.EnrollmentStatus>(request.Status, out var statusFilter))
+                {
+                    query = query.Where(e => e.Status == statusFilter);
+                }
+
+                if (!string.IsNullOrEmpty(request.SearchTerm))
+                {
+                    query = query.Where(e => e.Course.Title.Contains(request.SearchTerm) ||
+                                           e.Course.Description.Contains(request.SearchTerm));
+                }
+
+                var totalCount = await query.CountAsync();
+
+                query = request.SortBy?.ToLower() switch
+                {
+                    "title" => request.SortBy?.ToLower() == "desc"
+                        ? query.OrderByDescending(e => e.Course.Title)
+                        : query.OrderBy(e => e.Course.Title),
+                    "progress" => request.SortBy?.ToLower() == "desc"
+                        ? query.OrderByDescending(e => e.ProgressPercent)
+                        : query.OrderBy(e => e.ProgressPercent),
+                    "lastaccessed" => request.SortBy?.ToLower() == "desc"
+                        ? query.OrderByDescending(e => e.LastAccessedAt)
+                        : query.OrderBy(e => e.LastAccessedAt),
+                    _ => request.SortBy?.ToLower() == "desc"
+                        ? query.OrderByDescending(e => e.LastAccessedAt ?? e.EnrolledAt)
+                        : query.OrderBy(e => e.LastAccessedAt ?? e.EnrolledAt)
+                };
+
+                var enrollments = await query
+                    .Skip((request.Page - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToListAsync();
+
+                var responses = new List<EnrolledCourseOverviewResponse>();
+
+                foreach (var enrollment in enrollments)
+                {
+                    var course = enrollment.Course;
+                    var teacher = course.Teacher;
+
+                    var response = new EnrolledCourseOverviewResponse
+                    {
+                        EnrollmentId = enrollment.EnrollmentID,
+                        CourseId = course.CourseID,
+                        CourseTitle = course.Title,
+                        CourseImage = course.ImageUrl ?? "/images/default-course.jpg",
+                        Language = course.Language?.LanguageName ?? "Unknown",
+                        Level = course.Level?.Name ?? "Beginner",
+                        TeacherName = teacher?.FullName ?? "Unknown Teacher",
+                        TeacherAvatar = teacher?.Avatar ?? "/avatars/default-teacher.jpg",
+                        ProgressPercent = enrollment.ProgressPercent,
+                        Status = enrollment.Status.ToString(),
+                        LastAccessedAt = enrollment.LastAccessedAt?.ToString("dd-MM-yyyy"),
+                        EnrolledAt = enrollment.EnrolledAt.ToString("dd-MM-yyyy"),
+                        TotalLessons = enrollment.TotalLessons,
+                        CompletedLessons = enrollment.CompletedLessons,
+                        TotalUnits = enrollment.TotalUnits,
+                        CompletedUnits = enrollment.CompletedUnits,
+                        CurrentUnit = await GetCurrentUnitName(enrollment.CurrentUnitId),
+                        CurrentLesson = await GetCurrentLessonName(enrollment.CurrentLessonId),
+                        NextLesson = await GetNextLessonName(enrollment),
+                        IsExpired = enrollment.Status == DAL.Type.EnrollmentStatus.Expired,
+                        AccessUntil = await GetAccessUntil(enrollment.EnrollmentID)
+                    };
+
+                    responses.Add(response);
+                }
+                return PagedResponse<IEnumerable<EnrolledCourseOverviewResponse>>.Success(
+                    responses, request.Page, request.PageSize, totalCount, "Enrolled courses retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DEBUG][ERROR]: {ex.Message}");
+                return PagedResponse<IEnumerable<EnrolledCourseOverviewResponse>>.Error($"Error retrieving enrolled courses: {ex.Message}");
+            }
+        }
+        public async Task<BaseResponse<EnrolledCourseDetailResponse>> GetEnrolledCourseDetailAsync(Guid userId, Guid enrollmentId)
+        {
+            try
+            {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null || !user.IsEmailConfirmed || !user.Status)
+                    return BaseResponse<EnrolledCourseDetailResponse>.Fail(new object(), "Access denied", 403);
+
+                var enrollment = await _unitOfWork.Enrollments
+                    .Query()
+                    .Include(e => e.Course)
+                        .ThenInclude(c => c.Teacher)
+                    .Include(e => e.Course)
+                        .ThenInclude(c => c.Language)
+                    .Include(e => e.Course)
+                        .ThenInclude(c => c.Level)
+                    .Include(e => e.UnitProgresses)
+                    .FirstOrDefaultAsync(e => e.EnrollmentID == enrollmentId);
+
+                if (enrollment == null)
+                    return BaseResponse<EnrolledCourseDetailResponse>.Fail(new object(), "Enrollment not found", 404);
+
+                var learner = await _unitOfWork.LearnerLanguages
+                    .Query()
+                    .FirstOrDefaultAsync(l => l.UserId == userId);
+
+                if (learner == null || enrollment.LearnerId != learner.LearnerLanguageId)
+                    return BaseResponse<EnrolledCourseDetailResponse>.Fail(new object(), "Access denied", 403);
+
+                var course = enrollment.Course;
+                var teacher = course.Teacher;
+
+                var response = new EnrolledCourseDetailResponse
+                {
+                    EnrollmentId = enrollmentId,
+                    Course = new CourseDetailDto
+                    {
+                        CourseId = course.CourseID,
+                        Title = course.Title,
+                        Description = course.Description,
+                        Image = course.ImageUrl ?? "/images/default-course.jpg",
+                        Language = course.Language?.LanguageName ?? "Unknown",
+                        Level = course.Level.Name ?? "Beginner",
+                        Duration = $"{course.DurationDays} days",
+                        TotalUnits = enrollment.TotalUnits,
+                        TotalLessons = enrollment.TotalLessons,
+                        TotalExercises = await GetTotalExercises(course.CourseID),
+                        Teacher = new TeacherInfoDto
+                        {
+                            TeacherId = teacher?.TeacherId ?? Guid.Empty,
+                            Name = teacher?.FullName ?? "Unknown Teacher",
+                            Avatar = teacher?.Avatar ?? "/avatars/default-teacher.jpg",
+                            Rating = teacher.AverageRating,
+                            TotalStudents = await GetTeacherStudentCount(teacher.TeacherId)
+                        },
+                        Objective = course.LearningOutcome,
+                    },
+                    Progress = new ProgressDetailDto
+                    {
+                        OverallPercent = enrollment.ProgressPercent,
+                        TotalTimeSpent = FormatTotalTime(enrollment.TotalTimeSpent),
+                        LastAccessed = enrollment.LastAccessedAt?.ToString("dd-MM-yyyy HH:mm"),
+                        CompletedUnits = enrollment.CompletedUnits,
+                        CompletedLessons = enrollment.CompletedLessons,
+                        CurrentUnit = await GetCurrentUnitDetail(enrollment.CurrentUnitId),
+                        CurrentLesson = await GetCurrentLessonDetail(enrollment.CurrentLessonId),
+                        UpcomingLesson = await GetUpcomingLesson(enrollment)
+                    },
+                    RecentActivities = await GetRecentActivities(enrollmentId)
+                };
+
+                return BaseResponse<EnrolledCourseDetailResponse>.Success(response, "Course detail retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<EnrolledCourseDetailResponse>.Error($"Error retrieving course detail: {ex.Message}");
+            }
+        }
+        public async Task<BaseResponse<EnrolledCourseCurriculumResponse>> GetEnrolledCourseCurriculumAsync(Guid userId, Guid enrollmentId)
+        {
+            try
+            {
+                var enrollment = await _unitOfWork.Enrollments
+                    .Query()
+                    .Include(e => e.Course)
+                    .FirstOrDefaultAsync(e => e.EnrollmentID == enrollmentId);
+
+                if (enrollment == null)
+                    return BaseResponse<EnrolledCourseCurriculumResponse>.Fail(new object(), "Enrollment not found", 404);
+
+                var learner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId);
+
+                if (learner == null || enrollment.LearnerId != learner.LearnerLanguageId)
+                    return BaseResponse<EnrolledCourseCurriculumResponse>.Fail(new object(), "Access denied", 403);
+
+                var units = await _unitOfWork.CourseUnits
+                    .Query()
+                    .Where(u => u.CourseID == enrollment.CourseId)
+                    .OrderBy(u => u.Position)
+                    .Include(u => u.Lessons)
+                    .ThenInclude(l => l.Exercises)
+                    .ToListAsync();
+
+                var unitProgresses = await _unitOfWork.UnitProgresses
+                    .Query()
+                    .Where(up => up.EnrollmentId == enrollmentId)
+                    .ToListAsync();
+
+                var lessonProgresses = await _unitOfWork.LessonProgresses
+                    .Query()
+                    .Where(lp => lp.UnitProgress.EnrollmentId == enrollmentId)
+                    .Include(lp => lp.ExerciseSubmissions)
+                    .ToListAsync();
+
+                var curriculumUnits = new List<CurriculumUnitDto>();
+
+                foreach (var unit in units)
+                {
+                    var unitProgress = unitProgresses.FirstOrDefault(up => up.CourseUnitId == unit.CourseUnitID);
+                    var unitLessons = unit.Lessons.OrderBy(l => l.Position).ToList();
+
+                    var curriculumLessons = new List<CurriculumLessonDto>();
+
+                    foreach (var lesson in unitLessons)
+                    {
+                        var lessonProgress = lessonProgresses.FirstOrDefault(lp => lp.LessonId == lesson.LessonID);
+                        var exerciseSubmissions = lessonProgress?.ExerciseSubmissions ?? new List<ExerciseSubmission>();
+                        var hasPassedExercise = exerciseSubmissions.Any(es => es.IsPassed == true);
+
+                        curriculumLessons.Add(new CurriculumLessonDto
+                        {
+                            LessonId = lesson.LessonID,
+                            Title = lesson.Title,
+                            Order = lesson.Position,
+                            ProgressPercent = lessonProgress?.ProgressPercent ?? 0,
+                            Status = lessonProgress?.Status.ToString() ?? "NotStarted",
+                            HasContent = !string.IsNullOrEmpty(lesson.Content),
+                            HasVideo = !string.IsNullOrEmpty(lesson.VideoUrl),
+                            HasDocument = !string.IsNullOrEmpty(lesson.DocumentUrl),
+                            HasExercise = lesson.Exercises.Any()
+                        });
+                    }
+
+                    curriculumUnits.Add(new CurriculumUnitDto
+                    {
+                        UnitId = unit.CourseUnitID,
+                        Title = unit.Title,
+                        Order = unit.Position,
+                        ProgressPercent = unitProgress?.ProgressPercent ?? 0,
+                        Status = unitProgress?.Status.ToString() ?? "NotStarted",
+                        CompletedAt = unitProgress?.CompletedAt?.ToString("dd-MM-yyyy HH:mm"),
+                        Lessons = curriculumLessons
+                    });
+                }
+
+                var response = new EnrolledCourseCurriculumResponse
+                {
+                    EnrollmentId = enrollmentId,
+                    CourseTitle = enrollment.Course.Title,
+                    Units = curriculumUnits
+                };
+
+                return BaseResponse<EnrolledCourseCurriculumResponse>.Success(response, "Curriculum retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<EnrolledCourseCurriculumResponse>.Error($"Error retrieving curriculum: {ex.Message}");
+            }
+        }
+        public async Task<BaseResponse<List<ContinueLearningResponse>>> GetContinueLearningAsync(Guid userId)
+        {
+            try
+            {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+
+                if (user == null)
+                    return BaseResponse<List<ContinueLearningResponse>>.Fail(new List<ContinueLearningResponse>(), "Access denied", 403);
+
+                var learner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId);
+
+                if (learner == null)
+                    return BaseResponse<List<ContinueLearningResponse>>.Fail(new List<ContinueLearningResponse>(), "Learner not found", 403);
+
+                var enrollments = await _unitOfWork.Enrollments
+                    .Query()
+                    .Where(e => e.LearnerId == learner.LearnerLanguageId &&
+                               e.Status == DAL.Type.EnrollmentStatus.Active &&
+                               e.ProgressPercent < 100 && e.Course.LanguageId == user.ActiveLanguageId)
+                    .Include(e => e.Course)
+                    .OrderByDescending(e => e.LastAccessedAt ?? e.EnrolledAt)
+                    .Take(5)
+                    .ToListAsync();
+
+                var responses = new List<ContinueLearningResponse>();
+
+                foreach (var enrollment in enrollments)
+                {
+                    var continueLesson = await GetContinueLesson(enrollment);
+                    var lastAccessed = FormatTimeAgo(enrollment.LastAccessedAt ?? enrollment.EnrolledAt);
+
+                    responses.Add(new ContinueLearningResponse
+                    {
+                        EnrollmentId = enrollment.EnrollmentID,
+                        CourseId = enrollment.CourseId,
+                        CourseTitle = enrollment.Course.Title,
+                        CourseImage = enrollment.Course.ImageUrl ?? "/images/default-course.jpg",
+                        ProgressPercent = enrollment.ProgressPercent,
+                        ContinueLesson = continueLesson,
+                        LastAccessed = lastAccessed
+                    });
+                }
+
+                return BaseResponse<List<ContinueLearningResponse>>.Success(responses, "Continue learning courses retrieved");
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<List<ContinueLearningResponse>>.Error($"Error retrieving continue learning: {ex.Message}");
+            }
+        }
+        public async Task<BaseResponse<bool>> ResumeCourseAsync(Guid userId, Guid enrollmentId, ResumeCourseRequest request)
+        {
+            try
+            {
+                var enrollment = await _unitOfWork.Enrollments.GetByIdAsync(enrollmentId);
+                if (enrollment == null)
+                    return BaseResponse<bool>.Fail(false, "Enrollment not found", 404);
+
+                var learner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId);
+
+                if (learner == null || enrollment.LearnerId != learner.LearnerLanguageId)
+                    return BaseResponse<bool>.Fail(false, "Access denied", 403);
+
+                enrollment.CurrentUnitId = request.UnitId;
+                enrollment.CurrentLessonId = request.LessonId;
+                enrollment.LastAccessedAt = TimeHelper.GetVietnamTime();
+
+                await _unitOfWork.Enrollments.UpdateAsync(enrollment);
+                await _unitOfWork.SaveChangesAsync();
+
+                return BaseResponse<bool>.Success(true, "Course resumed successfully");
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<bool>.Error($"Error resuming course: {ex.Message}");
+            }
+        }
+        #region
+        private string FormatTotalTime(int totalMinutes)
+        {
+            if (totalMinutes < 60) return $"{totalMinutes} mins";
+            var hours = totalMinutes / 60;
+            var mins = totalMinutes % 60;
+            return mins > 0 ? $"{hours}h {mins}m" : $"{hours}h";
+        }
+        private async Task<CurrentUnitDto?> GetCurrentUnitDetail(Guid? unitId)
+        {
+            if (!unitId.HasValue) return null;
+            var unit = await _unitOfWork.CourseUnits.GetByIdAsync(unitId.Value);
+            if (unit == null) return null;
+
+            return new CurrentUnitDto
+            {
+                UnitId = unit.CourseUnitID,
+                Title = unit.Title,
+                ProgressPercent = 0
+            };
+        }
+        private async Task<CurrentLessonDto?> GetCurrentLessonDetail(Guid? lessonId)
+        {
+            if (!lessonId.HasValue) return null;
+            var lesson = await _unitOfWork.Lessons.GetByIdAsync(lessonId.Value);
+            if (lesson == null) return null;
+
+            return new CurrentLessonDto
+            {
+                LessonId = lesson.LessonID,
+                Title = lesson.Title,
+                ProgressPercent = 0 // Would need to calculate from lesson progress
+            };
+        }
+        private async Task<UpcomingLessonDto?> GetUpcomingLesson(DAL.Models.Enrollment enrollment)
+        {
+            if (!enrollment.CurrentLessonId.HasValue) return null;
+
+            var currentLesson = await _unitOfWork.Lessons.GetByIdAsync(enrollment.CurrentLessonId.Value);
+            if (currentLesson == null) return null;
+
+            var nextLesson = await _unitOfWork.Lessons
+                .Query()
+                .Where(l => l.CourseUnitID == currentLesson.CourseUnitID && l.Position > currentLesson.Position)
+                .OrderBy(l => l.Position)
+                .FirstOrDefaultAsync();
+
+            if (nextLesson == null) return null;
+
+            return new UpcomingLessonDto
+            {
+                LessonId = nextLesson.LessonID,
+                Title = nextLesson.Title
+            };
+        }
+        private async Task<List<RecentActivityDto>> GetRecentActivities(Guid enrollmentId)
+        {
+            var recentLogs = await _unitOfWork.LessonActivityLogs.Query()
+                .Where(lal => lal.LessonProgress.UnitProgress.EnrollmentId == enrollmentId)
+                .OrderByDescending(lal => lal.CreatedAt)
+                .Take(5)
+                .Include(lal => lal.Lesson)
+                .ToListAsync();
+
+            return recentLogs.Select(log => new RecentActivityDto
+            {
+                Type = log.ActivityType.ToString(),
+                Title = $"{log.ActivityType}: {log.Lesson.Title}",
+                Time = FormatTimeAgo(log.CreatedAt)
+            }).ToList();
+        }
+        private string FormatTimeAgo(DateTime dateTime)
+        {
+            var timeSpan = DateTime.Now - dateTime;
+            if (timeSpan.TotalMinutes < 1) return "Just now";
+            if (timeSpan.TotalMinutes < 60) return $"{(int)timeSpan.TotalMinutes} mins ago";
+            if (timeSpan.TotalHours < 24) return $"{(int)timeSpan.TotalHours} hours ago";
+            if (timeSpan.TotalDays < 7) return $"{(int)timeSpan.TotalDays} days ago";
+            return dateTime.ToString("MMM dd, yyyy");
+        }
+        private async Task<int> GetTeacherStudentCount(Guid? teacherId)
+        {
+            if (!teacherId.HasValue) return 0;
+            return await _unitOfWork.Enrollments
+                .Query()
+                .CountAsync(e => e.Course.TeacherId == teacherId.Value);
+        }
+        private async Task<int> GetTotalExercises(Guid courseId)
+        {
+            return await _unitOfWork.Exercises
+                .Query()
+                .CountAsync(e => e.Lesson.CourseUnit.CourseID == courseId);
+        }
+        private async Task<string> GetCurrentUnitName(Guid? unitId)
+        {
+            if (!unitId.HasValue) return null;
+            var unit = await _unitOfWork.CourseUnits.GetByIdAsync(unitId.Value);
+            return unit?.Title ?? "Untitled unit";
+        }
+        private async Task<string> GetCurrentLessonName(Guid? lessonId)
+        {
+            if (!lessonId.HasValue) return null;
+            var lesson = await _unitOfWork.Lessons.GetByIdAsync(lessonId.Value);
+            return lesson?.Title ?? "Untitled lesson";
+        }
+        private async Task<string> GetNextLessonName(DAL.Models.Enrollment enrollment)
+        {
+            if (!enrollment.CurrentLessonId.HasValue) return null;
+
+            var currentLesson = await _unitOfWork.Lessons.GetByIdAsync(enrollment.CurrentLessonId.Value);
+            if (currentLesson == null) return null;
+
+            var nextLesson = await _unitOfWork.Lessons
+                .Query()
+                .Where(l => l.CourseUnitID == currentLesson.CourseUnitID && l.Position > currentLesson.Position)
+                .OrderBy(l => l.Position)
+                .FirstOrDefaultAsync();
+
+            return nextLesson?.Title ?? "Untitled lesson";
+        }
+        private async Task<string?> GetAccessUntil(Guid enrollmentId)
+        {
+            var purchase = await _unitOfWork.Purchases.Query()
+                .FirstOrDefaultAsync(p => p.EnrollmentId == enrollmentId && p.Status == PurchaseStatus.Completed);
+            return purchase?.ExpiresAt?.ToString("dd-MM-yyyy");
+        }
+        private async Task<ContinueLessonDto?> GetContinueLesson(DAL.Models.Enrollment enrollment)
+        {
+            if (!enrollment.CurrentLessonId.HasValue) return null;
+
+            var lesson = await _unitOfWork.Lessons.GetByIdAsync(enrollment.CurrentLessonId.Value);
+            if (lesson == null) return null;
+
+            var lessonProgress = await _unitOfWork.LessonProgresses.FindAsync(lp => lp.LessonId == enrollment.CurrentLessonId &&
+                                         lp.UnitProgress.EnrollmentId == enrollment.EnrollmentID);
+
+            var remainingPercent = 100 - (lessonProgress?.ProgressPercent ?? 0);
+
+            return new ContinueLessonDto
+            {
+                LessonId = lesson.LessonID,
+                Title = lesson.Title,
+            };
+        }
+        #endregion
     }
 }
