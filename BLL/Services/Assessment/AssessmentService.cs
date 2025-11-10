@@ -5,6 +5,7 @@ using BLL.Services.AI;
 using Common.DTO.Assessment.Response;
 using Common.DTO.ExerciseGrading.Request;
 using Common.DTO.ExerciseGrading.Response;
+using DAL.Type;
 using DAL.UnitOfWork;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -48,23 +49,36 @@ namespace BLL.Services.Assessment
                 if (exercise == null)
                     return CreateDefaultAssessmentResult();
 
-                string[] imageUrls = ExtractImageUrls(exercise.MediaUrl);
-                var imageResponse = await DescribeImagesByAzureAsync(imageUrls);
+                string? mediaContext = "";
+                string? mediaType = "";
+
+                if (exercise.Type == SpeakingExerciseType.PictureDescription && !string.IsNullOrEmpty(exercise.MediaUrl))
+                {
+                    string[] imageUrls = ExtractImageUrls(exercise.MediaUrl);
+                    var imageResponse = await DescribeImagesByAzureAsync(imageUrls);
+                    mediaContext = imageResponse.IsSuccess ? imageResponse.Content : "No image description available";
+                    mediaType = "image_description";
+                }
+                else if (exercise.Type == SpeakingExerciseType.RepeatAfterMe && !string.IsNullOrEmpty(exercise.MediaUrl))
+                {
+                    var audioResponse = await TranscribeSpeechByGeminiAsync(exercise.MediaUrl);
+                    mediaContext = audioResponse.IsSuccess ? audioResponse.Content : "No reference audio available";
+                    mediaType = "reference_audio";
+                }
+                else
+                {
+                    mediaContext = "No media reference provided";
+                    mediaType = "none";
+                }
 
                 var studentTranscript = await TranscribeSpeechByGeminiAsync(req.Audio);
 
                 string template = req.LanguageCode switch
                 {
-                    "ja" => "Language: ja\r\nExerciseType: {exerciseType}\r\nExercise: {exerciseText}\r\nImage-extracted text: {visionExtract}\r\n\r\nStudent transcript: {transcript}\r\n\r\n日本語のスピーキングの採点を行ってください。発音・流暢さ・一貫性（まとまり）・課題への正確さ・イントネーション・文法・語彙を評価し、CEFRに基づき総合レベルを決定してください。結果は必ずJSONのみで返してください（英語か日本語でもOK）。\r\nSame JSON fields as English.\r\n",
-                    "zh" => "Language: zh\r\nExercise: {exerciseType}\r\nExercise: {exerciseText}\r\nImage-extracted text: {visionExtract}\r\n\r\nStudent transcript: {transcript}\r\n\r\n请对中文口语做评分：发音、流利度、连贯性、作答的准确性、语调、语法、词汇，按 CEFR 判定水平并给出反馈。只返回 JSON。\r\nSame JSON fields as English.\r\n",
-                    _ => "Language: en\r\nExerciseType: {exerciseType}\r\nExercise: {exerciseText}\r\nImage-extracted text: {visionExtract}\r\n\r\nStudent transcript: {transcript}\r\n\r\nYou are grading an English speaking response. Evaluate pronunciation, fluency, coherence (logical structure & relevance), task accuracy (did they satisfy the exercise requirements), intonation (prosody), grammar accuracy and vocabulary richness. Use CEFR scale for overall level.\r\n\r\nReturn ONLY valid JSON:\r\n{\r\n  \"pronunciation\": 0,\r\n  \"fluency\": 0,\r\n  \"coherence\": 0,\r\n  \"accuracy\": 0,\r\n  \"intonation\": 0,\r\n  \"grammar\": 0,\r\n  \"vocabulary\": 0,\r\n  \"cefr_level\": \"A1\",\r\n  \"overall\": 0,\r\n  \"feedback\": \"...\",\r\n  \"transcript\": \"...\"\r\n}\r\n"
+                    "ja" => GenerateJapanesePrompt(exercise, mediaContext, mediaType, studentTranscript),
+                    "zh" => GenerateChinesePrompt(exercise, mediaContext, mediaType, studentTranscript),
+                    _ => GenerateEnglishPrompt(exercise, mediaContext, mediaType, studentTranscript)
                 };
-
-                string userPrompt = template
-                    .Replace("{exerciseType}", exercise.Type.ToString())
-                    .Replace("{exerciseText}", exercise.Title + " " + exercise.Content ?? "")
-                    .Replace("{visionExtract}", (imageResponse.IsSuccess) ? imageResponse.Content : "Invalid response")
-                    .Replace("{transcript}", (studentTranscript.IsSuccess) ? studentTranscript.Content : "Invalid response");
 
                 string deploymentName = _configuration["AzureOpenAISettings:ChatDeployment"];
                 string endpoint = _configuration["AzureOpenAISettings:Endpoint"];
@@ -72,10 +86,10 @@ namespace BLL.Services.Assessment
 
                 AzureOpenAIClient openAIClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(key));
                 var chatClient = openAIClient.GetChatClient(deploymentName);
-                var textPart = ChatMessageContentPart.CreateTextPart(userPrompt);
+                var textPart = ChatMessageContentPart.CreateTextPart(template);
                 var chatMessages = new List<ChatMessage>
                     {
-                        new SystemChatMessage(MULTILINGUAL_SCORING_SYSTEM_PROMPT + template),
+                        new SystemChatMessage(MULTILINGUAL_SCORING_SYSTEM_PROMPT),
                         new UserChatMessage(textPart)
                     };
                 ChatCompletion chatCompletion = await chatClient.CompleteChatAsync(chatMessages);
@@ -505,6 +519,210 @@ namespace BLL.Services.Assessment
         private string[] ExtractImageUrls(string input)
         {
             return input.Split(';', StringSplitOptions.RemoveEmptyEntries);
+        }
+        private string GetEnglishExerciseType(SpeakingExerciseType type)
+        {
+            return type switch
+            {
+                SpeakingExerciseType.RepeatAfterMe => "repeat-after-me",
+                SpeakingExerciseType.PictureDescription => "picture description",
+                SpeakingExerciseType.StoryTelling => "story telling",
+                SpeakingExerciseType.Debate => "debate",
+                _ => "speaking"
+            };
+        }
+        private string GetJapaneseExerciseType(SpeakingExerciseType type)
+        {
+            return type switch
+            {
+                SpeakingExerciseType.RepeatAfterMe => "リピートアフターミー",
+                SpeakingExerciseType.PictureDescription => "絵の描写",
+                SpeakingExerciseType.StoryTelling => "ストーリーテリング",
+                SpeakingExerciseType.Debate => "ディベート",
+                _ => "スピーキング"
+            };
+        }
+        private string GetChineseExerciseType(SpeakingExerciseType type)
+        {
+            return type switch
+            {
+                SpeakingExerciseType.RepeatAfterMe => "跟读练习",
+                SpeakingExerciseType.PictureDescription => "图片描述",
+                SpeakingExerciseType.StoryTelling => "故事讲述",
+                SpeakingExerciseType.Debate => "辩论",
+                _ => "口语练习"
+            };
+        }
+        private string GenerateEnglishPrompt(DAL.Models.Exercise exercise, string? mediaContext, string? mediaType, CommonResponse studentTranscript)
+        {
+            var basePrompt = new StringBuilder();
+            basePrompt.AppendLine($"Language: en");
+            basePrompt.AppendLine($"ExerciseType: {exercise.Type.ToString()}");
+            basePrompt.AppendLine($"Exercise: {exercise.Title} {exercise.Content ?? ""}");
+
+            if (mediaType == "image_description")
+            {
+                basePrompt.AppendLine($"Image description: {mediaContext}");
+            }
+            else if (mediaType == "reference_audio")
+            {
+                basePrompt.AppendLine($"Reference audio transcript: {mediaContext}");
+            }
+
+            basePrompt.AppendLine($"Student transcript: {(studentTranscript.IsSuccess ? studentTranscript.Content : "Invalid response")}");
+            basePrompt.AppendLine();
+
+            basePrompt.Append($"You are grading an English {GetEnglishExerciseType(exercise.Type)} speaking response. ");
+
+            switch (exercise.Type)
+            {
+                case SpeakingExerciseType.RepeatAfterMe:
+                    basePrompt.AppendLine("Focus on pronunciation accuracy, intonation matching, and how closely the student's speech matches the reference audio. Evaluate rhythm, stress patterns, and phonetic accuracy.");
+                    break;
+                case SpeakingExerciseType.PictureDescription:
+                    basePrompt.AppendLine("Evaluate how accurately and comprehensively the student describes the image. Assess vocabulary usage for visual elements, logical structure of description, and relevance to the image content.");
+                    break;
+                case SpeakingExerciseType.StoryTelling:
+                    basePrompt.AppendLine("Assess narrative structure, creativity, coherence, use of tenses, character development, and overall engagement in the storytelling.");
+                    break;
+                case SpeakingExerciseType.Debate:
+                    basePrompt.AppendLine("Evaluate argument structure, persuasiveness, counter-argument handling, logical reasoning, rhetorical skills, and ability to present a coherent position.");
+                    break;
+            }
+
+            basePrompt.AppendLine(@"
+                    Evaluate pronunciation, fluency, coherence (logical structure & relevance), task accuracy (did they satisfy the exercise requirements), intonation (prosody), grammar accuracy and vocabulary richness. Use CEFR scale for overall level.
+
+                    Return ONLY valid JSON:
+                    {
+                      ""pronunciation"": 0,
+                      ""fluency"": 0,
+                      ""coherence"": 0,
+                      ""accuracy"": 0,
+                      ""intonation"": 0,
+                      ""grammar"": 0,
+                      ""vocabulary"": 0,
+                      ""cefr_level"": ""A1"",
+                      ""overall"": 0,
+                      ""feedback"": ""..."",
+                      ""transcript"": ""...""
+                    }");
+
+            return basePrompt.ToString();
+        }
+        private string GenerateJapanesePrompt(DAL.Models.Exercise exercise, string? mediaContext, string? mediaType, CommonResponse studentTranscript)
+        {
+            var basePrompt = new StringBuilder();
+            basePrompt.AppendLine($"Language: ja");
+            basePrompt.AppendLine($"ExerciseType: {exercise.Type.ToString()}");
+            basePrompt.AppendLine($"Exercise: {exercise.Title} {exercise.Content ?? ""}");
+
+            if (mediaType == "image_description")
+            {
+                basePrompt.AppendLine($"画像の説明: {mediaContext}");
+            }
+            else if (mediaType == "reference_audio")
+            {
+                basePrompt.AppendLine($"参考音声の書き起こし: {mediaContext}");
+            }
+
+            basePrompt.AppendLine($"学生の回答: {(studentTranscript.IsSuccess ? studentTranscript.Content : "Invalid response")}");
+            basePrompt.AppendLine();
+
+            basePrompt.AppendLine($"この{GetJapaneseExerciseType(exercise.Type)}の課題を採点してください。");
+
+            switch (exercise.Type)
+            {
+                case SpeakingExerciseType.RepeatAfterMe:
+                    basePrompt.AppendLine("発音の正確さ、イントネーションの一致、参考音声との類似度を重点的に評価してください。リズム、アクセントパターン、音声の正確さを評価します。");
+                    break;
+                case SpeakingExerciseType.PictureDescription:
+                    basePrompt.AppendLine("画像の描写がどれだけ正確かつ包括的であるかを評価してください。視覚的要素への語彙使用、説明の論理的構成、画像内容への関連性を評価します。");
+                    break;
+                case SpeakingExerciseType.StoryTelling:
+                    basePrompt.AppendLine("物語の構成、創造性、一貫性、時制の使用、キャラクター展開、全体的な没入感を評価してください。");
+                    break;
+                case SpeakingExerciseType.Debate:
+                    basePrompt.AppendLine("議論の構成、説得力、反論の扱い、論理的思考、修辞技術、一貫した立場の提示能力を評価してください。");
+                    break;
+            }
+
+            basePrompt.AppendLine(@"
+                                    発音・流暢さ・一貫性（まとまり）・課題への正確さ・イントネーション・文法・語彙を評価し、CEFRに基づき総合レベルを決定してください。
+
+                                    必ずJSONのみを返してください：
+                                    {
+                                      ""pronunciation"": 0,
+                                      ""fluency"": 0,
+                                      ""coherence"": 0,
+                                      ""accuracy"": 0,
+                                      ""intonation"": 0,
+                                      ""grammar"": 0,
+                                      ""vocabulary"": 0,
+                                      ""cefr_level"": ""A1"",
+                                      ""overall"": 0,
+                                      ""feedback"": ""..."",
+                                      ""transcript"": ""...""
+                                    }");
+
+            return basePrompt.ToString();
+        }
+        private string GenerateChinesePrompt(DAL.Models.Exercise exercise, string? mediaContext, string? mediaType, CommonResponse studentTranscript)
+        {
+            var basePrompt = new StringBuilder();
+            basePrompt.AppendLine($"Language: zh");
+            basePrompt.AppendLine($"ExerciseType: {exercise.Type.ToString()}");
+            basePrompt.AppendLine($"Exercise: {exercise.Title} {exercise.Content ?? ""}");
+
+            if (mediaType == "image_description")
+            {
+                basePrompt.AppendLine($"图片描述: {mediaContext}");
+            }
+            else if (mediaType == "reference_audio")
+            {
+                basePrompt.AppendLine($"参考音频转录: {mediaContext}");
+            }
+
+            basePrompt.AppendLine($"学生回答: {(studentTranscript.IsSuccess ? studentTranscript.Content : "Invalid response")}");
+            basePrompt.AppendLine();
+
+            basePrompt.AppendLine($"请对这个{GetChineseExerciseType(exercise.Type)}口语练习做评分：");
+
+            switch (exercise.Type)
+            {
+                case SpeakingExerciseType.RepeatAfterMe:
+                    basePrompt.AppendLine("重点评估发音准确性、语调匹配度以及与参考音频的相似程度。评估节奏、重音模式和语音准确性。");
+                    break;
+                case SpeakingExerciseType.PictureDescription:
+                    basePrompt.AppendLine("评估学生对图片描述的准确性和全面性。评估视觉元素的词汇使用、描述的逻辑结构以及与图片内容的相关性。");
+                    break;
+                case SpeakingExerciseType.StoryTelling:
+                    basePrompt.AppendLine("评估叙事结构、创造性、连贯性、时态使用、角色发展和整体故事吸引力。");
+                    break;
+                case SpeakingExerciseType.Debate:
+                    basePrompt.AppendLine("评估论点结构、说服力、反驳处理、逻辑推理、修辞技巧和提出连贯立场的能力。");
+                    break;
+            }
+
+            basePrompt.AppendLine(@"
+                                    发音、流利度、连贯性、作答的准确性、语调、语法、词汇，按 CEFR 判定水平并给出反馈。
+
+                                    只返回 JSON：
+                                    {
+                                      ""pronunciation"": 0,
+                                      ""fluency"": 0,
+                                      ""coherence"": 0,
+                                      ""accuracy"": 0,
+                                      ""intonation"": 0,
+                                      ""grammar"": 0,
+                                      ""vocabulary"": 0,
+                                      ""cefr_level"": ""A1"",
+                                      ""overall"": 0,
+                                      ""feedback"": ""..."",
+                                      ""transcript"": ""...""
+                                    }");
+
+            return basePrompt.ToString();
         }
         #endregion
     }

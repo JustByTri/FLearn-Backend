@@ -2,6 +2,7 @@
 using BLL.IServices.Upload;
 using Common.DTO.ApiResponse;
 using Common.DTO.ExerciseGrading.Request;
+using Common.DTO.ExerciseSubmission.Response;
 using Common.DTO.ProgressTracking.Request;
 using Common.DTO.ProgressTracking.Response;
 using DAL.Helpers;
@@ -22,6 +23,128 @@ namespace BLL.Services.ProgressTracking
             _unitOfWork = unitOfWork;
             _exerciseGradingService = exerciseGradingService;
             _cloudinaryService = cloudinaryService;
+        }
+        public async Task<BaseResponse<List<ExerciseSubmissionDetailResponse>>> GetMySubmissionsAsync(Guid userId, Guid? courseId, Guid? lessonId, string? status)
+        {
+            try
+            {
+                var learner = await _unitOfWork.LearnerLanguages
+                    .Query()
+                    .FirstOrDefaultAsync(l => l.UserId == userId);
+
+                if (learner == null)
+                    return BaseResponse<List<ExerciseSubmissionDetailResponse>>.Fail(new List<ExerciseSubmissionDetailResponse>(), "Learner not found", 403);
+
+                var query = _unitOfWork.ExerciseSubmissions
+                    .Query()
+                    .Where(es => es.LearnerId == learner.LearnerLanguageId)
+                    .Include(es => es.Exercise)
+                    .ThenInclude(e => e.Lesson)
+                    .ThenInclude(l => l.CourseUnit)
+                    .ThenInclude(u => u.Course)
+                    .Include(es => es.ExerciseGradingAssignments)
+                    .ThenInclude(ega => ega.Teacher)
+                    .ThenInclude(t => t.User)
+                    .AsQueryable();
+
+                if (courseId.HasValue)
+                {
+                    query = query.Where(es => es.Exercise.Lesson.CourseUnit.CourseID == courseId.Value);
+                }
+
+                if (lessonId.HasValue)
+                {
+                    query = query.Where(es => es.Exercise.LessonID == lessonId.Value);
+                }
+
+                if (!string.IsNullOrEmpty(status) && Enum.TryParse<ExerciseSubmissionStatus>(status, out var statusFilter))
+                {
+                    query = query.Where(es => es.Status == statusFilter);
+                }
+
+                var submissions = await query
+                    .OrderByDescending(es => es.SubmittedAt)
+                    .Take(50)
+                    .ToListAsync();
+
+                var responses = submissions.Select(es => MapToDetailResponse(es)).ToList();
+
+                return BaseResponse<List<ExerciseSubmissionDetailResponse>>.Success(responses, "Submissions retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<List<ExerciseSubmissionDetailResponse>>.Error($"Error retrieving submissions: {ex.Message}");
+            }
+        }
+        public async Task<BaseResponse<ExerciseSubmissionDetailResponse>> GetSubmissionDetailAsync(Guid userId, Guid submissionId)
+        {
+            try
+            {
+                var submission = await _unitOfWork.ExerciseSubmissions
+                    .Query()
+                    .Include(es => es.Exercise)
+                    .ThenInclude(e => e.Lesson)
+                    .ThenInclude(l => l.CourseUnit)
+                    .ThenInclude(u => u.Course)
+                    .Include(es => es.ExerciseGradingAssignments)
+                    .ThenInclude(ega => ega.Teacher)
+                    .ThenInclude(t => t.User)
+                    .Include(es => es.LessonProgress)
+                    .FirstOrDefaultAsync(es => es.ExerciseSubmissionId == submissionId);
+
+                if (submission == null)
+                    return BaseResponse<ExerciseSubmissionDetailResponse>.Fail(new ExerciseSubmissionDetailResponse(), "Submission not found", 404);
+
+                var learner = await _unitOfWork.LearnerLanguages
+                    .Query()
+                    .FirstOrDefaultAsync(l => l.LearnerLanguageId == submission.LearnerId);
+
+                if (learner == null || learner.UserId != userId)
+                    return BaseResponse<ExerciseSubmissionDetailResponse>.Fail(new ExerciseSubmissionDetailResponse(), "Access denied", 403);
+
+                var response = MapToDetailResponse(submission);
+
+                return BaseResponse<ExerciseSubmissionDetailResponse>.Success(response, "Submission detail retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<ExerciseSubmissionDetailResponse>.Error($"Error retrieving submission detail: {ex.Message}");
+            }
+        }
+        public async Task<BaseResponse<List<ExerciseSubmissionHistoryResponse>>> GetExerciseSubmissionsHistoryAsync(Guid userId, Guid exerciseId)
+        {
+            try
+            {
+                var learner = await _unitOfWork.LearnerLanguages
+                    .Query()
+                    .FirstOrDefaultAsync(l => l.UserId == userId);
+
+                if (learner == null)
+                    return BaseResponse<List<ExerciseSubmissionHistoryResponse>>.Fail(new List<ExerciseSubmissionHistoryResponse>(), "Learner not found", 403);
+
+                var submissions = await _unitOfWork.ExerciseSubmissions
+                    .Query()
+                    .Where(es => es.LearnerId == learner.LearnerLanguageId && es.ExerciseId == exerciseId)
+                    .OrderByDescending(es => es.SubmittedAt)
+                    .ToListAsync();
+
+                var responses = submissions.Select(es => new ExerciseSubmissionHistoryResponse
+                {
+                    ExerciseSubmissionId = es.ExerciseSubmissionId,
+                    SubmittedAt = es.SubmittedAt.ToString("dd-MM-yyyy HH:mm"),
+                    Status = es.Status.ToString(),
+                    FinalScore = (es.TeacherScore == 0) ? es.AIScore : (es.AIScore + es.TeacherScore) / 2,
+                    IsPassed = es.IsPassed,
+                    AudioUrl = es.AudioUrl,
+                    TeacherFeedback = es.TeacherFeedback
+                }).ToList();
+
+                return BaseResponse<List<ExerciseSubmissionHistoryResponse>>.Success(responses, "Submission history retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<List<ExerciseSubmissionHistoryResponse>>.Error($"Error retrieving submission history: {ex.Message}");
+            }
         }
         public async Task<BaseResponse<ProgressTrackingResponse>> GetCurrentProgressAsync(Guid userId, Guid courseId)
         {
@@ -61,7 +184,6 @@ namespace BLL.Services.ProgressTracking
                 return BaseResponse<ProgressTrackingResponse>.Error($"Error getting progress: {ex.Message}");
             }
         }
-
         public async Task<BaseResponse<ProgressTrackingResponse>> StartLessonAsync(Guid userId, StartLessonRequest request)
         {
             return await _unitOfWork.ExecuteInTransactionAsync(async () =>
@@ -163,7 +285,7 @@ namespace BLL.Services.ProgressTracking
                 ExerciseId = request.ExerciseId,
                 LessonProgressId = lessonProgress.LessonProgressId,
                 AudioUrl = uploadResult.Url,
-                AudioPublicId = uploadResult.Url,
+                AudioPublicId = uploadResult.PublicId,
                 AIFeedback = "Pending AI evaluation",
                 TeacherFeedback = "Pending Teacher evaluation",
                 Status = ExerciseSubmissionStatus.PendingAIReview,
@@ -173,32 +295,37 @@ namespace BLL.Services.ProgressTracking
 
             var course = lessonProgress.UnitProgress?.Enrollment.Course;
 
-            var gradingAssignment = new ExerciseGradingAssignment
+            bool isTeacherRequired = exercise.Type == SpeakingExerciseType.StoryTelling ||
+                       exercise.Type == SpeakingExerciseType.Debate;
+
+            if (isTeacherRequired)
             {
-                GradingAssignmentId = Guid.NewGuid(),
-                ExerciseSubmissionId = submission.ExerciseSubmissionId,
-                AssignedTeacherId = course?.TeacherId,
-                AssignedAt = TimeHelper.GetVietnamTime(),
-                DeadlineAt = TimeHelper.GetVietnamTime().AddDays(2),
-                Status = GradingStatus.Assigned
-            };
-            await _unitOfWork.ExerciseGradingAssignments.CreateAsync(gradingAssignment);
+                var gradingAssignment = new ExerciseGradingAssignment
+                {
+                    GradingAssignmentId = Guid.NewGuid(),
+                    ExerciseSubmissionId = submission.ExerciseSubmissionId,
+                    AssignedTeacherId = course?.TeacherId,
+                    AssignedAt = TimeHelper.GetVietnamTime(),
+                    DeadlineAt = TimeHelper.GetVietnamTime().AddDays(2),
+                    Status = GradingStatus.Assigned
+                };
+                await _unitOfWork.ExerciseGradingAssignments.CreateAsync(gradingAssignment);
+            }
 
-
-            lessonProgress.IsPracticeCompleted = true;
             lessonProgress.LastUpdated = TimeHelper.GetVietnamTime();
             await _unitOfWork.LessonProgresses.UpdateAsync(lessonProgress);
 
             await _unitOfWork.SaveChangesAsync();
 
-            AssessmentRequest assessmentRequest = new();
-            if (course?.GradingType == GradingType.AIOnly ||
-                course?.GradingType == GradingType.AIAndTeacher)
+            if (course?.GradingType == GradingType.AIOnly || course?.GradingType == GradingType.AIAndTeacher)
             {
-                assessmentRequest.ExerciseSubmissionId = submission.ExerciseSubmissionId;
-                assessmentRequest.Audio = request.Audio;
-                assessmentRequest.LanguageCode = course.Language.LanguageCode;
-                assessmentRequest.GradingType = course.GradingType.ToString();
+                AssessmentRequest assessmentRequest = new AssessmentRequest
+                {
+                    ExerciseSubmissionId = submission.ExerciseSubmissionId,
+                    Audio = request.Audio,
+                    LanguageCode = course.Language.LanguageCode,
+                    GradingType = course.GradingType.ToString()
+                };
 
                 await _exerciseGradingService.ProcessAIGradingAsync(assessmentRequest);
             }
@@ -256,6 +383,46 @@ namespace BLL.Services.ProgressTracking
             });
         }
         #region
+        private ExerciseSubmissionDetailResponse MapToDetailResponse(ExerciseSubmission submission)
+        {
+            var exercise = submission.Exercise;
+            var lesson = exercise.Lesson;
+            var unit = lesson.CourseUnit;
+            var course = unit.Course;
+
+            var teacherAssignment = submission.ExerciseGradingAssignments
+                .FirstOrDefault(ega => ega.Status == GradingStatus.Returned);
+
+
+            return new ExerciseSubmissionDetailResponse
+            {
+                ExerciseSubmissionId = submission.ExerciseSubmissionId,
+                ExerciseId = exercise.ExerciseID,
+                ExerciseTitle = exercise.Title,
+                ExerciseDescription = exercise.Content,
+                ExerciseType = exercise.Type.ToString(),
+                PassScore = exercise.PassScore,
+                AudioUrl = submission.AudioUrl,
+                SubmittedAt = submission.SubmittedAt.ToString("dd-MM-yyyy HH:mm"),
+                Status = submission.Status.ToString(),
+                AIScore = submission.AIScore,
+                AIFeedback = submission.AIFeedback,
+                TeacherScore = submission.TeacherScore,
+                TeacherFeedback = submission.TeacherFeedback,
+                FinalScore = (submission.TeacherScore == 0) ? submission.AIScore : (submission.AIScore + submission.TeacherScore) / 2,
+                IsPassed = submission.IsPassed,
+                ReviewedAt = submission.ReviewedAt?.ToString("dd-MM-yyyy HH:mm"),
+                LessonId = lesson.LessonID,
+                LessonTitle = lesson.Title,
+                UnitId = unit.CourseUnitID,
+                UnitTitle = unit.Title,
+                CourseId = course.CourseID,
+                CourseTitle = course.Title,
+                TeacherId = teacherAssignment?.AssignedTeacherId,
+                TeacherName = teacherAssignment?.Teacher?.FullName,
+                TeacherAvatar = teacherAssignment?.Teacher?.Avatar,
+            };
+        }
         private async Task UpdateLessonProgress(LessonProgress lessonProgress, LessonLogType lessonLogType, double durationMinutes)
         {
             var lesson = await _unitOfWork.Lessons.GetByIdAsync(lessonProgress.LessonId);
@@ -309,7 +476,6 @@ namespace BLL.Services.ProgressTracking
                 }
             }
 
-            // Exercise is mandatory (30% if exists)
             var exercises = await _unitOfWork.Exercises
                 .Query()
                 .Where(e => e.LessonID == lessonProgress.LessonId)
@@ -321,7 +487,7 @@ namespace BLL.Services.ProgressTracking
                 var completedExercises = await _unitOfWork.ExerciseSubmissions
                     .Query()
                     .Where(es => es.LessonProgressId == lessonProgress.LessonProgressId &&
-                                es.IsPassed == true)
+                                es.Status == ExerciseSubmissionStatus.Passed)
                     .CountAsync();
 
                 if (completedExercises == exercises.Count)
