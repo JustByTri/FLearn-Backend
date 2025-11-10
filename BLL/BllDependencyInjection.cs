@@ -119,8 +119,9 @@ namespace BLL
             services.AddScoped<ICloudinaryService, CloudinaryService>();
 
             services.AddHttpClient<IGeminiService, AzureOpenAIService>();
-            services.AddHttpClient<ITranscriptionService, AzureOpenAITranscriptionService>();
-            services.AddScoped<ITranscriptionService, AzureSpeechTranscriptionService>();
+            services.AddHttpClient<AzureOpenAITranscriptionService>();
+            services.AddScoped<AzureSpeechTranscriptionService>();
+            services.AddScoped<ITranscriptionService, CompositeTranscriptionService>();
             services.AddScoped<IPronunciationAssessmentService, AzureSpeechPronunciationAssessmentService>();
 
             // ensure VoiceAssessmentService gets STT
