@@ -35,5 +35,6 @@ namespace DAL.Basic
         IQueryable<T> GetQuery();
         Task DeleteAsync(Guid id);
         Task<IEnumerable<T>> GetByConditionAsync(Expression<Func<T, bool>> expression);
+        Task AddAsync(T entity);
     }
 }
