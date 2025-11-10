@@ -71,5 +71,28 @@ namespace BLL.IServices.Auth
          string userName,
             string className,
       string rejectionReason);
+
+    // ================== PAYOUT REQUEST EMAILS ==================
+  
+      /// <summary>
+     /// Gửi email thông báo yêu cầu rút tiền đã được duyệt
+        /// </summary>
+     Task<bool> SendPayoutRequestApprovedAsync(
+  string toEmail,
+          string teacherName,
+decimal amount,
+         string bankName,
+       string accountNumber,
+     string? transactionRef = null,
+            string? adminNote = null);
+
+        /// <summary>
+        /// Gửi email thông báo yêu cầu rút tiền bị từ chối
+      /// </summary>
+        Task<bool> SendPayoutRequestRejectedAsync(
+   string toEmail,
+     string teacherName,
+            decimal amount,
+            string rejectionReason);
     }
 }

@@ -178,9 +178,13 @@ namespace DAL.Basic
         public async Task<IEnumerable<T>> GetByConditionAsync(Expression<Func<T, bool>> expression)
         {
             return await _dbSet
-                .AsNoTracking() 
-                .Where(expression) 
+          
+                .Where(expression)
                 .ToListAsync();
+        }
+        public async Task AddAsync(T entity)
+        {
+            await _dbSet.AddAsync(entity);
         }
     }
 }
