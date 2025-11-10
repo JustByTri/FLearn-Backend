@@ -159,16 +159,24 @@ namespace BLL.Services.ProgressTracking
                 submission.AIFeedback = aiEvaluation.Feedback;
                 submission.Status = ExerciseSubmissionStatus.AIGraded;
 
+                bool isAutoPassExercise = exercise.Type == SpeakingExerciseType.RepeatAfterMe ||
+                         exercise.Type == SpeakingExerciseType.PictureDescription;
+
+                bool isTeacherRequiredExercise = exercise.Type == SpeakingExerciseType.StoryTelling ||
+                                exercise.Type == SpeakingExerciseType.Debate;
+
                 if (submission.AIScore >= exercise.PassScore)
                 {
                     submission.IsPassed = true;
 
-                    if (request.GradingType == GradingType.AIOnly.ToString())
+                    if (isAutoPassExercise)
                     {
                         submission.Status = ExerciseSubmissionStatus.Passed;
                         submission.ReviewedAt = TimeHelper.GetVietnamTime();
+
+                        await UpdateLessonProgressAfterGrading(submission);
                     }
-                    else if (request.GradingType == GradingType.AIAndTeacher.ToString())
+                    else if (isTeacherRequiredExercise && request.GradingType == GradingType.AIAndTeacher.ToString())
                     {
                         submission.Status = ExerciseSubmissionStatus.PendingTeacherReview;
                     }
@@ -176,10 +184,20 @@ namespace BLL.Services.ProgressTracking
                 else
                 {
                     submission.IsPassed = false;
-                    if (request.GradingType == GradingType.AIOnly.ToString())
+
+                    if (isAutoPassExercise || request.GradingType == GradingType.AIOnly.ToString())
                     {
                         submission.Status = ExerciseSubmissionStatus.Failed;
                         submission.ReviewedAt = TimeHelper.GetVietnamTime();
+
+                        if (isAutoPassExercise)
+                        {
+                            await UpdateLessonProgressAfterGrading(submission);
+                        }
+                    }
+                    else if (isTeacherRequiredExercise && request.GradingType == GradingType.AIAndTeacher.ToString())
+                    {
+                        submission.Status = ExerciseSubmissionStatus.PendingTeacherReview;
                     }
                 }
 
@@ -300,7 +318,7 @@ namespace BLL.Services.ProgressTracking
             if (lessonProgress != null && lessonProgress.Lesson != null)
             {
                 var passedExercises = lessonProgress.ExerciseSubmissions
-                    .Count(es => es.IsPassed == true);
+                    .Count(es => es.Status == ExerciseSubmissionStatus.Passed);
 
                 var totalExercises = lessonProgress.Lesson.Exercises.Count;
 

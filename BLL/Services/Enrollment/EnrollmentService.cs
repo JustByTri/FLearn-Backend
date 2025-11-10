@@ -60,14 +60,17 @@ namespace BLL.Services.Enrollment
                             return BaseResponse<EnrollmentResponse>.Fail(new object(), "Course not purchased", 403);
                     }
 
-                    var existingEnrollment = await _unitOfWork.Enrollments.Query()
-                        .FirstOrDefaultAsync(e => e.CourseId == request.CourseId && e.LearnerId == learner.LearnerLanguageId);
+                    var response = await _purchaseService.CheckCourseAccessAsync(userId, course.CourseID);
 
+                    if (response != null && !response.Data.HasAccess)
+                    {
+                        return BaseResponse<EnrollmentResponse>.Fail(new object(), "Your access to this course has expired", 410);
+                    }
+
+                    var existingEnrollment = await _unitOfWork.Enrollments.FindAsync(e => e.CourseId == request.CourseId && e.LearnerId == learner.LearnerLanguageId);
 
                     if (existingEnrollment != null)
                         return BaseResponse<EnrollmentResponse>.Fail(new object(), "You are already enrolled in this course.", 400);
-
-                    var response = await _purchaseService.CheckCourseAccessAsync(userId, course.CourseID);
 
                     var enrollment = new DAL.Models.Enrollment
                     {
@@ -82,7 +85,7 @@ namespace BLL.Services.Enrollment
                     await _unitOfWork.Enrollments.CreateAsync(enrollment);
 
                     Purchase purchase = null;
-                    if (response.Data != null && response.Data.PurchaseId != null)
+                    if (response != null && response.Data.PurchaseId != null)
                     {
                         purchase = await _unitOfWork.Purchases.GetByIdAsync((Guid)response.Data.PurchaseId);
                         if (purchase != null)
@@ -100,8 +103,8 @@ namespace BLL.Services.Enrollment
                         EnrollmentId = enrollment.EnrollmentID,
                         CourseId = course.CourseID,
                         CourseType = course.CourseType.ToString(),
-                        AccessUntil = response.Data?.ExpiresAt,
-                        EligibleForRefundUntil = response.Data?.RefundEligibleUntil,
+                        AccessUntil = response?.Data?.ExpiresAt,
+                        EligibleForRefundUntil = response?.Data?.RefundEligibleUntil,
                         CourseTitle = course.Title,
                         PricePaid = purchase?.FinalAmount ?? 0,
                         Status = enrollment.Status.ToString(),
