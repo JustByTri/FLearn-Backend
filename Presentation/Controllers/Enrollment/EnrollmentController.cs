@@ -110,5 +110,100 @@ namespace Presentation.Controllers.Enrollment
             var result = await _purchaseService.CheckCourseAccessAsync(userId, courseId);
             return StatusCode(result.Code, result);
         }
+        [Authorize(Roles = "Learner")]
+        [HttpGet("my-courses")]
+        public async Task<IActionResult> GetMyEnrolledCourses([FromQuery] PagingRequest request)
+        {
+            var userIdClaim = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized("Teacher ID not found in token.");
+            }
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return BadRequest("Invalid user ID format in token.");
+            }
+
+            var result = await _enrollmentService.GetEnrolledCoursesOverviewAsync(userId, request);
+            return StatusCode(result.Code, result);
+        }
+        [Authorize(Roles = "Learner")]
+        [HttpGet("{enrollmentId:guid}/details")]
+        public async Task<IActionResult> GetEnrolledCourseDetails(Guid enrollmentId)
+        {
+            var userIdClaim = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized("Teacher ID not found in token.");
+            }
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return BadRequest("Invalid user ID format in token.");
+            }
+
+            var result = await _enrollmentService.GetEnrolledCourseDetailAsync(userId, enrollmentId);
+            return StatusCode(result.Code, result);
+        }
+        [Authorize(Roles = "Learner")]
+        [HttpGet("{enrollmentId:guid}/curriculums")]
+        public async Task<IActionResult> GetEnrolledCourseCurriculum(Guid enrollmentId)
+        {
+            var userIdClaim = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized("Teacher ID not found in token.");
+            }
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return BadRequest("Invalid user ID format in token.");
+            }
+
+            var result = await _enrollmentService.GetEnrolledCourseCurriculumAsync(userId, enrollmentId);
+            return StatusCode(result.Code, result);
+        }
+        [Authorize(Roles = "Learner")]
+        [HttpGet("continue-learning")]
+        public async Task<IActionResult> GetContinueLearning()
+        {
+            var userIdClaim = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized("Teacher ID not found in token.");
+            }
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return BadRequest("Invalid user ID format in token.");
+            }
+
+            var result = await _enrollmentService.GetContinueLearningAsync(userId);
+            return StatusCode(result.Code, result);
+        }
+        [Authorize(Roles = "Learner")]
+        [HttpPost("{enrollmentId:guid}/resume")]
+        public async Task<IActionResult> ResumeCourseBySpecificLesson(Guid enrollmentId, [FromBody] ResumeCourseRequest request)
+        {
+            var userIdClaim = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized("Teacher ID not found in token.");
+            }
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return BadRequest("Invalid user ID format in token.");
+            }
+
+            var result = await _enrollmentService.ResumeCourseAsync(userId, enrollmentId, request);
+            return StatusCode(result.Code, result);
+        }
     }
 }
