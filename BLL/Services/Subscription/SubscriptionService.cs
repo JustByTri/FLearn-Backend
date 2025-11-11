@@ -6,6 +6,7 @@ using Common.DTO.Payment;
 using DAL.Models;
 using DAL.UnitOfWork;
 using Microsoft.Extensions.Logging;
+using DAL.Helpers;
 
 namespace BLL.Services.Subscription
 {
@@ -39,7 +40,7 @@ namespace BLL.Services.Subscription
                 ConversationQuota = quota,
                 IsActive = false,
                 Price = price,
-                StartDate = DateTime.UtcNow,
+                StartDate = TimeHelper.GetVietnamTime(),
                 EndDate = null
             };
             await _unit.UserSubscriptions.CreateAsync(sub);
@@ -57,7 +58,7 @@ namespace BLL.Services.Subscription
                 Status = DAL.Type.PurchaseStatus.Pending,
                 PaymentMethod = DAL.Type.PaymentMethod.PayOS,
                 CurrencyType = DAL.Type.CurrencyType.VND,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = TimeHelper.GetVietnamTime()
             };
             await _unit.Purchases.CreateAsync(purchase);
             await _unit.SaveChangesAsync();
@@ -87,7 +88,7 @@ namespace BLL.Services.Subscription
                 PaymentMethod = DAL.Type.PaymentMethod.PayOS,
                 CurrencyType = DAL.Type.CurrencyType.VND,
                 Status = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = TimeHelper.GetVietnamTime()
             };
             await _unit.PaymentTransactions.CreateAsync(tx);
             await _unit.SaveChangesAsync();
@@ -114,7 +115,7 @@ namespace BLL.Services.Subscription
                 if (callback.Status.Equals("PAID", StringComparison.OrdinalIgnoreCase))
                 {
                     tx.TransactionStatus = DAL.Type.TransactionStatus.Succeeded;
-                    tx.CompletedAt = DateTime.UtcNow;
+                    tx.CompletedAt = TimeHelper.GetVietnamTime();
                     await _unit.PaymentTransactions.UpdateAsync(tx);
 
                     // Mark purchase completed if exists
@@ -124,7 +125,7 @@ namespace BLL.Services.Subscription
                         if (purchase != null)
                         {
                             purchase.Status = DAL.Type.PurchaseStatus.Completed;
-                            purchase.PaidAt = DateTime.UtcNow;
+                            purchase.PaidAt = TimeHelper.GetVietnamTime();
                             await _unit.Purchases.UpdateAsync(purchase);
                         }
                     }
@@ -136,8 +137,8 @@ namespace BLL.Services.Subscription
                         {
                             // Activate the new subscription
                             sub.IsActive = true;
-                            sub.StartDate = DateTime.UtcNow;
-                            sub.EndDate = DateTime.UtcNow.Date.AddDays(30); // default30 days validity
+                            sub.StartDate = TimeHelper.GetVietnamTime();
+                            sub.EndDate = TimeHelper.GetVietnamTime().Date.AddDays(30); // default30 days validity
                             await _unit.UserSubscriptions.UpdateAsync(sub);
 
                             // Deactivate other active subscriptions of this user
@@ -145,7 +146,7 @@ namespace BLL.Services.Subscription
                             foreach (var other in allSubs.Where(s => s.UserID == sub.UserID && s.IsActive && s.SubscriptionID != sub.SubscriptionID))
                             {
                                 other.IsActive = false;
-                                other.EndDate = DateTime.UtcNow;
+                                other.EndDate = TimeHelper.GetVietnamTime();
                                 await _unit.UserSubscriptions.UpdateAsync(other);
                             }
 
@@ -153,13 +154,14 @@ namespace BLL.Services.Subscription
                             var user = await _unit.Users.GetByIdAsync(sub.UserID);
                             if (user != null)
                             {
-                                user.DailyConversationLimit = sub.ConversationQuota; 
-                                user.ConversationsUsedToday = sub.ConversationQuota;
-                                user.LastConversationResetDate = DateTime.UtcNow.Date;
+                                user.DailyConversationLimit = sub.ConversationQuota;
+                                user.ConversationsUsedToday = 0; 
+                                user.LastConversationResetDate = TimeHelper.GetVietnamTime().Date;
                                 await _unit.Users.UpdateAsync(user);
                             }
                         }
                     }
+                    
 
                     await _unit.SaveChangesAsync();
                     return true;
