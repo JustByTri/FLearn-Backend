@@ -136,9 +136,11 @@ namespace BLL.Services.Subscription
                         if (sub != null)
                         {
                             // Activate the new subscription
+                            var nowVn = TimeHelper.GetVietnamTime();
                             sub.IsActive = true;
-                            sub.StartDate = TimeHelper.GetVietnamTime();
-                            sub.EndDate = TimeHelper.GetVietnamTime().Date.AddDays(30); // default30 days validity
+                            sub.StartDate = nowVn;
+                            // Set end date to the same time next month
+                            sub.EndDate = nowVn.AddMonths(1);
                             await _unit.UserSubscriptions.UpdateAsync(sub);
 
                             // Deactivate other active subscriptions of this user
@@ -156,7 +158,7 @@ namespace BLL.Services.Subscription
                             {
                                 user.DailyConversationLimit = sub.ConversationQuota;
                                 user.ConversationsUsedToday = 0; 
-                                user.LastConversationResetDate = TimeHelper.GetVietnamTime().Date;
+                                user.LastConversationResetDate = TimeHelper.GetVietnamTime();
                                 await _unit.Users.UpdateAsync(user);
                             }
                         }
