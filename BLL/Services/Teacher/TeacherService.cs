@@ -218,8 +218,69 @@ namespace BLL.Services.Teacher
                 (int)HttpStatusCode.OK
             );
         }
+        public async Task<BaseResponse<PublicTeacherProfileDto>> GetPublicTeacherProfileAsync(Guid teacherId)
+        {
+            var profile = await _unit.TeacherProfiles.GetPublicProfileByIdAsync(teacherId);
+
+            if (profile == null)
+            {
+                return BaseResponse<PublicTeacherProfileDto>.Fail(null, "Không tìm thấy hồ sơ giáo viên.", (int)HttpStatusCode.NotFound);
+            }
+
+
+            var publishedCourses = profile.Courses
+                .Where(c => c.Status == CourseStatus.Published)
+                .ToList();
+
+ 
+            int totalCourses = publishedCourses.Count;
+
+     
+            var publishedCoursesDto = publishedCourses.Select(c => new TeacherCourseInfoDto
+            {
+                CourseId = c.CourseID,
+                Title = c.Title,
+                ImageUrl = c.ImageUrl,
+                Price = c.Price,
+                DiscountPrice = c.DiscountPrice,
+                LearnerCount = c.LearnerCount,
+                AverageRating = c.AverageRating,
+                ReviewCount = c.ReviewCount
+            }).ToList();
+
+
+            int courseStudents = publishedCourses.Sum(c => c.LearnerCount);
+
+
+
+            int totalStudents = courseStudents;
+
+        
+            double averageRating = profile.AverageRating;
+            int totalReviews = profile.ReviewCount;
+
+         
+            var resultDto = new PublicTeacherProfileDto
+            {
+                TeacherId = profile.TeacherId,
+                UserId = profile.UserId,
+                FullName = profile.FullName,
+                Avatar = profile.Avatar,
+                Bio = profile.Bio,
+
+                TotalCourses = totalCourses,
+                TotalStudents = totalStudents,
+                AverageRating = averageRating,
+                TotalReviews = totalReviews,
+
+                PublishedCourses = publishedCoursesDto 
+            };
+
+            return BaseResponse<PublicTeacherProfileDto>.Success(resultDto, "Lấy hồ sơ giáo viên thành công.", (int)HttpStatusCode.OK);
+        }
     }
 }
+
 
 
 

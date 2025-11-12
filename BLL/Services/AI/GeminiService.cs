@@ -65,7 +65,7 @@ namespace BLL.Services.AI
         }
 
         /// <summary>
-        /// ✅ Đánh giá hàng loạt: đính kèm audio đúng schema (inlineData + mimeType)
+        /// ✅ Đánh giá hàng loạt: sử dụng TRANSCRIPT (không gửi audio) theo yêu cầu
         /// </summary>
         public async Task<BatchVoiceEvaluationResult> EvaluateBatchVoiceResponsesAsync(
             List<VoiceAssessmentQuestion> questions,
@@ -75,41 +75,13 @@ namespace BLL.Services.AI
         {
             try
             {
-                _logger.LogInformation("Bắt đầu đánh giá hàng loạt {Count} câu hỏi.", questions.Count);
+                _logger.LogInformation("Bắt đầu đánh giá hàng loạt {Count} câu hỏi bằng transcript.", questions.Count);
 
-                // ✅ SỬA ĐỔI: Truyền programLevelNames vào prompt
+                // Xây prompt chứa đầy đủ transcript của các câu hợp lệ
                 var prompt = BuildBatchVoiceEvaluationPrompt(questions, languageCode, languageName, programLevelNames);
                 var parts = new List<object> { new { text = prompt } };
 
-                foreach (var question in questions.Where(q => !q.IsSkipped && !string.IsNullOrEmpty(q.AudioFilePath)))
-                {
-                    try
-                    {
-                        var audioBytes = await File.ReadAllBytesAsync(question.AudioFilePath!);
-                        var base64Audio = Convert.ToBase64String(audioBytes);
-                        var mime = !string.IsNullOrWhiteSpace(question.AudioMimeType)
-                            ? question.AudioMimeType!
-                            : GuessMimeFromFilePath(question.AudioFilePath!) ?? "audio/mpeg"; // default mp3
-
-                        // Thêm nhãn liên kết trước mỗi audio để mô hình map đúng câu hỏi
-                        parts.Add(new { text = $"[Audio for Question {question.QuestionNumber}] {question.PromptText}" });
-                        parts.Add(new
-                        {
-                            inlineData = new
-                            {
-                                mimeType = mime,
-                                data = base64Audio
-                            }
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Lỗi xử lý file audio cho câu {QuestionNumber}", question.QuestionNumber);
-                    }
-                }
-
-                // Gọi API (Hàm CallGeminiApiWithAudioAsync của bạn có vẻ bị sai, 
-                // nó không nhận 'parts'. Tôi sẽ sửa nó để nhận 'parts'.)
+                // Không gửi audio inlineData nữa – chỉ text transcripts
                 var response = await CallGeminiApiWithPartsAsync(parts);
 
                 return ParseBatchEvaluationResponse(response, languageName);
@@ -128,6 +100,7 @@ namespace BLL.Services.AI
         {
             try
             {
+                // Giữ nguyên: API này vẫn dùng audio nếu được gọi đơn lẻ
                 var audioBase64 = await ConvertAudioToBase64Async(audioFile);
                 var prompt = BuildVoiceEvaluationPromptWithAudio(question, languageCode);
                 var mime = !string.IsNullOrWhiteSpace(audioFile.ContentType)
@@ -434,10 +407,12 @@ Tất cả các trường (question, promptText, vietnameseTranslation) là BẮ
         string languageName,
         List<string>? programLevelNames = null)
         {
-            var questionDetails = string.Join("\n", questions.Select(q => $@"
-Q{q.QuestionNumber} (Difficulty: {q.Difficulty}): {q.PromptText}
-Required words: {string.Join(", ", (q.WordGuides?.Select(w => w.Word) ?? Enumerable.Empty<string>()))}
-Skipped: {q.IsSkipped}"));
+            var questionDetails = string.Join("\n\n", questions.Select(q => $@"Q{q.QuestionNumber}
+- Difficulty: {q.Difficulty}
+- Prompt: {q.PromptText}
+- Required words: {string.Join(", ", (q.WordGuides?.Select(w => w.Word) ?? Enumerable.Empty<string>()))}
+- Skipped: {q.IsSkipped}
+- Transcript: {(string.IsNullOrWhiteSpace(q.Transcript) ? "" : q.Transcript)}"));
 
             string levelScalePrompt = "Sử dụng thang đo CEFR (A1, A2, B1, B2, C1, C2) hoặc HSK/JLPT.";
             if (programLevelNames != null && programLevelNames.Any())
@@ -446,13 +421,12 @@ Skipped: {q.IsSkipped}"));
             }
 
             return $@"Bạn là giám khảo chấm thi nói {languageName}.
-Đánh giá {questions.Count} câu trả lời (bao gồm cả các câu bị bỏ qua).
-Dưới đây là danh sách các câu hỏi và audio (được cung cấp sau):
+Đánh giá {questions.Count} câu trả lời dựa trên TRANSCRIPT dưới đây (không có audio).
 
 {questionDetails}
 
 YÊU CẦU:
-1. Đánh giá từng câu (kể cả câu bị bỏ qua).
+1. Đánh giá từng câu (kể cả câu bị bỏ qua). Nếu transcript trống coi như không đủ dữ liệu.
 2. Cung cấp điểm tổng quan (overallScore0-100).
 3. Cung cấp trình độ tổng quan (overallLevel). {levelScalePrompt}
 
@@ -463,8 +437,8 @@ TRẢ VỀ JSON (không markdown):
  ""questionResults"": [
  {{
  ""questionNumber"":1,
- ""spokenWords"": [""(từ user nói)""],
- ""missingWords"": [""(từ bị thiếu)""],
+ ""spokenWords"": [""(từ user nói theo transcript)""],
+ ""missingWords"": [""(từ bị thiếu so với prompt)""],
  ""accuracyScore"": (0-100),
  ""pronunciationScore"": (0-100),
  ""fluencyScore"": (0-100),
