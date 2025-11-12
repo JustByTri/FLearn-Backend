@@ -18,6 +18,8 @@ namespace BLL.Services.ProgressTracking
         private readonly IUnitOfWork _unitOfWork;
         private readonly IExerciseGradingService _exerciseGradingService;
         private readonly ICloudinaryService _cloudinaryService;
+        private const double DefaultAIPercentage = 30;
+        private const double DefaultTeacherPercentage = 70;
         public ProgressTrackingService(IUnitOfWork unitOfWork, IExerciseGradingService exerciseGradingService, ICloudinaryService cloudinaryService)
         {
             _unitOfWork = unitOfWork;
@@ -250,95 +252,194 @@ namespace BLL.Services.ProgressTracking
         }
         public async Task<BaseResponse<ExerciseSubmissionResponse>> SubmitExerciseAsync(Guid userId, SubmitExerciseRequest request)
         {
-
-            var learner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId);
-            if (learner == null)
-                return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Access denied", 403);
-
-            var exercise = await _unitOfWork.Exercises.GetByIdAsync(request.ExerciseId);
-            if (exercise == null)
-                return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Exercise not found", 404);
-
-            var lessonProgress = await _unitOfWork.LessonProgresses
-                .Query()
-                .Include(lp => lp.UnitProgress)
-                .ThenInclude(up => up.Enrollment)
-                .ThenInclude(e => e.Course)
-                    .ThenInclude(c => c.Language)
-                .FirstOrDefaultAsync(lp => lp.LessonId == exercise.LessonID &&
-                                         lp.UnitProgress != null &&
-                                         lp.UnitProgress.Enrollment != null &&
-                                         lp.UnitProgress.Enrollment.LearnerId == learner.LearnerLanguageId &&
-                                         lp.Status != LearningStatus.Completed);
-
-            if (lessonProgress == null)
-                return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Lesson progress not found", 404);
-
-            var uploadResult = await _cloudinaryService.UploadAudioAsync(request.Audio);
-            if (uploadResult == null)
-                return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Upload audio failed", 404);
-
-            var submission = new ExerciseSubmission
+            try
             {
-                ExerciseSubmissionId = Guid.NewGuid(),
-                LearnerId = learner.LearnerLanguageId,
-                ExerciseId = request.ExerciseId,
-                LessonProgressId = lessonProgress.LessonProgressId,
-                AudioUrl = uploadResult.Url,
-                AudioPublicId = uploadResult.PublicId,
-                AIFeedback = "Pending AI evaluation",
-                TeacherFeedback = "Pending Teacher evaluation",
-                Status = ExerciseSubmissionStatus.PendingAIReview,
-                SubmittedAt = TimeHelper.GetVietnamTime()
-            };
-            await _unitOfWork.ExerciseSubmissions.CreateAsync(submission);
+                var learner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId);
+                if (learner == null)
+                    return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Access denied", 403);
 
-            var course = lessonProgress.UnitProgress?.Enrollment.Course;
+                var exercise = await _unitOfWork.Exercises.GetByIdAsync(request.ExerciseId);
+                if (exercise == null)
+                    return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Exercise not found", 404);
 
-            bool isTeacherRequired = exercise.Type == SpeakingExerciseType.StoryTelling ||
-                       exercise.Type == SpeakingExerciseType.Debate;
+                var lessonProgress = await _unitOfWork.LessonProgresses.Query()
+                    .Include(lp => lp.UnitProgress)
+                        .ThenInclude(up => up.Enrollment)
+                            .ThenInclude(e => e.Course)
+                                .ThenInclude(c => c.Language)
+                    .FirstOrDefaultAsync(lp => lp.LessonId == exercise.LessonID &&
+                                             lp.UnitProgress != null &&
+                                             lp.UnitProgress.Enrollment != null &&
+                                             lp.UnitProgress.Enrollment.LearnerId == learner.LearnerLanguageId);
 
-            if (isTeacherRequired)
-            {
-                var gradingAssignment = new ExerciseGradingAssignment
+                if (lessonProgress == null)
+                    return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Lesson progress not found", 404);
+
+                string audioUrl = string.Empty;
+                string publicId = string.Empty;
+
+                try
                 {
-                    GradingAssignmentId = Guid.NewGuid(),
-                    ExerciseSubmissionId = submission.ExerciseSubmissionId,
-                    AssignedTeacherId = course?.TeacherId,
-                    AssignedAt = TimeHelper.GetVietnamTime(),
-                    DeadlineAt = TimeHelper.GetVietnamTime().AddDays(2),
-                    Status = GradingStatus.Assigned
+                    var uploadResult = await _cloudinaryService.UploadAudioAsync(request.Audio);
+                    if (uploadResult == null)
+                        return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Upload audio failed", 404);
+
+                    audioUrl = uploadResult.Url;
+                    publicId = uploadResult.PublicId;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                    Console.WriteLine(ex.StackTrace);
+                    return BaseResponse<ExerciseSubmissionResponse>.Error($"Exception: {ex.Message}", 500, new object());
+                }
+
+                var course = lessonProgress.UnitProgress?.Enrollment.Course;
+
+                if (course == null)
+                    return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Course not found", 404);
+
+                bool isAITeacherGrading = course.GradingType == GradingType.AIAndTeacher;
+                bool isAIOnlyGrading = course.GradingType == GradingType.AIOnly;
+
+                double aiPercentage = 100;
+                double teacherPercentage = 0;
+                decimal exerciseGradingAmount = 0;
+                bool canAssignToTeacher = false;
+
+                if (isAITeacherGrading)
+                {
+                    var purchase = await _unitOfWork.Purchases
+                        .Query()
+                        .FirstOrDefaultAsync(p => p.UserId == userId &&
+                                                p.CourseId == course.CourseID &&
+                                                p.Status == PurchaseStatus.Completed);
+
+                    if (purchase != null)
+                    {
+                        var totalExercisesInCourse = await _unitOfWork.Exercises
+                            .Query()
+                            .CountAsync(e => e.Lesson.CourseUnit.CourseID == course.CourseID);
+
+                        if (totalExercisesInCourse > 0)
+                        {
+                            decimal amountForDistribution = purchase.FinalAmount * 0.9m;
+
+                            decimal courseFeeAmount = amountForDistribution * 0.55m;
+                            decimal gradingFeeAmount = amountForDistribution * 0.35m;
+
+                            exerciseGradingAmount = gradingFeeAmount / totalExercisesInCourse;
+
+                            var existingTeacherSubmissions = await _unitOfWork.ExerciseSubmissions
+                                .Query()
+                                .CountAsync(es => es.LearnerId == learner.LearnerLanguageId &&
+                                                es.ExerciseId == request.ExerciseId &&
+                                                es.TeacherScore > 0);
+
+                            canAssignToTeacher = existingTeacherSubmissions == 0;
+                        }
+                    }
+
+                    if (canAssignToTeacher)
+                    {
+                        aiPercentage = DefaultAIPercentage;
+                        teacherPercentage = DefaultTeacherPercentage;
+                    }
+                }
+
+                bool isTeacherRequired = isAITeacherGrading &&
+                                       canAssignToTeacher &&
+                                       (exercise.Type == SpeakingExerciseType.StoryTelling ||
+                                        exercise.Type == SpeakingExerciseType.Debate);
+
+                if (exercise.Type == SpeakingExerciseType.RepeatAfterMe ||
+                    exercise.Type == SpeakingExerciseType.PictureDescription)
+                {
+                    aiPercentage = 100;
+                    teacherPercentage = 0;
+                    isTeacherRequired = false;
+                }
+
+                var submission = new ExerciseSubmission
+                {
+                    ExerciseSubmissionId = Guid.NewGuid(),
+                    LearnerId = learner.LearnerLanguageId,
+                    ExerciseId = request.ExerciseId,
+                    LessonProgressId = lessonProgress.LessonProgressId,
+                    AudioUrl = audioUrl,
+                    AudioPublicId = publicId,
+                    AIPercentage = aiPercentage,
+                    TeacherPercentage = teacherPercentage,
+                    AIFeedback = "Pending AI Evaluation",
+                    TeacherFeedback = (exercise.Type is SpeakingExerciseType.StoryTelling or SpeakingExerciseType.Debate) ? "Pending Teacher Evaluation" : string.Empty,
+                    Status = isTeacherRequired ? ExerciseSubmissionStatus.PendingTeacherReview : ExerciseSubmissionStatus.PendingAIReview,
+                    SubmittedAt = TimeHelper.GetVietnamTime(),
                 };
-                await _unitOfWork.ExerciseGradingAssignments.CreateAsync(gradingAssignment);
-            }
 
-            lessonProgress.LastUpdated = TimeHelper.GetVietnamTime();
-            await _unitOfWork.LessonProgresses.UpdateAsync(lessonProgress);
+                await _unitOfWork.ExerciseSubmissions.CreateAsync(submission);
 
-            await _unitOfWork.SaveChangesAsync();
+                if (isTeacherRequired && course?.TeacherId != null)
+                {
+                    var gradingAssignment = new ExerciseGradingAssignment
+                    {
+                        GradingAssignmentId = Guid.NewGuid(),
+                        ExerciseSubmissionId = submission.ExerciseSubmissionId,
+                        AssignedTeacherId = course.TeacherId,
+                        AssignedAt = TimeHelper.GetVietnamTime(),
+                        Status = GradingStatus.Assigned,
+                        DeadlineAt = TimeHelper.GetVietnamTime().AddDays(2),
+                        CreatedAt = TimeHelper.GetVietnamTime()
+                    };
 
-            if (course?.GradingType == GradingType.AIOnly || course?.GradingType == GradingType.AIAndTeacher)
-            {
+                    await _unitOfWork.ExerciseGradingAssignments.CreateAsync(gradingAssignment);
+
+                    if (exerciseGradingAmount > 0)
+                    {
+                        var earningAllocation = new TeacherEarningAllocation
+                        {
+                            AllocationId = Guid.NewGuid(),
+                            TeacherId = course.TeacherId,
+                            GradingAssignmentId = gradingAssignment.GradingAssignmentId,
+                            ExerciseGradingAmount = exerciseGradingAmount,
+                            EarningType = EarningType.ExerciseGrading,
+                            Status = EarningStatus.Pending,
+                            CreatedAt = TimeHelper.GetVietnamTime()
+                        };
+                        await _unitOfWork.TeacherEarningAllocations.CreateAsync(earningAllocation);
+                    }
+                }
+
+
+                lessonProgress.LastUpdated = TimeHelper.GetVietnamTime();
+                await _unitOfWork.LessonProgresses.UpdateAsync(lessonProgress);
+
+                await _unitOfWork.SaveChangesAsync();
+
                 AssessmentRequest assessmentRequest = new AssessmentRequest
                 {
                     ExerciseSubmissionId = submission.ExerciseSubmissionId,
-                    Audio = request.Audio,
-                    LanguageCode = course.Language.LanguageCode,
-                    GradingType = course.GradingType.ToString()
+                    AudioUrl = audioUrl,
+                    LanguageCode = (course != null) ? course.Language.LanguageCode : "en",
+                    GradingType = isTeacherRequired ? GradingType.AIAndTeacher.ToString() : GradingType.AIOnly.ToString()
                 };
 
                 await _exerciseGradingService.ProcessAIGradingAsync(assessmentRequest);
+
+                var response = new ExerciseSubmissionResponse
+                {
+                    ExerciseSubmissionId = submission.ExerciseSubmissionId,
+                    ExerciseId = submission.ExerciseId,
+                    Status = submission.Status.ToString(),
+                    SubmittedAt = submission.SubmittedAt.ToString("dd-MM-yyyy HH:mm")
+                };
+
+                return BaseResponse<ExerciseSubmissionResponse>.Success(response, "Exercise submitted successfully");
             }
-
-            var response = new ExerciseSubmissionResponse
+            catch (Exception ex)
             {
-                ExerciseSubmissionId = submission.ExerciseSubmissionId,
-                ExerciseId = submission.ExerciseId,
-                Status = submission.Status.ToString(),
-                SubmittedAt = submission.SubmittedAt.ToString("dd-MM-yyyy")
-            };
-
-            return BaseResponse<ExerciseSubmissionResponse>.Success(response, "Exercise submitted successfully");
+                return BaseResponse<ExerciseSubmissionResponse>.Error($"Error: {ex.Message}", 500, new object());
+                throw new Exception(ex.Message);
+            }
         }
         public async Task<BaseResponse<ProgressTrackingResponse>> TrackActivityAsync(Guid userId, TrackActivityRequest request)
         {

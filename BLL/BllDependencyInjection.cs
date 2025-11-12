@@ -159,6 +159,7 @@ namespace BLL
             services.AddScoped<IAssessmentService, AssessmentService>();
             services.AddScoped<IProgressTrackingService, ProgressTrackingService>();
             services.AddScoped<IExerciseGradingService, ExerciseGradingService>();
+            services.AddScoped<ILessonProgressService, LessonProgressService>();
             return services;
         }
     }

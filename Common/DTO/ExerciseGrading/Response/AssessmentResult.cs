@@ -1,4 +1,6 @@
-﻿namespace Common.DTO.ExerciseGrading.Response
+﻿using System.Text.Json;
+
+namespace Common.DTO.ExerciseGrading.Response
 {
     public class AssessmentResult
     {
@@ -9,5 +11,13 @@
         public int Overall { get; set; }
         public string Feedback { get; set; } = "";
         public string Transcript { get; set; } = "";
+        public override string ToString()
+        {
+            return JsonSerializer.Serialize(this, new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
+        }
     }
 }

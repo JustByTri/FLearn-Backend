@@ -71,7 +71,16 @@ namespace BLL.Services.Assessment
                     mediaType = "none";
                 }
 
-                var studentTranscript = await TranscribeSpeechByGeminiAsync(req.Audio);
+                var studentTranscript = await TranscribeSpeechByGeminiAsync(req.AudioUrl);
+
+                if (!studentTranscript.IsSuccess)
+                {
+                    return new AssessmentResult
+                    {
+                        Overall = 0,
+                        Feedback = "Unable to transcribe student audio. Please check audio quality and try again."
+                    };
+                }
 
                 string template = req.LanguageCode switch
                 {
@@ -88,18 +97,25 @@ namespace BLL.Services.Assessment
                 var chatClient = openAIClient.GetChatClient(deploymentName);
                 var textPart = ChatMessageContentPart.CreateTextPart(template);
                 var chatMessages = new List<ChatMessage>
-                    {
+                {
                         new SystemChatMessage(MULTILINGUAL_SCORING_SYSTEM_PROMPT),
                         new UserChatMessage(textPart)
-                    };
+                };
+
                 ChatCompletion chatCompletion = await chatClient.CompleteChatAsync(chatMessages);
                 Console.WriteLine($"[AI]: {chatCompletion}");
+
                 var assessmentResult = ParseAIResponseToAssessmentResult(chatCompletion.Content[0].Text, req.LanguageCode);
+
+                if (assessmentResult.Overall < 0) assessmentResult.Overall = 0;
+                if (assessmentResult.Overall > 100) assessmentResult.Overall = 100;
+
                 return assessmentResult;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error in EvaluateSpeakingAsync: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 return CreateDefaultAssessmentResult();
             }
         }
@@ -376,7 +392,7 @@ namespace BLL.Services.Assessment
             var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
             var response = await geminiClient.PostAsync(url, content);
             var responseText = await response.Content.ReadAsStringAsync();
-
+            Console.WriteLine(responseText);
             try
             {
                 using var doc = JsonDocument.Parse(responseText);
