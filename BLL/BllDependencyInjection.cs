@@ -1,4 +1,5 @@
 ﻿using BLL.Background;
+using BLL.HostedServices; // added
 using BLL.IServices.Admin;
 using BLL.IServices.AI;
 using BLL.IServices.Application;
@@ -54,7 +55,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
-using BLL.HostedServices; // added
 
 namespace BLL
 {
@@ -160,8 +160,7 @@ namespace BLL
             services.AddScoped<IAssessmentService, AssessmentService>();
             services.AddScoped<IProgressTrackingService, ProgressTrackingService>();
             services.AddScoped<IExerciseGradingService, ExerciseGradingService>();
-
-            // Background hosted services
+            services.AddScoped<ILessonProgressService, LessonProgressService>();
             services.AddHostedService<DailyConversationResetService>();
             services.AddHostedService<SubscriptionExpiryService>();
             return services;

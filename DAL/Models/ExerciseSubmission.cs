@@ -28,6 +28,11 @@ namespace DAL.Models
         public string AIFeedback { get; set; } = null!;
         public double TeacherScore { get; set; } = 0.0;
         public string TeacherFeedback { get; set; } = null!;
+        public double? FinalScore { get; set; }
+        [Range(0, 100)]
+        public double AIPercentage { get; set; } = 50;
+        [Range(0, 100)]
+        public double? TeacherPercentage { get; set; } = 50;
         public bool? IsPassed { get; set; }
         public ExerciseSubmissionStatus Status { get; set; } = ExerciseSubmissionStatus.PendingAIReview;
         public DateTime SubmittedAt { get; set; } = TimeHelper.GetVietnamTime();
