@@ -1,4 +1,5 @@
 ﻿using BLL.Background;
+using BLL.HostedServices; // added
 using BLL.IServices.Admin;
 using BLL.IServices.AI;
 using BLL.IServices.Application;
@@ -160,6 +161,8 @@ namespace BLL
             services.AddScoped<IProgressTrackingService, ProgressTrackingService>();
             services.AddScoped<IExerciseGradingService, ExerciseGradingService>();
             services.AddScoped<ILessonProgressService, LessonProgressService>();
+            services.AddHostedService<DailyConversationResetService>();
+            services.AddHostedService<SubscriptionExpiryService>();
             return services;
         }
     }

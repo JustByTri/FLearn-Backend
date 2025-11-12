@@ -83,5 +83,18 @@ namespace Presentation.Controllers.Teacher
             var response = await _teacherService.GetMyBankAccountsAsync(teacherId);
             return StatusCode(response.Code, response);
         }
+        /// <summary>
+        /// (Public) Lấy hồ sơ công khai của giáo viên.
+        /// </summary>
+        /// <param name="teacherId">ID của giáo viên (TeacherId).</param>
+        [AllowAnonymous]
+        [HttpGet("{teacherId}/profile")] 
+        [ProducesResponseType(typeof(BaseResponse<PublicTeacherProfileDto>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(BaseResponse<object>), (int)HttpStatusCode.NotFound)]
+        public async Task<IActionResult> GetPublicProfile([FromRoute] Guid teacherId) 
+        {
+            var response = await _teacherService.GetPublicTeacherProfileAsync(teacherId);
+            return StatusCode(response.Code, response);
+        }
     }
 }
