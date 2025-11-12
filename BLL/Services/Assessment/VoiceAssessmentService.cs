@@ -201,20 +201,56 @@ namespace BLL.Services.Assessment
             {
                 try
                 {
+                    // Save audio
                     question.AudioFilePath = await SaveAudioFileAsync(response.AudioFile, assessmentId, response.QuestionNumber);
                     question.AudioMimeType = response.AudioFile.ContentType; // preserve mime type for AI
+
                     await using var ms = new MemoryStream();
                     await response.AudioFile.CopyToAsync(ms);
                     var audioBytes = ms.ToArray();
-                    var transcript = await _stt.TranscribeAsync(audioBytes, response.AudioFile.FileName, response.AudioFile.ContentType, null);
+
+                    // Determine explicit language code for STT to avoid auto-detect issues
+                    var lang = await _unitOfWork.Languages.GetByIdAsync(assessment.LanguageId);
+                    var langCode = NormalizeToBcp47(lang?.LanguageCode);
+
+                    // STT with explicit language
+                    var transcript = await _stt.TranscribeAsync(audioBytes, response.AudioFile.FileName, response.AudioFile.ContentType, langCode);
                     question.Transcript = transcript;
+
+                    // Log summary for this question
+                    _logger.LogInformation(
+                        "VoiceAssessment Submit: Assessment={AssessmentId}, Q={QNumber}, AudioSaved={HasAudio}, Path='{Path}', Size={Size}B, Mime='{Mime}', TranscriptLen={TLen}, TranscriptPreview='{TPrev}'",
+                        assessmentId,
+                        response.QuestionNumber,
+                        !string.IsNullOrEmpty(question.AudioFilePath),
+                        question.AudioFilePath,
+                        response.AudioFile.Length,
+                        response.AudioFile.ContentType,
+                        question.Transcript?.Length ??0,
+                        Trunc(question.Transcript,120)
+                    );
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Lỗi lưu/nhận dạng audio, sẽ bỏ qua audio cho câu hỏi {Q}", response.QuestionNumber);
+                    _logger.LogError(
+                        ex,
+                        "Lỗi lưu/nhận dạng audio cho Assessment={AssessmentId}, Q={QNumber}. Sẽ bỏ qua audio/transcript.",
+                        assessmentId,
+                        response.QuestionNumber
+                    );
                     question.AudioFilePath = null;
                     question.Transcript = null;
                 }
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "VoiceAssessment Submit: Assessment={AssessmentId}, Q={QNumber}, Skipped={Skipped}, HasAudio={HasAudio}",
+                    assessmentId,
+                    response.QuestionNumber,
+                    response.IsSkipped,
+                    response.AudioFile != null
+                );
             }
 
             assessment.CurrentQuestionIndex = Math.Max(assessment.CurrentQuestionIndex, response.QuestionNumber);
@@ -241,23 +277,26 @@ namespace BLL.Services.Assessment
                 .Where(q => !q.IsSkipped && (!string.IsNullOrEmpty(q.AudioFilePath) || !string.IsNullOrWhiteSpace(q.Transcript)))
                 .ToList();
 
+            // Log inputs summary
+            LogQuestionInputSummary(assessment.Questions, completedQuestions);
+
             BatchVoiceEvaluationResult evaluationResult;
-            if (completedQuestions.Count ==0)
+            if (completedQuestions.Count == 0)
             {
                 _logger.LogWarning("Không có dữ liệu hợp lệ (audio/transcript). Trả fallback có level & điểm.");
                 var defaultLevel = assessment.ProgramLevelNames.FirstOrDefault() ?? "Beginner";
                 evaluationResult = new BatchVoiceEvaluationResult
                 {
                     OverallLevel = defaultLevel,
-                    OverallScore =60,
+                    OverallScore = 60,
                     QuestionResults = assessment.Questions.Select(q => new QuestionEvaluationResult
                     {
                         QuestionNumber = q.QuestionNumber,
                         Feedback = q.IsSkipped ? "Đã bỏ qua" : "Không có đủ dữ liệu để chấm.",
-                        AccuracyScore =60,
-                        PronunciationScore =60,
-                        FluencyScore =60,
-                        GrammarScore =60
+                        AccuracyScore = 60,
+                        PronunciationScore = 60,
+                        FluencyScore = 60,
+                        GrammarScore = 60
                     }).ToList(),
                     Strengths = new List<string> { "Hoàn thành bài đánh giá" },
                     Weaknesses = new List<string> { "Thiếu dữ liệu audio hoặc transcript" },
@@ -269,13 +308,28 @@ namespace BLL.Services.Assessment
             {
                 try
                 {
-                    _logger.LogInformation("Đang gửi {Count} câu trả lời cho AI...", completedQuestions.Count);
+                    _logger.LogInformation(
+                        "Đang gửi {Count} câu trả lời cho AI... (LanguageCode={LangCode}, ProgramLevels=[{Levels}])",
+                        completedQuestions.Count,
+                        language.LanguageCode,
+                        string.Join(", ", assessment.ProgramLevelNames ?? new List<string>())
+                    );
+
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+
+                    // IMPORTANT: chỉ gửi những câu có dữ liệu hợp lệ cho AI (bug fix)
                     evaluationResult = await _geminiService.EvaluateBatchVoiceResponsesAsync(
-                        assessment.Questions,
+                        completedQuestions,
                         language.LanguageCode,
                         language.LanguageName,
                         assessment.ProgramLevelNames
                     );
+
+                    sw.Stop();
+                    _logger.LogInformation("AI đánh giá xong trong {ElapsedMs}ms", sw.ElapsedMilliseconds);
+
+                    // Log AI output summary
+                    LogEvaluationSummary(evaluationResult);
                 }
                 catch (Exception ex)
                 {
@@ -284,15 +338,15 @@ namespace BLL.Services.Assessment
                     evaluationResult = new BatchVoiceEvaluationResult
                     {
                         OverallLevel = defaultLevel,
-                        OverallScore =65,
+                        OverallScore = 65,
                         QuestionResults = assessment.Questions.Select(q => new QuestionEvaluationResult
                         {
                             QuestionNumber = q.QuestionNumber,
                             Feedback = q.IsSkipped ? "Đã bỏ qua" : "Cần cải thiện phát âm và lưu loát.",
-                            AccuracyScore =65,
-                            PronunciationScore =65,
-                            FluencyScore =65,
-                            GrammarScore =65
+                            AccuracyScore = 65,
+                            PronunciationScore = 65,
+                            FluencyScore = 65,
+                            GrammarScore = 65
                         }).ToList(),
                         Strengths = new List<string> { "Tham gia đầy đủ" },
                         Weaknesses = new List<string> { "Thiếu đánh giá chi tiết từ AI" },
@@ -305,7 +359,9 @@ namespace BLL.Services.Assessment
             // Ensure OverallLevel not empty
             if (string.IsNullOrWhiteSpace(evaluationResult.OverallLevel))
             {
-                evaluationResult.OverallLevel = assessment.ProgramLevelNames.FirstOrDefault() ?? "Beginner";
+                var fallbackLevel = assessment.ProgramLevelNames.FirstOrDefault() ?? "Beginner";
+                _logger.LogWarning("AI không trả OverallLevel. Dùng fallback: {FallbackLevel}", fallbackLevel);
+                evaluationResult.OverallLevel = fallbackLevel;
             }
 
             var determinedLevel = evaluationResult.OverallLevel;
@@ -324,7 +380,7 @@ namespace BLL.Services.Assessment
             int avgAcc = evaluationResult.QuestionResults.Any() ? (int)evaluationResult.QuestionResults.Average(q => q.AccuracyScore) : evaluationResult.OverallScore;
 
             var completeness = $"{completedQuestions.Count}/{assessment.Questions.Count}";
-            var confidence = completedQuestions.Count >= assessment.Questions.Count -1 ?85 : (completedQuestions.Count >=2 ?70 :55);
+            var confidence = completedQuestions.Count >= assessment.Questions.Count - 1 ? 85 : (completedQuestions.Count >= 2 ? 70 : 55);
 
             var resultDto = new VoiceAssessmentResultDto
             {
@@ -356,7 +412,15 @@ namespace BLL.Services.Assessment
                 CompletedAt = TimeHelper.GetVietnamTime()
             };
 
-       
+            _logger.LogInformation(
+                "Assessment Result: Assessment={AssessmentId}, OverallLevel={Level}, OverallScore={Score}, Completeness={Completeness}, Confidence={Confidence}",
+                assessmentId,
+                resultDto.DeterminedLevel,
+                resultDto.OverallScore,
+                resultDto.AssessmentCompleteness,
+                resultDto.LevelConfidence
+            );
+
             await _redisService.SetVoiceAssessmentResultAsync(learnerLanguage.LearnerLanguageId, resultDto);
             await _redisService.SetAsync($"voice_assessment_recommended_courses:{learnerLanguage.LearnerLanguageId}", recommendedCourses, TimeSpan.FromHours(24));
             await _redisService.DeleteVoiceAssessmentAsync(assessmentId);
@@ -572,6 +636,89 @@ namespace BLL.Services.Assessment
         private string BuildDetailedFeedback(BatchVoiceEvaluationResult result, VoiceAssessmentDto assessment)
         {
             return $"Bạn đạt cấp độ {result.OverallLevel} với điểm tổng thể {Math.Max(1, result.OverallScore)}/100.";
+        }
+
+        // Helpers for logging
+        private void LogQuestionInputSummary(List<VoiceAssessmentQuestion> allQuestions, List<VoiceAssessmentQuestion> completedQuestions)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "VoiceAssessment Summary: TotalQ={Total}, CompletedQ={Completed}",
+                    allQuestions?.Count ?? 0,
+                    completedQuestions?.Count ?? 0
+                );
+
+                foreach (var q in allQuestions.OrderBy(q => q.QuestionNumber))
+                {
+                    _logger.LogInformation(
+                        "Q{Q}: Skipped={Skipped}, HasAudio={HasAudio}, Mime='{Mime}', TranscriptLen={TLen}, Diff='{Diff}', TranscriptPreview='{Preview}'",
+                        q.QuestionNumber,
+                        q.IsSkipped,
+                        !string.IsNullOrEmpty(q.AudioFilePath),
+                        q.AudioMimeType,
+                        q.Transcript?.Length ?? 0,
+                        q.Difficulty,
+                        Trunc(q.Transcript, 120)
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Không thể log tóm tắt câu hỏi.");
+            }
+        }
+
+        private void LogEvaluationSummary(BatchVoiceEvaluationResult evaluation)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "AI Output: OverallLevel={Level}, OverallScore={Score}, QCount={QCount}",
+                    evaluation.OverallLevel,
+                    evaluation.OverallScore,
+                    evaluation.QuestionResults?.Count ?? 0
+                );
+
+                if (evaluation.QuestionResults != null)
+                {
+                    foreach (var qr in evaluation.QuestionResults.OrderBy(r => r.QuestionNumber))
+                    {
+                        _logger.LogInformation(
+                            "AI Q{Q}: Acc={Acc}, Pron={Pron}, Flu={Flu}, Gra={Gra}, Feedback='{Feedback}'",
+                            qr.QuestionNumber,
+                            qr.AccuracyScore,
+                            qr.PronunciationScore,
+                            qr.FluencyScore,
+                            qr.GrammarScore,
+                            Trunc(qr.Feedback, 160)
+                        );
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Không thể log tóm tắt kết quả AI.");
+            }
+        }
+
+        private static string Trunc(string? s, int max = 120)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            return s.Length <= max ? s : s[..max] + "…";
+        }
+
+        private static string NormalizeToBcp47(string? code)
+        {
+            if (string.IsNullOrWhiteSpace(code)) return "en-US";
+            var c = code.Trim();
+            return c.ToLowerInvariant() switch
+            {
+                "en" => "en-US",
+                "ja" => "ja-JP",
+                "zh" => "zh-CN",
+                _ => c
+            };
         }
     }
 }

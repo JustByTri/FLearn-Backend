@@ -6,6 +6,7 @@ using DAL.Helpers;
 using DAL.UnitOfWork;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace BLL.HostedServices
 {
@@ -15,12 +16,12 @@ namespace BLL.HostedServices
  /// </summary>
  public sealed class SubscriptionExpiryService : BackgroundService
  {
- private readonly IUnitOfWork _unit;
+ private readonly IServiceScopeFactory _scopeFactory;
  private readonly ILogger<SubscriptionExpiryService> _logger;
 
- public SubscriptionExpiryService(IUnitOfWork unit, ILogger<SubscriptionExpiryService> logger)
+ public SubscriptionExpiryService(IServiceScopeFactory scopeFactory, ILogger<SubscriptionExpiryService> logger)
  {
- _unit = unit;
+ _scopeFactory = scopeFactory;
  _logger = logger;
  }
 
@@ -49,33 +50,35 @@ namespace BLL.HostedServices
  {
  try
  {
+ using var scope = _scopeFactory.CreateScope();
+ var unit = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
  var now = TimeHelper.GetVietnamTime();
- var subs = await _unit.UserSubscriptions.GetAllAsync();
+ var subs = await unit.UserSubscriptions.GetAllAsync();
  int changed =0;
  foreach (var sub in subs.Where(s => s.IsActive && s.EndDate.HasValue && s.EndDate.Value <= now))
  {
  sub.IsActive = false;
  // keep EndDate as is (expiry moment)
- await _unit.UserSubscriptions.UpdateAsync(sub);
+ await unit.UserSubscriptions.UpdateAsync(sub);
  changed++;
 
  // Downgrade user to Free quota if no other active subscription remains
- var userSubs = subs.Where(s => s.UserID == sub.UserID && s.IsActive && s.SubscriptionID != sub.SubscriptionID).ToList();
- if (!userSubs.Any())
+ var userHasOtherActive = subs.Any(s => s.UserID == sub.UserID && s.IsActive);
+ if (!userHasOtherActive)
  {
- var user = await _unit.Users.GetByIdAsync(sub.UserID);
+ var user = await unit.Users.GetByIdAsync(sub.UserID);
  if (user != null)
  {
  user.DailyConversationLimit = Common.Constants.SubscriptionConstants.SubscriptionQuotas[Common.Constants.SubscriptionConstants.FREE];
- // do not reset ConversationsUsedToday here; DailyConversationResetService will handle midnight reset
- await _unit.Users.UpdateAsync(user);
+ await unit.Users.UpdateAsync(user);
  }
  }
  }
 
  if (changed >0)
  {
- await _unit.SaveChangesAsync();
+ await unit.SaveChangesAsync();
  _logger.LogInformation("Subscription expiry check: {Count} subscriptions deactivated at {Time}", changed, now);
  }
  }

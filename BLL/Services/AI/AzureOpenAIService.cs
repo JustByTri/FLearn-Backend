@@ -172,7 +172,7 @@ Output must be valid JSON only.";
                 ? new[] { "HSK1", "HSK2", "HSK3", "HSK4" }
                 : new[] { "A1", "A2", "B1", "B2" };
 
-            string commonBan = "Do not use generic templates like 'Introduce yourself', 'Daily routine', 'Recent experience', 'Give an opinion', or 'about technology'. Do NOT include phrases like 'in English'/'in Japanese' in the question text. Write directly in the target language.";
+            string commonBan = "Do not use generic templates like 'Introduce yourself', 'Daily routine', 'Recent experience', 'Give an opinion', or 'about technology'. Do NOT include phrases like 'in English'/'in Japanese' in the question text. Write directly in the target language. Avoid vague, off-topic questions like \"What is that, Where is this?";
             string lengths = "Enforce lengths: Q1 must be2-3 words; Q2 must be3-5 words; Q3 must be6-8 words (short phrase); Q4 must be8-12 words (short sentence).";
             string constraints = $"Return a JSON object with property 'questions' (array of exactly4). Each is a concise speaking prompt for {languageName} ({languageCode}), tailored to program '{programName}', with ascending difficulty strictly set to [{string.Join(',', labels)}] in order. {lengths} {commonBan}";
             string fields = "Each item fields: questionNumber (1..4), question, promptText (<=15 words), vietnameseTranslation, wordGuides (nullable), questionType='speaking', difficulty (one of the ordered labels), maxRecordingSeconds =30/60/90/120. Return JSON only.";
@@ -261,24 +261,91 @@ Output must be valid JSON only.";
 
         public async Task<BatchVoiceEvaluationResult> EvaluateBatchVoiceResponsesAsync(List<VoiceAssessmentQuestion> questions, string languageCode, string languageName, List<string>? programLevelNames = null)
         {
-            var qJson = JsonSerializer.Serialize(questions, _json);
-            var scale = programLevelNames != null && programLevelNames.Any() ? $"Use levels: {string.Join(",", programLevelNames)}" : "Use CEFR/HSK/JLPT scale";
-            var prompt = $"Evaluate batch voice responses for {languageName} ({languageCode}). Input questions JSON: {qJson}. Return JSON BatchVoiceEvaluationResult. {scale}.";
-            var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 500, temperature: 0.2);
-            try { return JsonSerializer.Deserialize<BatchVoiceEvaluationResult>(json, _json) ?? new BatchVoiceEvaluationResult(); } catch { return new BatchVoiceEvaluationResult { OverallScore = 0, OverallLevel = "Unknown" }; }
+            var scale = programLevelNames != null && programLevelNames.Any() 
+       ? $"[{string.Join(", ", programLevelNames)}]" 
+        : "CEFR/HSK/JLPT";
+            
+            var qData = questions.Select(q => new
+    {
+        q.QuestionNumber,
+                q.Difficulty,
+      q.PromptText,
+         q.IsSkipped,
+      Transcript = q.Transcript ?? "(empty)"
+        }).ToList();
+
+    var qJson = JsonSerializer.Serialize(qData, new JsonSerializerOptions { WriteIndented = false });
+
+    var prompt = $@"You are evaluating {languageName} speaking responses based on transcripts only (no audio).
+Return a JSON object with:
+- overallLevel: string from {scale}
+- overallScore: number 0-100
+- questionResults: array with {questions.Count} items, each has questionNumber, spokenWords[], missingWords[], accuracyScore, pronunciationScore, fluencyScore, grammarScore, feedback
+- strengths: array of strings
+- weaknesses: array of strings
+- recommendedCourses: array (can be empty)
+
+Questions data:
+{qJson}
+
+Rules:
+1. If transcript is empty or '(empty)', give low scores (20-40) and feedback='No valid transcript'.
+2. overallLevel MUST be one of {scale}.
+3. Return valid JSON only, no markdown.";
+
+            _logger.LogInformation("Batch eval prompt length: {Len} chars, maxTokens: 1200", prompt.Length);
+   var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 1200, temperature: 0.3);
+            _logger.LogInformation("AI raw response (first 300 chars): {Preview}", json.Length > 300 ? json.Substring(0, 300) : json);
+
+       try 
+            { 
+     var result = JsonSerializer.Deserialize<BatchVoiceEvaluationResult>(json, _json);
+                if (result == null || string.IsNullOrWhiteSpace(result.OverallLevel))
+         {
+     _logger.LogWarning("Parsed result is null or OverallLevel empty. Falling back.");
+     return CreateFallbackBatch(questions, programLevelNames?.FirstOrDefault() ?? "Beginner");
+                }
+         return result;
+         } 
+            catch (Exception ex)
+            {
+         _logger.LogError(ex, "JSON parse failed. Raw: {Json}", json.Length > 500 ? json.Substring(0, 500) : json);
+      return CreateFallbackBatch(questions, programLevelNames?.FirstOrDefault() ?? "Beginner");
+            }
+        }
+
+     private BatchVoiceEvaluationResult CreateFallbackBatch(List<VoiceAssessmentQuestion> questions, string defaultLevel)
+        {
+            return new BatchVoiceEvaluationResult 
+            { 
+       OverallLevel = defaultLevel, 
+      OverallScore = 50,
+     QuestionResults = questions.Select(q => new QuestionEvaluationResult
+    {
+    QuestionNumber = q.QuestionNumber,
+         Feedback = q.IsSkipped ? "Skipped" : "Unable to evaluate - AI error",
+        AccuracyScore = 50,
+    PronunciationScore = 50,
+          FluencyScore = 50,
+   GrammarScore = 50
+                }).ToList(),
+          Strengths = new List<string> { "Completed assessment" },
+      Weaknesses = new List<string> { "AI evaluation unavailable" },
+    RecommendedCourses = new List<CourseRecommendation>()
+ };
         }
 
         public async Task<VoiceEvaluationResult> EvaluateVoiceResponseDirectlyAsync(VoiceAssessmentQuestion question, IFormFile audioFile, string languageCode)
-        {
-            var prompt = $"Evaluate recorded response for: {question.Question} ({question.Difficulty}). Provide JSON VoiceEvaluationResult.";
-            var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 400, temperature: 0.2);
+      {
+   var prompt = $"Evaluate recorded response for: {question.Question} ({question.Difficulty}). Provide JSON VoiceEvaluationResult.";
+var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 400, temperature: 0.2);
             try { return JsonSerializer.Deserialize<VoiceEvaluationResult>(json, _json) ?? new VoiceEvaluationResult(); } catch { return new VoiceEvaluationResult { OverallScore = 70 }; }
         }
 
-        public async Task<AiCourseRecommendationDto> GenerateCourseRecommendationsAsync(UserSurveyResponseDto survey, List<CourseInfoDto> availableCourses)
+      public async Task<AiCourseRecommendationDto> GenerateCourseRecommendationsAsync(UserSurveyResponseDto survey, List<CourseInfoDto> availableCourses)
         {
-            var payload = new { survey, availableCourses };
-            var prompt = $"Recommend3-5 courses for the user below. Return JSON AiCourseRecommendationDto.\n{JsonSerializer.Serialize(payload, _json)}";
+       var payload = new { survey, availableCourses };
+    var prompt = $"Recommend3-5 courses for the user below. Return JSON AiCourseRecommendationDto.\n{JsonSerializer.Serialize(payload, _json)}";
             var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 600, temperature: 0.2);
             try { return JsonSerializer.Deserialize<AiCourseRecommendationDto>(json, _json) ?? new AiCourseRecommendationDto(); } catch { return new AiCourseRecommendationDto(); }
         }
@@ -287,20 +354,20 @@ Output must be valid JSON only.";
         {
             var prompt = $"Create a weekly study plan as plain text for this learner: {JsonSerializer.Serialize(survey, _json)}";
             return await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: false, maxTokens: 800, temperature: 0.4);
-        }
+      }
 
-        public async Task<List<string>> GenerateStudyTipsAsync(UserSurveyResponseDto survey)
+  public async Task<List<string>> GenerateStudyTipsAsync(UserSurveyResponseDto survey)
         {
-            var prompt = $"Return8-10 study tips as a plain text list (one per line) for this learner: {JsonSerializer.Serialize(survey, _json)}";
-            var text = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: false, maxTokens: 300, temperature: 0.3);
+ var prompt = $"Return8-10 study tips as a plain text list (one per line) for this learner: {JsonSerializer.Serialize(survey, _json)}";
+ var text = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: false, maxTokens: 300, temperature: 0.3);
             return text.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(s => s.TrimStart('-', ' ', '•').Trim()).ToList();
         }
 
-        public async Task<TeacherQualificationAnalysisDto> AnalyzeTeacherQualificationsAsync(TeacherApplicationDto application, List<TeacherCredentialDto> credentials)
-        {
+   public async Task<TeacherQualificationAnalysisDto> AnalyzeTeacherQualificationsAsync(TeacherApplicationDto application, List<TeacherCredentialDto> credentials)
+      {
             var prompt = $"Analyze teacher qualifications. Return JSON TeacherQualificationAnalysisDto.\nApplication: {JsonSerializer.Serialize(application, _json)}\nCredentials: {JsonSerializer.Serialize(credentials, _json)}";
             var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 700, temperature: 0.2);
-            try { return JsonSerializer.Deserialize<TeacherQualificationAnalysisDto>(json, _json) ?? new TeacherQualificationAnalysisDto(); } catch { return new TeacherQualificationAnalysisDto(); }
+     try { return JsonSerializer.Deserialize<TeacherQualificationAnalysisDto>(json, _json) ?? new TeacherQualificationAnalysisDto(); } catch { return new TeacherQualificationAnalysisDto(); }
         }
     }
 }
