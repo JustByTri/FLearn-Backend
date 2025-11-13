@@ -1,5 +1,6 @@
 ﻿using BLL.IServices.Teacher;
 using Common.DTO.ApiResponse;
+using Common.DTO.Paging.Response;
 using Common.DTO.PayOut;
 using Common.DTO.Teacher;
 using Common.DTO.Teacher.Response;
@@ -7,6 +8,7 @@ using DAL.Helpers;
 using DAL.Models;
 using DAL.Type;
 using DAL.UnitOfWork;
+using Microsoft.EntityFrameworkCore;
 using System.Net;
 
 namespace BLL.Services.Teacher
@@ -277,6 +279,78 @@ namespace BLL.Services.Teacher
             };
 
             return BaseResponse<PublicTeacherProfileDto>.Success(resultDto, "Lấy hồ sơ giáo viên thành công.", (int)HttpStatusCode.OK);
+        }
+        public async Task<PagedResponse<IEnumerable<TeachingProgramResponse>>> GetTeachingProgramAsync(Guid userId, int pageNumber, int pageSize)
+        {
+            try
+            {
+                if (pageNumber <= 0) pageNumber = 1;
+                if (pageSize <= 0) pageSize = 10;
+                if (pageSize > 100) pageSize = 100;
+
+                var teacher = await _unit.TeacherProfiles.Query()
+                    .Include(t => t.TeacherProgramAssignments)
+                        .ThenInclude(tpa => tpa.Program)
+                    .Include(t => t.TeacherProgramAssignments)
+                        .ThenInclude(tpa => tpa.Level)
+                    .FirstOrDefaultAsync(x => x.UserId == userId);
+
+                if (teacher == null)
+                {
+                    return PagedResponse<IEnumerable<TeachingProgramResponse>>.Fail(
+                        new object(),
+                        "Teacher not found",
+                        404
+                    );
+                }
+
+                var assignmentsQuery = _unit.TeacherProgramAssignments.Query()
+                    .Where(tpa => tpa.TeacherId == teacher.TeacherId && tpa.Status)
+                    .Include(tpa => tpa.Program)
+                    .Include(tpa => tpa.Level)
+                    .AsQueryable();
+
+                var totalItems = await assignmentsQuery.CountAsync();
+
+                var assignments = await assignmentsQuery
+                    .OrderBy(tpa => tpa.Program.Name)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(tpa => new TeachingProgramResponse
+                    {
+                        ProgramId = tpa.ProgramId,
+                        ProgramName = tpa.Program.Name,
+                        LevelId = tpa.LevelId,
+                        LevelName = tpa.Level.Name
+                    })
+                    .ToListAsync();
+
+                if (!assignments.Any())
+                {
+                    return PagedResponse<IEnumerable<TeachingProgramResponse>>.Success(
+                        new List<TeachingProgramResponse>(),
+                        pageNumber,
+                        pageSize,
+                        0,
+                        "No teaching programs found"
+                    );
+                }
+
+                return PagedResponse<IEnumerable<TeachingProgramResponse>>.Success(
+                    assignments,
+                    pageNumber,
+                    pageSize,
+                    totalItems,
+                    "Teaching programs retrieved successfully"
+                );
+            }
+            catch (Exception ex)
+            {
+                return PagedResponse<IEnumerable<TeachingProgramResponse>>.Error(
+                    $"An error occurred while retrieving teaching programs: {ex.Message}",
+                    500
+                );
+            }
         }
     }
 }

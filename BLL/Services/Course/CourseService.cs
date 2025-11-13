@@ -72,7 +72,10 @@ namespace BLL.Services.Course
             {
                 try
                 {
-                    var teacher = await _unit.TeacherProfiles.FindAsync(x => x.UserId == userId);
+                    var teacher = await _unit.TeacherProfiles.Query()
+                    .Include(t => t.User)
+                    .Include(t => t.TeacherProgramAssignments)
+                    .FirstOrDefaultAsync(x => x.UserId == userId);
 
                     if (teacher == null)
                         return BaseResponse<CourseResponse>.Fail(new object(), "Access denied", 403);
@@ -83,6 +86,12 @@ namespace BLL.Services.Course
 
                     if (!template.Status)
                         return BaseResponse<CourseResponse>.Fail("Template is not active");
+
+                    var validationResult = await ValidateTeacherAssignmentAsync(teacher, template.ProgramId, template.LevelId);
+                    if (!validationResult.IsValid)
+                    {
+                        return BaseResponse<CourseResponse>.Fail(new object(), validationResult.ErrorMessage, 403);
+                    }
 
                     var language = await _unit.Languages.GetByIdAsync(teacher.LanguageId);
                     var program = await _unit.Programs.GetByIdAsync(template.ProgramId);
@@ -190,97 +199,72 @@ namespace BLL.Services.Course
                 }
             });
         }
-        #region Private Methods
-        private async Task AddCourseTopicsAsync(Guid courseId, List<DAL.Models.Topic> topics)
+        public async Task<BaseResponse<object>> DeleteCourseAsync(Guid userId, Guid courseId)
         {
-            foreach (var topic in topics)
+            try
             {
-                var courseTopic = new CourseTopic
-                {
-                    CourseTopicID = Guid.NewGuid(),
-                    CourseID = courseId,
-                    TopicID = topic.TopicID,
-                    CreatedAt = TimeHelper.GetVietnamTime(),
-                    UpdatedAt = TimeHelper.GetVietnamTime()
-                };
-                await _unit.CourseTopics.CreateAsync(courseTopic);
+                var teacher = await _unit.TeacherProfiles.FindAsync(x => x.UserId == userId);
+                if (teacher == null)
+                    return BaseResponse<object>.Fail(null, "Access denied", 403);
+
+                var course = await _unit.Courses.Query()
+                    .Include(c => c.CourseUnits)
+                        .ThenInclude(u => u.Lessons)
+                            .ThenInclude(l => l.Exercises)
+                    .FirstOrDefaultAsync(c => c.CourseID == courseId && c.TeacherId == teacher.TeacherId);
+
+                if (course == null)
+                    return BaseResponse<object>.Fail(null, "Course not found or you don't have permission", 404);
+
+                if (course.Status == CourseStatus.Published)
+                    return BaseResponse<object>.Fail(null, "Cannot delete published course. Please archive it first.", 400);
+
+                await DeleteCourseMediaAsync(course);
+
+                await _unit.Courses.DeleteAsync(courseId);
+                await _unit.SaveChangesAsync();
+
+                return BaseResponse<object>.Success(null, "Course deleted successfully");
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<object>.Error($"Error deleting course: {ex.Message}");
             }
         }
-        private async Task CreateCourseStructureAsync(Guid courseId, DAL.Models.CourseTemplate template)
+        public async Task<BaseResponse<object>> ToggleCourseVisibilityAsync(Guid userId, Guid courseId, bool isHidden)
         {
-            for (int unitPosition = 1; unitPosition <= template.UnitCount; unitPosition++)
+            try
             {
-                var courseUnit = new CourseUnit
+                var teacher = await _unit.TeacherProfiles.FindAsync(x => x.UserId == userId);
+                if (teacher == null)
+                    return BaseResponse<object>.Fail(null, "Access denied", 403);
+
+                var course = await _unit.Courses.Query()
+                    .FirstOrDefaultAsync(c => c.CourseID == courseId && c.TeacherId == teacher.TeacherId);
+
+                if (course == null)
+                    return BaseResponse<object>.Fail(null, "Course not found", 404);
+
+                if (isHidden)
                 {
-                    CourseUnitID = Guid.NewGuid(),
-                    CourseID = courseId,
-                    Title = $"Unit {unitPosition}",
-                    Description = $"Unit {unitPosition} description",
-                    Position = unitPosition,
-                    TotalLessons = template.LessonsPerUnit,
-                    CreatedAt = TimeHelper.GetVietnamTime(),
-                    UpdatedAt = TimeHelper.GetVietnamTime()
-                };
-
-                await _unit.CourseUnits.CreateAsync(courseUnit);
-
-                for (int lessonPosition = 1; lessonPosition <= template.LessonsPerUnit; lessonPosition++)
-                {
-                    var lesson = new DAL.Models.Lesson
-                    {
-                        LessonID = Guid.NewGuid(),
-                        CourseUnitID = courseUnit.CourseUnitID,
-                        Content = $@"
-                        <h1>Lesson {unitPosition}.{lessonPosition}: Introduction</h1>
-                        <p>Welcome to this lesson! In this session, we will cover:</p>
-                        <ul>
-                        <li>Key concepts and terminology</li>
-                        <li>Practical examples and exercises</li>
-                        <li>Best practices and tips</li>
-                        </ul>
-                        <p>By the end of this lesson, you will be able to understand and apply the core concepts discussed.</p>
-                        <h2>Learning Objectives</h2>
-                        <p>After completing this lesson, you should be able to:</p>
-                        <ol>
-                        <li>Understand the main concepts</li>
-                        <li>Apply the knowledge in practical scenarios</li>
-                        <li>Complete the assigned exercises</li>
-                        </ol>
-                        ",
-                        Title = $"Lesson {unitPosition}.{lessonPosition}",
-                        Description = $"Lesson {unitPosition}.{lessonPosition} description",
-                        Position = lessonPosition,
-                        VideoUrl = "",
-                        VideoPublicId = "",
-                        DocumentUrl = "",
-                        DocumentPublicId = "",
-                        TotalExercises = 0,
-                        CreatedAt = TimeHelper.GetVietnamTime(),
-                        UpdatedAt = TimeHelper.GetVietnamTime()
-                    };
-
-                    await _unit.Lessons.CreateAsync(lesson);
+                    course.Status = CourseStatus.Archived;
                 }
+                else
+                {
+                    course.Status = course.PublishedAt.HasValue ? CourseStatus.Published : CourseStatus.Draft;
+                }
+
+                course.UpdatedAt = TimeHelper.GetVietnamTime();
+                await _unit.Courses.UpdateAsync(course);
+                await _unit.SaveChangesAsync();
+
+                var action = isHidden ? "archived" : "restored";
+                return BaseResponse<object>.Success(null, $"Course {action} successfully");
             }
-        }
-        private int CalculateEstimatedHours(DAL.Models.CourseTemplate template)
-        {
-            // Simple calculation: 1 unit = 2 hours, 1 lesson = 30 minutes
-            return template.UnitCount * 2 + template.UnitCount * template.LessonsPerUnit / 2;
-        }
-        #endregion
-        public async Task<bool> DeleteCourseAsync(Guid courseId)
-        {
-            var course = await _unit.Courses.GetByIdAsync(courseId);
-            if (course == null)
-                return false;
-
-            if (course.Status == CourseStatus.Published)
-                throw new InvalidOperationException("Cannot delete published course");
-
-            await _unit.Courses.DeleteAsync(course.CourseID);
-            await _unit.SaveChangesAsync();
-            return true;
+            catch (Exception ex)
+            {
+                return BaseResponse<object>.Error($"Error toggling course visibility: {ex.Message}");
+            }
         }
         public async Task<BaseResponse<CourseResponse>> GetCourseByIdAsync(Guid courseId)
         {
@@ -398,15 +382,7 @@ namespace BLL.Services.Course
 
             return BaseResponse<CourseResponse>.Success(response);
         }
-     
-
-        public async Task<PagedResponse<IEnumerable<CourseResponse>>> GetCoursesAsync(
-            PagingRequest request,  
-            string? lang,  
-            Guid? programId, 
-            Guid? levelId,  
-            Guid? teacherId, 
-            string? title)   
+        public async Task<PagedResponse<IEnumerable<CourseResponse>>> GetCoursesAsync(PagingRequest request, string? lang, Guid? programId, Guid? levelId, Guid? teacherId, string? title)   
         {
             try
             {
@@ -923,40 +899,140 @@ namespace BLL.Services.Course
                     return BaseResponse<object>.Fail(null, "You do not have permission to submit this course.", 403);
 
                 if (course.Status != CourseStatus.Draft && course.Status != CourseStatus.Rejected)
-                    return BaseResponse<object>.Fail(null, "Course can only be submitted if it is in Pending or Rejected status.", 400);
+                    return BaseResponse<object>.Fail(null,
+                        $"Course can only be submitted if it is in '{CourseStatus.Draft}' or '{CourseStatus.Rejected}' status. Current status: {course.Status}",
+                        400);
 
                 var template = course.Template;
                 if (template == null)
                     return BaseResponse<object>.Fail(null, "This course does not have a valid template assigned.", 400);
 
-                var errors = new List<string>();
+                var validationErrors = new List<string>();
+                var validationWarnings = new List<string>();
 
                 var unitCount = course.CourseUnits?.Count ?? 0;
                 if (unitCount < template.UnitCount)
-                    errors.Add($"This course must contain at least {template.UnitCount} units.");
+                {
+                    validationErrors.Add(
+                        $"❌ Unit Count: Required {template.UnitCount} units, but found {unitCount} units. " +
+                        $"Missing {template.UnitCount - unitCount} unit(s)."
+                    );
+                }
+                else if (unitCount > template.UnitCount)
+                {
+                    validationWarnings.Add(
+                        $"⚠️ Unit Count: Template suggests {template.UnitCount} units, but found {unitCount} units. " +
+                        $"Consider aligning with template for consistency."
+                    );
+                }
 
                 foreach (var unit in course.CourseUnits ?? Enumerable.Empty<DAL.Models.CourseUnit>())
                 {
                     var lessonCount = unit.Lessons?.Count ?? 0;
+
                     if (lessonCount < template.LessonsPerUnit)
                     {
-                        errors.Add($"Unit '{unit.Title}' must contain at least {template.LessonsPerUnit} lessons.");
-                        continue;
+                        validationErrors.Add(
+                            $"❌ Unit '{unit.Title}': Required {template.LessonsPerUnit} lessons, but found {lessonCount} lessons. " +
+                            $"Missing {template.LessonsPerUnit - lessonCount} lesson(s)."
+                        );
+                    }
+                    else if (lessonCount > template.LessonsPerUnit)
+                    {
+                        validationWarnings.Add(
+                            $"⚠️ Unit '{unit.Title}': Template suggests {template.LessonsPerUnit} lessons, but found {lessonCount} lessons. " +
+                            $"Extra content is allowed but consider template guidelines."
+                        );
                     }
 
                     foreach (var lesson in unit.Lessons ?? Enumerable.Empty<DAL.Models.Lesson>())
                     {
                         var exerciseCount = lesson.Exercises?.Count ?? 0;
+
                         if (exerciseCount < template.ExercisesPerLesson)
-                            errors.Add($"Lesson '{lesson.Title}' must contain at least {template.ExercisesPerLesson} exercises.");
+                        {
+                            validationWarnings.Add(
+                                $"💡 Lesson '{lesson.Title}' (Unit {unit.Position}): Template suggests {template.ExercisesPerLesson} exercises, but found {exerciseCount} exercises. " +
+                                $"Exercises are optional but recommended for better learning experience."
+                            );
+                        }
+                        else if (exerciseCount > template.ExercisesPerLesson)
+                        {
+                            validationWarnings.Add(
+                                $"💡 Lesson '{lesson.Title}' (Unit {unit.Position}): Template suggests {template.ExercisesPerLesson} exercises, but found {exerciseCount} exercises. " +
+                                $"Extra exercises are great for practice!"
+                            );
+                        }
                     }
                 }
 
-                if (errors.Any())
+                if (course.CourseTopics?.Count == 0)
                 {
+                    validationErrors.Add("❌ Topics: At least one topic is required for the course.");
+                }
+
+                if (string.IsNullOrWhiteSpace(course.Title) || course.Title == "Untitled Course")
+                {
+                    validationErrors.Add("❌ Title: Course title is required and cannot be the default value.");
+                }
+
+                if (string.IsNullOrWhiteSpace(course.Description) || course.Description == "No description")
+                {
+                    validationErrors.Add("❌ Description: Course description is required and cannot be the default value.");
+                }
+
+                if (string.IsNullOrWhiteSpace(course.LearningOutcome) || course.LearningOutcome == "No learning outcomes")
+                {
+                    validationErrors.Add("❌ Learning Outcomes: Learning outcomes are required and cannot be the default value.");
+                }
+
+                if (string.IsNullOrWhiteSpace(course.ImageUrl))
+                {
+                    validationErrors.Add("❌ Image: Course image is required.");
+                }
+
+                if (course.CourseType == CourseType.Free && course.Price != 0)
+                {
+                    validationErrors.Add("❌ Pricing: Free courses must have price set to 0.");
+                }
+
+                if (course.CourseType == CourseType.Paid && course.Price <= 0)
+                {
+                    validationErrors.Add("❌ Pricing: Paid courses must have price greater than 0.");
+                }
+
+                var allMessages = validationErrors.Concat(validationWarnings).ToList();
+
+                if (validationErrors.Any())
+                {
+                    var templateRequirements = new
+                    {
+                        TemplateName = template.Name,
+                        TemplateVersion = template.Version,
+                        RequiredUnits = template.UnitCount,
+                        RequiredLessonsPerUnit = template.LessonsPerUnit,
+                        SuggestedExercisesPerLesson = template.ExercisesPerLesson,
+                        CurrentCourse = new
+                        {
+                            ActualUnits = course.CourseUnits?.Count ?? 0,
+                            ActualLessons = course.CourseUnits?.Sum(u => u.Lessons?.Count ?? 0) ?? 0,
+                            ActualExercises = course.CourseUnits?.Sum(u => u.Lessons?.Sum(l => l.Exercises?.Count ?? 0) ?? 0) ?? 0
+                        },
+                        ValidationErrors = validationErrors,
+                        ValidationWarnings = validationWarnings,
+                        Summary = new
+                        {
+                            TotalErrors = validationErrors.Count,
+                            TotalWarnings = validationWarnings.Count,
+                            CanBeSubmitted = !validationErrors.Any()
+                        }
+                    };
+
                     return BaseResponse<object>.Fail(
-                        new { Details = errors },
-                        "Course does not meet the template requirements.",
+                        templateRequirements,
+                        $"Course does not meet the template '{template.Name}' (v{template.Version}) requirements. " +
+                        $"Found {validationErrors.Count} error(s) that must be fixed before submission." +
+                        (validationWarnings.Any() ? $" Also {validationWarnings.Count} suggestion(s) for improvement." : ""),
                         400
                     );
                 }
@@ -975,11 +1051,33 @@ namespace BLL.Services.Course
 
                 await _unit.CourseSubmissions.CreateAsync(submission);
                 await _unit.SaveChangesAsync();
-                return BaseResponse<object>.Success(new { submissionId = submission.CourseSubmissionID }, "Course submitted for review successfully.");
+
+                var successMessage = $"Course '{course.Title}' submitted for review successfully.";
+
+                if (validationWarnings.Any())
+                {
+                    successMessage += $" Note: {validationWarnings.Count} suggestion(s) were noted but didn't block submission.";
+                }
+
+                return BaseResponse<object>.Success(
+                    new
+                    {
+                        submissionId = submission.CourseSubmissionID,
+                        courseId = course.CourseID,
+                        courseTitle = course.Title,
+                        submittedAt = submission.SubmittedAt,
+                        warnings = validationWarnings.Any() ? validationWarnings : null
+                    },
+                    successMessage
+                );
             }
             catch (Exception ex)
             {
-                return BaseResponse<object>.Error("error", 500, $"An error occurred: {ex.Message}");
+                return BaseResponse<object>.Error(
+                    "Submit failed",
+                    500,
+                    $"An error occurred while submitting the course for review: {ex.Message}"
+                );
             }
         }
         public async Task<PagedResponse<IEnumerable<CourseSubmissionResponse>>> GetCourseSubmissionsByManagerAsync(Guid userId, PagingRequest request, string status)
@@ -1410,5 +1508,146 @@ namespace BLL.Services.Course
 
             return BaseResponse<CourseResponse>.Success(response);
         }
+        #region
+        private async Task DeleteCourseMediaAsync(DAL.Models.Course course)
+        {
+            if (!string.IsNullOrEmpty(course.PublicId))
+            {
+                await _cloudinaryService.DeleteFileAsync(course.PublicId);
+            }
+
+            foreach (var unit in course.CourseUnits ?? Enumerable.Empty<CourseUnit>())
+            {
+                foreach (var lesson in unit.Lessons ?? Enumerable.Empty<DAL.Models.Lesson>())
+                {
+                    if (!string.IsNullOrEmpty(lesson.VideoPublicId))
+                    {
+                        await _cloudinaryService.DeleteFileAsync(lesson.VideoPublicId);
+                    }
+
+                    if (!string.IsNullOrEmpty(lesson.DocumentPublicId))
+                    {
+                        await _cloudinaryService.DeleteFileAsync(lesson.DocumentPublicId);
+                    }
+
+                    foreach (var exercise in lesson.Exercises ?? Enumerable.Empty<DAL.Models.Exercise>())
+                    {
+                        if (!string.IsNullOrEmpty(exercise.MediaPublicId))
+                        {
+                            await _cloudinaryService.DeleteFileAsync(exercise.MediaPublicId);
+                        }
+                    }
+                }
+            }
+        }
+        private async Task<(bool IsValid, string ErrorMessage)> ValidateTeacherAssignmentAsync(TeacherProfile teacher, Guid programId, Guid levelId)
+        {
+            var programAssignment = teacher.TeacherProgramAssignments?
+                .FirstOrDefault(tpa => tpa.ProgramId == programId);
+
+            if (programAssignment == null)
+            {
+                return (false, "You are not assigned to teach this program.");
+            }
+
+            var templateLevel = await _unit.Levels.GetByIdAsync(levelId);
+            if (templateLevel == null)
+            {
+                return (false, "Invalid level specified in template.");
+            }
+
+            var teacherMaxLevel = programAssignment.Level;
+            if (teacherMaxLevel == null)
+            {
+                return (false, "Your teaching level for this program is not defined.");
+            }
+
+            if (templateLevel.OrderIndex > teacherMaxLevel.OrderIndex)
+            {
+                return (false,
+                    $"Your teaching level ({teacherMaxLevel.Name}) is not sufficient to teach this course level ({templateLevel.Name}). " +
+                    $"You can only teach up to {teacherMaxLevel.Name} level.");
+            }
+
+            return (true, string.Empty);
+        }
+        private async Task AddCourseTopicsAsync(Guid courseId, List<DAL.Models.Topic> topics)
+        {
+            foreach (var topic in topics)
+            {
+                var courseTopic = new CourseTopic
+                {
+                    CourseTopicID = Guid.NewGuid(),
+                    CourseID = courseId,
+                    TopicID = topic.TopicID,
+                    CreatedAt = TimeHelper.GetVietnamTime(),
+                    UpdatedAt = TimeHelper.GetVietnamTime()
+                };
+                await _unit.CourseTopics.CreateAsync(courseTopic);
+            }
+        }
+        private async Task CreateCourseStructureAsync(Guid courseId, DAL.Models.CourseTemplate template)
+        {
+            for (int unitPosition = 1; unitPosition <= template.UnitCount; unitPosition++)
+            {
+                var courseUnit = new CourseUnit
+                {
+                    CourseUnitID = Guid.NewGuid(),
+                    CourseID = courseId,
+                    Title = $"Unit {unitPosition}",
+                    Description = $"Unit {unitPosition} description",
+                    Position = unitPosition,
+                    TotalLessons = template.LessonsPerUnit,
+                    CreatedAt = TimeHelper.GetVietnamTime(),
+                    UpdatedAt = TimeHelper.GetVietnamTime()
+                };
+
+                await _unit.CourseUnits.CreateAsync(courseUnit);
+
+                for (int lessonPosition = 1; lessonPosition <= template.LessonsPerUnit; lessonPosition++)
+                {
+                    var lesson = new DAL.Models.Lesson
+                    {
+                        LessonID = Guid.NewGuid(),
+                        CourseUnitID = courseUnit.CourseUnitID,
+                        Content = $@"
+                        <h1>Lesson {unitPosition}.{lessonPosition}: Introduction</h1>
+                        <p>Welcome to this lesson! In this session, we will cover:</p>
+                        <ul>
+                        <li>Key concepts and terminology</li>
+                        <li>Practical examples and exercises</li>
+                        <li>Best practices and tips</li>
+                        </ul>
+                        <p>By the end of this lesson, you will be able to understand and apply the core concepts discussed.</p>
+                        <h2>Learning Objectives</h2>
+                        <p>After completing this lesson, you should be able to:</p>
+                        <ol>
+                        <li>Understand the main concepts</li>
+                        <li>Apply the knowledge in practical scenarios</li>
+                        <li>Complete the assigned exercises</li>
+                        </ol>
+                        ",
+                        Title = $"Lesson {unitPosition}.{lessonPosition}",
+                        Description = $"Lesson {unitPosition}.{lessonPosition} description",
+                        Position = lessonPosition,
+                        VideoUrl = "",
+                        VideoPublicId = "",
+                        DocumentUrl = "",
+                        DocumentPublicId = "",
+                        TotalExercises = 0,
+                        CreatedAt = TimeHelper.GetVietnamTime(),
+                        UpdatedAt = TimeHelper.GetVietnamTime()
+                    };
+
+                    await _unit.Lessons.CreateAsync(lesson);
+                }
+            }
+        }
+        private int CalculateEstimatedHours(DAL.Models.CourseTemplate template)
+        {
+            // Simple calculation: 1 unit = 2 hours, 1 lesson = 30 minutes
+            return template.UnitCount * 2 + template.UnitCount * template.LessonsPerUnit / 2;
+        }
+        #endregion
     }
 }

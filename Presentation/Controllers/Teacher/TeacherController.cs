@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Presentation.Helpers;
 using System.Net;
+using System.Security.Claims;
 
 namespace Presentation.Controllers.Teacher
 {
@@ -94,6 +95,16 @@ namespace Presentation.Controllers.Teacher
         public async Task<IActionResult> GetPublicProfile([FromRoute] Guid teacherId) 
         {
             var response = await _teacherService.GetPublicTeacherProfileAsync(teacherId);
+            return StatusCode(response.Code, response);
+        }
+        [HttpGet("teaching-programs")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> GetTeachingPrograms([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
+
+            var response = await _teacherService.GetTeachingProgramAsync(userId, pageNumber, pageSize);
             return StatusCode(response.Code, response);
         }
     }

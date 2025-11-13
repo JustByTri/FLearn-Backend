@@ -171,6 +171,52 @@ namespace BLL.Services.Lesson
                 return BaseResponse<LessonResponse>.Error("An error occurred while creating lesson.", 500, ex.Message);
             }
         }
+        public async Task<BaseResponse<object>> DeleteLessonAsync(Guid userId, Guid lessonId)
+        {
+            try
+            {
+                var teacher = await _unit.TeacherProfiles.FindAsync(x => x.UserId == userId);
+                if (teacher == null)
+                    return BaseResponse<object>.Fail(new object(), "Access denied", 403);
+
+                var lesson = await _unit.Lessons.Query()
+                    .Include(l => l.CourseUnit)
+                        .ThenInclude(u => u.Course)
+                    .Include(l => l.Exercises)
+                    .FirstOrDefaultAsync(l => l.LessonID == lessonId && l.CourseUnit.Course.TeacherId == teacher.TeacherId);
+
+                if (lesson == null)
+                    return BaseResponse<object>.Fail(null, "Lesson not found or you don't have permission", 404);
+
+                if (lesson.CourseUnit.Course.Status != CourseStatus.Draft && lesson.CourseUnit.Course.Status != CourseStatus.Rejected)
+                    return BaseResponse<object>.Fail(null, "Only lessons in Draft or Rejected courses can be deleted", 400);
+
+                await DeleteLessonMediaAsync(lesson);
+
+                lesson.CourseUnit.TotalLessons -= 1;
+                lesson.CourseUnit.Course.NumLessons -= 1;
+
+                var remainingLessons = await _unit.Lessons.FindAllAsync(
+                    l => l.CourseUnitID == lesson.CourseUnitID && l.LessonID != lessonId);
+
+                foreach (var remainingLesson in remainingLessons.OrderBy(l => l.Position))
+                {
+                    if (remainingLesson.Position > lesson.Position)
+                    {
+                        remainingLesson.Position--;
+                    }
+                }
+
+                await _unit.Lessons.DeleteAsync(lessonId);
+                await _unit.SaveChangesAsync();
+
+                return BaseResponse<object>.Success(null, "Lesson deleted successfully");
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<object>.Error($"Error deleting lesson: {ex.Message}");
+            }
+        }
         public async Task<BaseResponse<LessonResponse>> GetLessonByIdAsync(Guid lessonId)
         {
             try
@@ -443,6 +489,27 @@ namespace BLL.Services.Lesson
                 return BaseResponse<LessonResponse>.Error("An error occurred while updating lesson.", 500, ex.Message);
             }
         }
+        #region
+        private async Task DeleteLessonMediaAsync(DAL.Models.Lesson lesson)
+        {
+            if (!string.IsNullOrEmpty(lesson.VideoPublicId))
+            {
+                await _cloudinary.DeleteFileAsync(lesson.VideoPublicId);
+            }
+            if (!string.IsNullOrEmpty(lesson.DocumentPublicId))
+            {
+                await _cloudinary.DeleteFileAsync(lesson.DocumentPublicId);
+            }
+
+            foreach (var exercise in lesson.Exercises ?? Enumerable.Empty<DAL.Models.Exercise>())
+            {
+                if (!string.IsNullOrEmpty(exercise.MediaPublicId))
+                {
+                    await _cloudinary.DeleteFileAsync(exercise.MediaPublicId);
+                }
+            }
+        }
+        #endregion
     }
 }
 
