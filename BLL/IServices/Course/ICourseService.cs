@@ -21,13 +21,14 @@ namespace BLL.IServices.Course
                Guid? teacherId,
                string? title);
         Task<BaseResponse<CourseResponse>> UpdateCourseAsync(Guid userId, Guid courseId, UpdateCourseRequest request);
-        Task<bool> DeleteCourseAsync(Guid courseId);
         Task<PagedResponse<IEnumerable<CourseSubmissionResponse>>> GetCourseSubmissionsByManagerAsync(Guid userId, PagingRequest request, string status);
         Task<PagedResponse<IEnumerable<CourseSubmissionResponse>>> GetCourseSubmissionsByTeacherAsync(Guid userId, PagingRequest request, string status);
         Task<BaseResponse<object>> SubmitCourseForReviewAsync(Guid userId, Guid courseId);
         Task<BaseResponse<object>> ApproveCourseSubmissionAsync(Guid userId, Guid submissionId);
         Task<BaseResponse<object>> RejectCourseSubmissionAsync(Guid userId, Guid submissionId, string reason);
         Task<BaseResponse<IEnumerable<PopularCourseDto>>> GetPopularCoursesAsync(int count = 10);
+        Task<BaseResponse<object>> DeleteCourseAsync(Guid userId, Guid courseId);
+        Task<BaseResponse<object>> ToggleCourseVisibilityAsync(Guid userId, Guid courseId, bool isHidden);
     }
 
 }

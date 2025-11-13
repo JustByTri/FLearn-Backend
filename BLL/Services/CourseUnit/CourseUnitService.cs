@@ -1,4 +1,5 @@
 ﻿using BLL.IServices.CourseUnit;
+using BLL.IServices.Upload;
 using Common.DTO.ApiResponse;
 using Common.DTO.CourseUnit.Request;
 using Common.DTO.CourseUnit.Response;
@@ -15,9 +16,11 @@ namespace BLL.Services.CourseUnits
     public class CourseUnitService : ICourseUnitService
     {
         private readonly IUnitOfWork _unit;
-        public CourseUnitService(IUnitOfWork unit)
+        private readonly ICloudinaryService _cloudinaryService;
+        public CourseUnitService(IUnitOfWork unit, ICloudinaryService cloudinaryService)
         {
             _unit = unit;
+            _cloudinaryService = cloudinaryService;
         }
         public async Task<BaseResponse<UnitResponse>> CreateUnitAsync(Guid userId, Guid courseId, UnitRequest request)
         {
@@ -86,6 +89,52 @@ namespace BLL.Services.CourseUnits
             catch (Exception ex)
             {
                 return BaseResponse<UnitResponse>.Error($"Error: {ex.Message}");
+            }
+        }
+        public async Task<BaseResponse<object>> DeleteUnitAsync(Guid userId, Guid unitId)
+        {
+            try
+            {
+                var teacher = await _unit.TeacherProfiles.FindAsync(x => x.UserId == userId);
+                if (teacher == null)
+                    return BaseResponse<object>.Fail("Teacher does not exist.");
+
+                var unit = await _unit.CourseUnits.Query()
+                    .Include(u => u.Course)
+                    .Include(u => u.Lessons)
+                        .ThenInclude(l => l.Exercises)
+                    .FirstOrDefaultAsync(u => u.CourseUnitID == unitId && u.Course.TeacherId == teacher.TeacherId);
+
+                if (unit == null)
+                    return BaseResponse<object>.Fail(null, "Unit not found or you don't have permission", 404);
+
+                if (unit.Course.Status != CourseStatus.Draft && unit.Course.Status != CourseStatus.Rejected)
+                    return BaseResponse<object>.Fail(null, "Only units in Draft or Rejected courses can be deleted", 400);
+
+                await DeleteUnitMediaAsync(unit);
+
+                unit.Course.NumUnits -= 1;
+                unit.Course.NumLessons -= unit.Lessons?.Count ?? 0;
+
+                var remainingUnits = await _unit.CourseUnits.FindAllAsync(
+                    u => u.CourseID == unit.CourseID && u.CourseUnitID != unitId);
+
+                foreach (var remainingUnit in remainingUnits.OrderBy(u => u.Position))
+                {
+                    if (remainingUnit.Position > unit.Position)
+                    {
+                        remainingUnit.Position--;
+                    }
+                }
+
+                await _unit.CourseUnits.DeleteAsync(unitId);
+                await _unit.SaveChangesAsync();
+
+                return BaseResponse<object>.Success(null, "Unit deleted successfully");
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<object>.Error($"Error deleting unit: {ex.Message}");
             }
         }
         public async Task<BaseResponse<UnitResponse>> GetUnitByIdAsync(Guid unitId)
@@ -240,5 +289,29 @@ namespace BLL.Services.CourseUnits
             }
 
         }
+        #region
+        private async Task DeleteUnitMediaAsync(CourseUnit unit)
+        {
+            foreach (var lesson in unit.Lessons ?? Enumerable.Empty<DAL.Models.Lesson>())
+            {
+                if (!string.IsNullOrEmpty(lesson.VideoPublicId))
+                {
+                    await _cloudinaryService.DeleteFileAsync(lesson.VideoPublicId);
+                }
+                if (!string.IsNullOrEmpty(lesson.DocumentPublicId))
+                {
+                    await _cloudinaryService.DeleteFileAsync(lesson.DocumentPublicId);
+                }
+
+                foreach (var exercise in lesson.Exercises ?? Enumerable.Empty<DAL.Models.Exercise>())
+                {
+                    if (!string.IsNullOrEmpty(exercise.MediaPublicId))
+                    {
+                        await _cloudinaryService.DeleteFileAsync(exercise.MediaPublicId);
+                    }
+                }
+            }
+        }
+        #endregion
     }
 }

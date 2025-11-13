@@ -1,6 +1,7 @@
 ﻿using BLL.IServices.Course;
 using Common.DTO.ApiResponse;
 using Common.DTO.Application.Request;
+using Common.DTO.Common.Request;
 using Common.DTO.Course;
 using Common.DTO.Course.Request;
 using Common.DTO.Course.Response;
@@ -488,6 +489,73 @@ namespace Presentation.Controllers.Course
 
 
             return StatusCode(response.Code, response);
+        }
+        /// <summary>
+        /// Delete a course (only for Draft or Rejected courses)
+        /// </summary>
+        [HttpDelete("{courseId:guid}")]
+        [Authorize(Roles = "Teacher")]
+        [ProducesResponseType(typeof(BaseResponse<object>), 200)]
+        [ProducesResponseType(typeof(object), 400)]
+        [ProducesResponseType(typeof(object), 403)]
+        [ProducesResponseType(typeof(object), 404)]
+        [ProducesResponseType(typeof(object), 500)]
+        public async Task<IActionResult> DeleteCourse(Guid courseId)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirstValue("user_id")
+                                 ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
+                {
+                    return Unauthorized("Invalid user ID");
+                }
+
+                var result = await _courseService.DeleteCourseAsync(userId, courseId);
+                return StatusCode(result.Code, result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    Message = "An error occurred while deleting course",
+                    Details = ex.Message
+                });
+            }
+        }
+        /// <summary>
+        /// Archive or restore a course
+        /// </summary>
+        [HttpPatch("{courseId:guid}/visibility")]
+        [Authorize(Roles = "Teacher")]
+        [ProducesResponseType(typeof(BaseResponse<object>), 200)]
+        [ProducesResponseType(typeof(object), 400)]
+        [ProducesResponseType(typeof(object), 403)]
+        [ProducesResponseType(typeof(object), 404)]
+        public async Task<IActionResult> ToggleCourseVisibility(Guid courseId, [FromBody] ToggleVisibilityRequest request)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirstValue("user_id")
+                                 ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
+                {
+                    return Unauthorized("Invalid user ID");
+                }
+
+                var result = await _courseService.ToggleCourseVisibilityAsync(userId, courseId, request.IsHidden);
+                return StatusCode(result.Code, result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    Message = "An error occurred while updating course visibility",
+                    Details = ex.Message
+                });
+            }
         }
     }
 }

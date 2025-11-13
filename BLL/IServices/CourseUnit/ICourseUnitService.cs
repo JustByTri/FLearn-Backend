@@ -12,5 +12,6 @@ namespace BLL.IServices.CourseUnit
         Task<BaseResponse<UnitResponse>> UpdateUnitAsync(Guid userId, Guid courseId, Guid unitId, UnitUpdateRequest request);
         Task<BaseResponse<UnitResponse>> GetUnitByIdAsync(Guid unitId);
         Task<PagedResponse<IEnumerable<UnitResponse>>> GetUnitsByCourseIdAsync(Guid courseId, PagingRequest request);
+        Task<BaseResponse<object>> DeleteUnitAsync(Guid userId, Guid unitId);
     }
 }

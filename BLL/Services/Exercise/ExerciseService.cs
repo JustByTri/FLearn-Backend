@@ -197,49 +197,126 @@ namespace BLL.Services.Exercise
             {
                 var teacher = await _unit.TeacherProfiles.FindAsync(x => x.UserId == userId);
                 if (teacher == null)
-                    return BaseResponse<ExerciseResponse>.Fail("Teacher does not exist.");
+                    return BaseResponse<ExerciseResponse>.Fail(
+                        new { Access = "Unauthorized" },
+                        "Access denied. Teacher not found.",
+                        403
+                    );
 
                 var exercise = await _unit.Exercises.Query()
                     .Include(e => e.Lesson)
                         .ThenInclude(l => l.CourseUnit)
-                        .ThenInclude(u => u.Course)
+                            .ThenInclude(u => u.Course)
+                    .Include(e => e.ExerciseSubmissions)
                     .FirstOrDefaultAsync(e => e.ExerciseID == exerciseId);
 
                 if (exercise == null)
-                    return BaseResponse<ExerciseResponse>.Fail(null, "Exercise not found.", 404);
+                    return BaseResponse<ExerciseResponse>.Fail(
+                        new { ExerciseId = "Not found" },
+                        "Exercise not found.",
+                        404
+                    );
 
-                var course = exercise.Lesson.CourseUnit.Course;
+                var course = exercise.Lesson?.CourseUnit?.Course;
+                if (course == null)
+                    return BaseResponse<ExerciseResponse>.Fail(
+                        new { Course = "Invalid reference" },
+                        "Course reference is invalid.",
+                        500
+                    );
+
                 if (course.TeacherId != teacher.TeacherId)
                     return BaseResponse<ExerciseResponse>.Fail(
-                        null,
+                        new { Permission = "Forbidden" },
                         "You do not have permission to delete this exercise.",
                         403
                     );
 
                 if (course.Status != CourseStatus.Draft && course.Status != CourseStatus.Rejected)
                     return BaseResponse<ExerciseResponse>.Fail(
-                        new { CourseStatus = "Invalid course status." },
-                        "Only Draft or Rejected courses can be deleted.",
+                        new { CourseStatus = course.Status.ToString() },
+                        "Only exercises in Draft or Rejected courses can be deleted.",
                         400
                     );
 
-                // Delete media if exists
-                if (!string.IsNullOrEmpty(exercise.MediaPublicId))
-                    await _cloudinary.DeleteFileAsync(exercise.MediaPublicId);
+                return await _unit.ExecuteInTransactionAsync(async () =>
+                {
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(exercise.MediaPublicId) && exercise.MediaPublicId != "null!")
+                        {
+                            var publicIds = exercise.MediaPublicId.Split(';', StringSplitOptions.RemoveEmptyEntries);
+                            foreach (var publicId in publicIds)
+                            {
+                                if (!string.IsNullOrEmpty(publicId) && publicId != "null!")
+                                {
+                                    await _cloudinary.DeleteFileAsync(publicId);
+                                }
+                            }
+                        }
 
-                exercise.Lesson.TotalExercises -= 1;
+                        if (exercise.ExerciseSubmissions?.Any() == true)
+                        {
+                            foreach (var submission in exercise.ExerciseSubmissions.ToList())
+                            {
+                                await _unit.ExerciseSubmissions.RemoveAsync(submission);
+                            }
+                        }
 
-                var deleted = await _unit.Exercises.RemoveAsync(exercise);
-                if (!deleted)
-                    return BaseResponse<ExerciseResponse>.Fail("Failed to delete exercise.");
+                        var lesson = exercise.Lesson;
+                        if (lesson != null)
+                        {
+                            lesson.TotalExercises = Math.Max(0, lesson.TotalExercises - 1);
+                            await _unit.Lessons.UpdateAsync(lesson);
+                        }
 
-                await _unit.SaveChangesAsync();
+                        var remainingExercises = await _unit.Exercises.FindAllAsync(
+                            e => e.LessonID == exercise.LessonID && e.ExerciseID != exerciseId);
 
-                return BaseResponse<ExerciseResponse>.Success(null, "Exercise deleted successfully.", 200);
+                        foreach (var remainingExercise in remainingExercises.OrderBy(e => e.Position))
+                        {
+                            if (remainingExercise.Position > exercise.Position)
+                            {
+                                remainingExercise.Position--;
+                                await _unit.Exercises.UpdateAsync(remainingExercise);
+                            }
+                        }
+
+                        var deleted = await _unit.Exercises.RemoveAsync(exercise);
+                        if (!deleted)
+                        {
+                            return BaseResponse<ExerciseResponse>.Fail(
+                                new { Delete = "Failed" },
+                                "Failed to delete exercise from database.",
+                                500
+                            );
+                        }
+
+                        await _unit.SaveChangesAsync();
+
+                        return BaseResponse<ExerciseResponse>.Success(
+                            null,
+                            $"Exercise '{exercise.Title}' deleted successfully.",
+                            200
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        return BaseResponse<ExerciseResponse>.Error(
+                            "Transaction failed while deleting exercise.",
+                            500,
+                            ex.Message
+                        );
+                    }
+                });
             }
             catch (Exception ex)
             {
-                return BaseResponse<ExerciseResponse>.Error("An error occurred while deleting exercise.", 500, ex.Message);
+                return BaseResponse<ExerciseResponse>.Error(
+                    "An unexpected error occurred while deleting exercise.",
+                    500,
+                    ex.Message
+                );
             }
         }
         public async Task<BaseResponse<ExerciseResponse>> GetExerciseByIdAsync(Guid exerciseId)

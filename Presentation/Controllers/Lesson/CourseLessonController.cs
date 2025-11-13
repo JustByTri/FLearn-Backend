@@ -117,5 +117,24 @@ namespace Presentation.Controllers.Lesson
             var result = await _lessonService.UpdateLessonAsync(userId, unitId, lessonId, request);
             return StatusCode(result.Code, result);
         }
+
+        /// <summary>
+        /// Delete a lesson
+        /// </summary>
+        [HttpDelete("lessons/{lessonId:guid}")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> DeleteLesson(Guid lessonId)
+        {
+            var userIdClaim = User.FindFirstValue("user_id")
+                             ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return Unauthorized("Invalid user ID");
+            }
+
+            var result = await _lessonService.DeleteLessonAsync(userId, lessonId);
+            return StatusCode(result.Code, result);
+        }
     }
 }

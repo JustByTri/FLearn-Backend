@@ -131,5 +131,23 @@ namespace Presentation.Controllers.CourseUnit
             var response = await _courseUnitService.GetUnitByIdAsync(unitId);
             return StatusCode(response.Code, response);
         }
+        /// <summary>
+        /// Delete a unit
+        /// </summary>
+        [HttpDelete("units/{unitId:guid}")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> DeleteUnit(Guid unitId)
+        {
+            var userIdClaim = User.FindFirstValue("user_id")
+                             ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return Unauthorized("Invalid user ID");
+            }
+
+            var result = await _courseUnitService.DeleteUnitAsync(userId, unitId);
+            return StatusCode(result.Code, result);
+        }
     }
 }

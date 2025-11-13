@@ -12,5 +12,6 @@ namespace BLL.IServices.Lesson
         Task<BaseResponse<LessonResponse>> UpdateLessonAsync(Guid userId, Guid unitId, Guid lessonId, LessonUpdateRequest request);
         Task<PagedResponse<IEnumerable<LessonResponse>>> GetLessonsByUnitIdAsync(Guid unitId, PagingRequest request);
         Task<BaseResponse<LessonResponse>> GetLessonByIdAsync(Guid lessonId);
+        Task<BaseResponse<object>> DeleteLessonAsync(Guid userId, Guid lessonId);
     }
 }
