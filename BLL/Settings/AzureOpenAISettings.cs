@@ -8,7 +8,8 @@ namespace BLL.Settings
  public string ApiKey { get; set; } = string.Empty; // Azure OpenAI key
  public string ChatDeployment { get; set; } = string.Empty; // chat model deployment
  public string TranscriptionDeployment { get; set; } = string.Empty; // whisper deployment name (optional)
- public string ApiVersion { get; set; } = "2025-01-01-preview"; // default version
+ public string ApiVersion { get; set; } = "2025-01-01-preview"; // chat/completions api-version
+ public string AudioApiVersion { get; set; } = "2024-06-01"; // stable audio endpoint version
  public int MaxOutputTokens { get; set; } =8192;
  public double Temperature { get; set; } =0.3;
  }
