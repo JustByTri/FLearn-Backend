@@ -384,9 +384,9 @@ Return 2-3 alternatives only, all at level {nextLevel}.";
         {
             var levelMap = new Dictionary<string, string>
             {
-                { "A1", "A2" }, { "A2", "B1" }, { "B1", "B2" }, { "B2", "C1" }, { "C1", "C2" },
-                { "N5", "N4" }, { "N4", "N3" }, { "N3", "N2" }, { "N2", "N1" },
-                { "HSK1", "HSK2" }, { "HSK2", "HSK3" }, { "HSK3", "HSK4" }, { "HSK4", "HSK5" }
+                { "A1", "A2" }, { "A2", "B1" }, { "B1", "B2" }, { "B2", "C1" }, { "C1", "C2" }, { "C2", "C2" },
+                { "N5", "N4" }, { "N4", "N3" }, { "N3", "N2" }, { "N2", "N1" }, { "N1", "N1" },
+                { "HSK1", "HSK2" }, { "HSK2", "HSK3" }, { "HSK3", "HSK4" }, { "HSK4", "HSK5" }, { "HSK5", "HSK5" }
             };
             
             return levelMap.TryGetValue(currentLevel, out var next) ? next : currentLevel;

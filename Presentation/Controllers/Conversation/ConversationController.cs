@@ -258,15 +258,17 @@ namespace Presentation.Controllers.Conversation
                     await formDto.AudioFile.CopyToAsync(ms);
                     audioBytes = ms.ToArray();
                 }
-                var fileName = Path.GetFileName(formDto.AudioFile.FileName);
-                var contentType = formDto.AudioFile.ContentType;
+                var fileName = string.IsNullOrWhiteSpace(formDto.AudioFile.FileName) ? "audio.wav" : Path.GetFileName(formDto.AudioFile.FileName);
+                var contentType = string.IsNullOrWhiteSpace(formDto.AudioFile.ContentType) ? "audio/wav" : formDto.AudioFile.ContentType;
 
                 // Map session language name to STT locale (best-effort)
                 string? sttLocale = null;
                 var lname = (session.LanguageName ?? string.Empty).ToLowerInvariant();
-                if (lname.Contains("english")) sttLocale = "en-US";
-                else if (lname.Contains("japanese") || lname.Contains("nihon") || lname.Contains("日本") || lname.Contains("jp")) sttLocale = "ja-JP";
-                else if (lname.Contains("chinese") || lname.Contains("中文") || lname.Contains("zh")) sttLocale = "zh-CN";
+                if (lname.Contains("english") || lname.Contains("tiếng anh") || lname.Contains("tieng anh")) sttLocale = "en-US";
+                else if (lname.Contains("japanese") || lname.Contains("nihon") || lname.Contains("日本") || lname.Contains("jp") || lname.Contains("tiếng nhật") || lname.Contains("tieng nhat")) sttLocale = "ja-JP";
+                else if (lname.Contains("chinese") || lname.Contains("中文") || lname.Contains("zh") || lname.Contains("tiếng trung") || lname.Contains("tieng trung") || lname.Contains("trung quốc")) sttLocale = "zh-CN";
+
+                _logger.LogInformation("STT locale resolved: {Locale} from LanguageName='{Name}'", sttLocale ?? "(auto)", session.LanguageName);
 
                 // Transcribe (if client didn't provide transcript)
                 var transcript = string.IsNullOrWhiteSpace(formDto.Transcript)

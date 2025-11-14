@@ -54,6 +54,8 @@ using DAL;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging; // added
+using Microsoft.Extensions.Options; // added
 using StackExchange.Redis;
 
 namespace BLL
@@ -124,7 +126,16 @@ namespace BLL
             services.AddHttpClient<IGeminiService, AzureOpenAIService>();
             services.AddHttpClient<AzureOpenAITranscriptionService>();
             services.AddScoped<AzureSpeechTranscriptionService>();
-            services.AddScoped<ITranscriptionService, CompositeTranscriptionService>();
+
+            // Composite STT: try Azure Speech for WAV (no GStreamer needed), fallback to Azure OpenAI Whisper
+            services.AddScoped<ITranscriptionService>(sp =>
+            {
+                var speech = sp.GetRequiredService<AzureSpeechTranscriptionService>();
+                var openai = sp.GetRequiredService<AzureOpenAITranscriptionService>();
+                var logger = sp.GetRequiredService<ILogger<CompositeTranscriptionService>>();
+                return new CompositeTranscriptionService(speech, openai, logger);
+            });
+
             services.AddScoped<IPronunciationAssessmentService, AzureSpeechPronunciationAssessmentService>();
 
             // ensure VoiceAssessmentService gets STT

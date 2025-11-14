@@ -105,10 +105,24 @@ namespace BLL.Services.AI
         public async Task<GeneratedConversationContentDto> GenerateConversationContentAsync(ConversationContextDto context)
         {
             var rubric = BuildDifficultyRubric(context.DifficultyLevel);
-            
+
             var prompt = $@"# Generate IMMERSIVE Roleplay Scenario for {context.Language}
 
 Create a VIVID, REALISTIC roleplay scenario (NOT a generic description).
+
+IMPORTANT VARIETY RULES:
+- Every time you answer, create a CLEARLY DIFFERENT scenario.
+- Do NOT reuse the same structure, details, or rhythm as the examples.
+- Do NOT copy any sentences, phrases, or patterns from the examples.
+- Vary time of day, weekday/weekend, location type, relationship between characters, and stakes.
+- Frequently change sentence structure to avoid feeling repetitive.
+
+Base the scenario tightly on:
+- Topic: {context.Topic}
+- Difficulty: {context.DifficultyLevel} — {rubric}
+- Guidelines: {context.ScenarioGuidelines}
+- Roleplay notes: {context.RoleplayInstructions}
+- Evaluation focus: {context.EvaluationCriteria}
 
 ## SCENARIO DESCRIPTION (25-50 words in {context.Language}):
 Must include:
@@ -116,14 +130,28 @@ Must include:
 - Character name, age, brief appearance
 - What JUST happened to trigger this conversation
 - Current emotion/urgency
-- Sensory detail (weather, sound, atmosphere)
+- At least ONE sensory detail (weather, sound, atmosphere, smell, light, etc.)
+- Wide variety of characters, roles, and times across different calls so users don't get repeated patterns.
+- Vary sentence structure heavily (avoid always starting with time, or ""You are..."").
 
-GOOD example: ""It's 2 PM, raining. You're Emma, 25, sitting in the HR office at Tech Solutions. The interviewer just asked about your previous job failure. Your coffee is cold. This interview could change everything.""
-BAD example: ""You are having a job interview to discuss your experience.""
+Examples below are ONLY to show level of detail and style. 
+Do NOT copy their structure, order of information, or wording.
+
+GOOD example (for level of detail ONLY):
+""It's 2 PM, raining. You're Emma, 25, sitting in the HR office at Tech Solutions. The interviewer just asked about your previous job failure. Your coffee is cold. This interview could change everything.""
+
+BAD example:
+""You are having a job interview to discuss your experience.""
+
+Forbidden patterns:
+- Do NOT start with ""It's 2 PM, raining."" or any slight variation.
+- Do NOT end with sentences like ""This X could change everything.""
+- Do NOT always use ""You're [name], [age], sitting in..."". Change it.
 
 ## AI ROLE (in {context.Language}, max 40 chars):
 Format: ""[Name], [Role] ([personality trait])""
 Example: ""Mr. Chen, Hiring Manager (严肃但公正)"" or ""Sophie, Server (friendly but busy)""
+Vary names, roles, and traits across scenarios.
 
 ## SYSTEM PROMPT:
 Create detailed character instructions:
@@ -144,8 +172,9 @@ MUST be spoken IN-CHARACTER as direct dialogue, NOT a greeting template.
 - Reference something specific from scenario
 - Ask a question or create situation requiring response
 - Show personality immediately
+- Do NOT reuse any of the example sentences below.
 
-GOOD examples:
+GOOD examples (for style ONLY, do NOT copy):
 - ""*glances at your resume* I see a gap here between March and July. What happened?""
 - ""*approaches your table with notepad* I'm so sorry for the wait! Ready to order?""
 - ""*looks up from computer* Your flight number? I'll search our system right away.""
@@ -178,14 +207,7 @@ Task 3: ""Negotiate a satisfactory solution professionally""
   ]
 }}
 
-Topic: {context.Topic}
-Language: {context.Language} ({context.LanguageCode})
-Difficulty: {context.DifficultyLevel} — {rubric}
-Guidelines: {context.ScenarioGuidelines}
-Roleplay notes: {context.RoleplayInstructions}
-Evaluation focus: {context.EvaluationCriteria}
-
-Return ONLY valid JSON, no markdown blocks.";
+Return ONLY valid JSON, no markdown blocks, no extra text.";
 
             var json = await ChatAsync(context.MasterPrompt, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 800, temperature: 0.6);
             try
@@ -268,18 +290,36 @@ Return valid JSON only, no markdown.";
         {
             try
             {
+                _logger.LogInformation("AzureOpenAI: Generating synonyms for '{Message}' in {Language} at {Level}", 
+                    userMessage, targetLanguage, currentLevel);
+                
                 // Determine next level only
                 var nextLevel = GetNextLevel(currentLevel);
+                _logger.LogInformation("AzureOpenAI: Current level={Current}, Next level={Next}", currentLevel, nextLevel);
+                
+                // Special handling for max levels
+                var isMaxLevel = (currentLevel == nextLevel);
+                var levelGuidance = isMaxLevel 
+                    ? $"at the current {currentLevel} level with more sophisticated/native-like expressions"
+                    : $"at the NEXT proficiency level only ({nextLevel})";
+                
+                _logger.LogInformation("AzureOpenAI: IsMaxLevel={IsMax}, LevelGuidance={Guidance}", isMaxLevel, levelGuidance);
                 
                 var prompt = $@"User said: ""{userMessage}"" in {targetLanguage} (current level: {currentLevel})
 
-Provide 2-3 BETTER alternatives at the NEXT proficiency level only ({nextLevel}).
+Provide 2-3 BETTER alternatives {levelGuidance}.
 Do NOT suggest multiple levels - focus on natural progression.
 
-Example:
+{(isMaxLevel ? 
+$@"Since user is at {currentLevel} (highest level), suggest:
+- More native-like expressions
+- More sophisticated vocabulary
+- More idiomatic phrases
+All at {currentLevel} level." :
+$@"Example:
 If user (A2) said: ""I want to buy this""
 Suggest (B1): ""I would like to purchase this"" or ""I'd like to buy this item""
-NOT B2/C1/C2 - only the NEXT level!
+NOT B2/C1/C2 - only the NEXT level!")}
 
 Return JSON:
 {{
@@ -298,17 +338,38 @@ Return JSON:
 
 Return 2-3 alternatives only, all at level {nextLevel}.";
 
+                _logger.LogDebug("AzureOpenAI: Calling ChatAsync with prompt (first 200 chars): {Prompt}", 
+                    prompt.Length > 200 ? prompt.Substring(0, 200) + "..." : prompt);
+
                 var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 600, temperature: 0.4);
-                return JsonSerializer.Deserialize<SynonymSuggestionDto>(json, _json) ?? new SynonymSuggestionDto
+                
+                _logger.LogInformation("AzureOpenAI: Received JSON response (length={Length})", json?.Length ?? 0);
+                _logger.LogDebug("AzureOpenAI: JSON response: {Json}", json);
+                
+                var result = !string.IsNullOrWhiteSpace(json) 
+                    ? JsonSerializer.Deserialize<SynonymSuggestionDto>(json, _json)
+                    : null;
+                
+                if (result != null)
                 {
-                    OriginalMessage = userMessage,
-                    CurrentLevel = currentLevel,
-                    Alternatives = new()
-                };
+                    _logger.LogInformation("AzureOpenAI: Successfully deserialized. OriginalMessage={Orig}, Alternatives count={Count}", 
+                        result.OriginalMessage, result.Alternatives?.Count ?? 0);
+                    return result;
+                }
+                else
+                {
+                    _logger.LogWarning("AzureOpenAI: Deserialization returned NULL");
+                    return new SynonymSuggestionDto
+                    {
+                        OriginalMessage = userMessage,
+                        CurrentLevel = currentLevel,
+                        Alternatives = new()
+                    };
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to parse synonym suggestions");
+                _logger.LogError(ex, "AzureOpenAI: Failed to generate synonym suggestions");
                 return new SynonymSuggestionDto
                 {
                     OriginalMessage = userMessage,
@@ -323,9 +384,9 @@ Return 2-3 alternatives only, all at level {nextLevel}.";
         {
             var levelMap = new Dictionary<string, string>
             {
-                { "A1", "A2" }, { "A2", "B1" }, { "B1", "B2" }, { "B2", "C1" }, { "C1", "C2" },
-                { "N5", "N4" }, { "N4", "N3" }, { "N3", "N2" }, { "N2", "N1" },
-                { "HSK1", "HSK2" }, { "HSK2", "HSK3" }, { "HSK3", "HSK4" }, { "HSK4", "HSK5" }
+                { "A1", "A2" }, { "A2", "B1" }, { "B1", "B2" }, { "B2", "C1" }, { "C1", "C2" }, { "C2", "C2" },
+                { "N5", "N4" }, { "N4", "N3" }, { "N3", "N2" }, { "N2", "N1" }, { "N1", "N1" },
+                { "HSK1", "HSK2" }, { "HSK2", "HSK3" }, { "HSK3", "HSK4" }, { "HSK4", "HSK5" }, { "HSK5", "HSK5" }
             };
             
             return levelMap.TryGetValue(currentLevel, out var next) ? next : currentLevel;

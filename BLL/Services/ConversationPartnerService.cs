@@ -306,19 +306,71 @@ Never respond in Vietnamese or any other language, regardless of what language t
                 SynonymSuggestionDto? synonymSuggestions = null;
                 try
                 {
-                    if (!string.IsNullOrWhiteSpace(request.MessageContent) && request.MessageContent.Length > 2)
+                    _logger.LogInformation("=== SYNONYM GENERATION START ===");
+                    _logger.LogInformation("Message content: '{Content}', Length: {Length}", request.MessageContent, request.MessageContent?.Length ?? 0);
+                    _logger.LogInformation("Session difficulty level: {Level}", session.DifficultyLevel);
+                    _logger.LogInformation("Session language: {Language}", session.Language?.LanguageName);
+                    
+                    // IMPORTANT: Skip synonym generation for voice message placeholder OR language mismatch
+                    var isVoicePlaceholder = request.MessageContent?.Equals("[Voice Message]", StringComparison.OrdinalIgnoreCase) == true;
+                    var sessionLangName = session.Language?.LanguageName ?? string.Empty;
+                    var userMsgLower = request.MessageContent?.ToLowerInvariant() ?? string.Empty;
+                    bool languageMismatch = IsVietnamese(userMsgLower) && !sessionLangName.ToLowerInvariant().Contains("vi");
+
+                    if (!string.IsNullOrWhiteSpace(request.MessageContent) && 
+                        request.MessageContent.Length > 2 && 
+                        !isVoicePlaceholder && !languageMismatch)
                     {
+                        _logger.LogInformation("Condition passed - generating synonym suggestions");
+                        
                         synonymSuggestions = await _geminiService.GenerateSynonymSuggestionsAsync(
                             request.MessageContent,
                             session.Language?.LanguageName ?? "English",
                             session.DifficultyLevel
                         );
+                        
+                        if (synonymSuggestions != null)
+                        {
+                            _logger.LogInformation("Synonym result: OriginalMessage='{Original}', CurrentLevel='{Level}', AlternativeCount={Count}", 
+                                synonymSuggestions.OriginalMessage, 
+                                synonymSuggestions.CurrentLevel, 
+                                synonymSuggestions.Alternatives?.Count ?? 0);
+                            
+                            if (synonymSuggestions.Alternatives?.Any() == true)
+                            {
+                                _logger.LogInformation("Generated {Count} synonym suggestions successfully", synonymSuggestions.Alternatives.Count);
+                                foreach (var alt in synonymSuggestions.Alternatives)
+                                {
+                                    _logger.LogDebug("Alternative: Level={Level}, Text='{Text}'", alt.Level, alt.AlternativeText);
+                                }
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Synonym suggestions returned NULL or EMPTY alternatives array");
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogWarning("GenerateSynonymSuggestionsAsync returned NULL");
+                        }
                     }
+                    else
+                    {
+                        if (isVoicePlaceholder)
+                        {
+                            _logger.LogInformation("Skipping synonym generation - voice message placeholder");
+                        }
+                        else
+                        {
+                            _logger.LogDebug("Skipping synonym generation - message too short or empty: '{Message}'", request.MessageContent);
+                        }
+                    }
+                    
+                    _logger.LogInformation("=== SYNONYM GENERATION END ===");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to generate synonym suggestions");
-                    // Continue without suggestions if this fails
+                    _logger.LogError(ex, "EXCEPTION in synonym generation for message: '{Message}'", request.MessageContent);
                 }
 
                 var aiMessageDto = MapToMessageDto(aiMessage);
