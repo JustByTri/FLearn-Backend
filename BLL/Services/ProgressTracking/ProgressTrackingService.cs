@@ -1,8 +1,10 @@
-﻿using BLL.IServices.ProgressTracking;
+﻿using Azure.Core;
+using BLL.IServices.ProgressTracking;
 using BLL.IServices.Upload;
 using Common.DTO.ApiResponse;
 using Common.DTO.ExerciseGrading.Request;
 using Common.DTO.ExerciseSubmission.Response;
+using Common.DTO.Paging.Response;
 using Common.DTO.ProgressTracking.Request;
 using Common.DTO.ProgressTracking.Response;
 using DAL.Helpers;
@@ -26,7 +28,7 @@ namespace BLL.Services.ProgressTracking
             _exerciseGradingService = exerciseGradingService;
             _cloudinaryService = cloudinaryService;
         }
-        public async Task<BaseResponse<List<ExerciseSubmissionDetailResponse>>> GetMySubmissionsAsync(Guid userId, Guid? courseId, Guid? lessonId, string? status)
+        public async Task<PagedResponse<List<ExerciseSubmissionDetailResponse>>> GetMySubmissionsAsync(Guid userId, Guid? courseId, Guid? lessonId, string? status, int pageNumber = 1, int pageSize = 10)
         {
             try
             {
@@ -35,7 +37,11 @@ namespace BLL.Services.ProgressTracking
                     .FirstOrDefaultAsync(l => l.UserId == userId);
 
                 if (learner == null)
-                    return BaseResponse<List<ExerciseSubmissionDetailResponse>>.Fail(new List<ExerciseSubmissionDetailResponse>(), "Learner not found", 403);
+                    return PagedResponse<List<ExerciseSubmissionDetailResponse>>.Fail(new List<ExerciseSubmissionDetailResponse>(), "Learner not found", 403);
+
+                if (pageNumber < 1) pageNumber = 1;
+                if (pageSize < 1) pageSize = 10;
+                if (pageSize > 100) pageSize = 100;
 
                 var query = _unitOfWork.ExerciseSubmissions
                     .Query()
@@ -64,18 +70,29 @@ namespace BLL.Services.ProgressTracking
                     query = query.Where(es => es.Status == statusFilter);
                 }
 
+                var totalCount = await query.CountAsync();
+
+                var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
                 var submissions = await query
                     .OrderByDescending(es => es.SubmittedAt)
-                    .Take(50)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
                     .ToListAsync();
 
                 var responses = submissions.Select(es => MapToDetailResponse(es)).ToList();
 
-                return BaseResponse<List<ExerciseSubmissionDetailResponse>>.Success(responses, "Submissions retrieved successfully");
+                return PagedResponse<List<ExerciseSubmissionDetailResponse>>.Success(
+                    responses,
+                    pageNumber,
+                    pageSize,
+                    totalCount,
+                    "Submissions retrieved successfully",
+                    200);
             }
             catch (Exception ex)
             {
-                return BaseResponse<List<ExerciseSubmissionDetailResponse>>.Error($"Error retrieving submissions: {ex.Message}");
+                return PagedResponse<List<ExerciseSubmissionDetailResponse>>.Error($"Error retrieving submissions: {ex.Message}");
             }
         }
         public async Task<BaseResponse<ExerciseSubmissionDetailResponse>> GetSubmissionDetailAsync(Guid userId, Guid submissionId)
@@ -113,7 +130,7 @@ namespace BLL.Services.ProgressTracking
                 return BaseResponse<ExerciseSubmissionDetailResponse>.Error($"Error retrieving submission detail: {ex.Message}");
             }
         }
-        public async Task<BaseResponse<List<ExerciseSubmissionHistoryResponse>>> GetExerciseSubmissionsHistoryAsync(Guid userId, Guid exerciseId)
+        public async Task<PagedResponse<List<ExerciseSubmissionHistoryResponse>>> GetExerciseSubmissionsHistoryAsync(Guid userId, Guid exerciseId, int pageNumber = 1, int pageSize = 10)
         {
             try
             {
@@ -122,12 +139,25 @@ namespace BLL.Services.ProgressTracking
                     .FirstOrDefaultAsync(l => l.UserId == userId);
 
                 if (learner == null)
-                    return BaseResponse<List<ExerciseSubmissionHistoryResponse>>.Fail(new List<ExerciseSubmissionHistoryResponse>(), "Learner not found", 403);
+                    return PagedResponse<List<ExerciseSubmissionHistoryResponse>>.Fail(new List<ExerciseSubmissionHistoryResponse>(), "Learner not found", 403);
 
-                var submissions = await _unitOfWork.ExerciseSubmissions
+                if (pageNumber < 1) pageNumber = 1;
+                if (pageSize < 1) pageSize = 10;
+                if (pageSize > 100) pageSize = 100;
+
+                var baseQuery = _unitOfWork.ExerciseSubmissions
                     .Query()
-                    .Where(es => es.LearnerId == learner.LearnerLanguageId && es.ExerciseId == exerciseId)
+                    .Where(es => es.LearnerId == learner.LearnerLanguageId &&
+                                es.ExerciseId == exerciseId);
+
+                var totalCount = await baseQuery.CountAsync();
+
+                var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+                var submissions = await baseQuery
                     .OrderByDescending(es => es.SubmittedAt)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
                     .ToListAsync();
 
                 var responses = submissions.Select(es => new ExerciseSubmissionHistoryResponse
@@ -135,17 +165,26 @@ namespace BLL.Services.ProgressTracking
                     ExerciseSubmissionId = es.ExerciseSubmissionId,
                     SubmittedAt = es.SubmittedAt.ToString("dd-MM-yyyy HH:mm"),
                     Status = es.Status.ToString(),
-                    FinalScore = (es.TeacherScore == 0) ? es.AIScore : (es.AIScore + es.TeacherScore) / 2,
+                    FinalScore = es.FinalScore,
                     IsPassed = es.IsPassed,
                     AudioUrl = es.AudioUrl,
-                    TeacherFeedback = es.TeacherFeedback
+                    TeacherFeedback = es.TeacherFeedback,
+                    AIFeedback = es.AIFeedback,
+                    AIScore = es.AIScore,
+                    TeacherScore = es.TeacherScore,
                 }).ToList();
 
-                return BaseResponse<List<ExerciseSubmissionHistoryResponse>>.Success(responses, "Submission history retrieved successfully");
+                return PagedResponse<List<ExerciseSubmissionHistoryResponse>>.Success(
+                    responses,
+                    pageNumber,
+                    pageSize,
+                    totalPages,
+                    "Submission history retrieved successfully",
+                    200);
             }
             catch (Exception ex)
             {
-                return BaseResponse<List<ExerciseSubmissionHistoryResponse>>.Error($"Error retrieving submission history: {ex.Message}");
+                return PagedResponse<List<ExerciseSubmissionHistoryResponse>>.Error($"Error retrieving submission history: {ex.Message}");
             }
         }
         public async Task<BaseResponse<ProgressTrackingResponse>> GetCurrentProgressAsync(Guid userId, Guid courseId)

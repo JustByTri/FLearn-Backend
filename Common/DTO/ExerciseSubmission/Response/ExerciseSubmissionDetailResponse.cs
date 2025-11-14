@@ -31,12 +31,15 @@
     public class ExerciseSubmissionHistoryResponse
     {
         public Guid ExerciseSubmissionId { get; set; }
-        public string? SubmittedAt { get; set; }
-        public string Status { get; set; } = null!;
+        public double AIScore { get; set; }
+        public string? AIFeedback { get; set; }
+        public double TeacherScore { get; set; }
+        public string? TeacherFeedback { get; set; }
         public double? FinalScore { get; set; }
         public bool? IsPassed { get; set; }
+        public string Status { get; set; } = null!;
         public string AudioUrl { get; set; } = null!;
-        public string? TeacherFeedback { get; set; }
+        public string? SubmittedAt { get; set; }
     }
     public class GradingCriteriaScore
     {
