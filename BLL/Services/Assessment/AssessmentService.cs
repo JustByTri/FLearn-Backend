@@ -41,29 +41,39 @@ namespace BLL.Services.Assessment
         {
             try
             {
-                var submission = await _unitOfWork.ExerciseSubmissions.GetByIdAsync(req.ExerciseSubmissionId);
-                if (submission == null)
-                    return CreateDefaultAssessmentResult();
+                var submissionTask = _unitOfWork.ExerciseSubmissions.GetByIdAsync(req.ExerciseSubmissionId);
+                var exerciseTask = submissionTask.ContinueWith(async t =>
+                {
+                    var submission = await t;
+                    return submission != null ? await _unitOfWork.Exercises.GetByIdAsync(submission.ExerciseId) : null;
+                }, ct).Unwrap();
 
-                var exercise = await _unitOfWork.Exercises.GetByIdAsync(submission.ExerciseId);
-                if (exercise == null)
+                await Task.WhenAll(submissionTask, exerciseTask);
+
+                var submission = await submissionTask;
+                var exercise = await exerciseTask;
+
+                if (submission == null || exercise == null)
                     return CreateDefaultAssessmentResult();
 
                 string? mediaContext = "";
                 string? mediaType = "";
 
-                if (exercise.Type == SpeakingExerciseType.PictureDescription && !string.IsNullOrEmpty(exercise.MediaUrl))
+                if (exercise.Type == SpeakingExerciseType.RepeatAfterMe && !string.IsNullOrEmpty(exercise.MediaUrl))
+                {
+                    var audioResponse = await TranscribeSpeechByGeminiAsync(exercise.MediaUrl);
+                    mediaContext = audioResponse.IsSuccess ? audioResponse.Content : "No reference audio available";
+                    mediaType = "reference_audio";
+                }
+                else if ((exercise.Type == SpeakingExerciseType.PictureDescription ||
+                         exercise.Type == SpeakingExerciseType.StoryTelling ||
+                         exercise.Type == SpeakingExerciseType.Debate) &&
+                         !string.IsNullOrEmpty(exercise.MediaUrl))
                 {
                     string[] imageUrls = ExtractImageUrls(exercise.MediaUrl);
                     var imageResponse = await DescribeImagesByAzureAsync(imageUrls);
                     mediaContext = imageResponse.IsSuccess ? imageResponse.Content : "No image description available";
                     mediaType = "image_description";
-                }
-                else if (exercise.Type == SpeakingExerciseType.RepeatAfterMe && !string.IsNullOrEmpty(exercise.MediaUrl))
-                {
-                    var audioResponse = await TranscribeSpeechByGeminiAsync(exercise.MediaUrl);
-                    mediaContext = audioResponse.IsSuccess ? audioResponse.Content : "No reference audio available";
-                    mediaType = "reference_audio";
                 }
                 else
                 {
