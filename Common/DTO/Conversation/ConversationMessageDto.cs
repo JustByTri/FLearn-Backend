@@ -28,5 +28,8 @@ namespace Common.DTO.Conversation
         public string FormattedDuration => AudioDuration.HasValue
             ? TimeSpan.FromSeconds(AudioDuration.Value).ToString(@"mm\:ss")
             : "0:00";
+        
+        // NEW: Gợi ý từ đồng nghĩa cho tin nhắn của AI
+        public SynonymSuggestionDto? SynonymSuggestions { get; set; }
     }
 }

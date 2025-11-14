@@ -105,23 +105,89 @@ namespace BLL.Services.AI
         public async Task<GeneratedConversationContentDto> GenerateConversationContentAsync(ConversationContextDto context)
         {
             var rubric = BuildDifficultyRubric(context.DifficultyLevel);
-            // Ask for shorter scenario and clear runtime rules
-            var prompt = $@"Return a strict JSON object with keys:
-- scenarioDescription (in {context.Language},60-100 words, include: time/place, participants, clear objective,1 cultural note, and1 plausible challenge; write as a compact paragraph, no bullets)
-- aiRole (a short label in {context.Language}, max30 characters, no punctuation except spaces)
-- systemPrompt (compact rules: reply ONLY in {context.Language}; no emojis/markdown; do NOT prefix with 'AI:' or a role name; stay strictly on topic '{context.Topic}'; keep replies concise:1–2 sentences; gently steer user back to topic if off-topic)
-- firstMessage (in {context.Language},1–2 sentences, set the scene and invite a reply; no prefix labels)
-- tasks (array of exactly3 objects with field taskDescription only; each is one imperative sentence in {context.Language}, max80 characters; Task1 easy → Task3 harder for level {context.DifficultyLevel}).
+            
+            var prompt = $@"# Generate IMMERSIVE Roleplay Scenario for {context.Language}
+
+Create a VIVID, REALISTIC roleplay scenario (NOT a generic description).
+
+## SCENARIO DESCRIPTION (25-50 words in {context.Language}):
+Must include:
+- Exact time & specific place: ""Monday 9 AM at Starbucks 5th Ave"" NOT ""at a cafe""
+- Character name, age, brief appearance
+- What JUST happened to trigger this conversation
+- Current emotion/urgency
+- Sensory detail (weather, sound, atmosphere)
+
+GOOD example: ""It's 2 PM, raining. You're Emma, 25, sitting in the HR office at Tech Solutions. The interviewer just asked about your previous job failure. Your coffee is cold. This interview could change everything.""
+BAD example: ""You are having a job interview to discuss your experience.""
+
+## AI ROLE (in {context.Language}, max 40 chars):
+Format: ""[Name], [Role] ([personality trait])""
+Example: ""Mr. Chen, Hiring Manager (严肃但公正)"" or ""Sophie, Server (friendly but busy)""
+
+## SYSTEM PROMPT:
+Create detailed character instructions:
+- Full character identity and personality
+- Speak AS the character, never describe from outside
+- Reply ONLY in {context.Language}, no other languages
+- Use natural conversational tone for {context.DifficultyLevel} level
+- Keep responses 1-2 sentences, realistic dialogue
+- Show emotion through word choice
+- Reference specific scenario details
+- Stay on topic: {context.Topic}
+- Gently redirect if user goes off-topic, staying in character
+- NO emojis, NO markdown, NO role labels like ""AI:"" or ""Character:""
+
+## FIRST MESSAGE (in {context.Language}):
+MUST be spoken IN-CHARACTER as direct dialogue, NOT a greeting template.
+- Include brief action/emotion in *asterisks* if needed
+- Reference something specific from scenario
+- Ask a question or create situation requiring response
+- Show personality immediately
+
+GOOD examples:
+- ""*glances at your resume* I see a gap here between March and July. What happened?""
+- ""*approaches your table with notepad* I'm so sorry for the wait! Ready to order?""
+- ""*looks up from computer* Your flight number? I'll search our system right away.""
+
+BAD examples:
+- ""Hello! Let's start our conversation.""
+- ""Hi there! I'm excited to discuss {context.Topic} with you.""
+- ""Welcome! How can I help you today?"" (too generic)
+
+## TASKS (exactly 3):
+Progressive difficulty for {context.DifficultyLevel} level.
+Each task: one specific action, max 80 chars, imperative form.
+Task 1 (easy) → Task 2 (medium) → Task 3 (challenging)
+
+Examples for {context.Topic}:
+Task 1: ""Greet and explain your situation clearly""
+Task 2: ""Ask specific questions about the resolution process""
+Task 3: ""Negotiate a satisfactory solution professionally""
+
+## RETURN STRICT JSON FORMAT:
+{{
+  ""scenarioDescription"": ""[detailed scenario in {context.Language}]"",
+  ""aiRole"": ""[Name, Role (trait)]"",
+  ""systemPrompt"": ""[character instructions as described above]"",
+  ""firstMessage"": ""[in-character dialogue in {context.Language}]"",
+  ""tasks"": [
+    {{""taskDescription"": ""[task 1 in {context.Language}]""}},
+    {{""taskDescription"": ""[task 2 in {context.Language}]""}},
+    {{""taskDescription"": ""[task 3 in {context.Language}]""}}
+  ]
+}}
 
 Topic: {context.Topic}
 Language: {context.Language} ({context.LanguageCode})
 Difficulty: {context.DifficultyLevel} — {rubric}
-Scenario guidelines: {context.ScenarioGuidelines}
+Guidelines: {context.ScenarioGuidelines}
 Roleplay notes: {context.RoleplayInstructions}
 Evaluation focus: {context.EvaluationCriteria}
-Output must be valid JSON only.";
 
-            var json = await ChatAsync(context.MasterPrompt, prompt, Array.Empty<string>(), jsonMode: true);
+Return ONLY valid JSON, no markdown blocks.";
+
+            var json = await ChatAsync(context.MasterPrompt, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 800, temperature: 0.6);
             try
             {
                 return JsonSerializer.Deserialize<GeneratedConversationContentDto>(json, _json) ?? new GeneratedConversationContentDto
@@ -149,12 +215,120 @@ Output must be valid JSON only.";
         public async Task<string> GenerateResponseAsync(string systemPrompt, string userMessage, List<string> conversationHistory)
         => await ChatAsync(systemPrompt, userMessage, conversationHistory, jsonMode: false);
 
+        // UPDATED: Đánh giá chi tiết hơn, không set điểm cứng
         public async Task<ConversationEvaluationResult> EvaluateConversationAsync(string evaluationPrompt)
         {
-            var json = await ChatAsync(string.Empty, evaluationPrompt, Array.Empty<string>(), jsonMode: true);
+            // Cải thiện prompt để yêu cầu phân tích chi tiết
+            var enhancedPrompt = $@"{evaluationPrompt}
+
+CRITICAL: Provide a DETAILED, QUALITATIVE analysis. Don't just give scores.
+Return JSON with:
+- overallScore (0-100, for compatibility)
+- fluentAnalysis, grammarAnalysis, vocabularyAnalysis, culturalAnalysis (each with detailed object containing:
+  * skillName: name of the skill
+  * qualitativeAssessment: detailed narrative description
+  * specificExamples: array of concrete examples from conversation
+  * suggestedImprovements: array of actionable advice
+  * currentLevel: ""Beginner""/""Intermediate""/""Advanced"")
+- specificObservations: array of objects with category, observation, impact, example
+- positivePatterns: array of strings (what user did well)
+- areasNeedingWork: array of strings (specific things to improve)
+- progressSummary: overall narrative assessment
+
+For each skill analysis, provide concrete examples and practical suggestions.
+Return valid JSON only, no markdown.";
+
+            var json = await ChatAsync(string.Empty, enhancedPrompt, Array.Empty<string>(), jsonMode: true, maxTokens: 1500, temperature: 0.3);
             try
-            { return JsonSerializer.Deserialize<ConversationEvaluationResult>(json, _json) ?? new ConversationEvaluationResult(); }
-            catch { return new ConversationEvaluationResult { AIFeedback = json }; }
+            {
+                var result = JsonSerializer.Deserialize<ConversationEvaluationResult>(json, _json);
+                if (result != null)
+                {
+                    // Ensure backwards compatibility: nếu có detailed analysis thì tính điểm từ đó
+                    if (result.FluentAnalysis != null || result.GrammarAnalysis != null)
+                    {
+                        result.FluentScore = result.OverallScore * 0.9f;
+                        result.GrammarScore = result.OverallScore * 0.85f;
+                        result.VocabularyScore = result.OverallScore * 0.95f;
+                        result.CulturalScore = result.OverallScore * 0.8f;
+                    }
+                    return result;
+                }
+                return new ConversationEvaluationResult();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse detailed evaluation");
+                return new ConversationEvaluationResult { AIFeedback = json };
+            }
+        }
+
+        // NEW: Generate synonym suggestions
+        public async Task<SynonymSuggestionDto> GenerateSynonymSuggestionsAsync(string userMessage, string targetLanguage, string currentLevel)
+        {
+            try
+            {
+                // Determine next level only
+                var nextLevel = GetNextLevel(currentLevel);
+                
+                var prompt = $@"User said: ""{userMessage}"" in {targetLanguage} (current level: {currentLevel})
+
+Provide 2-3 BETTER alternatives at the NEXT proficiency level only ({nextLevel}).
+Do NOT suggest multiple levels - focus on natural progression.
+
+Example:
+If user (A2) said: ""I want to buy this""
+Suggest (B1): ""I would like to purchase this"" or ""I'd like to buy this item""
+NOT B2/C1/C2 - only the NEXT level!
+
+Return JSON:
+{{
+  ""originalMessage"": ""{userMessage}"",
+  ""currentLevel"": ""{currentLevel}"",
+  ""alternatives"": [
+    {{
+      ""level"": ""{nextLevel}"",
+      ""alternativeText"": ""better expression at {nextLevel}"",
+      ""difference"": ""why this is more advanced"",
+      ""exampleUsage"": ""example in context""
+    }}
+  ],
+  ""explanation"": ""brief summary""
+}}
+
+Return 2-3 alternatives only, all at level {nextLevel}.";
+
+                var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 600, temperature: 0.4);
+                return JsonSerializer.Deserialize<SynonymSuggestionDto>(json, _json) ?? new SynonymSuggestionDto
+                {
+                    OriginalMessage = userMessage,
+                    CurrentLevel = currentLevel,
+                    Alternatives = new()
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse synonym suggestions");
+                return new SynonymSuggestionDto
+                {
+                    OriginalMessage = userMessage,
+                    CurrentLevel = currentLevel,
+                    Alternatives = new(),
+                    Explanation = "Unable to generate suggestions at this time."
+                };
+            }
+        }
+
+        private string GetNextLevel(string currentLevel)
+        {
+            var levelMap = new Dictionary<string, string>
+            {
+                { "A1", "A2" }, { "A2", "B1" }, { "B1", "B2" }, { "B2", "C1" }, { "C1", "C2" },
+                { "N5", "N4" }, { "N4", "N3" }, { "N3", "N2" }, { "N2", "N1" },
+                { "HSK1", "HSK2" }, { "HSK2", "HSK3" }, { "HSK3", "HSK4" }, { "HSK4", "HSK5" }
+            };
+            
+            return levelMap.TryGetValue(currentLevel, out var next) ? next : currentLevel;
         }
 
         public async Task<string> TranslateTextAsync(string text, string sourceLanguage, string targetLanguage)
