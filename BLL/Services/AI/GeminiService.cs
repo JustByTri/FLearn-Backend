@@ -316,6 +316,82 @@ Text: {text}";
             }
         }
 
+        // NEW: Generate synonym suggestions
+        public async Task<SynonymSuggestionDto> GenerateSynonymSuggestionsAsync(string userMessage, string targetLanguage, string currentLevel)
+        {
+            try
+            {
+                // Determine next level only
+                var nextLevel = GetNextLevel(currentLevel);
+                
+                var prompt = $@"User said: ""{userMessage}"" in {targetLanguage} (current level: {currentLevel})
+
+Provide 2-3 BETTER alternatives at the NEXT proficiency level only ({nextLevel}).
+Do NOT suggest multiple levels - focus on natural progression.
+
+Example:
+If user (A2) said: ""I want to buy this""
+Suggest (B1): ""I would like to purchase this"" or ""I'd like to buy this item""
+NOT B2/C1/C2 - only the NEXT level!
+
+Return JSON:
+{{
+  ""originalMessage"": ""{userMessage}"",
+  ""currentLevel"": ""{currentLevel}"",
+  ""alternatives"": [
+    {{
+      ""level"": ""{nextLevel}"",
+      ""alternativeText"": ""better expression at {nextLevel}"",
+      ""difference"": ""why this is more advanced"",
+      ""exampleUsage"": ""example in context""
+    }}
+  ],
+  ""explanation"": ""brief summary""
+}}
+
+Return 2-3 alternatives only, all at level {nextLevel}.";
+
+                var response = await CallGeminiApiAsync(prompt);
+                var cleanedResponse = CleanJsonResponse(response);
+                
+                var result = JsonSerializer.Deserialize<SynonymSuggestionDto>(cleanedResponse, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    PropertyNameCaseInsensitive = true
+                });
+
+                return result ?? new SynonymSuggestionDto
+                {
+                    OriginalMessage = userMessage,
+                    CurrentLevel = currentLevel,
+                    Alternatives = new()
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating synonym suggestions");
+                return new SynonymSuggestionDto
+                {
+                    OriginalMessage = userMessage,
+                    CurrentLevel = currentLevel,
+                    Alternatives = new(),
+                    Explanation = "Unable to generate suggestions at this time."
+                };
+            }
+        }
+
+        private string GetNextLevel(string currentLevel)
+        {
+            var levelMap = new Dictionary<string, string>
+            {
+                { "A1", "A2" }, { "A2", "B1" }, { "B1", "B2" }, { "B2", "C1" }, { "C1", "C2" },
+                { "N5", "N4" }, { "N4", "N3" }, { "N3", "N2" }, { "N2", "N1" },
+                { "HSK1", "HSK2" }, { "HSK2", "HSK3" }, { "HSK3", "HSK4" }, { "HSK4", "HSK5" }
+            };
+            
+            return levelMap.TryGetValue(currentLevel, out var next) ? next : currentLevel;
+        }
+
         // ===== Prompts, Parsers, Helpers =====
 
         private string BuildVoiceAssessmentQuestionsPrompt(string languageCode, string languageName, string? programName)
@@ -344,7 +420,7 @@ Tất cả các trường (question, promptText, vietnameseTranslation) là BẮ
  }},
  {{
  ""questionNumber"":2,
- ""question"": ""(Tiêu đề câu2, ví dụ: Giới thiệu bản thân)"",
+ ""question"": ""(Tiêu đề câu hỏi, ví dụ: Giới thiệu bản thân)"",
  ""promptText"": ""(Yêu cầu chi tiết, ví dụ: Hãy nói tên và sở thích của bạn.)"",
  ""vietnameseTranslation"": ""(Bản dịch tiếng Việt của promptText)"",
  ""wordGuides"": [],
@@ -354,9 +430,9 @@ Tất cả các trường (question, promptText, vietnameseTranslation) là BẮ
  }},
  {{
  ""questionNumber"":3,
- ""question"": ""(Tiêu đề câu3)"",
- ""promptText"": ""(Yêu cầu chi tiết)"",
- ""vietnameseTranslation"": ""(Bản dịch tiếng Việt)"",
+ ""question"": ""(Tiêu đề câu hỏi, ví dụ: Mô tả một kỷ niệm)"",
+ ""promptText"": ""(Yêu cầu chi tiết, ví dụ: Hãy kể về một kỳ nghỉ đáng nhớ.)"",
+ ""vietnameseTranslation"": ""(Bản dịch tiếng Việt của promptText)"",
  ""wordGuides"": [],
  ""questionType"": ""speaking"",
  ""difficulty"": ""B1"",
@@ -364,9 +440,9 @@ Tất cả các trường (question, promptText, vietnameseTranslation) là BẮ
  }},
  {{
  ""questionNumber"":4,
- ""question"": ""(Tiêu đề câu4)"",
- ""promptText"": ""(Yêu cầu chi tiết)"",
- ""vietnameseTranslation"": ""(Bản dịch tiếng Việt)"",
+ ""question"": ""(Tiêu đề câu hỏi, ví dụ: Thảo luận về công nghệ)"",
+ ""promptText"": ""(Yêu cầu chi tiết, ví dụ: Công nghệ đã thay đổi cuộc sống của bạn như thế nào?)"",
+ ""vietnameseTranslation"": ""(Bản dịch tiếng Việt của promptText)"",
  ""wordGuides"": [],
  ""questionType"": ""speaking"",
  ""difficulty"": ""B2"",
@@ -462,39 +538,131 @@ TRẢ VỀ JSON (không markdown):
 
         private string BuildConversationPrompt(ConversationContextDto context)
         {
-            return $@"# Generate conversation scenario - DUAL LANGUAGE REQUIRED
+            var exampleGoodScenario = "It's 2 PM on a rainy Wednesday. You're Sarah, 28, sitting nervously in the HR office at GlobalTech. The interviewer, Mr. Chen, just asked about your biggest failure. Your hands are cold. This job could change your career.";
+            var exampleBadScenario = "You are at a job interview discussing your experience.";
+            var exampleRole = $"Mr. Chen, HR Manager (严肃但公正 | Nghiêm túc nhưng công bằng)";
+            var exampleGoodFirstMsg = "*adjusts glasses and glances at your resume* I see you worked at TechCorp for two years, but there's a gap here. What happened between March and August 2023?";
+            var exampleBadFirstMsg = "Hello, let's discuss your work experience.";
+            
+            var restaurantScenario = "It's 7:30 PM Friday at Bella Italia, a cozy restaurant downtown. You're celebrating your friend's promotion but just received a cold pasta dish. The waiter approaches with a smile, but you're disappointed and hungry.";
+            var restaurantFirstMsg = "*notices your untouched plate* Is everything alright with your meal? You haven't started eating yet...";
+            
+            var interviewScenario = "Tuesday, 10 AM sharp. You're in Conference Room B at Microsoft, interviewing for Senior Developer. The hiring manager, Lisa Park, seems impressed but just noticed a 6-month gap in your LinkedIn profile. The air conditioning is too cold.";
+            var interviewFirstMsg = "*leans forward slightly* Your technical skills are impressive, but I'm curious - what were you doing between January and June last year?";
+            
+            var luggageScenario = "Sunday evening, 9 PM at Tokyo Narita Airport, Baggage Claim Area 3. Your black suitcase with your presentation materials for tomorrow's meeting never arrived. Other passengers are leaving. You're exhausted from the 14-hour flight.";
+            var luggageFirstMsg = "*looks up from computer* Good evening. How can I help you today?";
+
+            return $@"# Generate IMMERSIVE Roleplay Conversation Scenario
+
 ## Context
-- **Main Language**: {context.Language} ({context.LanguageCode})
-- **Secondary Language**: Vietnamese (for clarity)
-- **Topic**: {context.Topic}
-- **Level**: {context.DifficultyLevel}
-## CRITICAL REQUIREMENTS:
-1. ALL text MUST be bilingual: {context.Language} + Vietnamese
-2. Format: ""{context.Language} text | Vietnamese text""
-3. You MUST generate exactly3 tasks
-4. Tasks MUST be bilingual
-## Return Format (JSON only, no markdown):
-{{
- ""scenarioDescription"": ""{context.Language} scenario | Tình huống Việt"",
- ""aiRole"": ""{context.Language} role | Vai trò Việt"",
- ""systemPrompt"": ""System prompt (English is OK for this)"",
- ""firstMessage"": ""{context.Language} message | Tin nhắn Việt"",
- ""tasks"": [
- {{
- ""taskDescription"": ""{context.Language} task1 | Nhiệm vụ1 Việt"",
- ""taskContext"": ""Context {context.Language} | Ngữ cảnh Việt""
- }},
- {{
- ""taskDescription"": ""{context.Language} task2 | Nhiệm vụ2 Việt"",
- ""taskContext"": ""Context {context.Language} | Ngữ cảnh Việt""
- }},
- {{
- ""taskDescription"": ""{context.Language} task3 | Nhiệm vụ3 Việt"",
- ""taskContext"": ""Context {context.Language} | Ngữ cảnh Việt""
- }}
- ]
-}}
-Return ONLY JSON. No extra text.";
+- Language: {context.Language} ({context.LanguageCode})
+- Topic: {context.Topic}
+- Level: {context.DifficultyLevel}
+
+## CRITICAL REQUIREMENTS FOR IMMERSIVE ROLEPLAY:
+
+### 1. SCENARIO DESCRIPTION (20-40 words in {context.Language})
+Create a VIVID, SPECIFIC situation with:
+- Exact time and place: e.g. Monday morning 9 AM at Starbucks on 5th Avenue NOT at a coffee shop
+- Character details: Name, age, appearance, mood
+- Immediate situation: What just happened that triggers this conversation
+- Emotional context: Why this conversation matters NOW
+- Sensory details: weather, sounds, atmosphere
+
+Example GOOD scenario: {exampleGoodScenario}
+Example BAD scenario (too generic): {exampleBadScenario}
+
+### 2. AI ROLE (in {context.Language})
+CRITICAL: AI role MUST MATCH the scenario context!
+- For job interview scenario → AI must be ""Hiring Manager"" or ""Interviewer"", NOT the candidate
+- For restaurant scenario → AI must be ""Server"" or ""Waiter"", NOT the customer
+- For lost luggage → AI must be ""Airport Agent"", NOT the passenger
+- Specific character name plus role
+- Brief personality trait in parentheses
+- Example: {exampleRole}
+
+### 3. FIRST MESSAGE - MUST BE IN-CHARACTER DIALOGUE
+The AI first message MUST:
+- Be spoken AS THE CHARACTER not describing the situation
+- MATCH the AI's role (interviewer asks questions, waiter offers menu, agent asks for flight number)
+- Show personality through word choice and tone
+- Reference specific details from the scenario
+- Create immediate engagement
+- Include a direct question or action that demands response
+
+Example GOOD first message: {exampleGoodFirstMsg}
+Example BAD first message (too generic): {exampleBadFirstMsg}
+
+### 4. TASKS (Exactly 3 tasks)
+Each task should be:
+- A specific action in this scenario context
+- Progressive difficulty
+- Bilingual format: {context.Language} pipe Vietnamese
+
+## Return Format (JSON only no markdown):
+Return a JSON object with: scenarioDescription aiRole systemPrompt firstMessage tasks
+
+VERIFY ROLE CONSISTENCY:
+- Interview scenario → aiRole MUST be interviewer/hiring manager
+- Restaurant → aiRole MUST be server/waiter
+- Luggage → aiRole MUST be airport agent/staff
+- NO ROLE MISMATCH!
+
+systemPrompt MUST include these instructions:
+You are [character name], [role] at [location]. Current situation: [brief scenario].
+
+ABSOLUTE RULES:
+1. Reply ONLY in {context.Language} - NEVER use other languages
+2. Stay 100% in character - you are [role], not a teacher or assistant
+3. Keep responses 1-2 sentences, natural spoken dialogue
+4. Show personality through word choice and tone
+5. Reference scenario details naturally in responses
+
+HANDLING OFF-TOPIC:
+If user asks about something unrelated to {context.Topic} or your role:
+- Politely acknowledge in-character
+- Briefly explain you cannot help with that
+- Redirect to the topic/situation
+Example: If user asks barista about shoelaces: ""Sorry, I don't have shoelaces here - this is a coffee shop! But I can definitely help you with a drink or snack. What can I get you?""
+
+STRICT FORMATTING:
+- NO emojis
+- NO markdown (**, __, etc)
+- NO role labels (""AI:"", ""Barista:"")
+- NO meta-commentary (""As a barista..."")
+- Use *action* for brief physical actions only
+
+Language level: {context.DifficultyLevel}
+- Use vocabulary and grammar appropriate for this level
+- Keep sentence structure simple for A1-A2, more complex for B2+
+
+## EXAMPLES OF GOOD SCENARIOS BY TOPIC:
+
+Restaurant B1 level:
+scenarioDescription: {restaurantScenario}
+aiRole: Marco, Head Waiter (attentive and professional)
+firstMessage: {restaurantFirstMsg}
+systemPrompt: You are Marco, head waiter at Bella Italia. The customer just received cold pasta and looks disappointed. Reply ONLY in English. Stay in character as a professional waiter - acknowledge issues, offer solutions, maintain hospitality. Keep responses 1-2 sentences. If customer asks about non-restaurant topics, politely redirect: ""I'm here to help with your meal, not [topic]. Now, about your pasta..."" NO emojis, NO markdown.
+
+Job Interview B2 level:
+scenarioDescription: {interviewScenario}
+aiRole: Lisa Park, Hiring Manager (sharp but fair)
+firstMessage: {interviewFirstMsg}
+systemPrompt: You are Lisa Park, hiring manager at Microsoft interviewing a Senior Developer candidate. You noticed a resume gap. Reply ONLY in English. Stay in character as interviewer - ask probing questions, evaluate responses, maintain professionalism. Keep responses 1-2 sentences. If candidate goes off-topic, redirect: ""That's interesting, but let's focus on your qualifications. About that gap..."" NO emojis, NO markdown.
+
+Lost Luggage A2 level:
+scenarioDescription: {luggageScenario}
+aiRole: James, Baggage Service Agent (calm and helpful)
+firstMessage: {luggageFirstMsg}
+systemPrompt: You are James, baggage service agent at London Heathrow Airport. Passenger's luggage is missing and they have a meeting tomorrow. Reply ONLY in English. Stay in character as airport staff - gather information, explain process, reassure customer. Keep responses 1-2 sentences, simple vocabulary. If passenger asks unrelated questions, redirect: ""I understand, but let's find your bag first. What was your flight number?"" NO emojis, NO markdown.
+
+Topic: {context.Topic}
+Difficulty Level: {context.DifficultyLevel}
+Additional Context: {context.ScenarioGuidelines}
+Roleplay Notes: {context.RoleplayInstructions}
+
+Return ONLY valid JSON no extra text or markdown.";
         }
 
         private string BuildResponsePrompt(
@@ -504,10 +672,15 @@ Return ONLY JSON. No extra text.";
         {
             var historyText = string.Join("\n", conversationHistory.TakeLast(10));
             return $@"System: {systemPrompt}
+
+CRITICAL: DO NOT prefix your response with ""AI:"" or any role label.
+Respond directly as the character without any prefix.
+
 Conversation History:
 {historyText}
 User: {userMessage}
-AI: ";
+
+Your response (in-character, no prefix):";
         }
 
         private string BuildCourseRecommendationPrompt(UserSurveyResponseDto survey, List<CourseInfoDto> courses)
@@ -550,7 +723,7 @@ Include daily activities, goals, and assessment methods.";
             return $@"Provide8-10 specific study tips for:
 - Learning Style: {survey.PreferredLearningStyle}
 - Level: {survey.CurrentLevel}
-Format each tip on a new line starting with ""- """;
+Format each tip on a new line starting with a dash.";
         }
 
         private string BuildTeacherQualificationPrompt(TeacherApplicationDto application, List<TeacherCredentialDto> credentials)
@@ -1048,18 +1221,186 @@ Return JSON with overallScore, pronunciation, fluency, grammar, vocabulary (each
 
         private GeneratedConversationContentDto CreateFallbackConversationContent(ConversationContextDto context)
         {
+            var (scenario, role, firstMsg) = GetImmersiveFallback(context.Topic, context.Language, context.DifficultyLevel);
+            
             return new GeneratedConversationContentDto
             {
-                ScenarioDescription = $"Practice {context.Topic} in {context.Language}",
-                AIRole = GetDefaultRole(context.Topic),
-                SystemPrompt = context.MasterPrompt,
-                FirstMessage = GetDefaultFirstMessage(context.Language, context.Topic),
-                Tasks = new List<ConversationTaskDto>
- {
- new() { TaskDescription = "Introduce yourself", TaskSequence =1 },
- new() { TaskDescription = "Ask about the topic", TaskSequence =2 },
- new() { TaskDescription = "Express your opinion", TaskSequence =3 }
- }
+                ScenarioDescription = scenario,
+                AIRole = role,
+                SystemPrompt = $@"You are {role}. Current situation: {scenario}
+
+ABSOLUTE RULES:
+1. Reply ONLY in {context.Language} - NEVER use other languages
+2. Stay 100% in character as {role} - not a teacher or assistant
+3. Keep responses 1-2 sentences, natural spoken dialogue
+4. Show personality through word choice and tone
+
+HANDLING OFF-TOPIC:
+If user asks about something unrelated to {context.Topic}:
+- Acknowledge politely in-character
+- Briefly say you cannot help with that
+- Redirect back to the topic
+Example: ""I understand, but I can't help with that here. Let's focus on [topic]. [relevant question]""
+
+FORMATTING:
+- NO emojis
+- NO markdown (**, __, etc)  
+- NO role labels
+- Use *action* for brief actions only
+
+Language level: {context.DifficultyLevel} - use appropriate vocabulary and grammar.",
+                FirstMessage = firstMsg,
+                Tasks = GetContextualTasks(context.Topic, context.Language)
+            };
+        }
+
+        private (string scenario, string role, string firstMessage) GetImmersiveFallback(string topic, string language, string level)
+        {
+            var isBasic = level.Contains("A1") || level.Contains("N5") || level.Contains("HSK1");
+            var topicLower = topic.ToLower();
+
+            if (topicLower.Contains("restaurant") || topicLower.Contains("ẩm thực"))
+            {
+                if (language.Contains("English"))
+                    return (
+                        "It's 7 PM Friday at Bella Italia, a cozy downtown restaurant. You're Sarah, celebrating your friend's promotion. The waiter just brought your pasta, but it's cold. You're hungry and disappointed.",
+                        "Marco, Head Waiter (attentive and professional)",
+                        "*approaches your table with a concerned look* I notice you haven't touched your pasta yet. Is something wrong with the dish?"
+                    );
+                if (language.Contains("Japanese") || language.Contains("日本"))
+                    return (
+                        "金曜日の夜7時、銀座の「イタリア亭」というレストランです。あなたは友達の昇進を祝っています。パスタが冷たくて、がっかりしています。",
+                        "マルコ、ウェイター長 (丁寧でプロ)",
+                        "*心配そうにテーブルに近づく* パスタにまだ手をつけていませんね。何か問題がございますか？"
+                    );
+                if (language.Contains("Chinese") || language.Contains("中文"))
+                    return (
+                        "周五晚上7点，你在市中心的意大利餐厅庆祝朋友升职。服务员刚端来你的意大利面，但是凉的。你又饿又失望。",
+                        "马可，服务生领班 (细心专业)",
+                        "*担心地走近您的桌子* 我注意到您还没动您的意大利面。菜有什么问题吗？"
+                    );
+            }
+
+            if (topicLower.Contains("interview") || topicLower.Contains("phỏng vấn") || topicLower.Contains("面接"))
+            {
+                if (language.Contains("English"))
+                    return (
+                        "Tuesday 10 AM, Conference Room B at TechCorp. You're interviewing for Senior Developer. Lisa Park, the hiring manager, just noticed a 6-month gap in your resume. The room is cold.",
+                        "Lisa Park, Hiring Manager (sharp but fair)",
+                        "*leans forward and points at your resume* Your skills look solid, but what were you doing between January and June last year?"
+                    );
+                if (language.Contains("Japanese") || language.Contains("日本"))
+                    return (
+                        "火曜日午前10時、テックコープの会議室Bです。シニア開発者のポジションの面接中。人事マネージャーの山田さんが履歴書の6ヶ月の空白に気づきました。",
+                        "山田, 人事マネージャー (鋭いが公平)",
+                        "*履歴書を指差しながら* スキルは素晴らしいですが、去年の1月から6月は何をされていましたか？"
+                    );
+                if (language.Contains("Chinese") || language.Contains("中文"))
+                    return (
+                        "周二上午10点，科技公司B会议室。您正在面试高级开发工程师职位。人事经理李女士注意到您简历上有6个月的空白期。",
+                        "李经理，人事经理 (敏锐公正)",
+                        "*指着简历* 您的技能很不错，但去年1月到6月这段时间您在做什么？"
+                    );
+            }
+
+            if (topicLower.Contains("luggage") || topicLower.Contains("hành lý") || topicLower.Contains("荷物"))
+            {
+                if (language.Contains("English"))
+                    return (
+                        "Sunday 9 PM, Baggage Claim Area 3 at London Heathrow. Your black suitcase with important documents didn't arrive. You have a meeting tomorrow morning. You're exhausted after a 12-hour flight.",
+                        "James, Baggage Service Agent (calm and helpful)",
+                        isBasic 
+                            ? "*looks up from computer* Good evening. What's your flight number?"
+                            : "*looks up from computer* I can see you're concerned. Let me help - which flight were you on?"
+                    );
+                if (language.Contains("Japanese") || language.Contains("日本"))
+                    return (
+                        "日曜日午後9時、成田空港の手荷物受取所3番です。大事な書類が入った黒いスーツケースが届いていません。明日の朝、会議があります。",
+                        "田中、荷物サービス係 (落ち着いて親切)",
+                        isBasic
+                            ? "*パソコンから顔を上げて* こんばんは。フライト番号を教えていただけますか？"
+                            : "*パソコンから顔を上げて* お困りのようですね。お手伝いします。どのフライトでしたか？"
+                    );
+                if (language.Contains("Chinese") || language.Contains("中文"))
+                    return (
+                        "周日晚上9点，北京机场3号行李提取处。您的黑色行李箱没到，里面有重要文件。明天早上有会议。经过12小时飞行，您很疲惫。",
+                        "王先生，行李服务员 (冷静热心)",
+                        isBasic
+                            ? "*从电脑前抬起头* 晚上好。您的航班号是多少？"
+                            : "*从电脑前抬起头* 看起来您很着急。我来帮您，您是哪个航班？"
+                    );
+            }
+
+            // Generic fallback
+            return (
+                $"Practice {topic} conversation in a realistic setting. You're in a professional environment discussing {topic}.",
+                "Conversation Partner (helpful and engaged)",
+                isBasic 
+                    ? $"Hello! Ready to practice about {topic}?"
+                    : $"Hi there! I'm looking forward to discussing {topic} with you. What would you like to start with?"
+            );
+        }
+
+        private List<ConversationTaskDto> GetContextualTasks(string topic, string language)
+        {
+            var topicLower = topic.ToLower();
+            
+            if (topicLower.Contains("restaurant") || topicLower.Contains("ẩm thực"))
+            {
+                return language.Contains("English") 
+                    ? new List<ConversationTaskDto> {
+                        new() { TaskDescription = "Politely explain the problem with your food", TaskSequence = 1 },
+                        new() { TaskDescription = "Ask what the restaurant can do to resolve it", TaskSequence = 2 },
+                        new() { TaskDescription = "Reach a satisfactory solution", TaskSequence = 3 }
+                    }
+                    : language.Contains("Japanese")
+                    ? new List<ConversationTaskDto> {
+                        new() { TaskDescription = "料理の問題を丁寧に説明する", TaskSequence = 1 },
+                        new() { TaskDescription = "解決方法を尋ねる", TaskSequence = 2 },
+                        new() { TaskDescription = "満足できる解決策に達する", TaskSequence = 3 }
+                    }
+                    : new List<ConversationTaskDto> {
+                        new() { TaskDescription = "礼貌地说明菜品问题", TaskSequence = 1 },
+                        new() { TaskDescription = "询问餐厅的解决方案", TaskSequence = 2 },
+                        new() { TaskDescription = "达成满意的解决办法", TaskSequence = 3 }
+                    };
+            }
+
+            if (topicLower.Contains("interview") || topicLower.Contains("phỏng vấn"))
+            {
+                return language.Contains("English")
+                    ? new List<ConversationTaskDto> {
+                        new() { TaskDescription = "Explain your career gap honestly and positively", TaskSequence = 1 },
+                        new() { TaskDescription = "Highlight skills you developed during that time", TaskSequence = 2 },
+                        new() { TaskDescription = "Connect it to why you're perfect for this role", TaskSequence = 3 }
+                    }
+                    : new List<ConversationTaskDto> {
+                        new() { TaskDescription = "诚实积极地解释职业空白期", TaskSequence = 1 },
+                        new() { TaskDescription = "强调那段时间学到的技能", TaskSequence = 2 },
+                        new() { TaskDescription = "说明为何您适合这个职位", TaskSequence = 3 }
+                    };
+            }
+
+            if (topicLower.Contains("luggage") || topicLower.Contains("hành lý"))
+            {
+                return language.Contains("English")
+                    ? new List<ConversationTaskDto> {
+                        new() { TaskDescription = "Describe your missing luggage clearly", TaskSequence = 1 },
+                        new() { TaskDescription = "Ask about the search process and timeline", TaskSequence = 2 },
+                        new() { TaskDescription = "Arrange delivery to your hotel", TaskSequence = 3 }
+                    }
+                    : new List<ConversationTaskDto> {
+                        new() { TaskDescription = "清楚描述丢失的行李", TaskSequence = 1 },
+                        new() { TaskDescription = "询问查找流程和时间", TaskSequence = 2 },
+                        new() { TaskDescription = "安排送到酒店", TaskSequence = 3 }
+                    };
+            }
+
+            // Generic tasks
+            return new List<ConversationTaskDto> {
+                new() { TaskDescription = "Introduce yourself and explain the situation", TaskSequence = 1 },
+                new() { TaskDescription = "Ask relevant questions to gather information", TaskSequence = 2 },
+                new() { TaskDescription = "Work towards a clear resolution", TaskSequence = 3 }
             };
         }
         private ConversationEvaluationResult CreateFallbackEvaluationResult()

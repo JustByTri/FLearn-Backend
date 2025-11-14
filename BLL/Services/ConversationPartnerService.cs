@@ -302,10 +302,32 @@ Never respond in Vietnamese or any other language, regardless of what language t
                 await _unitOfWork.ConversationSessions.UpdateAsync(session);
                 await _unitOfWork.SaveChangesAsync();
 
-                await _hubContext.Clients.Group($"Conversation_{request.SessionId}")
- .SendAsync("MessageProcessed", new { userMessage = MapToMessageDto(userMessage), aiMessage = MapToMessageDto(aiMessage) });
+                // NEW: Generate synonym suggestions for user's message
+                SynonymSuggestionDto? synonymSuggestions = null;
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(request.MessageContent) && request.MessageContent.Length > 2)
+                    {
+                        synonymSuggestions = await _geminiService.GenerateSynonymSuggestionsAsync(
+                            request.MessageContent,
+                            session.Language?.LanguageName ?? "English",
+                            session.DifficultyLevel
+                        );
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to generate synonym suggestions");
+                    // Continue without suggestions if this fails
+                }
 
-                return MapToMessageDto(aiMessage);
+                var aiMessageDto = MapToMessageDto(aiMessage);
+                aiMessageDto.SynonymSuggestions = synonymSuggestions;
+
+                await _hubContext.Clients.Group($"Conversation_{request.SessionId}")
+                    .SendAsync("MessageProcessed", new { userMessage = MapToMessageDto(userMessage), aiMessage = aiMessageDto });
+
+                return aiMessageDto;
             }
             catch (Exception ex)
             {
@@ -321,7 +343,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
                 };
 
                 await _hubContext.Clients.Group($"User_{userId}")
- .SendAsync("MessageError", new { sessionId = request.SessionId, error = errorMessage, details = ex.Message });
+                    .SendAsync("MessageError", new { sessionId = request.SessionId, error = errorMessage, details = ex.Message });
 
                 throw;
             }
@@ -745,7 +767,8 @@ Always respond in {session.Language?.LanguageName ?? "English"} only.";
                     .Select(m => $"{m.Sender}: {m.MessageContent}")
                     .ToList() ?? new List<string>());
 
-                    return response;
+                    // Clean AI prefix if exists
+                    return CleanAIPrefix(response);
                 }
 
                 return GetSimpleResponse(userMessage, session.Language?.LanguageCode ?? "EN");
@@ -755,6 +778,23 @@ Always respond in {session.Language?.LanguageName ?? "English"} only.";
                 _logger.LogError(ex, "Error generating AI response");
                 return GetDefaultResponse(session.Language?.LanguageCode ?? "EN");
             }
+        }
+
+        private string CleanAIPrefix(string response)
+        {
+            if (string.IsNullOrWhiteSpace(response)) return response;
+            
+            // Remove common AI prefixes
+            var prefixes = new[] { "AI: ", "AI:", "Assistant: ", "Assistant:", "Character: ", "Character:" };
+            foreach (var prefix in prefixes)
+            {
+                if (response.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    return response.Substring(prefix.Length).Trim();
+                }
+            }
+            
+            return response;
         }
 
         private async Task<GeneratedConversationContentDto> GenerateConversationContentAsync(ConversationContextDto context)
@@ -949,9 +989,9 @@ Always respond in {session.Language?.LanguageName ?? "English"} only.";
                 if (_geminiService != null && messageCount > 0)
                 {
                     var conversationHistory = session.ConversationMessages?
-                    .OrderBy(m => m.SequenceOrder)
-                    .Select(m => $"{m.Sender}: {m.MessageContent}")
-                    .ToList() ?? new List<string>();
+                        .OrderBy(m => m.SequenceOrder)
+                        .Select(m => $"{m.Sender}: {m.MessageContent}")
+                        .ToList() ?? new List<string>();
 
                     var evaluationPrompt = $@"
 Evaluate this language learning conversation in {session.Language?.LanguageName}:
@@ -964,8 +1004,7 @@ Messages from user: {messageCount}
 Conversation history:
 {string.Join("\n", conversationHistory)}
 
-Provide JSON with numeric scores(0-100): overallScore, fluentScore, grammarScore, vocabularyScore, culturalScore
-and strings: aiFeedback, improvements, strengths.";
+Provide detailed qualitative analysis.";
 
                     var aiEvaluation = await _geminiService.EvaluateConversationAsync(evaluationPrompt);
                     if (aiEvaluation != null)
@@ -982,7 +1021,16 @@ and strings: aiFeedback, improvements, strengths.";
                             Improvements = aiEvaluation.Improvements,
                             Strengths = aiEvaluation.Strengths,
                             TotalMessages = messageCount,
-                            SessionDuration = duration
+                            SessionDuration = duration,
+                            // NEW: Detailed analysis
+                            FluentAnalysis = aiEvaluation.FluentAnalysis,
+                            GrammarAnalysis = aiEvaluation.GrammarAnalysis,
+                            VocabularyAnalysis = aiEvaluation.VocabularyAnalysis,
+                            CulturalAnalysis = aiEvaluation.CulturalAnalysis,
+                            SpecificObservations = aiEvaluation.SpecificObservations,
+                            PositivePatterns = aiEvaluation.PositivePatterns,
+                            AreasNeedingWork = aiEvaluation.AreasNeedingWork,
+                            ProgressSummary = aiEvaluation.ProgressSummary
                         };
                     }
                 }
@@ -1103,6 +1151,8 @@ and strings: aiFeedback, improvements, strengths.";
             return string.Join(". ", strengths.Take(3)) + ".";
         }
 
+        // ===== Mapper Methods =====
+        
         private ConversationSessionDto MapToConversationSessionDto(ConversationSession session, List<ConversationMessage> messages)
         {
             return new ConversationSessionDto
@@ -1116,11 +1166,11 @@ and strings: aiFeedback, improvements, strengths.";
                 ScenarioDescription = session.GeneratedScenario ?? string.Empty,
                 Messages = messages.Select(MapToMessageDto).ToList(),
                 Tasks = session.Tasks
-            .GroupBy(t => t.TaskID)
-            .Select(g => g.First())
-            .OrderBy(t => t.TaskSequence)
-            .Select(MapToTaskDto)
-            .ToList(),
+                    .GroupBy(t => t.TaskID)
+                    .Select(g => g.First())
+                    .OrderBy(t => t.TaskSequence)
+                    .Select(MapToTaskDto)
+                    .ToList(),
                 Status = session.Status,
                 StartedAt = session.StartedAt,
                 OverallScore = session.OverallScore,
@@ -1137,6 +1187,8 @@ and strings: aiFeedback, improvements, strengths.";
                 MessageContent = message.MessageContent,
                 MessageType = message.MessageType,
                 AudioUrl = message.AudioUrl,
+                AudioPublicId = message.AudioPublicId,
+                AudioDuration = message.AudioDuration,
                 SequenceOrder = message.SequenceOrder,
                 SentAt = message.SentAt
             };
@@ -1162,28 +1214,28 @@ and strings: aiFeedback, improvements, strengths.";
             {
                 "EN" => new[]
                 {
- "That's interesting! Can you tell me more?",
- "I understand. What do you think?",
- "Great! How do you feel about that?"
- },
+                    "That's interesting! Can you tell me more?",
+                    "I understand. What do you think?",
+                    "Great! How do you feel about that?"
+                },
                 "JP" => new[]
                 {
- "それは面白いですね！もう少し詳しく教えてください。",
- "なるほど。どう思いますか？",
- "いいですね！どう感じますか？"
- },
+                    "それは面白いですね！もう少し詳しく教えてください。",
+                    "なるほど。どう思いますか？",
+                    "いいですね！どう感じますか？"
+                },
                 "ZH" => new[]
                 {
- "这很有趣！你能多说一点吗？",
- "我明白了。你怎么看？",
- "很好！你对此感觉如何？"
- },
+                    "这很有趣！你能多说一点吗？",
+                    "我明白了。你怎么看？",
+                    "很好！你对此感觉如何？"
+                },
                 _ => new[]
                 {
- "That's interesting! Can you tell me more?",
- "I understand. What do you think?",
- "Great! How do you feel about that?"
- }
+                    "That's interesting! Can you tell me more?",
+                    "I understand. What do you think?",
+                    "Great! How do you feel about that?"
+                }
             };
             var random = new Random();
             return responses[random.Next(responses.Length)];
@@ -1193,10 +1245,10 @@ and strings: aiFeedback, improvements, strengths.";
         {
             return languageCode.ToUpper() switch
             {
-                "EN" => "Anyway, let's get back to what we were talking about",
-                "JP" => "さて、話に戻りましょう !",
-                "ZH" => "总之，我们还是回到刚才的话题吧。!",
-               
+                "EN" => "Anyway, let's get back to what we were talking about.",
+                "JP" => "さて、話に戻りましょう。",
+                "ZH" => "总之，我们还是回到刚才的话题吧.",
+                _ => "Let's continue our conversation."
             };
         }
     }
