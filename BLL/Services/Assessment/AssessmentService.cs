@@ -113,7 +113,7 @@ namespace BLL.Services.Assessment
                 };
 
                 ChatCompletion chatCompletion = await chatClient.CompleteChatAsync(chatMessages);
-                Console.WriteLine($"[AI]: {chatCompletion}");
+                Console.WriteLine($"[AI]: {chatCompletion.Content}");
 
                 var assessmentResult = ParseAIResponseToAssessmentResult(chatCompletion.Content[0].Text, req.LanguageCode);
 

@@ -468,6 +468,12 @@ namespace BLL.Services.ProgressTracking
                 {
                     ExerciseSubmissionId = submission.ExerciseSubmissionId,
                     ExerciseId = submission.ExerciseId,
+                    AIScore = submission.AIScore,
+                    AIFeedback = submission.AIFeedback,
+                    TeacherScore = submission.TeacherScore,
+                    TeacherFeedback = submission.TeacherFeedback,
+                    FinalScore = submission.FinalScore,
+                    IsPassed = submission.IsPassed,
                     Status = submission.Status.ToString(),
                     SubmittedAt = submission.SubmittedAt.ToString("dd-MM-yyyy HH:mm")
                 };
