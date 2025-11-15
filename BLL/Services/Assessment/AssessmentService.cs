@@ -69,11 +69,10 @@ namespace BLL.Services.Assessment
 
                 if (exercise.Type == SpeakingExerciseType.RepeatAfterMe && !string.IsNullOrEmpty(exercise.MediaUrl))
                 {
-                    AssessmentResult assessment = new();
                     var result = await _pronunciationService.AssessPronunciationAsync(submission.AudioUrl, exercise.Content, req.LanguageCode);
-                    if (result != null)
-                        assessment = _pronunciationService.ConvertToAssessmentResult(result, exercise.Content, req.LanguageCode);
-                    return assessment;
+                    return result != null
+                        ? _pronunciationService.ConvertToAssessmentResult(result, exercise.Content, req.LanguageCode)
+                        : CreateDefaultAssessmentResult();
                 }
                 else if ((exercise.Type == SpeakingExerciseType.PictureDescription ||
                          exercise.Type == SpeakingExerciseType.StoryTelling ||
@@ -272,7 +271,7 @@ namespace BLL.Services.Assessment
                 _ => "HSK1"
             };
         }
-        private async Task<CommonResponse> TranscribeSpeechByGeminiAsync(string audioUrl)
+        public static async Task<CommonResponse> TranscribeSpeechByGeminiAsync(string audioUrl, CancellationToken cancellationToken = default)
         {
             string apiKey = "AIzaSyAsAA8w7QSEdW5k2CcbuWuEhXLV17hiYHI";
 
@@ -282,18 +281,23 @@ namespace BLL.Services.Assessment
             byte[] audioBytes;
             using (var client = new HttpClient())
             {
+                client.Timeout = TimeSpan.FromSeconds(15);
                 try
                 {
-                    audioBytes = await client.GetByteArrayAsync(audioUrl);
+                    audioBytes = await client.GetByteArrayAsync(audioUrl, cancellationToken);
                 }
-                catch
+                catch (TaskCanceledException)
                 {
+                    return new CommonResponse { IsSuccess = false, Content = "Audio download timeout." };
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error downloading audio: {ex.Message}");
                     return new CommonResponse { IsSuccess = false, Content = "Failed to download audio." };
                 }
             }
 
             string audioBase64 = Convert.ToBase64String(audioBytes);
-
             string mimeType = GetMimeType(audioUrl);
 
             var payload = new
@@ -303,7 +307,7 @@ namespace BLL.Services.Assessment
                     new {
                         parts = new object[]
                         {
-                            new { text = "Please transcribe this audio into text accurately:" },
+                            new { text = "Please transcribe this audio into text accurately. Return only the transcription without any additional text:" },
                             new {
                                 inline_data = new {
                                     mime_type = mimeType,
@@ -312,6 +316,11 @@ namespace BLL.Services.Assessment
                             }
                         }
                     }
+                },
+                generationConfig = new
+                {
+                    maxOutputTokens = 1000,
+                    temperature = 0.1
                 }
             };
 
@@ -319,37 +328,59 @@ namespace BLL.Services.Assessment
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             using var geminiClient = new HttpClient();
+            geminiClient.Timeout = TimeSpan.FromSeconds(25);
             geminiClient.DefaultRequestHeaders.Add("x-goog-api-key", apiKey);
 
             var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
-            var response = await geminiClient.PostAsync(url, content);
-            var responseText = await response.Content.ReadAsStringAsync();
-            Console.WriteLine(responseText);
             try
             {
+                var response = await geminiClient.PostAsync(url, content, cancellationToken);
+                var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"Gemini API error: {response.StatusCode} - {responseText}");
+                    return new CommonResponse { IsSuccess = false, Content = "Transcription service error." };
+                }
+
+                Console.WriteLine($"Gemini response: {responseText}");
+
                 using var doc = JsonDocument.Parse(responseText);
-                var transcript = doc.RootElement
-                    .GetProperty("candidates")[0]
+                var candidates = doc.RootElement.GetProperty("candidates");
+                if (candidates.GetArrayLength() == 0)
+                {
+                    return new CommonResponse { IsSuccess = false, Content = "No transcription generated." };
+                }
+
+                var transcript = candidates[0]
                     .GetProperty("content")
                     .GetProperty("parts")[0]
                     .GetProperty("text")
-                    .GetString();
+                    .GetString()?
+                    .Trim();
 
                 return !string.IsNullOrWhiteSpace(transcript)
                     ? new CommonResponse { IsSuccess = true, Content = transcript }
-                    : new CommonResponse { IsSuccess = false, Content = "No response" };
+                    : new CommonResponse { IsSuccess = false, Content = "Empty transcription" };
             }
-            catch
+            catch (TaskCanceledException)
             {
-                return new CommonResponse { IsSuccess = false, Content = "Failed to parse transcript." };
+                return new CommonResponse { IsSuccess = false, Content = "Transcription timeout." };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in transcription: {ex.Message}");
+                return new CommonResponse { IsSuccess = false, Content = "Failed to process transcription." };
             }
         }
-        private async Task<CommonResponse> DescribeImagesByAzureAsync(string[] imageUrls)
+        private async Task<CommonResponse> DescribeImagesByAzureAsync(string[] imageUrls, CancellationToken cancellationToken = default)
         {
             try
             {
                 if (imageUrls == null || imageUrls.Length == 0)
                     return new CommonResponse { IsSuccess = false, Content = "No images provided." };
+
+                var imagesToProcess = imageUrls.Take(2).ToArray();
 
                 string deploymentName = _configuration["AzureOpenAISettings:ChatDeployment"];
                 string endpoint = _configuration["AzureOpenAISettings:Endpoint"];
@@ -357,30 +388,34 @@ namespace BLL.Services.Assessment
                 AzureOpenAIClient openAIClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(key));
                 var chatClient = openAIClient.GetChatClient(deploymentName);
 
-                var textPart = ChatMessageContentPart.CreateTextPart("Describe each image briefly in 1-2 sentences.");
+                var textPart = ChatMessageContentPart.CreateTextPart("Describe each image briefly in 1-2 sentences. Focus on key elements that would be relevant for a speaking exercise.");
 
-                var imageParts = imageUrls.Select(url => ChatMessageContentPart.CreateImagePart(new Uri(url))).ToList();
+                var imageParts = imagesToProcess.Select(url => ChatMessageContentPart.CreateImagePart(new Uri(url))).ToList();
 
                 var userMessage = new UserChatMessage(new List<ChatMessageContentPart> { textPart }.Concat(imageParts));
 
                 var chatMessages = new List<ChatMessage>
-                    {
-                        new SystemChatMessage("You are a helpful assistant."),
-                        userMessage
-                    };
+                {
+                    new SystemChatMessage("You are a helpful assistant that describes images concisely for language learning assessments."),
+                    userMessage
+                };
 
-                ChatCompletion chatCompletion = await chatClient.CompleteChatAsync(chatMessages);
+                ChatCompletion chatCompletion = await chatClient.CompleteChatAsync(chatMessages, cancellationToken: cancellationToken);
 
                 string result = chatCompletion.Content[0].Text;
                 Console.WriteLine($"[ASSISTANT]: {result}");
                 return !string.IsNullOrWhiteSpace(result) ? new CommonResponse { IsSuccess = true, Content = result }
-                : new CommonResponse { IsSuccess = false, Content = result };
+                : new CommonResponse { IsSuccess = false, Content = "No description generated" };
+            }
+            catch (OperationCanceledException)
+            {
+                return new CommonResponse { IsSuccess = false, Content = "Image description timeout." };
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"Error describing images: {ex.Message}");
                 return new CommonResponse { IsSuccess = false, Content = $"Error: {ex.Message}" };
             }
-
         }
         private async Task<CommonResponse> DescribeImagesByGeminiAsync(string[] imageUrls)
         {
@@ -452,7 +487,7 @@ namespace BLL.Services.Assessment
             var result = string.Join("\n---\n", descriptions);
             return !string.IsNullOrWhiteSpace(result) ? new CommonResponse { IsSuccess = true, Content = result } : new CommonResponse { IsSuccess = false, Content = "No response" };
         }
-        private string GetMimeType(string url)
+        public static string GetMimeType(string url)
         {
             var ext = Path.GetExtension(url).ToLower();
             return ext switch
