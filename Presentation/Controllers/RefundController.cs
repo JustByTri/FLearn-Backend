@@ -1,9 +1,12 @@
 ﻿using BLL.IServices.Refund;
+using Common.DTO.ApiResponse;
 using Common.DTO.Refund;
 using DAL.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Presentation.Helpers;
+using System.Net;
 using System.Security.Claims;
 
 namespace Presentation.Controllers
@@ -189,5 +192,22 @@ namespace Presentation.Controllers
                 message = "API này đã ngừng sử dụng. Vui lòng sử dụng POST /api/refund/admin/process để xử lý đơn và gửi email tự động."
             });
         }
+        /// <summary>
+        /// (Learner) Lấy lịch sử các đơn yêu cầu hoàn tiền đã gửi.
+        /// </summary>
+        [Authorize(Roles = "Learner")]
+        [HttpGet("my-requests")]
+        [ProducesResponseType(typeof(BaseResponse<IEnumerable<RefundRequestDto>>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> GetMyRefundRequests()
+        {
+            if (!this.TryGetUserId(out Guid learnerId, out var errorResult))
+            {
+                return errorResult!;
+            }
+
+            var response = await _refundRequestService.GetMyRefundRequestsAsync(learnerId);
+            return StatusCode(response.Code, response);
+        }
     }
 }
+  

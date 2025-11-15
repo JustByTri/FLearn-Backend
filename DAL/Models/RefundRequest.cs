@@ -9,12 +9,12 @@ namespace DAL.Models
         [Key]
         public Guid RefundRequestID { get; set; }
         [ForeignKey("ClassEnrollment")]
-        public Guid? EnrollmentID { get; set; }
+        public Guid EnrollmentID { get; set; }
         [Required]
         [ForeignKey("Student")]
         public Guid StudentID { get; set; }
         [ForeignKey("TeacherClass")]
-        public Guid? ClassID { get; set; }
+        public Guid ClassID { get; set; }
         public Guid? PurchaseId { get; set; }
         [ForeignKey(nameof(PurchaseId))]
         public virtual Purchase? Purchase { get; set; }
