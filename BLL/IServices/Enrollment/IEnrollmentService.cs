@@ -9,6 +9,7 @@ namespace BLL.IServices.Enrollment
     public interface IEnrollmentService
     {
         Task<BaseResponse<EnrollmentResponse>> EnrolCourseAsync(Guid userId, EnrollmentRequest request);
+        Task<BaseResponse<EnrollmentResponse>> EnrolFreeCourseAsync(Guid userId, EnrollmentRequest request);
         Task<PagedResponse<IEnumerable<EnrollmentResponse>>> GetEnrolledCoursesAsync(Guid userId, string lang, PagingRequest request);
         Task<PagedResponse<IEnumerable<EnrolledCourseOverviewResponse>>> GetEnrolledCoursesOverviewAsync(Guid userId, PagingRequest request);
         Task<BaseResponse<EnrolledCourseDetailResponse>> GetEnrolledCourseDetailAsync(Guid userId, Guid enrollmentId);

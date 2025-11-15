@@ -48,7 +48,7 @@ namespace BLL.Services.ProgressTracking
                     Status = submission.Status.ToString(),
                     AIScore = submission.AIScore,
                     TeacherScore = submission.TeacherScore,
-                    FinalScore = (submission.AIScore + submission.TeacherScore) / 2,
+                    FinalScore = submission.FinalScore,
                     IsPassed = submission.IsPassed,
                     AIFeedback = submission.AIFeedback,
                     TeacherFeedback = submission.TeacherFeedback,
@@ -325,17 +325,6 @@ namespace BLL.Services.ProgressTracking
             });
         }
         #region
-        private decimal CalculateGradingFee(string difficultyLevel)
-        {
-            return difficultyLevel?.ToUpper() switch
-            {
-                "EASY" => 5000,
-                "MEDIUM" => 8000,
-                "HARD" => 12000,
-                "ADVANCED" => 15000,
-                _ => 5000
-            };
-        }
         private async Task UpdateLessonProgressAfterGrading(ExerciseSubmission submission)
         {
             var lessonProgress = await _unitOfWork.LessonProgresses
@@ -487,7 +476,7 @@ namespace BLL.Services.ProgressTracking
 
             var completedLessons = await _unitOfWork.LessonProgresses
                 .Query()
-                .CountAsync(lp => lp.UnitProgress.EnrollmentId == enrollmentId &&
+                .CountAsync(lp => lp.UnitProgress != null && lp.UnitProgress.EnrollmentId == enrollmentId &&
                                 lp.Status == LearningStatus.Completed);
 
             enrollment.CompletedUnits = completedUnits;

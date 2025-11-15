@@ -1,4 +1,5 @@
-﻿using BLL.IServices.Enrollment;
+﻿using Azure;
+using BLL.IServices.Enrollment;
 using BLL.IServices.Purchases;
 using Common.DTO.ApiResponse;
 using Common.DTO.Enrollment.Request;
@@ -41,17 +42,22 @@ namespace BLL.Services.Enrollment
                     if (!user.IsEmailConfirmed)
                         return BaseResponse<EnrollmentResponse>.Fail(new object(), "Email not confirmed", 403);
 
-                    var learner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId);
-                    if (learner == null)
-                        return BaseResponse<EnrollmentResponse>.Fail(new object(), "Unauthorized", 401);
-
                     var course = await _unitOfWork.Courses.GetByIdAsync(request.CourseId);
-
                     if (course == null)
-                        return BaseResponse<EnrollmentResponse>.Fail(new object(), "Course not found.", 404);
+                        return BaseResponse<EnrollmentResponse>.Fail(new object(), "Course not found", 404);
+
+                    var activeLearner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId && l.LanguageId == course.LanguageId);
+
+                    if (activeLearner == null)
+                        return BaseResponse<EnrollmentResponse>.Fail(new object(), "Please complete the entrance test for this language first", 400);
 
                     if (course.Status != CourseStatus.Published)
                         return BaseResponse<EnrollmentResponse>.Fail(new object(), "This course is not yet published and cannot be enrolled.", 400);
+
+                    if (course.CourseType == CourseType.Free)
+                    {
+                        return BaseResponse<EnrollmentResponse>.Fail(new object(), "This enrollment API is only available for paid courses", 403);
+                    }
 
                     if (course.CourseType == CourseType.Paid)
                     {
@@ -67,7 +73,7 @@ namespace BLL.Services.Enrollment
                         return BaseResponse<EnrollmentResponse>.Fail(new object(), "Your access to this course has expired", 410);
                     }
 
-                    var existingEnrollment = await _unitOfWork.Enrollments.FindAsync(e => e.CourseId == request.CourseId && e.LearnerId == learner.LearnerLanguageId);
+                    var existingEnrollment = await _unitOfWork.Enrollments.FindAsync(e => e.CourseId == request.CourseId && e.LearnerId == activeLearner.LearnerLanguageId);
 
                     if (existingEnrollment != null)
                         return BaseResponse<EnrollmentResponse>.Fail(new object(), "You are already enrolled in this course.", 400);
@@ -76,7 +82,7 @@ namespace BLL.Services.Enrollment
                     {
                         EnrollmentID = Guid.NewGuid(),
                         CourseId = request.CourseId,
-                        LearnerId = learner.LearnerLanguageId,
+                        LearnerId = activeLearner.LearnerLanguageId,
                         TotalUnits = course.NumUnits,
                         TotalLessons = course.NumLessons,
                         EnrolledAt = TimeHelper.GetVietnamTime()
@@ -84,7 +90,7 @@ namespace BLL.Services.Enrollment
 
                     await _unitOfWork.Enrollments.CreateAsync(enrollment);
 
-                    Purchase purchase = null;
+                    Purchase purchase = new();
                     if (response != null && response.Data.PurchaseId != null)
                     {
                         purchase = await _unitOfWork.Purchases.GetByIdAsync((Guid)response.Data.PurchaseId);
@@ -121,26 +127,98 @@ namespace BLL.Services.Enrollment
                 }
             });
         }
+        public async Task<BaseResponse<EnrollmentResponse>> EnrolFreeCourseAsync(Guid userId, EnrollmentRequest request)
+        {
+            try
+            {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null)
+                    return BaseResponse<EnrollmentResponse>.Fail(new object(), "Unauthorized", 401);
+
+                if (!user.Status)
+                    return BaseResponse<EnrollmentResponse>.Fail(new object(), "Account is inactive", 403);
+
+                if (!user.IsEmailConfirmed)
+                    return BaseResponse<EnrollmentResponse>.Fail(new object(), "Email not confirmed", 403);
+
+                var course = await _unitOfWork.Courses.GetByIdAsync(request.CourseId);
+                if (course == null)
+                    return BaseResponse<EnrollmentResponse>.Fail(new object(), "Course not found", 404);
+
+                var activeLearner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId && l.LanguageId == course.LanguageId);
+
+                if (activeLearner == null)
+                    return BaseResponse<EnrollmentResponse>.Fail(new object(), "Please complete the entrance test for this language first", 400);
+
+                if (course.Status != CourseStatus.Published)
+                    return BaseResponse<EnrollmentResponse>.Fail(new object(), "This course is not yet published and cannot be enrolled.", 400);
+
+                if (course.CourseType != CourseType.Free)
+                {
+                    return BaseResponse<EnrollmentResponse>.Fail(new object(), "Cannot enroll in paid course through free enrollment", 400);
+                }
+
+                var existingEnrollment = await _unitOfWork.Enrollments.FindAsync(e => e.CourseId == request.CourseId && e.LearnerId == activeLearner.LearnerLanguageId);
+
+                if (existingEnrollment != null)
+                    return BaseResponse<EnrollmentResponse>.Fail(new object(), "You are already enrolled in this course.", 400);
+
+                var enrollment = new DAL.Models.Enrollment
+                {
+                    EnrollmentID = Guid.NewGuid(),
+                    CourseId = request.CourseId,
+                    LearnerId = activeLearner.LearnerLanguageId,
+                    TotalUnits = course.NumUnits,
+                    TotalLessons = course.NumLessons,
+                    EnrolledAt = TimeHelper.GetVietnamTime()
+                };
+                
+                await _unitOfWork.Enrollments.CreateAsync(enrollment);
+                await _unitOfWork.SaveChangesAsync();
+
+                var enrollmentResponse = new EnrollmentResponse
+                {
+                    EnrollmentId = enrollment.EnrollmentID,
+                    CourseId = course.CourseID,
+                    CourseType = course.CourseType.ToString(),
+                    CourseTitle = course.Title,
+                    Status = enrollment.Status.ToString(),
+                    ProgressPercent = enrollment.ProgressPercent,
+                    EnrollmentDate = enrollment.EnrolledAt.ToString("dd-MM-yyyy HH:mm"),
+                };
+
+                return BaseResponse<EnrollmentResponse>.Success(enrollmentResponse, "Enrolled successfully.");
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<EnrollmentResponse>.Error($"Unexpected error occurred: {ex.Message}");
+            }
+        }
         public async Task<PagedResponse<IEnumerable<EnrollmentResponse>>> GetEnrolledCoursesAsync(Guid userId, string lang, PagingRequest request)
         {
             try
             {
-                var learner = await _unitOfWork.LearnerLanguages
-                    .Query()
-                    .FirstOrDefaultAsync(l => l.UserId == userId);
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null)
+                    return PagedResponse<IEnumerable<EnrollmentResponse>>.Fail(new object(), "User not found", 404);
 
-                if (learner == null)
-                {
-                    return PagedResponse<IEnumerable<EnrollmentResponse>>.Fail(
-                        new object(),
-                        "Access denied",
-                        403
-                    );
-                }
+                if (!user.IsEmailConfirmed)
+                    return PagedResponse<IEnumerable<EnrollmentResponse>>.Fail(new object(), "Please confirm your email to access this feature", 403);
 
-                var query = _unitOfWork.Enrollments
-                    .Query()
-                    .Where(e => e.LearnerId == learner.LearnerLanguageId)
+                if (!user.Status)
+                    return PagedResponse<IEnumerable<EnrollmentResponse>>.Fail(new object(), "Account is deactivated", 403);
+
+                var language = await _unitOfWork.Languages.FindByLanguageCodeAsync(lang);
+                if (language == null)
+                    return PagedResponse<IEnumerable<EnrollmentResponse>>.Fail(new object(), "Language not found", 404);
+
+                var activeLearner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId && l.LanguageId == language.LanguageID);
+
+                if (activeLearner == null)
+                    return PagedResponse<IEnumerable<EnrollmentResponse>>.Fail(new object(), "Please complete the entrance test for this language first", 404);
+
+                var query = _unitOfWork.Enrollments.Query()
+                    .Where(e => e.LearnerId == activeLearner.LearnerLanguageId)
                     .Include(e => e.Course)
                         .ThenInclude(c => c.Template)
                     .Include(e => e.Course)
@@ -186,7 +264,6 @@ namespace BLL.Services.Enrollment
                     .Take(request.PageSize)
                     .ToListAsync();
 
-                // Map to response DTOs - FIXED PURCHASE LOGIC
                 var enrollmentResponses = new List<EnrollmentResponse>();
 
                 foreach (var enrollment in enrollments)
@@ -252,14 +329,15 @@ namespace BLL.Services.Enrollment
             {
                 var user = await _unitOfWork.Users.GetByIdAsync(userId);
                 if (user == null || !user.IsEmailConfirmed || !user.Status)
-                    return PagedResponse<IEnumerable<EnrolledCourseOverviewResponse>>.Fail(new object(), "Access denied", 403);
+                    return PagedResponse<IEnumerable<EnrolledCourseOverviewResponse>>.Fail(new object(), "Account not activated or inactive", 403);
 
-                var learner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId);
-                if (learner == null)
-                    return PagedResponse<IEnumerable<EnrolledCourseOverviewResponse>>.Fail(new object(), "Access denied", 403);
+                var activeLearner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId && l.LanguageId == user.ActiveLanguageId);
+
+                if (activeLearner == null)
+                    return PagedResponse<IEnumerable<EnrolledCourseOverviewResponse>>.Fail(new object(), "Active language not configured", 403);
 
                 var query = _unitOfWork.Enrollments.Query()
-                    .Where(e => e.LearnerId == learner.LearnerLanguageId)
+                    .Where(e => e.LearnerId == activeLearner.LearnerLanguageId)
                     .Include(e => e.Course)
                         .ThenInclude(c => c.Teacher)
                     .Include(e => e.Course)
@@ -269,7 +347,7 @@ namespace BLL.Services.Enrollment
                     .Include(e => e.UnitProgresses)
                     .AsNoTracking();
 
-                query = query.Where(e => e.Course.LanguageId == user.ActiveLanguageId);
+                query = query.Where(e => e.Course.LanguageId == activeLearner.LanguageId);
 
                 if (!string.IsNullOrEmpty(request.Status) && Enum.TryParse<DAL.Type.EnrollmentStatus>(request.Status, out var statusFilter))
                 {
@@ -317,15 +395,15 @@ namespace BLL.Services.Enrollment
                         EnrollmentId = enrollment.EnrollmentID,
                         CourseId = course.CourseID,
                         CourseTitle = course.Title,
-                        CourseImage = course.ImageUrl ?? "/images/default-course.jpg",
-                        Language = course.Language?.LanguageName ?? "Unknown",
-                        Level = course.Level?.Name ?? "Beginner",
-                        TeacherName = teacher?.FullName ?? "Unknown Teacher",
-                        TeacherAvatar = teacher?.Avatar ?? "/avatars/default-teacher.jpg",
+                        CourseImage = course.ImageUrl ?? string.Empty,
+                        Language = course.Language?.LanguageName ?? string.Empty,
+                        Level = course.Level?.Name ?? string.Empty,
+                        TeacherName = teacher?.FullName ?? string.Empty,
+                        TeacherAvatar = teacher?.Avatar ?? string.Empty,
                         ProgressPercent = enrollment.ProgressPercent,
                         Status = enrollment.Status.ToString(),
-                        LastAccessedAt = enrollment.LastAccessedAt?.ToString("dd-MM-yyyy"),
-                        EnrolledAt = enrollment.EnrolledAt.ToString("dd-MM-yyyy"),
+                        LastAccessedAt = enrollment.LastAccessedAt?.ToString("dd-MM-yyyy HH:mm"),
+                        EnrolledAt = enrollment.EnrolledAt.ToString("dd-MM-yyyy HH:mm"),
                         TotalLessons = enrollment.TotalLessons,
                         CompletedLessons = enrollment.CompletedLessons,
                         TotalUnits = enrollment.TotalUnits,
@@ -336,7 +414,6 @@ namespace BLL.Services.Enrollment
                         IsExpired = enrollment.Status == DAL.Type.EnrollmentStatus.Expired,
                         AccessUntil = await GetAccessUntil(enrollment.EnrollmentID)
                     };
-
                     responses.Add(response);
                 }
                 return PagedResponse<IEnumerable<EnrolledCourseOverviewResponse>>.Success(
@@ -344,7 +421,7 @@ namespace BLL.Services.Enrollment
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[DEBUG][ERROR]: {ex.Message}");
+                Console.WriteLine($"Error while fetching enrollment: {ex.Message}");
                 return PagedResponse<IEnumerable<EnrolledCourseOverviewResponse>>.Error($"Error retrieving enrolled courses: {ex.Message}");
             }
         }
@@ -353,11 +430,16 @@ namespace BLL.Services.Enrollment
             try
             {
                 var user = await _unitOfWork.Users.GetByIdAsync(userId);
-                if (user == null || !user.IsEmailConfirmed || !user.Status)
-                    return BaseResponse<EnrolledCourseDetailResponse>.Fail(new object(), "Access denied", 403);
+                if (user == null)
+                    return BaseResponse<EnrolledCourseDetailResponse>.Fail(new object(), "User not found", 404);
 
-                var enrollment = await _unitOfWork.Enrollments
-                    .Query()
+                if (!user.IsEmailConfirmed)
+                    return BaseResponse<EnrolledCourseDetailResponse>.Fail(new object(), "Please confirm your email to access course content", 403);
+
+                if (!user.Status)
+                    return BaseResponse<EnrolledCourseDetailResponse>.Fail(new object(), "Account is deactivated", 403);
+
+                var enrollment = await _unitOfWork.Enrollments.Query()
                     .Include(e => e.Course)
                         .ThenInclude(c => c.Teacher)
                     .Include(e => e.Course)
@@ -368,14 +450,7 @@ namespace BLL.Services.Enrollment
                     .FirstOrDefaultAsync(e => e.EnrollmentID == enrollmentId);
 
                 if (enrollment == null)
-                    return BaseResponse<EnrolledCourseDetailResponse>.Fail(new object(), "Enrollment not found", 404);
-
-                var learner = await _unitOfWork.LearnerLanguages
-                    .Query()
-                    .FirstOrDefaultAsync(l => l.UserId == userId);
-
-                if (learner == null || enrollment.LearnerId != learner.LearnerLanguageId)
-                    return BaseResponse<EnrolledCourseDetailResponse>.Fail(new object(), "Access denied", 403);
+                    return BaseResponse<EnrolledCourseDetailResponse>.Fail(new object(), "Enrollment not found or you don't have access", 404);
 
                 var course = enrollment.Course;
                 var teacher = course.Teacher;
@@ -388,9 +463,9 @@ namespace BLL.Services.Enrollment
                         CourseId = course.CourseID,
                         Title = course.Title,
                         Description = course.Description,
-                        Image = course.ImageUrl ?? "/images/default-course.jpg",
-                        Language = course.Language?.LanguageName ?? "Unknown",
-                        Level = course.Level.Name ?? "Beginner",
+                        Image = course.ImageUrl ?? string.Empty,
+                        Language = course.Language?.LanguageName ?? string.Empty,
+                        Level = course.Level.Name ?? string.Empty,
                         Duration = $"{course.DurationDays} days",
                         TotalUnits = enrollment.TotalUnits,
                         TotalLessons = enrollment.TotalLessons,
@@ -398,10 +473,10 @@ namespace BLL.Services.Enrollment
                         Teacher = new TeacherInfoDto
                         {
                             TeacherId = teacher?.TeacherId ?? Guid.Empty,
-                            Name = teacher?.FullName ?? "Unknown Teacher",
-                            Avatar = teacher?.Avatar ?? "/avatars/default-teacher.jpg",
-                            Rating = teacher.AverageRating,
-                            TotalStudents = await GetTeacherStudentCount(teacher.TeacherId)
+                            Name = teacher?.FullName ?? string.Empty,
+                            Avatar = teacher?.Avatar ?? string.Empty,
+                            Rating = teacher?.AverageRating ?? 0.0,
+                            TotalStudents = await GetTeacherStudentCount(teacher?.TeacherId)
                         },
                         Objective = course.LearningOutcome,
                     },
@@ -430,35 +505,36 @@ namespace BLL.Services.Enrollment
         {
             try
             {
-                var enrollment = await _unitOfWork.Enrollments
-                    .Query()
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null)
+                    return BaseResponse<EnrolledCourseCurriculumResponse>.Fail(new object(), "User not found", 404);
+
+                if (!user.IsEmailConfirmed)
+                    return BaseResponse<EnrolledCourseCurriculumResponse>.Fail(new object(), "Please confirm your email to access curriculum", 403);
+
+                if (!user.Status)
+                    return BaseResponse<EnrolledCourseCurriculumResponse>.Fail(new object(), "Account is deactivated", 403);
+
+                var enrollment = await _unitOfWork.Enrollments.Query()
                     .Include(e => e.Course)
                     .FirstOrDefaultAsync(e => e.EnrollmentID == enrollmentId);
 
                 if (enrollment == null)
                     return BaseResponse<EnrolledCourseCurriculumResponse>.Fail(new object(), "Enrollment not found", 404);
 
-                var learner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId);
-
-                if (learner == null || enrollment.LearnerId != learner.LearnerLanguageId)
-                    return BaseResponse<EnrolledCourseCurriculumResponse>.Fail(new object(), "Access denied", 403);
-
-                var units = await _unitOfWork.CourseUnits
-                    .Query()
+                var units = await _unitOfWork.CourseUnits.Query()
                     .Where(u => u.CourseID == enrollment.CourseId)
                     .OrderBy(u => u.Position)
                     .Include(u => u.Lessons)
-                    .ThenInclude(l => l.Exercises)
+                        .ThenInclude(l => l.Exercises)
                     .ToListAsync();
 
-                var unitProgresses = await _unitOfWork.UnitProgresses
-                    .Query()
+                var unitProgresses = await _unitOfWork.UnitProgresses.Query()
                     .Where(up => up.EnrollmentId == enrollmentId)
                     .ToListAsync();
 
-                var lessonProgresses = await _unitOfWork.LessonProgresses
-                    .Query()
-                    .Where(lp => lp.UnitProgress.EnrollmentId == enrollmentId)
+                var lessonProgresses = await _unitOfWork.LessonProgresses.Query()
+                    .Where(lp => lp.UnitProgress != null && lp.UnitProgress.EnrollmentId == enrollmentId)
                     .Include(lp => lp.ExerciseSubmissions)
                     .ToListAsync();
 
@@ -524,18 +600,23 @@ namespace BLL.Services.Enrollment
                 var user = await _unitOfWork.Users.GetByIdAsync(userId);
 
                 if (user == null)
-                    return BaseResponse<List<ContinueLearningResponse>>.Fail(new List<ContinueLearningResponse>(), "Access denied", 403);
+                {
+                    return BaseResponse<List<ContinueLearningResponse>>.Fail(
+                        new List<ContinueLearningResponse>(),
+                        "Access denied. Invalid authentication.",
+                        401
+                    );
+                }
 
-                var learner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId);
+                var learner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId && l.LanguageId == user.ActiveLanguageId);
 
                 if (learner == null)
                     return BaseResponse<List<ContinueLearningResponse>>.Fail(new List<ContinueLearningResponse>(), "Learner not found", 403);
 
-                var enrollments = await _unitOfWork.Enrollments
-                    .Query()
+                var enrollments = await _unitOfWork.Enrollments.Query()
                     .Where(e => e.LearnerId == learner.LearnerLanguageId &&
                                e.Status == DAL.Type.EnrollmentStatus.Active &&
-                               e.ProgressPercent < 100 && e.Course.LanguageId == user.ActiveLanguageId)
+                               e.ProgressPercent < 100 && e.Course.LanguageId == learner.LanguageId)
                     .Include(e => e.Course)
                     .OrderByDescending(e => e.LastAccessedAt ?? e.EnrolledAt)
                     .Take(5)
@@ -553,7 +634,7 @@ namespace BLL.Services.Enrollment
                         EnrollmentId = enrollment.EnrollmentID,
                         CourseId = enrollment.CourseId,
                         CourseTitle = enrollment.Course.Title,
-                        CourseImage = enrollment.Course.ImageUrl ?? "/images/default-course.jpg",
+                        CourseImage = enrollment.Course.ImageUrl ?? string.Empty,
                         ProgressPercent = enrollment.ProgressPercent,
                         ContinueLesson = continueLesson,
                         LastAccessed = lastAccessed
@@ -571,14 +652,19 @@ namespace BLL.Services.Enrollment
         {
             try
             {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null)
+                {
+                    return BaseResponse<bool>.Fail(
+                        new object(),
+                        "Access denied. Invalid authentication.",
+                        401
+                    );
+                }
+
                 var enrollment = await _unitOfWork.Enrollments.GetByIdAsync(enrollmentId);
                 if (enrollment == null)
                     return BaseResponse<bool>.Fail(false, "Enrollment not found", 404);
-
-                var learner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId);
-
-                if (learner == null || enrollment.LearnerId != learner.LearnerLanguageId)
-                    return BaseResponse<bool>.Fail(false, "Access denied", 403);
 
                 enrollment.CurrentUnitId = request.UnitId;
                 enrollment.CurrentLessonId = request.LessonId;
@@ -683,9 +769,7 @@ namespace BLL.Services.Enrollment
         }
         private async Task<int> GetTotalExercises(Guid courseId)
         {
-            return await _unitOfWork.Exercises
-                .Query()
-                .CountAsync(e => e.Lesson.CourseUnit.CourseID == courseId);
+            return await _unitOfWork.Exercises.Query().CountAsync(e => e.Lesson.CourseUnit.CourseID == courseId);
         }
         private async Task<string> GetCurrentUnitName(Guid? unitId)
         {
@@ -727,7 +811,7 @@ namespace BLL.Services.Enrollment
             var lesson = await _unitOfWork.Lessons.GetByIdAsync(enrollment.CurrentLessonId.Value);
             if (lesson == null) return null;
 
-            var lessonProgress = await _unitOfWork.LessonProgresses.FindAsync(lp => lp.LessonId == enrollment.CurrentLessonId &&
+            var lessonProgress = await _unitOfWork.LessonProgresses.FindAsync(lp => lp.LessonId == enrollment.CurrentLessonId && lp.UnitProgress != null &&
                                          lp.UnitProgress.EnrollmentId == enrollment.EnrollmentID);
 
             var remainingPercent = 100 - (lessonProgress?.ProgressPercent ?? 0);

@@ -2,13 +2,19 @@
 using Azure.AI.OpenAI;
 using BLL.IServices.Assessment;
 using BLL.Services.AI;
+using BLL.Settings;
+using CloudinaryDotNet;
 using Common.DTO.Assessment.Response;
 using Common.DTO.ExerciseGrading.Request;
 using Common.DTO.ExerciseGrading.Response;
 using DAL.Type;
 using DAL.UnitOfWork;
 using Microsoft.AspNetCore.Http;
+using Microsoft.CognitiveServices.Speech;
+using Microsoft.CognitiveServices.Speech.Audio;
+using Microsoft.CognitiveServices.Speech.PronunciationAssessment;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using OpenAI.Chat;
 using System.Text;
 using System.Text.Json;
@@ -20,6 +26,7 @@ namespace BLL.Services.Assessment
         private readonly IConfiguration _configuration;
         private readonly ITranscriptionService _transcriptionService;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IPronunciationService _pronunciationService;
         private const string MULTILINGUAL_SCORING_SYSTEM_PROMPT = @"You are an expert speaking examiner for English, Japanese and Chinese.
                                                                     Always return EXACTLY valid JSON with the schema described.
                                                                     Do NOT output anything outside that JSON.
@@ -31,13 +38,14 @@ namespace BLL.Services.Assessment
 
                                                                     Follow CEFR speaking descriptors. Use JLPT mapping for japanese and HSK mapping for chinese.
                                                                     If transcript is empty or too short, set low scores and mention in feedback.";
-        public AssessmentService(ITranscriptionService transcriptionService, IConfiguration configuration, IUnitOfWork unitOfWork)
+        public AssessmentService(ITranscriptionService transcriptionService, IConfiguration configuration, IUnitOfWork unitOfWork, IPronunciationService pronunciationService)
         {
             _transcriptionService = transcriptionService;
             _configuration = configuration;
             _unitOfWork = unitOfWork;
+            _pronunciationService = pronunciationService;
         }
-        public async Task<AssessmentResult> EvaluateSpeakingAsync(AssessmentRequest req, CancellationToken ct = default)
+        public async Task<AssessmentResult> EvaluateSpeakingAsync(AssessmentRequest req)
         {
             try
             {
@@ -46,7 +54,7 @@ namespace BLL.Services.Assessment
                 {
                     var submission = await t;
                     return submission != null ? await _unitOfWork.Exercises.GetByIdAsync(submission.ExerciseId) : null;
-                }, ct).Unwrap();
+                }).Unwrap();
 
                 await Task.WhenAll(submissionTask, exerciseTask);
 
@@ -61,9 +69,11 @@ namespace BLL.Services.Assessment
 
                 if (exercise.Type == SpeakingExerciseType.RepeatAfterMe && !string.IsNullOrEmpty(exercise.MediaUrl))
                 {
-                    var audioResponse = await TranscribeSpeechByGeminiAsync(exercise.MediaUrl);
-                    mediaContext = audioResponse.IsSuccess ? audioResponse.Content : "No reference audio available";
-                    mediaType = "reference_audio";
+                    AssessmentResult assessment = new();
+                    var result = await _pronunciationService.AssessPronunciationAsync(submission.AudioUrl, exercise.Content, req.LanguageCode);
+                    if (result != null)
+                        assessment = _pronunciationService.ConvertToAssessmentResult(result, exercise.Content, req.LanguageCode);
+                    return assessment;
                 }
                 else if ((exercise.Type == SpeakingExerciseType.PictureDescription ||
                          exercise.Type == SpeakingExerciseType.StoryTelling ||
@@ -113,7 +123,7 @@ namespace BLL.Services.Assessment
                 };
 
                 ChatCompletion chatCompletion = await chatClient.CompleteChatAsync(chatMessages);
-                Console.WriteLine($"[AI]: {chatCompletion.Content}");
+                Console.WriteLine($"[AI]: {chatCompletion.Content[0].Text}");
 
                 var assessmentResult = ParseAIResponseToAssessmentResult(chatCompletion.Content[0].Text, req.LanguageCode);
 
@@ -261,94 +271,6 @@ namespace BLL.Services.Assessment
                 >= 50 => "HSK2",
                 _ => "HSK1"
             };
-        }
-        private async Task<CommonResponse> TranscribeSpeechByAzureAsync(IFormFile audio)
-        {
-            if (audio == null || audio.Length == 0)
-                return new CommonResponse { IsSuccess = false, Content = "Invalid audio file." };
-
-            try
-            {
-                await using var ms = new MemoryStream();
-                await audio.CopyToAsync(ms);
-
-                var audioBytes = ms.ToArray();
-                var fileName = string.IsNullOrWhiteSpace(audio.FileName) ? "audio.wav" : audio.FileName;
-                var contentType = string.IsNullOrWhiteSpace(audio.ContentType) ? "audio/wav" : audio.ContentType;
-
-                var response = await _transcriptionService.TranscribeAsync(
-                    audioBytes,
-                    fileName,
-                    contentType,
-                    null
-                );
-
-                return !string.IsNullOrWhiteSpace(response)
-                    ? new CommonResponse { IsSuccess = true, Content = response }
-                    : new CommonResponse { IsSuccess = false, Content = "Transcription failed: empty response." };
-            }
-            catch (Exception ex)
-            {
-                return new CommonResponse { IsSuccess = false, Content = $"Transcription error: {ex.Message}" };
-            }
-        }
-        private async Task<CommonResponse> TranscribeSpeechByGeminiAsync(IFormFile audio)
-        {
-            string apiKey = "AIzaSyAsAA8w7QSEdW5k2CcbuWuEhXLV17hiYHI";
-            if (audio == null || audio.Length == 0)
-                return new CommonResponse { IsSuccess = false, Content = "Invalid audio file." };
-
-            byte[] audioBytes;
-            using (var ms = new MemoryStream())
-            {
-                await audio.CopyToAsync(ms);
-                audioBytes = ms.ToArray();
-            }
-
-            string audioBase64 = Convert.ToBase64String(audioBytes);
-            var payload = new
-            {
-                contents = new[]
-                {
-                    new {
-                        parts = new object[]
-                        {
-                            new { text = "Please transcribe this audio into text accurately:" },
-                            new {
-                                inline_data = new {
-                                    mime_type = audio.ContentType,
-                                    data = audioBase64
-                                }
-                            }
-                        }
-                    }
-                }
-            };
-            var json = JsonSerializer.Serialize(payload);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("x-goog-api-key", apiKey);
-            var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
-            var response = await client.PostAsync(url, content);
-            var responseText = await response.Content.ReadAsStringAsync();
-            try
-            {
-                using var doc = JsonDocument.Parse(responseText);
-                var transcript = doc.RootElement
-                    .GetProperty("candidates")[0]
-                    .GetProperty("content")
-                    .GetProperty("parts")[0]
-                    .GetProperty("text")
-                    .GetString();
-
-                return !string.IsNullOrWhiteSpace(transcript) ?
-                    new CommonResponse { IsSuccess = true, Content = transcript }
-                    : new CommonResponse { IsSuccess = false, Content = "No response" };
-            }
-            catch
-            {
-                return new CommonResponse { IsSuccess = false, Content = "Failed to parse transcript." };
-            }
         }
         private async Task<CommonResponse> TranscribeSpeechByGeminiAsync(string audioUrl)
         {
