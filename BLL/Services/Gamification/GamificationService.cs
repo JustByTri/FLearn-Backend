@@ -1,3 +1,4 @@
+using System;using System.Collections.Generic;using System.Linq;using System.Threading.Tasks;
 using BLL.IServices.Gamification;
 using DAL.Helpers;
 using DAL.Models;
@@ -10,8 +11,6 @@ namespace BLL.Services.Gamification
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<GamificationService> _logger;
-        // Simple level curve: Level n requires sum_{i=1..n} (i * 100) XP
-        // Which makes level thresholds: 0, 100, 300, 600, 1000, ...
         private const int BaseXpPerLevel = 100;
 
         public GamificationService(IUnitOfWork unitOfWork, ILogger<GamificationService> logger)
@@ -28,7 +27,8 @@ namespace BLL.Services.Gamification
             learner.TodayXp += xp;
             learner.UpdatedAt = TimeHelper.GetVietnamTime();
             await _unitOfWork.LearnerLanguages.UpdateAsync(learner);
-            await LogXpAsync(learner.LearnerLanguageId, xp, reason);
+            try { await LogXpAsync(learner.LearnerLanguageId, xp, reason); }
+            catch (Exception ex) { _logger.LogWarning(ex, "Failed to log XP event. Continuing without log."); }
             await _unitOfWork.SaveChangesAsync();
             var level = GetLevelFromXp(learner.ExperiencePoints);
             _logger.LogInformation("Awarded {XP} XP to LearnerLanguage {Id} for {Reason}. Total={Total}, Today={Today}, Level={Level}", xp, learner.LearnerLanguageId, reason, learner.ExperiencePoints, learner.TodayXp, level);
@@ -37,8 +37,6 @@ namespace BLL.Services.Gamification
 
         public int GetLevelFromXp(int totalXp)
         {
-            // Solve n such that n(n+1)/2 * BaseXpPerLevel <= totalXp
-            // n^2 + n - (2*totalXp/BaseXpPerLevel) <= 0
             if (totalXp <= 0) return 0;
             double c = 2.0 * totalXp / BaseXpPerLevel;
             var n = (int)Math.Floor((-1 + Math.Sqrt(1 + 4 * c)) / 2.0);
@@ -59,14 +57,12 @@ namespace BLL.Services.Gamification
             var now = TimeHelper.GetVietnamTime();
             if (learner.LastXpResetDate.Date != now.Date)
             {
-                // Update streak if met daily goal yesterday
                 if (learner.TodayXp >= learner.DailyXpGoal)
                 {
                     learner.StreakDays += 1;
                 }
                 else
                 {
-                    // break streak
                     learner.StreakDays = 0;
                 }
                 learner.TodayXp = 0;
@@ -80,7 +76,6 @@ namespace BLL.Services.Gamification
         private static int ThresholdXpForLevel(int level)
         {
             if (level <= 0) return 0;
-            // sum of 1..level = level*(level+1)/2
             return (level * (level + 1) / 2) * BaseXpPerLevel;
         }
 
@@ -97,12 +92,20 @@ namespace BLL.Services.Gamification
             await _unitOfWork.LearnerXpEvents.CreateAsync(evt);
         }
 
-        public async Task<Dictionary<DateTime,int>> GetDailyXpAsync(Guid learnerLanguageId, DateTime from, DateTime to)
+        public async Task<Dictionary<DateTime, int>> GetDailyXpAsync(Guid learnerLanguageId, DateTime from, DateTime to)
         {
-            var events = await _unitOfWork.LearnerXpEvents.FindAllAsync(e => e.LearnerLanguageId == learnerLanguageId && e.CreatedAt >= from && e.CreatedAt <= to);
-            return events
-                .GroupBy(e => e.CreatedAt.Date)
-                .ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
+            try
+            {
+                var events = await _unitOfWork.LearnerXpEvents.FindAllAsync(e => e.LearnerLanguageId == learnerLanguageId && e.CreatedAt >= from && e.CreatedAt <= to);
+                return events
+                    .GroupBy(e => e.CreatedAt.Date)
+                    .ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "GetDailyXpAsync failed, returning empty aggregation.");
+                return new Dictionary<DateTime, int>();
+            }
         }
     }
 }

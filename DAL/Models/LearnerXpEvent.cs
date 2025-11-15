@@ -1,3 +1,4 @@
+using DAL.Helpers;
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -16,6 +17,6 @@ namespace DAL.Models
         public int Amount { get; set; }
         [MaxLength(100)]
         public string Reason { get; set; } = string.Empty;
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; } = TimeHelper.GetVietnamTime();
     }
 }
