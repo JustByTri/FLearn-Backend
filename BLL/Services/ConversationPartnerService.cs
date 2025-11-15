@@ -821,6 +821,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
 
 IMPORTANT: You MUST respond ONLY in {session.Language?.LanguageName ?? "English"}.
 Do NOT respond in any other language (including Vietnamese), regardless of the user's input language.
+Always stick to the {session.GeneratedScenario} context and your role as {MakeConciseRole(session.AICharacterRole ?? string.Empty, session.Topic?.Name ?? string.Empty)}.
 Always respond in {session.Language?.LanguageName ?? "English"} only.";
 
                     var response = await _geminiService.GenerateResponseAsync(

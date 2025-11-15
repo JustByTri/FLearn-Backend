@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using System.Text;
 
 namespace Presentation.Controllers.Conversation
 {
@@ -261,14 +262,31 @@ namespace Presentation.Controllers.Conversation
                 var fileName = string.IsNullOrWhiteSpace(formDto.AudioFile.FileName) ? "audio.wav" : Path.GetFileName(formDto.AudioFile.FileName);
                 var contentType = string.IsNullOrWhiteSpace(formDto.AudioFile.ContentType) ? "audio/wav" : formDto.AudioFile.ContentType;
 
-                // Map session language name to STT locale (best-effort)
+                // Map session language name to STT locale (robust normalization) with multi-language auto-detect support
                 string? sttLocale = null;
-                var lname = (session.LanguageName ?? string.Empty).ToLowerInvariant();
-                if (lname.Contains("english") || lname.Contains("tiếng anh") || lname.Contains("tieng anh")) sttLocale = "en-US";
-                else if (lname.Contains("japanese") || lname.Contains("nihon") || lname.Contains("日本") || lname.Contains("jp") || lname.Contains("tiếng nhật") || lname.Contains("tieng nhat")) sttLocale = "ja-JP";
-                else if (lname.Contains("chinese") || lname.Contains("中文") || lname.Contains("zh") || lname.Contains("tiếng trung") || lname.Contains("tieng trung") || lname.Contains("trung quốc")) sttLocale = "zh-CN";
-
-                _logger.LogInformation("STT locale resolved: {Locale} from LanguageName='{Name}'", sttLocale ?? "(auto)", session.LanguageName);
+                string NormalizeMulti(string s) {
+                    if (string.IsNullOrWhiteSpace(s)) return string.Empty;
+                    var lower = s.ToLowerInvariant();
+                    var sb = new StringBuilder(lower.Length);
+                    foreach (var ch in lower) if (char.IsLetterOrDigit(ch) || char.IsWhiteSpace(ch)) sb.Append(ch);
+                    var cleaned = sb.ToString();
+                    while (cleaned.Contains("  ")) cleaned = cleaned.Replace("  ", " ");
+                    return cleaned.Trim();
+                }
+                var lnameRaw = session.LanguageName ?? string.Empty;
+                var lnameNorm = NormalizeMulti(lnameRaw);
+                bool hasEnglish = lnameNorm.Contains("english") || lnameNorm.Contains("tieng anh") || lnameNorm.Contains("anh");
+                bool hasJapanese = lnameNorm.Contains("japanese") || lnameNorm.Contains("tieng nhat") || lnameNorm.Contains("nihon") || lnameNorm.Contains("nippon") || lnameNorm.Contains("jp") || lnameNorm.Contains("nhat");
+                bool hasChinese = lnameNorm.Contains("chinese") || lnameNorm.Contains("tieng trung") || lnameNorm.Contains("trung") || lnameNorm.Contains("zh") || lnameNorm.Contains("han");
+                int matchedCount = (hasEnglish?1:0)+(hasJapanese?1:0)+(hasChinese?1:0);
+                if (matchedCount <= 1)
+                {
+                    if (hasEnglish) sttLocale = "en-US";
+                    else if (hasJapanese) sttLocale = "ja-JP";
+                    else if (hasChinese) sttLocale = "zh-CN";
+                }
+                // If more than one language keyword present, force auto-detect (null locale)
+                _logger.LogInformation("STT locale resolved: {Locale} from LanguageName='{Name}' (normalized='{Norm}', multi={Multi})", sttLocale ?? "(auto)", lnameRaw, lnameNorm, matchedCount>1);
 
                 // Transcribe (if client didn't provide transcript)
                 var transcript = string.IsNullOrWhiteSpace(formDto.Transcript)
