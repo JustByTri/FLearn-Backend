@@ -5,6 +5,6 @@ namespace BLL.IServices.Assessment
 {
     public interface IAssessmentService
     {
-        Task<AssessmentResult> EvaluateSpeakingAsync(AssessmentRequest req, CancellationToken ct = default);
+        Task<AssessmentResult> EvaluateSpeakingAsync(AssessmentRequest req);
     }
 }

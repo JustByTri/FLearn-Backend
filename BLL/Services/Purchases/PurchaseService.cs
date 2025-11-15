@@ -328,8 +328,10 @@ namespace BLL.Services.Purchases
                         return BaseResponse<PurchaseCourseResponse>.Fail(new object(), "Course does not exist or is not available", 400);
                     }
 
-                    var allPurchases = await _unitOfWork.Purchases.FindAllAsync(
-                        p => p.UserId == userId && p.CourseId == request.CourseId);
+                    if (course.CourseType != CourseType.Paid)
+                        return BaseResponse<PurchaseCourseResponse>.Fail(new object(), "This course is free and cannot be purchased", 400);
+
+                    var allPurchases = await _unitOfWork.Purchases.FindAllAsync(p => p.UserId == userId && p.CourseId == request.CourseId);
 
                     if (allPurchases.Any())
                     {
@@ -419,6 +421,27 @@ namespace BLL.Services.Purchases
         {
             try
             {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null)
+                    return new CourseAccessResponse { HasAccess = false, AccessStatus = "USER_NOT_FOUND" };
+
+                var course = await _unitOfWork.Courses.GetByIdAsync(courseId);
+                if (course == null)
+                    return new CourseAccessResponse { HasAccess = false, AccessStatus = "COURSE_NOT_FOUND" };
+
+                var learner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == user.UserID && l.LanguageId == course.LanguageId);
+                if (learner == null)
+                    return new CourseAccessResponse { HasAccess = false, AccessStatus = "LEARNER_NOT_FOUND" };
+
+                if (course.CourseType == CourseType.Free)
+                {
+                    var existingEnrollment = await _unitOfWork.Enrollments.FindAsync(e => e.CourseId == course.CourseID && e.LearnerId == learner.LearnerLanguageId);
+                    if (existingEnrollment == null)
+                        return new CourseAccessResponse { HasAccess = false, AccessStatus = "NOT_ENROLLED" };
+                    else
+                        return new CourseAccessResponse { HasAccess = true, AccessStatus = "ENROLLED" };
+                }
+
                 var purchase = await _unitOfWork.Purchases
                 .FindAllAsync(p => p.UserId == userId &&
                    p.CourseId == courseId);

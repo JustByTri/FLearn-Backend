@@ -176,8 +176,8 @@ namespace BLL
             services.AddScoped<ILessonProgressService, LessonProgressService>();
             services.AddHostedService<DailyConversationResetService>();
             services.AddHostedService<SubscriptionExpiryService>();
+            services.AddScoped<IPronunciationService, PronunciationService>();
             services.AddScoped<IGamificationService, GamificationService>();
-
             return services;
         }
     }

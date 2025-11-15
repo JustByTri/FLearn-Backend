@@ -11,6 +11,8 @@ namespace Common.DTO.ExerciseGrading.Response
         public int Overall { get; set; }
         public string Feedback { get; set; } = "";
         public string Transcript { get; set; } = "";
+        public bool IsSuccess { get; set; } = true;
+        public string? ErrorMessage { get; set; }
         public override string ToString()
         {
             return JsonSerializer.Serialize(this, new JsonSerializerOptions

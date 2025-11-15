@@ -61,6 +61,31 @@ namespace Presentation.Controllers.Enrollment
             var result = await _enrollmentService.EnrolCourseAsync(userId, request);
             return StatusCode(result.Code, result);
         }
+        [Authorize(Roles = "Learner")]
+        [HttpPost("free")]
+        public async Task<IActionResult> EnrollInFreeCourseAsync([FromBody] EnrollmentRequest request)
+        {
+            var userIdClaim = User.FindFirstValue("user_id")
+                                 ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized("Teacher ID not found in token.");
+            }
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return BadRequest("Invalid user ID format in token.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(BaseResponse<object>.Fail("Invalid request data."));
+            }
+
+            var result = await _enrollmentService.EnrolFreeCourseAsync(userId, request);
+            return StatusCode(result.Code, result);
+        }
         /// <summary>
         /// Retrieves all courses that the authenticated user has enrolled in, with pagination.
         /// </summary>

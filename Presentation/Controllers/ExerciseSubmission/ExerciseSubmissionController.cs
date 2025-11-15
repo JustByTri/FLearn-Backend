@@ -16,7 +16,7 @@ namespace Presentation.Controllers.ExerciseSubmission
         }
         [Authorize(Roles = "Learner")]
         [HttpGet("courses/{courseId:guid}/lessons/{lessonId:guid}/exercise-submission/my-submissions")]
-        public async Task<IActionResult> GetMyExerciseSubmission(Guid? courseId, Guid? lessonId, string? status, [FromQuery] int pageNumber, [FromQuery] int pageSize)
+        public async Task<IActionResult> GetMyExerciseSubmission(Guid courseId, Guid lessonId, string? status, [FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
             var userIdClaim = User.FindFirstValue("user_id")
                      ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
