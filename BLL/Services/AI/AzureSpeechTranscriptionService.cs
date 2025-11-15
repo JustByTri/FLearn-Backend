@@ -23,6 +23,9 @@ namespace BLL.Services.AI
 
         // -1 unknown,0 not available,1 available
         private int _ffmpegAvailableState = -1;
+        private static readonly string[] AllowedLocales = { "en-US", "ja-JP", "zh-CN" }; // Limit to English, Japanese, Chinese
+
+        private string? _lastDetectedLanguage; // track last detected language
 
         public AzureSpeechTranscriptionService(IOptions<SpeechSettings> settings, ILogger<AzureSpeechTranscriptionService> logger)
         {
@@ -35,6 +38,7 @@ namespace BLL.Services.AI
             {
                 var ct = (contentType ?? string.Empty).ToLowerInvariant();
                 var isWav = ct.Contains("wav") || fileName.ToLowerInvariant().EndsWith(".wav");
+                languageCode = NormalizeLang(languageCode); // map en->en-US etc.
 
                 // If not WAV -> try fast ffmpeg transcode to16kHz mono PCM WAV
                 if (!isWav)
@@ -91,8 +95,7 @@ namespace BLL.Services.AI
                 // Fallback compressed stream path (requires gstreamer for mp3/ogg/webm). On Windows easier; on Linux only if ffmpeg available (assuming gstreamer installed alongside)
                 if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || IsFfmpegAvailable())
                 {
-                    var configAndAuto = GetConfig(languageCode);
-                    var (config, autoCfg) = (configAndAuto.config, configAndAuto.autoCfg);
+                    var (config, autoCfg) = GetConfig(languageCode);
                     string? ext = null;
                     if (!string.IsNullOrWhiteSpace(fileName)) ext = Path.GetExtension(fileName).ToLowerInvariant();
                     AudioStreamContainerFormat container = AudioStreamContainerFormat.ANY;
@@ -108,14 +111,19 @@ namespace BLL.Services.AI
                         using var audioConfig = AudioConfig.FromStreamInput(push);
                         var text = await RecognizeOnceAsync(config, audioConfig, autoCfg);
                         if (!string.IsNullOrWhiteSpace(text)) return text;
+                        // If auto-detect produced a language but text empty, re-run once with that language (not hardcoded en-US)
                         if (autoCfg != null)
                         {
-                            var enCfg = GetConfig("en-US").config;
-                            using var push2 = AudioInputStream.CreatePushStream(format);
-                            push2.Write(audioBytes); push2.Close();
-                            using var audioConfig2 = AudioConfig.FromStreamInput(push2);
-                            var forced = await RecognizeOnceAsync(enCfg, audioConfig2, null);
-                            if (!string.IsNullOrWhiteSpace(forced)) return forced;
+                            var detectedLang = _lastDetectedLanguage; // populated in RecognizeOnceAsync
+                            if (!string.IsNullOrWhiteSpace(detectedLang) && AllowedLocales.Contains(detectedLang) && detectedLang != "en-US")
+                            {
+                                var detCfg = GetConfig(detectedLang).config;
+                                using var push2 = AudioInputStream.CreatePushStream(format);
+                                push2.Write(audioBytes); push2.Close();
+                                using var audioConfig2 = AudioConfig.FromStreamInput(push2);
+                                var retry = await RecognizeOnceAsync(detCfg, audioConfig2, null);
+                                if (!string.IsNullOrWhiteSpace(retry)) return retry;
+                            }
                         }
                     }
                 }
@@ -123,6 +131,11 @@ namespace BLL.Services.AI
             }
             catch (Exception ex)
             {
+                if (ex.Message.Contains("GSTREAMER", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogWarning("Azure Speech needs gstreamer; returning null (compressed format)");
+                    return null;
+                }
                 _logger.LogError(ex, "Azure Speech transcription error");
                 return null;
             }
@@ -136,6 +149,7 @@ namespace BLL.Services.AI
                 using var recognizer = new SourceLanguageRecognizer(config, autoCfg, audioConfig);
                 result = await recognizer.RecognizeOnceAsync();
                 var detected = result.Properties.GetProperty(PropertyId.SpeechServiceConnection_AutoDetectSourceLanguageResult);
+                _lastDetectedLanguage = detected;
                 _logger.LogDebug("STT Auto locale: {Locale}", detected);
             }
             else
@@ -158,14 +172,9 @@ namespace BLL.Services.AI
         {
             if (string.IsNullOrWhiteSpace(languageCode))
             {
-                var key = "auto";
-                var cfg = _configCache.GetOrAdd(key, _ =>
-                {
-                    var c = SpeechConfig.FromSubscription(_settings.ApiKey, _settings.Region);
-                    return c;
-                });
-                var langsList = (_settings.Languages?.Count >0 ? _settings.Languages : new List<string> { "en-US", "ja-JP", "zh-CN" })!;
-                _autoDetectConfig ??= AutoDetectSourceLanguageConfig.FromLanguages(langsList.ToArray());
+                var key = "auto_3";
+                var cfg = _configCache.GetOrAdd(key, _ => SpeechConfig.FromSubscription(_settings.ApiKey, _settings.Region));
+                _autoDetectConfig ??= AutoDetectSourceLanguageConfig.FromLanguages(AllowedLocales); // strictly 3 languages
                 return (cfg, _autoDetectConfig);
             }
             else
@@ -181,6 +190,19 @@ namespace BLL.Services.AI
             }
         }
 
+        private string? NormalizeLang(string? code)
+        {
+            if (string.IsNullOrWhiteSpace(code)) return null;
+            code = code.Trim().ToLowerInvariant();
+            return code switch
+            {
+                "en" or "en-us" => "en-US",
+                "ja" or "jp" or "ja-jp" => "ja-JP",
+                "zh" or "zh-cn" or "cn" => "zh-CN",
+                _ => null // unknown -> auto-detect
+            };
+        }
+
         // Try to convert arbitrary audio to16kHz mono PCM WAV using FFmpeg if available
         private async Task<byte[]?> ConvertToPcmWavAsync(byte[] input)
         {
@@ -190,7 +212,7 @@ namespace BLL.Services.AI
                 var psi = new ProcessStartInfo
                 {
                     FileName = "ffmpeg",
-                    Arguments = "-hide_banner -loglevel error -i pipe:0 -ac1 -ar16000 -f wav pipe:1",
+                    Arguments = "-hide_banner -loglevel error -i pipe:0 -ac 1 -ar 16000 -f wav pipe:1",
                     RedirectStandardInput = true,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
