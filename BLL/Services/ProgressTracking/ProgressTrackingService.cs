@@ -15,6 +15,7 @@ using DAL.Type;
 using DAL.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
+using Hangfire;
 
 namespace BLL.Services.ProgressTracking
 {
@@ -449,7 +450,7 @@ namespace BLL.Services.ProgressTracking
                     TeacherPercentage = teacherPercentage,
                     AIFeedback = "Pending AI Evaluation",
                     TeacherFeedback = (exercise.Type is SpeakingExerciseType.StoryTelling or SpeakingExerciseType.Debate) ? "Pending Teacher Evaluation" : string.Empty,
-                    Status = isTeacherRequired ? ExerciseSubmissionStatus.PendingTeacherReview : ExerciseSubmissionStatus.PendingAIReview,
+                    Status = ExerciseSubmissionStatus.PendingAIReview,
                     SubmittedAt = TimeHelper.GetVietnamTime(),
                 };
 
@@ -502,7 +503,7 @@ namespace BLL.Services.ProgressTracking
                     GradingType = isTeacherRequired ? GradingType.AIAndTeacher.ToString() : GradingType.AIOnly.ToString()
                 };
 
-                await _exerciseGradingService.ProcessAIGradingAsync(assessmentRequest);
+                BackgroundJob.Enqueue(() =>_exerciseGradingService.ProcessAIGradingAsync(assessmentRequest));
 
                 var response = new ExerciseSubmissionResponse
                 {

@@ -69,42 +69,22 @@ namespace BLL.Services.Assessment
         }
         public AssessmentResult ConvertToAssessmentResult(Common.DTO.Pronunciation.PronunciationAssessmentResult azureResult, string referenceText, string languageCode)
         {
-            var overallScore = (int)azureResult.PronunciationScore;
+            var overallScore =
+                (azureResult.PronunciationScore * 0.25f) +
+                (azureResult.FluencyScore * 0.25f) +
+                (azureResult.AccuracyScore * 0.25f) +
+                (azureResult.CompletenessScore * 0.25f);
 
-            var feedback = new StringBuilder();
+            overallScore = Math.Clamp(overallScore, 0, 100);
 
-            feedback.AppendLine($"**Pronunciation Assessment Results**");
-            feedback.AppendLine($"Overall Pronunciation: {azureResult.PronunciationScore:F1}%");
-            feedback.AppendLine($"Accuracy: {azureResult.AccuracyScore:F1}%");
-            feedback.AppendLine($"Fluency: {azureResult.FluencyScore:F1}%");
-            feedback.AppendLine($"Completeness: {azureResult.CompletenessScore:F1}%");
+            var intonationScore = (azureResult.FluencyScore * 0.4f + azureResult.PronunciationScore * 0.6f);
+            intonationScore = Math.Clamp(intonationScore, 0, 100);
 
-            if (azureResult.PhonemeAssessments?.Any() == true)
-            {
-                var poorPhonemes = azureResult.PhonemeAssessments
-                    .Where(p => p.AccuracyScore < 70)
-                    .OrderBy(p => p.AccuracyScore)
-                    .Take(3)
-                    .Select(p => $"{p.Phoneme} ({p.AccuracyScore:F0}%)");
+            List<HighlightedPhoneme> highlightedPhonemes = azureResult.PhonemeAssessments != null
+                ? MapPhonemes(azureResult.PhonemeAssessments)
+                : new List<HighlightedPhoneme>();
 
-                if (poorPhonemes.Any())
-                {
-                    feedback.AppendLine($"\n**Areas for Improvement**: {string.Join(", ", poorPhonemes)}");
-                }
-
-                var excellentPhonemes = azureResult.PhonemeAssessments
-                    .Where(p => p.AccuracyScore >= 90)
-                    .Take(3)
-                    .Select(p => p.Phoneme);
-
-                if (excellentPhonemes.Any())
-                {
-                    feedback.AppendLine($"**Excellent Pronunciation**: {string.Join(", ", excellentPhonemes)}");
-                }
-            }
-
-            feedback.AppendLine($"\n**Reference Text**: {referenceText}");
-            feedback.AppendLine($"**Tip**: Practice speaking slowly and focus on problem sounds identified above.");
+            string phonemeJson = JsonSerializer.Serialize(highlightedPhonemes);
 
             return new AssessmentResult
             {
@@ -112,18 +92,21 @@ namespace BLL.Services.Assessment
                 {
                     Pronunciation = (int)azureResult.PronunciationScore,
                     Fluency = (int)azureResult.FluencyScore,
-                    Coherence = (int)((azureResult.AccuracyScore + azureResult.CompletenessScore) / 2),
+                    Completeness = (int)azureResult.CompletenessScore,
+                    Coherence = 0,
                     Accuracy = (int)azureResult.AccuracyScore,
-                    Intonation = (int)((azureResult.FluencyScore + azureResult.PronunciationScore) / 2),
+                    Intonation = (int)intonationScore,
                     Grammar = 0,
                     Vocabulary = 0
                 },
-                CefrLevel = GetEnLevel(overallScore),
-                JlptLevel = languageCode == "ja" ? GetJlptLevel(overallScore) : null,
-                HskLevel = languageCode == "zh" ? GetHskLevel(overallScore) : null,
-                Overall = overallScore,
-                Feedback = feedback.ToString(),
-                Transcript = referenceText
+                CefrLevel = GetEnLevel((int)overallScore),
+                JlptLevel = languageCode == "ja" ? GetJlptLevel((int)overallScore) : null,
+                HskLevel = languageCode == "zh" ? GetHskLevel((int)overallScore) : null,
+                Overall = (int)overallScore,
+                Feedback = phonemeJson,
+                Transcript = referenceText,
+                IsSuccess = true,
+                ErrorMessage = null
             };
         }
         #region
@@ -225,6 +208,37 @@ namespace BLL.Services.Assessment
         private string GetEnLevel(int score) => score >= 90 ? "C2" : score >= 80 ? "C1" : score >= 70 ? "B2" : score >= 60 ? "B1" : score >= 50 ? "A2" : "A1";
         private string GetJlptLevel(int score) => score >= 90 ? "N1" : score >= 80 ? "N2" : score >= 70 ? "N3" : score >= 60 ? "N4" : "N5";
         private string GetHskLevel(int score) => score >= 90 ? "HSK6" : score >= 80 ? "HSK5" : score >= 70 ? "HSK4" : score >= 60 ? "HSK3" : score >= 50 ? "HSK2" : "HSK1";
+        private List<HighlightedPhoneme> MapPhonemes(IEnumerable<Common.DTO.Pronunciation.PhonemeAssessment> phonemes)
+        {
+            var list = new List<HighlightedPhoneme>();
+
+            foreach (var p in phonemes)
+            {
+                string color;
+
+                if (p.AccuracyScore >= 90)
+                    color = "green";
+                else if (p.AccuracyScore >= 70)
+                    color = "yellow";
+                else
+                    color = "red";
+
+                list.Add(new HighlightedPhoneme
+                {
+                    Phoneme = p.Phoneme,
+                    Accuracy = (int)p.AccuracyScore,
+                    Color = color
+                });
+            }
+
+            return list;
+        }
+        public class HighlightedPhoneme
+        {
+            public string Phoneme { get; set; } = string.Empty;
+            public int Accuracy { get; set; }
+            public string Color { get; set; } = "green";
+        }
         #endregion
     }
 }

@@ -1,5 +1,9 @@
-﻿using BLL.IServices.ProgressTracking;
+﻿using BLL.IServices.Assessment;
+using BLL.IServices.ProgressTracking;
+using BLL.Services.Assessment;
+using CloudinaryDotNet.Actions;
 using Common.DTO.ApiResponse;
+using Common.DTO.Language;
 using Common.DTO.ProgressTracking.Request;
 using Common.DTO.ProgressTracking.Response;
 using Microsoft.AspNetCore.Authorization;
@@ -13,9 +17,13 @@ namespace Presentation.Controllers.ProgressTracking
     public class ProgressTrackingController : ControllerBase
     {
         private readonly IProgressTrackingService _progressTrackingService;
-        public ProgressTrackingController(IProgressTrackingService progressTrackingService)
+        private readonly IPronunciationService _pronunciationService;
+        private readonly IAssessmentService _assessmentService;
+        public ProgressTrackingController(IProgressTrackingService progressTrackingService, IPronunciationService pronunciationService, IAssessmentService assessmentService)
         {
             _progressTrackingService = progressTrackingService;
+            _pronunciationService = pronunciationService;
+            _assessmentService = assessmentService;
         }
         [Authorize(Roles = "Learner")]
         [HttpPost("start-lesson")]
@@ -81,6 +89,19 @@ namespace Presentation.Controllers.ProgressTracking
 
             var result = await _progressTrackingService.GetCurrentProgressAsync(userId, courseId);
             return StatusCode(result.Code, result);
+        }
+        [HttpGet("azure/transcribe/speech-to-text")]
+        public async Task<IActionResult> TranscribeAudioToText(string audioUrl, string referenceText, [AllowedLang]string langCode)
+        {
+            var result = await _pronunciationService.AssessPronunciationAsync(audioUrl, referenceText, langCode);
+            var response = _pronunciationService.ConvertToAssessmentResult(result, referenceText, langCode);
+            return Ok(response);
+        }
+        [HttpGet("gemini/transcribe/speech-to-text")]
+        public async Task<IActionResult> TranscribeSpeechToText(string audioUrl)
+        {
+            var result = await AssessmentService.TranscribeSpeechByGeminiAsync(audioUrl);
+            return Ok(result);
         }
     }
 }
