@@ -1,6 +1,7 @@
 using BLL.Hubs;
 using BLL.IServices.AI;
 using BLL.IServices.Coversation;
+using BLL.IServices.Gamification;
 using Common.Constants;
 using Common.DTO.Conversation;
 using DAL.Helpers;
@@ -20,17 +21,20 @@ namespace BLL.Services
         private readonly IGeminiService _geminiService;
         private readonly ILogger<ConversationPartnerService> _logger;
         private readonly IHubContext<ConversationHub> _hubContext;
+        private readonly IGamificationService _gamificationService;
 
         public ConversationPartnerService(
             IUnitOfWork unitOfWork,
             IGeminiService geminiService,
             ILogger<ConversationPartnerService> logger,
-            IHubContext<ConversationHub> hubContext)
+            IHubContext<ConversationHub> hubContext,
+            IGamificationService gamificationService)
         {
             _unitOfWork = unitOfWork;
             _geminiService = geminiService;
             _logger = logger;
             _hubContext = hubContext;
+            _gamificationService = gamificationService;
         }
 
         public async Task<List<ConversationLanguageDto>> GetAvailableLanguagesAsync()
@@ -281,6 +285,10 @@ Never respond in Vietnamese or any other language, regardless of what language t
                 };
                 await _unitOfWork.ConversationMessages.CreateAsync(userMessage);
 
+                // XP: reward per meaningful message to encourage practice (cap by length)
+                var grant = (!string.IsNullOrWhiteSpace(request.MessageContent) && request.MessageContent.Length >= 10) ? 2 : 1;
+                await _gamificationService.AwardXpAsync(ll, grant, "Conversation message");
+
                 var aiResponse = await GenerateAIResponseAsync(session, request.MessageContent);
                 var enhancedAIResponse = EnhanceResponseWithTranslationHint(aiResponse, request.MessageContent, session.Language?.LanguageCode ?? "EN");
                 var finalAIResponse = EnsureTargetLanguageOnly(enhancedAIResponse);
@@ -332,9 +340,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
                         if (synonymSuggestions != null)
                         {
                             _logger.LogInformation("Synonym result: OriginalMessage='{Original}', CurrentLevel='{Level}', AlternativeCount={Count}", 
-                                synonymSuggestions.OriginalMessage, 
-                                synonymSuggestions.CurrentLevel, 
-                                synonymSuggestions.Alternatives?.Count ?? 0);
+                                synonymSuggestions.OriginalMessage, synonymSuggestions.CurrentLevel, synonymSuggestions.Alternatives?.Count ?? 0);
                             
                             if (synonymSuggestions.Alternatives?.Any() == true)
                             {
@@ -430,6 +436,12 @@ Never respond in Vietnamese or any other language, regardless of what language t
 
                 await _unitOfWork.ConversationSessions.UpdateAsync(session);
                 await _unitOfWork.SaveChangesAsync();
+
+                // XP: completion bonus based on duration and activity
+                var messagesFromUser = session.ConversationMessages?.Count(m => m.Sender == MessageSender.User) ?? 0;
+                var baseXp = Math.Min(20, messagesFromUser * 2);
+                baseXp += session.Duration >= 300 ? 10 : 0; // +10 if >=5 minutes
+                await _gamificationService.AwardXpAsync(ll!, baseXp, "Complete conversation session");
 
                 await _hubContext.Clients.Group($"User_{userId}")
  .SendAsync("ConversationEvaluated", new
