@@ -37,6 +37,7 @@ namespace DAL.UnitOfWork
             LanguageLevels = new LanguageLevelRepository(_context);
             LearnerAchievements = new LearnerAchievementRepository(_context);
             LearnerLanguages = new LearnerLanguageRepository(_context);
+            LearnerXpEvents = new LearnerXpEventRepository(_context);
             Lessons = new LessonRepository(_context);
             LessonActivityLogs = new LessonActivityLogRepository(_context);
             LessonProgresses = new LessonProgressRepository(_context);
@@ -93,6 +94,7 @@ namespace DAL.UnitOfWork
         public ILanguageLevelRepository LanguageLevels { get; private set; }
         public ILearnerAchievementRepository LearnerAchievements { get; private set; }
         public ILearnerLanguageRepository LearnerLanguages { get; private set; }
+        public ILearnerXpEventRepository LearnerXpEvents { get; private set; }
         public ILessonRepository Lessons { get; private set; }
         public ILessonActivityLogRepository LessonActivityLogs { get; private set; }
         public ILessonProgressRepository LessonProgresses { get; private set; }

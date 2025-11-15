@@ -13,5 +13,7 @@ namespace BLL.IServices.Gamification
         double GetLevelProgress(int totalXp);
         // Ensure daily reset (today XP and streak) for a learner
         Task EnsureDailyXpResetAsync(LearnerLanguage learner);
+        Task LogXpAsync(Guid learnerLanguageId, int amount, string reason);
+        Task<Dictionary<DateTime,int>> GetDailyXpAsync(Guid learnerLanguageId, DateTime from, DateTime to);
     }
 }
