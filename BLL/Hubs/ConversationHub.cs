@@ -13,6 +13,9 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
+using Hangfire;
+using BLL.Background;
+using BLL.Services.AI;
 
 namespace BLL.Hubs
 {
@@ -22,15 +25,21 @@ namespace BLL.Hubs
         private readonly IConversationPartnerService _conversationService;
         private readonly ILogger<ConversationHub> _logger;
         private readonly ICloudinaryService _cloudinaryService;
+        private readonly IBackgroundJobClient _jobs;
+        private readonly ITranscriptionService _transcribe;
 
         public ConversationHub(
              IConversationPartnerService conversationService,
              ICloudinaryService cloudinaryService,
-             ILogger<ConversationHub> logger)
+             ILogger<ConversationHub> logger,
+             IBackgroundJobClient jobs,
+             ITranscriptionService transcribe)
         {
             _conversationService = conversationService;
             _cloudinaryService = cloudinaryService;
             _logger = logger;
+            _jobs = jobs;
+            _transcribe = transcribe;
         }
 
         public override async Task OnConnectedAsync()
@@ -204,47 +213,56 @@ namespace BLL.Hubs
             {
                 var userId = Guid.Parse(Context.User!.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-                // Convert base64 to IFormFile-like object for Cloudinary
+                // Decode audio bytes
+                var commaIdx = base64Audio.IndexOf(',');
+                if (commaIdx >= 0) base64Audio = base64Audio.Substring(commaIdx + 1); // strip data: prefix if present
                 var audioBytes = Convert.FromBase64String(base64Audio);
-                var audioStream = new MemoryStream(audioBytes);
+                var fileName = $"voice_{DateTime.UtcNow:yyyyMMddHHmmss}.wav";
+                var contentType = string.IsNullOrWhiteSpace(mimeType) ? "audio/wav" : mimeType;
 
-                // Create a temporary file-like object
-                var formFile = new FormFile(audioStream, 0, audioBytes.Length, "voice", $"voice_{DateTime.UtcNow:yyyyMMddHHmmss}.mp3")
+                // Resolve session and STT locale with multi-language support
+                var session = await _conversationService.GetConversationSessionAsync(userId, Guid.Parse(sessionId));
+                string? sttLocale = null;
+                string lnameRaw = session?.LanguageName ?? string.Empty;
+                string NormalizeMulti(string s){ if(string.IsNullOrWhiteSpace(s)) return string.Empty; var lower=s.ToLowerInvariant(); var sb=new StringBuilder(lower.Length); foreach(var ch in lower) if(char.IsLetterOrDigit(ch)||char.IsWhiteSpace(ch)) sb.Append(ch); var cleaned=sb.ToString(); while(cleaned.Contains("  ")) cleaned=cleaned.Replace("  "," "); return cleaned.Trim(); }
+                var lnameNorm = NormalizeMulti(lnameRaw);
+                bool hasEnglish = lnameNorm.Contains("english") || lnameNorm.Contains("tieng anh") || lnameNorm.Contains("anh");
+                bool hasJapanese = lnameNorm.Contains("japanese") || lnameNorm.Contains("tieng nhat") || lnameNorm.Contains("nihon") || lnameNorm.Contains("nippon") || lnameNorm.Contains("jp") || lnameNorm.Contains("nhat");
+                bool hasChinese = lnameNorm.Contains("chinese") || lnameNorm.Contains("tieng trung") || lnameNorm.Contains("trung") || lnameNorm.Contains("zh") || lnameNorm.Contains("han");
+                int matchedCount = (hasEnglish?1:0)+(hasJapanese?1:0)+(hasChinese?1:0);
+                if (matchedCount <= 1)
                 {
-                    Headers = new HeaderDictionary(),
-                    ContentType = mimeType
-                };
+                    if (hasEnglish) sttLocale = "en-US"; else if (hasJapanese) sttLocale = "ja-JP"; else if (hasChinese) sttLocale = "zh-CN";
+                }
+                _logger.LogInformation("[Hub] STT locale resolved: {Locale} from LanguageName='{Name}' (normalized='{Norm}', multi={Multi})", sttLocale ?? "(auto)", lnameRaw, lnameNorm, matchedCount>1);
 
-                // Upload to Cloudinary
-                var audioFolder = $"conversations/{userId}/{sessionId}/voice_realtime";
-                var uploadResult = await _cloudinaryService.UploadAudioAsync(formFile, audioFolder);
+                // Transcribe quickly
+                var transcript = await _transcribe.TranscribeAsync(audioBytes, fileName, contentType, sttLocale);
+                if (string.IsNullOrWhiteSpace(transcript)) transcript = "[Voice Message]";
 
-                // Send through conversation service
-                var request = new SendMessageRequestDto
-                {
-                    SessionId = Guid.Parse(sessionId),
-                    MessageContent = "[Voice Message]",
-                    MessageType = MessageType.Audio,
-                    AudioUrl = uploadResult.Url,
-                    AudioPublicId = uploadResult.PublicId,
-                    AudioDuration = duration
-                };
-
-                // Notify voice message received
+                // Notify group that a voice message was received (upload queued)
                 await Clients.Group($"Conversation_{sessionId}")
                     .SendAsync("VoiceMessageReceived", new
                     {
                         sessionId,
                         sender = "User",
-                        audioUrl = uploadResult.Url,
+                        audioUrl = (string?)null,
                         duration,
+                        transcript,
+                        upload = new { queued = true },
                         timestamp = DateTime.UtcNow
                     });
 
-                // Process AI response
+                // Process AI response using transcript
+                var request = new SendMessageRequestDto
+                {
+                    SessionId = Guid.Parse(sessionId),
+                    MessageContent = transcript,
+                    MessageType = MessageType.Audio,
+                    AudioDuration = duration
+                };
                 var aiResponse = await _conversationService.SendMessageAsync(userId, request);
 
-                // Send AI response
                 await Clients.Group($"Conversation_{sessionId}")
                     .SendAsync("AIMessageReceived", new
                     {
@@ -257,11 +275,14 @@ namespace BLL.Hubs
                         sequenceOrder = aiResponse.SequenceOrder
                     });
 
-                _logger.LogInformation("🎤 Voice message sent in conversation {SessionId} by user {UserId}", sessionId, userId);
+                // Enqueue background upload to Cloudinary and attach
+                _jobs.Enqueue<VoiceUploadJob>(job => job.UploadAudioAndAttachAsync(Guid.Parse(sessionId), userId, audioBytes, fileName, contentType, duration));
+
+                _logger.LogInformation("🎤 Voice (fast) sent in conversation {SessionId} by user {UserId}; upload queued", sessionId, userId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error sending voice message through SignalR");
+                _logger.LogError(ex, "❌ Error sending voice message (fast) through SignalR");
                 await Clients.Caller.SendAsync("Error", "Không thể gửi tin nhắn voice");
             }
         }
