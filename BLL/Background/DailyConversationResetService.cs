@@ -4,6 +4,7 @@
 // - Await the delay, then reset daily counters for all users:
 // * ConversationsUsedToday =0
 // * LastConversationResetDate = now (Vietnam time)
+// * For LearnerLanguage: TodayXp =0 and update streak if goal met
 // - Save changes via UnitOfWork.
 // - Loop to schedule the next midnight.
 // - Include error handling and cancellation token support.
@@ -73,8 +74,10 @@ namespace BLL.HostedServices
 
  var nowVn = TimeHelper.GetVietnamTime();
  var users = await unit.Users.GetAllAsync();
+ var llAll = await unit.LearnerLanguages.GetAllAsync();
 
- var updated =0;
+ var updatedUsers =0;
+ var updatedLearners =0;
  foreach (var user in users)
  {
  if (user == null) continue;
@@ -85,23 +88,44 @@ namespace BLL.HostedServices
  user.ConversationsUsedToday =0;
  user.LastConversationResetDate = nowVn;
  await unit.Users.UpdateAsync(user);
- updated++;
+ updatedUsers++;
  }
  }
 
- if (updated >0)
+ foreach (var ll in llAll)
  {
- await unit.SaveChangesAsync();
- _logger.LogInformation("Daily conversation reset completed at {Time}. Users updated: {Count}", nowVn, updated);
+ if (ll == null) continue;
+ if (ll.LastXpResetDate.Date != nowVn.Date)
+ {
+ // Update streak if met daily goal yesterday
+ if (ll.TodayXp >= ll.DailyXpGoal)
+ {
+ ll.StreakDays +=1;
  }
  else
  {
- _logger.LogInformation("Daily conversation reset skipped at {Time}. No users required update.", nowVn);
+ ll.StreakDays =0;
+ }
+ ll.TodayXp =0;
+ ll.LastXpResetDate = nowVn;
+ await unit.LearnerLanguages.UpdateAsync(ll);
+ updatedLearners++;
+ }
+ }
+
+ if (updatedUsers + updatedLearners >0)
+ {
+ await unit.SaveChangesAsync();
+ _logger.LogInformation("Daily reset completed at {Time}. Users updated: {Users}, Learners updated: {Learners}", nowVn, updatedUsers, updatedLearners);
+ }
+ else
+ {
+ _logger.LogInformation("Daily reset skipped at {Time}. No entities required update.", nowVn);
  }
  }
  catch (Exception ex)
  {
- _logger.LogError(ex, "Error performing daily conversation reset.");
+ _logger.LogError(ex, "Error performing daily reset.");
  }
  }
  }

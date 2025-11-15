@@ -12,6 +12,7 @@ using BLL.IServices.CourseUnit;
 using BLL.IServices.Coversation;
 using BLL.IServices.Enrollment;
 using BLL.IServices.Exercise;
+using BLL.IServices.Gamification;
 using BLL.IServices.Language;
 using BLL.IServices.Lesson;
 using BLL.IServices.Payment;
@@ -36,6 +37,7 @@ using BLL.Services.CourseTemplate;
 using BLL.Services.CourseUnits;
 using BLL.Services.Enrollment;
 using BLL.Services.Exercise;
+using BLL.Services.Gamification;
 using BLL.Services.Languages;
 using BLL.Services.Lesson;
 using BLL.Services.Payment;
@@ -174,6 +176,8 @@ namespace BLL
             services.AddScoped<ILessonProgressService, LessonProgressService>();
             services.AddHostedService<DailyConversationResetService>();
             services.AddHostedService<SubscriptionExpiryService>();
+            services.AddScoped<IGamificationService, GamificationService>();
+
             return services;
         }
     }
