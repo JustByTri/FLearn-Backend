@@ -61,6 +61,7 @@ namespace DAL.DBContext
         public DbSet<UserSubscription> UserSubscriptions { get; set; }
         public DbSet<Wallet> Wallets { get; set; }
         public DbSet<WalletTransaction> WalletTransactions { get; set; }
+        public DbSet<LearnerXpEvent> LearnerXpEvents { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -155,5 +155,34 @@ namespace Presentation.Controllers.Learner
             };
             return Ok(BaseResponse<object>.Success(response, "Rank retrieved"));
         }
+
+        /// <summary>XP theo từng ngày trong tuần hiện tại (UTC+7).</summary>
+        [HttpGet("me/xp/week")]
+        public async Task<IActionResult> GetWeekXp()
+        {
+            if (!this.TryGetUserId(out var userId, out var error)) return error!;
+            var learner = (await _unitOfWork.LearnerLanguages.GetAllAsync()).FirstOrDefault(l => l.UserId == userId);
+            if (learner == null) return NotFound(BaseResponse<object>.Fail("Learner not found"));
+            var now = DAL.Helpers.TimeHelper.GetVietnamTime();
+            var startOfWeek = now.Date.AddDays(-(int)now.DayOfWeek + (int)DayOfWeek.Monday);
+            var endOfWeek = startOfWeek.AddDays(6).AddHours(23).AddMinutes(59).AddSeconds(59);
+            var dict = await _gamificationService.GetDailyXpAsync(learner.LearnerLanguageId, startOfWeek, endOfWeek);
+            var days = Enumerable.Range(0,7).Select(i => startOfWeek.AddDays(i)).Select(d => new { date = d.ToString("yyyy-MM-dd"), xp = dict.ContainsKey(d) ? dict[d] : 0 });
+            return Ok(BaseResponse<object>.Success(days, "Weekly XP"));
+        }
+        /// <summary>XP theo từng ngày trong tháng hiện tại.</summary>
+        [HttpGet("me/xp/month")]
+        public async Task<IActionResult> GetMonthXp()
+        {
+            if (!this.TryGetUserId(out var userId, out var error)) return error!;
+            var learner = (await _unitOfWork.LearnerLanguages.GetAllAsync()).FirstOrDefault(l => l.UserId == userId);
+            if (learner == null) return NotFound(BaseResponse<object>.Fail("Learner not found"));
+            var now = DAL.Helpers.TimeHelper.GetVietnamTime();
+            var start = new DateTime(now.Year, now.Month, 1);
+            var end = start.AddMonths(1).AddSeconds(-1);
+            var dict = await _gamificationService.GetDailyXpAsync(learner.LearnerLanguageId, start, end);
+            var days = Enumerable.Range(0, (end - start).Days + 1).Select(i => start.AddDays(i)).Select(d => new { date = d.ToString("yyyy-MM-dd"), xp = dict.ContainsKey(d) ? dict[d] : 0 });
+            return Ok(BaseResponse<object>.Success(days, "Monthly XP"));
+        }
     }
 }

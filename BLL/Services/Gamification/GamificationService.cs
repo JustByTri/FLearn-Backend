@@ -23,19 +23,15 @@ namespace BLL.Services.Gamification
         public async Task<(int totalXp, int todayXp, int newLevel)> AwardXpAsync(LearnerLanguage learner, int xp, string reason)
         {
             if (xp <= 0) return (learner.ExperiencePoints, learner.TodayXp, GetLevelFromXp(learner.ExperiencePoints));
-
-            // Daily reset if needed
             await EnsureDailyXpResetAsync(learner);
-
             learner.ExperiencePoints += xp;
             learner.TodayXp += xp;
             learner.UpdatedAt = TimeHelper.GetVietnamTime();
             await _unitOfWork.LearnerLanguages.UpdateAsync(learner);
+            await LogXpAsync(learner.LearnerLanguageId, xp, reason);
             await _unitOfWork.SaveChangesAsync();
-
             var level = GetLevelFromXp(learner.ExperiencePoints);
             _logger.LogInformation("Awarded {XP} XP to LearnerLanguage {Id} for {Reason}. Total={Total}, Today={Today}, Level={Level}", xp, learner.LearnerLanguageId, reason, learner.ExperiencePoints, learner.TodayXp, level);
-
             return (learner.ExperiencePoints, learner.TodayXp, level);
         }
 
@@ -86,6 +82,27 @@ namespace BLL.Services.Gamification
             if (level <= 0) return 0;
             // sum of 1..level = level*(level+1)/2
             return (level * (level + 1) / 2) * BaseXpPerLevel;
+        }
+
+        public async Task LogXpAsync(Guid learnerLanguageId, int amount, string reason)
+        {
+            var evt = new LearnerXpEvent
+            {
+                LearnerXpEventId = Guid.NewGuid(),
+                LearnerLanguageId = learnerLanguageId,
+                Amount = amount,
+                Reason = reason,
+                CreatedAt = TimeHelper.GetVietnamTime()
+            };
+            await _unitOfWork.LearnerXpEvents.CreateAsync(evt);
+        }
+
+        public async Task<Dictionary<DateTime,int>> GetDailyXpAsync(Guid learnerLanguageId, DateTime from, DateTime to)
+        {
+            var events = await _unitOfWork.LearnerXpEvents.FindAllAsync(e => e.LearnerLanguageId == learnerLanguageId && e.CreatedAt >= from && e.CreatedAt <= to);
+            return events
+                .GroupBy(e => e.CreatedAt.Date)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
         }
     }
 }
