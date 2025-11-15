@@ -14,5 +14,6 @@
     {
         public Guid LessonId { get; set; }
         public string Title { get; set; } = null!;
+        public double ProgressPercent { get; set;  }
     }
 }

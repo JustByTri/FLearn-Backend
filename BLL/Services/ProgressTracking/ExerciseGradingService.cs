@@ -193,7 +193,7 @@ namespace BLL.Services.ProgressTracking
 
                 if (isAutoPassExercise || isAIOnlyGrading)
                 {
-                    if ((bool)submission.IsPassed)
+                    if (submission.IsPassed == true)
                     {
                         submission.Status = ExerciseSubmissionStatus.Passed;
                     }
@@ -257,6 +257,9 @@ namespace BLL.Services.ProgressTracking
         {
             return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
+                if (score < 0 || score > 100)
+                    return BaseResponse<bool>.Fail(false, "Score must be between 0 and 100", 400);
+
                 var teacher = await _unitOfWork.TeacherProfiles.FindAsync(t => t.UserId == userId);
                 if (teacher == null)
                     return BaseResponse<bool>.Fail(new object(), "Access denied", 403);
@@ -286,11 +289,11 @@ namespace BLL.Services.ProgressTracking
                 submission.TeacherFeedback = feedback;
 
                 double? finalScore = (submission.AIScore * submission.AIPercentage / 100) +
-                   (submission.TeacherScore * submission.TeacherPercentage / 100);
+                   (submission.TeacherScore * (submission.TeacherPercentage ?? 0) / 100);
 
                 submission.IsPassed = finalScore >= submission.Exercise.PassScore;
 
-                if ((bool)submission.IsPassed)
+                if (submission.IsPassed == true)
                 {
                     submission.Status = ExerciseSubmissionStatus.Passed;
                 }

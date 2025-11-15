@@ -66,13 +66,6 @@ namespace BLL.Services.Enrollment
                             return BaseResponse<EnrollmentResponse>.Fail(new object(), "Course not purchased", 403);
                     }
 
-                    var response = await _purchaseService.CheckCourseAccessAsync(userId, course.CourseID);
-
-                    if (response != null && !response.Data.HasAccess)
-                    {
-                        return BaseResponse<EnrollmentResponse>.Fail(new object(), "Your access to this course has expired", 410);
-                    }
-
                     var existingEnrollment = await _unitOfWork.Enrollments.FindAsync(e => e.CourseId == request.CourseId && e.LearnerId == activeLearner.LearnerLanguageId);
 
                     if (existingEnrollment != null)
@@ -90,10 +83,14 @@ namespace BLL.Services.Enrollment
 
                     await _unitOfWork.Enrollments.CreateAsync(enrollment);
 
-                    Purchase purchase = new();
-                    if (response != null && response.Data.PurchaseId != null)
+                    Purchase? purchase = null;
+                    if (course.CourseType == CourseType.Paid)
                     {
-                        purchase = await _unitOfWork.Purchases.GetByIdAsync((Guid)response.Data.PurchaseId);
+                        purchase = await _unitOfWork.Purchases.Query()
+                            .FirstOrDefaultAsync(p => p.UserId == userId &&
+                                                    p.CourseId == course.CourseID &&
+                                                    p.Status == PurchaseStatus.Completed);
+
                         if (purchase != null)
                         {
                             purchase.EnrollmentId = enrollment.EnrollmentID;
@@ -104,13 +101,15 @@ namespace BLL.Services.Enrollment
                     await _unitOfWork.SaveChangesAsync();
                     await _unitOfWork.CommitTransactionAsync();
 
+                    var accessResponse = await _purchaseService.CheckCourseAccessAsync(userId, course.CourseID);
+
                     var enrollmentResponse = new EnrollmentResponse
                     {
                         EnrollmentId = enrollment.EnrollmentID,
                         CourseId = course.CourseID,
                         CourseType = course.CourseType.ToString(),
-                        AccessUntil = response?.Data?.ExpiresAt,
-                        EligibleForRefundUntil = response?.Data?.RefundEligibleUntil,
+                        AccessUntil = accessResponse?.Data?.ExpiresAt,
+                        EligibleForRefundUntil = accessResponse?.Data?.RefundEligibleUntil,
                         CourseTitle = course.Title,
                         PricePaid = purchase?.FinalAmount ?? 0,
                         Status = enrollment.Status.ToString(),
@@ -268,17 +267,14 @@ namespace BLL.Services.Enrollment
 
                 foreach (var enrollment in enrollments)
                 {
-                    var purchase = await _unitOfWork.Purchases
-                        .Query()
-                        .FirstOrDefaultAsync(p =>
-                            p.EnrollmentId == enrollment.EnrollmentID &&
-                            p.Status == PurchaseStatus.Completed);
+                    var purchase = enrollment.Purchases?
+                        .FirstOrDefault(p => p.Status == PurchaseStatus.Completed)
+                        ?? await _unitOfWork.Purchases
+                            .Query()
+                            .FirstOrDefaultAsync(p => p.UserId == userId &&
+                                                    p.CourseId == enrollment.CourseId &&
+                                                    p.Status == PurchaseStatus.Completed);
 
-                    if (purchase == null && enrollment.Purchases?.Any() == true)
-                    {
-                        purchase = enrollment.Purchases
-                            .FirstOrDefault(p => p.Status == PurchaseStatus.Completed);
-                    }
                     if (purchase == null)
                     {
                         purchase = await _unitOfWork.Purchases
@@ -332,7 +328,6 @@ namespace BLL.Services.Enrollment
                     return PagedResponse<IEnumerable<EnrolledCourseOverviewResponse>>.Fail(new object(), "Account not activated or inactive", 403);
 
                 var activeLearner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId && l.LanguageId == user.ActiveLanguageId);
-
                 if (activeLearner == null)
                     return PagedResponse<IEnumerable<EnrolledCourseOverviewResponse>>.Fail(new object(), "Active language not configured", 403);
 
@@ -346,8 +341,6 @@ namespace BLL.Services.Enrollment
                         .ThenInclude(c => c.Level)
                     .Include(e => e.UnitProgresses)
                     .AsNoTracking();
-
-                query = query.Where(e => e.Course.LanguageId == activeLearner.LanguageId);
 
                 if (!string.IsNullOrEmpty(request.Status) && Enum.TryParse<DAL.Type.EnrollmentStatus>(request.Status, out var statusFilter))
                 {
@@ -811,15 +804,16 @@ namespace BLL.Services.Enrollment
             var lesson = await _unitOfWork.Lessons.GetByIdAsync(enrollment.CurrentLessonId.Value);
             if (lesson == null) return null;
 
-            var lessonProgress = await _unitOfWork.LessonProgresses.FindAsync(lp => lp.LessonId == enrollment.CurrentLessonId && lp.UnitProgress != null &&
-                                         lp.UnitProgress.EnrollmentId == enrollment.EnrollmentID);
-
-            var remainingPercent = 100 - (lessonProgress?.ProgressPercent ?? 0);
+            var lessonProgress = await _unitOfWork.LessonProgresses.FindAsync(lp =>
+                lp.LessonId == enrollment.CurrentLessonId &&
+                lp.UnitProgress != null &&
+                lp.UnitProgress.EnrollmentId == enrollment.EnrollmentID);
 
             return new ContinueLessonDto
             {
                 LessonId = lesson.LessonID,
                 Title = lesson.Title,
+                ProgressPercent = lessonProgress?.ProgressPercent ?? 0
             };
         }
         #endregion

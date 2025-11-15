@@ -45,7 +45,7 @@ namespace BLL.Services.Payment
                 }
 
                 var orderCode = GenerateOrderCode();
-                var amount = (int)(createPaymentDto.Amount * 100);
+                var amount = (int)(createPaymentDto.Amount);
                 var returnUrl = _configuration["PaymentOSCallBack:ReturnUrl"] ?? "";
                 var cancelUrl = _configuration["PaymentOSCallBack:CancelUrl"] ?? "";
 
