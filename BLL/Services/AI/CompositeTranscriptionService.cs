@@ -21,33 +21,49 @@ namespace BLL.Services.AI
 
         public async Task<string?> TranscribeAsync(byte[] audioBytes, string fileName, string contentType, string? languageCode)
         {
-            //1) Try Azure Speech (will transcode via ffmpeg when available and do in-memory WAV fast path)
+            var ct = (contentType ?? string.Empty).ToLowerInvariant();
+            bool isWav = ct.Contains("wav") || fileName.EndsWith(".wav", StringComparison.OrdinalIgnoreCase);
+
+            // 1. Always try Azure OpenAI Whisper first (robust for all formats, no GStreamer).
             try
             {
-                var text = await _speech.TranscribeAsync(audioBytes, fileName, contentType, languageCode);
-                if (!string.IsNullOrWhiteSpace(text)) return text;
+                var whisper = await _openai.TranscribeAsync(audioBytes, fileName, contentType, languageCode);
+                if (!string.IsNullOrWhiteSpace(whisper))
+                {
+                    _logger.LogDebug("Transcription succeeded via Azure OpenAI Whisper");
+                    return whisper;
+                }
+                _logger.LogInformation("Azure OpenAI Whisper returned null/empty, will attempt Azure Speech fallback");
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Azure Speech STT threw, will consider OpenAI fallback");
+                _logger.LogWarning(ex, "Azure OpenAI Whisper threw, attempting Azure Speech fallback");
             }
 
-            //2) Fallback to Azure OpenAI Whisper for non-WAV or when Speech fails (no GStreamer / ffmpeg)
-            try
+            // 2. Fallback: Azure Speech ONLY for WAV & Windows (to avoid GStreamer issues on Linux/macOS).
+            if (isWav && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                var ct = (contentType ?? string.Empty).ToLowerInvariant();
-                if (!ct.Contains("wav") || RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                try
                 {
-                    _logger.LogInformation("Falling back to Azure OpenAI STT for contentType={ContentType}", contentType);
-                    var text = await _openai.TranscribeAsync(audioBytes, fileName, contentType, languageCode);
-                    if (!string.IsNullOrWhiteSpace(text)) return text;
+                    var speechText = await _speech.TranscribeAsync(audioBytes, fileName, contentType, languageCode);
+                    if (!string.IsNullOrWhiteSpace(speechText))
+                    {
+                        _logger.LogDebug("Transcription succeeded via Azure Speech fallback");
+                        return speechText;
+                    }
+                    _logger.LogInformation("Azure Speech fallback returned empty");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Azure Speech fallback failed");
                 }
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogWarning(ex, "Azure OpenAI STT fallback failed");
+                _logger.LogDebug("Skipping Azure Speech fallback (isWav={IsWav}, Platform={Platform})", isWav, RuntimeInformation.OSDescription);
             }
 
+            _logger.LogWarning("All transcription paths failed (file={FileName}, contentType={ContentType})", fileName, contentType);
             return null;
         }
     }

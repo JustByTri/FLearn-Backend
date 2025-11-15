@@ -1,6 +1,7 @@
 ﻿using Azure.Core;
 using BLL.IServices.ProgressTracking;
 using BLL.IServices.Upload;
+using BLL.IServices.Gamification;
 using Common.DTO.ApiResponse;
 using Common.DTO.Assement;
 using Common.DTO.ExerciseGrading.Request;
@@ -22,13 +23,15 @@ namespace BLL.Services.ProgressTracking
         private readonly IUnitOfWork _unitOfWork;
         private readonly IExerciseGradingService _exerciseGradingService;
         private readonly ICloudinaryService _cloudinaryService;
+        private readonly IGamificationService _gamificationService;
         private const double DefaultAIPercentage = 30;
         private const double DefaultTeacherPercentage = 70;
-        public ProgressTrackingService(IUnitOfWork unitOfWork, IExerciseGradingService exerciseGradingService, ICloudinaryService cloudinaryService)
+        public ProgressTrackingService(IUnitOfWork unitOfWork, IExerciseGradingService exerciseGradingService, ICloudinaryService cloudinaryService, IGamificationService gamificationService)
         {
             _unitOfWork = unitOfWork;
             _exerciseGradingService = exerciseGradingService;
             _cloudinaryService = cloudinaryService;
+            _gamificationService = gamificationService;
         }
         public async Task<PagedResponse<List<ExerciseSubmissionDetailResponse>>> GetMySubmissionsAsync(Guid userId, Guid courseId, Guid lessonId, string? status, int pageNumber = 1, int pageSize = 10)
         {
@@ -310,6 +313,9 @@ namespace BLL.Services.ProgressTracking
                         LastUpdated = TimeHelper.GetVietnamTime()
                     };
                     await _unitOfWork.LessonProgresses.CreateAsync(lessonProgress);
+
+                    // Award small XP for starting a lesson (once)
+                    await _gamificationService.AwardXpAsync(learner, 5, "Start lesson");
                 }
 
                 enrollment.CurrentUnitId = request.UnitId;
@@ -483,6 +489,8 @@ namespace BLL.Services.ProgressTracking
                     }
                 }
 
+                // XP: submitting an exercise earns small XP
+                await _gamificationService.AwardXpAsync(learner, 10, "Submit exercise");
 
                 lessonProgress.LastUpdated = TimeHelper.GetVietnamTime();
                 await _unitOfWork.LessonProgresses.UpdateAsync(lessonProgress);
@@ -571,6 +579,20 @@ namespace BLL.Services.ProgressTracking
                 };
                 await _unitOfWork.LessonActivityLogs.CreateAsync(activityLog);
 
+                int xp = request.LogType switch
+                {
+                    LessonLogType.ContentRead => 5,
+                    LessonLogType.VideoProgress => request.DurationMinutes.HasValue ? (int)Math.Min(10, Math.Max(1, request.DurationMinutes.Value / 5)) : 3,
+                    LessonLogType.PdfOpened => 2,
+                    LessonLogType.ExercisePassed => 15,
+                    LessonLogType.ExerciseFailed => 0,
+                    _ => 1
+                };
+                if (xp > 0)
+                {
+                    await _gamificationService.AwardXpAsync(learner, xp, $"Activity {request.LogType}");
+                }
+
                 await UpdateLessonProgress(lessonProgress, request.LogType, request.DurationMinutes ?? 0);
 
                 await _unitOfWork.SaveChangesAsync();
@@ -615,7 +637,7 @@ namespace BLL.Services.ProgressTracking
                 CourseId = course.CourseID,
                 CourseTitle = course.Title,
                 TeacherId = teacherAssignment?.AssignedTeacherId,
-                TeacherName = teacherAssignment?.Teacher?.FullName,
+                TeacherName = teacherAssignment?.Teacher?.User?.FullName,
                 TeacherAvatar = teacherAssignment?.Teacher?.Avatar,
             };
         }
@@ -709,6 +731,13 @@ namespace BLL.Services.ProgressTracking
 
                 // Update unit progress
                 await UpdateUnitProgress(lessonProgress.UnitProgressId);
+
+                // XP: completing a lesson grants bonus XP
+                var learner = await _unitOfWork.LearnerLanguages.GetByIdAsync(lessonProgress.UnitProgress.Enrollment.LearnerId);
+                if (learner != null)
+                {
+                    await _gamificationService.AwardXpAsync(learner, 25, "Complete lesson");
+                }
             }
             else if (lessonProgress.ProgressPercent > 0)
             {
@@ -748,6 +777,13 @@ namespace BLL.Services.ProgressTracking
 
                 // Update enrollment progress
                 await UpdateEnrollmentProgress(unitProgress.EnrollmentId);
+
+                // XP: completing a unit grants higher bonus XP
+                var learner = await _unitOfWork.LearnerLanguages.GetByIdAsync(unitProgress.Enrollment.LearnerId);
+                if (learner != null)
+                {
+                    await _gamificationService.AwardXpAsync(learner, 60, "Complete unit");
+                }
             }
             else if (unitProgress.ProgressPercent > 0)
             {
@@ -791,6 +827,13 @@ namespace BLL.Services.ProgressTracking
             {
                 enrollment.Status = DAL.Type.EnrollmentStatus.Completed;
                 enrollment.CompletedAt = TimeHelper.GetVietnamTime();
+
+                // XP: completing a course grants big bonus XP
+                var learner = await _unitOfWork.LearnerLanguages.GetByIdAsync(enrollment.LearnerId);
+                if (learner != null)
+                {
+                    await _gamificationService.AwardXpAsync(learner, 200, "Complete course");
+                }
             }
 
             await _unitOfWork.Enrollments.UpdateAsync(enrollment);

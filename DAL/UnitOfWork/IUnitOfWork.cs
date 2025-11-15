@@ -28,6 +28,7 @@ namespace DAL.UnitOfWork
         ILanguageLevelRepository LanguageLevels { get; }
         ILearnerAchievementRepository LearnerAchievements { get; }
         ILearnerLanguageRepository LearnerLanguages { get; }
+        ILearnerXpEventRepository LearnerXpEvents { get; }
         ILessonRepository Lessons { get; }
         ILessonActivityLogRepository LessonActivityLogs { get; }
         ILessonProgressRepository LessonProgresses { get; }

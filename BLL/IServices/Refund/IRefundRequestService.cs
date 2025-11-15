@@ -1,4 +1,5 @@
-﻿using Common.DTO.Refund;
+﻿using Common.DTO.ApiResponse;
+using Common.DTO.Refund;
 using DAL.Models;
 using System;
 using System.Collections.Generic;
@@ -40,5 +41,6 @@ namespace BLL.IServices.Refund
         /// </summary>
         [Obsolete("Sử dụng ProcessRefundRequestAsync để xử lý và gửi email tự động")]
         Task SendRefundEmailAsync(RefundEmailDto dto);
+        Task<BaseResponse<IEnumerable<RefundRequestDto>>> GetMyRefundRequestsAsync(Guid learnerId);
     }
 }

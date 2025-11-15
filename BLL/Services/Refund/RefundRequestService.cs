@@ -1,10 +1,12 @@
 ﻿using BLL.IServices.Auth;
 using BLL.IServices.Refund;
 using BLL.IServices.Upload;
+using Common.DTO.ApiResponse;
 using Common.DTO.Refund;
 using DAL.Models;
 using DAL.UnitOfWork;
 using Microsoft.Extensions.Logging;
+using System.Net;
 
 namespace BLL.Services.Refund
 {
@@ -308,5 +310,44 @@ namespace BLL.Services.Refund
                 ProofImageUrl = request.ProofImageUrl
             };
         }
+        public async Task<BaseResponse<IEnumerable<RefundRequestDto>>> GetMyRefundRequestsAsync(Guid learnerId)
+        {
+            // 1. Lấy dữ liệu từ DAL (Hàm này phải Include các bảng liên quan)
+            var requests = await _unitOfWork.RefundRequests.GetByLearnerIdAsync(learnerId);
+
+            // 2. Map thủ công từ Model sang DTO
+            var requestsDto = requests.Select(r => new RefundRequestDto
+            {
+                RefundRequestID = r.RefundRequestID,
+                StudentID = r.StudentID,
+                EnrollmentID = r.EnrollmentID,
+                ClassID = r.ClassID,
+                RefundAmount = r.RefundAmount,
+                RequestType = r.RequestType,
+                Reason = r.Reason,
+                BankName = r.BankName ?? string.Empty,
+                BankAccountHolderName = r.BankAccountHolderName ?? string.Empty,
+                BankAccountNumber = r.BankAccountNumber ?? string.Empty,
+                Status = r.Status,
+                RequestedAt = r.RequestedAt,
+                ProcessedAt = r.ProcessedAt,
+                AdminNote = r.AdminNote,
+                ProofImageUrl = r.ProofImageUrl,
+
+                
+                StudentName = r.Student?.UserName ?? "N/A",
+
+               
+                ClassName = r.TeacherClass?.Title ?? (r.ClassEnrollment?.Class?.Title ?? "Lớp học không còn tồn tại")
+            }).ToList();
+
+         
+            return BaseResponse<IEnumerable<RefundRequestDto>>.Success(
+                requestsDto,
+                "Lấy lịch sử yêu cầu hoàn tiền thành công.",
+                (int)HttpStatusCode.OK
+            );
+        }
     }
 }
+

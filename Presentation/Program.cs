@@ -2,6 +2,7 @@
 using BLL.Background;
 using BLL.Hubs;
 using BLL.Settings;
+using BLL.HostedServices;
 using Common.Authorization;
 using Hangfire;
 using Hangfire.MySql;
@@ -183,6 +184,7 @@ builder.Services.AddBllServices(builder.Configuration);
 try
 {
     builder.Services.AddHostedService<TempRegistrationCleanupService>();
+    builder.Services.AddHostedService<DailyConversationResetService>(); // daily XP & conversation reset at VN midnight
 }
 catch
 {

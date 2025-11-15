@@ -50,6 +50,10 @@ namespace BLL.IServices.AI
         Task<GeneratedConversationContentDto> GenerateConversationContentAsync(ConversationContextDto context);
         Task<string> GenerateResponseAsync(string systemPrompt, string userMessage, List<string> conversationHistory);
         Task<ConversationEvaluationResult> EvaluateConversationAsync(string evaluationPrompt);
+        
+        // NEW: Gợi ý từ đồng nghĩa theo trình độ
+        Task<SynonymSuggestionDto> GenerateSynonymSuggestionsAsync(string userMessage, string targetLanguage, string currentLevel);
+        
         Task<string> TranslateTextAsync(string text, string sourceLanguage, string targetLanguage);
     }
 
@@ -65,15 +69,34 @@ namespace BLL.IServices.AI
         public int Duration { get; set; }
         public string Difficulty { get; set; } = string.Empty;
     }
+    
+    // UPDATED: Đánh giá chi tiết hơn, không set điểm cứng
+    // NOTE: Sử dụng classes từ Common.DTO.Conversation cho DetailedSkillAnalysis và SpecificObservation
     public class ConversationEvaluationResult
     {
+        // Giữ lại điểm tổng quan (để tương thích)
         public float OverallScore { get; set; }
+        
+        // Đánh giá chi tiết theo từng khía cạnh
+        public DetailedSkillAnalysis? FluentAnalysis { get; set; }
+        public DetailedSkillAnalysis? GrammarAnalysis { get; set; }
+        public DetailedSkillAnalysis? VocabularyAnalysis { get; set; }
+        public DetailedSkillAnalysis? CulturalAnalysis { get; set; }
+        
+        // Giữ lại các trường cũ để backwards compatibility
         public float FluentScore { get; set; }
         public float GrammarScore { get; set; }
         public float VocabularyScore { get; set; }
         public float CulturalScore { get; set; }
+        
         public string AIFeedback { get; set; } = string.Empty;
         public string Improvements { get; set; } = string.Empty;
         public string Strengths { get; set; } = string.Empty;
+        
+        // NEW: Phân tích sâu hơn
+        public List<SpecificObservation>? SpecificObservations { get; set; }
+        public List<string>? PositivePatterns { get; set; }
+        public List<string>? AreasNeedingWork { get; set; }
+        public string? ProgressSummary { get; set; }
     }
 }

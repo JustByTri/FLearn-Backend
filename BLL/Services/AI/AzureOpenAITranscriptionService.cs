@@ -32,31 +32,69 @@ namespace BLL.Services.AI
 
         public async Task<string?> TranscribeAsync(byte[] audioBytes, string fileName, string contentType, string? languageCode)
         {
-            if (string.IsNullOrWhiteSpace(_settings.TranscriptionDeployment)) return null; // disabled
-            var url = $"openai/deployments/{_settings.TranscriptionDeployment}/audio/transcriptions?api-version={_settings.ApiVersion}";
-            using var form = new MultipartFormDataContent();
-            var fileContent = new ByteArrayContent(audioBytes);
-            fileContent.Headers.ContentType = new MediaTypeHeaderValue(string.IsNullOrWhiteSpace(contentType) ? "audio/m4a" : contentType);
-            form.Add(fileContent, "file", fileName);
-            if (!string.IsNullOrWhiteSpace(languageCode))
+            if (string.IsNullOrWhiteSpace(_settings.TranscriptionDeployment))
             {
-                form.Add(new StringContent(languageCode!), "language");
-            }
-
-            var res = await _http.PostAsync(url, form);
-            var txt = await res.Content.ReadAsStringAsync();
-            if (!res.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("Transcription failed {Status}: {Text}", res.StatusCode, txt);
-                return null;
+                _logger.LogWarning("AzureOpenAITranscriptionService: TranscriptionDeployment missing -> skip (configure AzureOpenAISettings:TranscriptionDeployment)");
+                return null; // disabled
             }
             try
             {
-                using var doc = System.Text.Json.JsonDocument.Parse(txt);
-                return doc.RootElement.TryGetProperty("text", out var t) ? t.GetString() : null;
+                var deployment = _settings.TranscriptionDeployment.Trim();
+                var apiVersion = string.IsNullOrWhiteSpace(_settings.AudioApiVersion) ? _settings.ApiVersion : _settings.AudioApiVersion;
+                var url = $"openai/deployments/{deployment}/audio/transcriptions?api-version={apiVersion}";
+                _logger.LogDebug("Whisper request: deployment={Deployment}, bytes={Size}, contentType={ContentType}, languageRaw={Lang}", deployment, audioBytes?.Length ?? 0, contentType, languageCode);
+
+                // Normalize language to ISO-639 (Azure OpenAI expects short code for whisper)
+                string? normalizedLang = null;
+                if (!string.IsNullOrWhiteSpace(languageCode))
+                {
+                    var lc = languageCode.Trim().ToLowerInvariant();
+                    if (lc.StartsWith("en")) normalizedLang = "en";
+                    else if (lc.StartsWith("ja")) normalizedLang = "ja";
+                    else if (lc.StartsWith("zh")) normalizedLang = "zh"; // covers zh-CN / zh-TW
+                    else if (lc.Length == 2) normalizedLang = lc;
+                }
+
+                using var form = new MultipartFormDataContent();
+                var fileContent = new ByteArrayContent(audioBytes);
+                var ct = string.IsNullOrWhiteSpace(contentType) ? "audio/wav" : contentType;
+                if (ct.Equals("audio/x-wav", StringComparison.OrdinalIgnoreCase)) ct = "audio/wav";
+                fileContent.Headers.ContentType = new MediaTypeHeaderValue(ct);
+                form.Add(fileContent, "file", string.IsNullOrWhiteSpace(fileName) ? "audio.wav" : fileName);
+                if (!string.IsNullOrWhiteSpace(normalizedLang))
+                {
+                    form.Add(new StringContent(normalizedLang), "language");
+                    _logger.LogDebug("Added language param: {Lang}", normalizedLang);
+                }
+
+                var res = await _http.PostAsync(url, form);
+                var txt = await res.Content.ReadAsStringAsync();
+                if (!res.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("Whisper transcription failed Status={Status} Body={BodySnippet}", (int)res.StatusCode, txt.Length > 500 ? txt.Substring(0, 500) : txt);
+                    return null;
+                }
+                _logger.LogDebug("Whisper raw response length={Len}", txt.Length);
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(txt);
+                    if (doc.RootElement.TryGetProperty("text", out var t))
+                    {
+                        var value = t.GetString();
+                        _logger.LogInformation("Whisper transcription success. Characters={Chars}", value?.Length ?? 0);
+                        return value;
+                    }
+                    _logger.LogWarning("Whisper response missing 'text' property. Raw={Raw}", txt.Length > 400 ? txt.Substring(0, 400) : txt);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to parse Whisper transcription JSON");
+                }
+                return null;
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Whisper transcription exception");
                 return null;
             }
         }

@@ -17,7 +17,7 @@ namespace DAL.IRepositories
         Task<List<RefundRequest>> GetRefundRequestsByStudentAsync(Guid studentId);
         Task<List<RefundRequest>> GetRefundRequestsByStatusAsync(RefundRequestStatus status);
         Task<List<RefundRequest>> GetAllPendingRefundRequestsAsync();
-
+        Task<IEnumerable<RefundRequest>> GetByLearnerIdAsync(Guid learnerId);
         Task<int> GetPendingCountAsync();
     }
 }

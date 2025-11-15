@@ -18,6 +18,11 @@ namespace DAL.Models
         public virtual Language Language { get; set; } = null!;
         public string ProficiencyLevel { get; set; } = string.Empty;
         public int StreakDays { get; set; } = 0;
+        // NEW: Gamification fields
+        public int ExperiencePoints { get; set; } = 0; // total accumulated XP
+        public int DailyXpGoal { get; set; } = 50;     // default daily XP goal
+        public int TodayXp { get; set; } = 0;          // XP earned today
+        public DateTime LastXpResetDate { get; set; } = TimeHelper.GetVietnamTime();
         public DateTime CreatedAt { get; set; } = TimeHelper.GetVietnamTime();
         public DateTime UpdatedAt { get; set; } = TimeHelper.GetVietnamTime();
         public virtual ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();

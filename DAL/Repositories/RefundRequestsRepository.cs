@@ -69,6 +69,19 @@ namespace DAL.Repositories
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<RefundRequest>> GetByLearnerIdAsync(Guid learnerId)
+        {
+            return await _context.RefundRequests
+                .AsNoTracking()
+                .Include(r => r.ClassEnrollment) // Include ClassEnrollment
+                    .ThenInclude(ce => ce.Class) // Từ đó Include Class
+                        .ThenInclude(c => c.Teacher) // Từ đó Include Teacher
+                .Include(r => r.CourseEnrollment) // Include CourseEnrollment
+                    .ThenInclude(ce => ce.Course) // Từ đó Include Course
+                .Where(r => r.StudentID == learnerId)
+                .OrderByDescending(r => r.RequestedAt)
+                .ToListAsync();
+        }
         public async Task<int> GetPendingCountAsync()
         {
             return await _context.RefundRequests

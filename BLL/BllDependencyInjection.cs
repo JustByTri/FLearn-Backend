@@ -12,6 +12,7 @@ using BLL.IServices.CourseUnit;
 using BLL.IServices.Coversation;
 using BLL.IServices.Enrollment;
 using BLL.IServices.Exercise;
+using BLL.IServices.Gamification;
 using BLL.IServices.Language;
 using BLL.IServices.Lesson;
 using BLL.IServices.Payment;
@@ -36,6 +37,7 @@ using BLL.Services.CourseTemplate;
 using BLL.Services.CourseUnits;
 using BLL.Services.Enrollment;
 using BLL.Services.Exercise;
+using BLL.Services.Gamification;
 using BLL.Services.Languages;
 using BLL.Services.Lesson;
 using BLL.Services.Payment;
@@ -54,6 +56,8 @@ using DAL;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging; // added
+using Microsoft.Extensions.Options; // added
 using StackExchange.Redis;
 
 namespace BLL
@@ -124,7 +128,16 @@ namespace BLL
             services.AddHttpClient<IGeminiService, AzureOpenAIService>();
             services.AddHttpClient<AzureOpenAITranscriptionService>();
             services.AddScoped<AzureSpeechTranscriptionService>();
-            services.AddScoped<ITranscriptionService, CompositeTranscriptionService>();
+
+            // Composite STT: try Azure Speech for WAV (no GStreamer needed), fallback to Azure OpenAI Whisper
+            services.AddScoped<ITranscriptionService>(sp =>
+            {
+                var speech = sp.GetRequiredService<AzureSpeechTranscriptionService>();
+                var openai = sp.GetRequiredService<AzureOpenAITranscriptionService>();
+                var logger = sp.GetRequiredService<ILogger<CompositeTranscriptionService>>();
+                return new CompositeTranscriptionService(speech, openai, logger);
+            });
+
             services.AddScoped<IPronunciationAssessmentService, AzureSpeechPronunciationAssessmentService>();
 
             // ensure VoiceAssessmentService gets STT
@@ -164,6 +177,7 @@ namespace BLL
             services.AddHostedService<DailyConversationResetService>();
             services.AddHostedService<SubscriptionExpiryService>();
             services.AddScoped<IPronunciationService, PronunciationService>();
+            services.AddScoped<IGamificationService, GamificationService>();
             return services;
         }
     }
