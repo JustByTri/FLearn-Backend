@@ -23,38 +23,38 @@ namespace BLL.Services.ProgressTracking
             {
                 var user = await _unitOfWork.Users.GetByIdAsync(userId);
                 if (user == null)
-                    return BaseResponse<LessonActivityStatusResponse>.Fail(new LessonActivityStatusResponse(), "Access denied. Invalid authentication.", 401);
+                    return BaseResponse<LessonActivityStatusResponse>.Fail(new object(), "Access denied. Invalid authentication.", 401);
 
                 var lesson = await _unitOfWork.Lessons.GetByIdAsync(lessonId);
                 if (lesson == null)
-                    return BaseResponse<LessonActivityStatusResponse>.Fail(new LessonActivityStatusResponse(), "Lesson not found", 404);
+                    return BaseResponse<LessonActivityStatusResponse>.Fail(new object(), "Lesson not found", 404);
 
                 var unit = await _unitOfWork.CourseUnits.GetByIdAsync(lesson.CourseUnitID);
                 if (unit == null)
-                    return BaseResponse<LessonActivityStatusResponse>.Fail(new LessonActivityStatusResponse(), "Unit not found", 404);
+                    return BaseResponse<LessonActivityStatusResponse>.Fail(new object(), "Unit not found", 404);
 
                 var course = await _unitOfWork.Courses.GetByIdAsync(unit.CourseID);
                 if (course == null)
-                    return BaseResponse<LessonActivityStatusResponse>.Fail(new LessonActivityStatusResponse(), "Course not found", 404);
+                    return BaseResponse<LessonActivityStatusResponse>.Fail(new object(), "Course not found", 404);
 
                 var learner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == user.UserID && l.LanguageId == course.LanguageId);
                 if (learner == null)
-                    return BaseResponse<LessonActivityStatusResponse>.Fail(new LessonActivityStatusResponse(), "Learner not found", 403);
+                    return BaseResponse<LessonActivityStatusResponse>.Fail(new object(), "Learner not found", 403);
 
                 var enrollment = await _unitOfWork.Enrollments.FindAsync(e => e.LearnerId == learner.LearnerLanguageId && e.CourseId == course.CourseID);
                 if (enrollment == null)
-                    return BaseResponse<LessonActivityStatusResponse>.Fail(new LessonActivityStatusResponse(), "Enrollment not found", 404);
+                    return BaseResponse<LessonActivityStatusResponse>.Fail(new object(), "Enrollment not found", 404);
 
-                var unitProgress = await _unitOfWork.UnitProgresses.FindAsync(up => up.EnrollmentId == enrollment.EnrollmentID);
+                var unitProgress = await _unitOfWork.UnitProgresses.FindAsync(up => up.EnrollmentId == enrollment.EnrollmentID && up.CourseUnitId == unit.CourseUnitID);
                 if (unitProgress == null)
-                    return BaseResponse<LessonActivityStatusResponse>.Fail(new LessonActivityStatusResponse(), "Unit progress not found", 404);
+                    return BaseResponse<LessonActivityStatusResponse>.Fail(new object(), "Unit progress not found", 404);
 
                 var lessonProgress = await _unitOfWork.LessonProgresses.Query()
                     .Include(lp => lp.LessonActivityLogs)
-                    .Where(lp => lp.UnitProgressId == unitProgress.UnitProgressId).FirstOrDefaultAsync();
+                    .Where(lp => lp.UnitProgressId == unitProgress.UnitProgressId && lp.LessonId == lesson.LessonID).FirstOrDefaultAsync();
 
                 if (lessonProgress == null)
-                    return BaseResponse<LessonActivityStatusResponse>.Fail(new LessonActivityStatusResponse(), "Lesson progress not found", 404);
+                    return BaseResponse<LessonActivityStatusResponse>.Fail(new object(), "Lesson progress not found", 404);
 
                 var activityStatus = await GetLessonActivityStatus(lesson, lessonProgress, learner.LearnerLanguageId);
 
@@ -87,15 +87,15 @@ namespace BLL.Services.ProgressTracking
 
                 var learner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == user.UserID && l.LanguageId == course.LanguageId);
                 if (learner == null)
-                    return BaseResponse<LessonProgressDetailResponse>.Fail(new LessonProgressDetailResponse(), "Learner not found", 403);
+                    return BaseResponse<LessonProgressDetailResponse>.Fail(new object(), "Learner not found", 403);
 
                 var enrollment = await _unitOfWork.Enrollments.FindAsync(e => e.LearnerId == learner.LearnerLanguageId && e.CourseId == course.CourseID);
                 if (enrollment == null)
-                    return BaseResponse<LessonProgressDetailResponse>.Fail(new LessonProgressDetailResponse(), "Enrollment not found", 404);
+                    return BaseResponse<LessonProgressDetailResponse>.Fail(new object(), "Enrollment not found", 404);
 
-                var unitProgress = await _unitOfWork.UnitProgresses.FindAsync(up => up.EnrollmentId == enrollment.EnrollmentID);
+                var unitProgress = await _unitOfWork.UnitProgresses.FindAsync(up => up.EnrollmentId == enrollment.EnrollmentID && unit.CourseUnitID == up.CourseUnitId);
                 if (unitProgress == null)
-                    return BaseResponse<LessonProgressDetailResponse>.Fail(new LessonProgressDetailResponse(), "Enrollment progress not found", 404);
+                    return BaseResponse<LessonProgressDetailResponse>.Fail(new object(), "Enrollment progress not found", 404);
 
                 var lessonProgress = await _unitOfWork.LessonProgresses.Query()
                     .Include(lp => lp.UnitProgress)
@@ -106,7 +106,7 @@ namespace BLL.Services.ProgressTracking
                     .FirstOrDefaultAsync(lp => lp.LessonId == lesson.LessonID && lp.UnitProgressId == unitProgress.UnitProgressId);
 
                 if (lessonProgress == null)
-                    return BaseResponse<LessonProgressDetailResponse>.Fail(new LessonProgressDetailResponse(), "Lesson progress not found", 404);
+                    return BaseResponse<LessonProgressDetailResponse>.Fail(new object(), "Lesson progress not found", 404);
 
                 var exercises = await GetExercisesWithSubmissions(lessonId, learner.LearnerLanguageId);
 
@@ -127,7 +127,7 @@ namespace BLL.Services.ProgressTracking
                     LastUpdated = lessonProgress?.LastUpdated?.ToString("dd-MM-yyyy HH:mm"),
                     ActivityStatus = activityStatus,
                     TotalExercises = lesson.Exercises.Count,
-                    CompletedExercises = exercises.Count(e => e.SubmissionId.HasValue),
+                    CompletedExercises = exercises.Count(e => e.IsPassed == true),
                     PassedExercises = exercises.Count(e => e.IsPassed == true),
                     UnitId = unit.CourseUnitID,
                     UnitTitle = unit.Title,
@@ -164,15 +164,15 @@ namespace BLL.Services.ProgressTracking
 
                 var learner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == user.UserID && unit.Course != null && l.LanguageId == unit.Course.LanguageId);
                 if (learner == null)
-                    return BaseResponse<List<LessonProgressSummaryResponse>>.Fail(new List<LessonProgressSummaryResponse>(), "Learner not found", 403);
+                    return BaseResponse<List<LessonProgressSummaryResponse>>.Fail(new object(), "Learner not found", 403);
 
                 var enrollment = await _unitOfWork.Enrollments.FindAsync(e => e.LearnerId == learner.LearnerLanguageId && e.CourseId == unit.CourseID);
                 if (enrollment == null)
-                    return BaseResponse<List<LessonProgressSummaryResponse>>.Fail(new List<LessonProgressSummaryResponse>(), "Enrollment not found", 404);
+                    return BaseResponse<List<LessonProgressSummaryResponse>>.Fail(new object(), "Enrollment not found", 404);
 
-                var unitProgress = await _unitOfWork.UnitProgresses.FindAsync(up => up.EnrollmentId == enrollment.EnrollmentID);
+                var unitProgress = await _unitOfWork.UnitProgresses.FindAsync(up => up.EnrollmentId == enrollment.EnrollmentID && up.CourseUnitId == unit.CourseUnitID);
                 if (unitProgress == null)
-                    return BaseResponse<List<LessonProgressSummaryResponse>>.Fail(new List<LessonProgressSummaryResponse>(), "Unit progress not found", 404);
+                    return BaseResponse<List<LessonProgressSummaryResponse>>.Fail(new object(), "Unit progress not found", 404);
 
                 var lessonProgresses = await _unitOfWork.LessonProgresses.Query()
                     .Include(lp => lp.ExerciseSubmissions)
@@ -199,7 +199,7 @@ namespace BLL.Services.ProgressTracking
                         IsDocumentRead = progress?.IsDocumentRead ?? false,
                         IsPracticeCompleted = progress?.IsPracticeCompleted ?? false,
                         TotalExercises = exercises.Count,
-                        CompletedExercises = submissions.Count(s => s.IsPassed == true),
+                        CompletedExercises = submissions.Where(s => s.IsPassed == true).Select(s => s.ExerciseId).Distinct().Count(),
                     });
                 }
 
@@ -266,8 +266,10 @@ namespace BLL.Services.ProgressTracking
             progress = Math.Min(progress * 100, 100);
 
             var missingRequirements = new List<string>();
+
             if (hasContent && !(lessonProgress?.IsContentViewed ?? false))
                 missingRequirements.Add("View lesson content");
+
             if (hasExercises && !allExercisesPassed)
                 missingRequirements.Add("Complete all exercises");
 
@@ -322,12 +324,11 @@ namespace BLL.Services.ProgressTracking
                 .OrderBy(e => e.Position)
                 .ToListAsync();
 
-            var submissions = await _unitOfWork.ExerciseSubmissions
-                .Query()
+            var submissions = await _unitOfWork.ExerciseSubmissions.Query()
+                .Include(es => es.Exercise)
                 .Include(es => es.LessonProgress)
                     .ThenInclude(lp => lp.UnitProgress)
-                .Where(es => es.LessonProgress != null && es.LessonProgress.UnitProgress != null && es.LessonProgress.UnitProgress.Enrollment.LearnerId == learnerId &&
-                           es.Exercise.LessonID == lessonId)
+                .Where(es => es.LearnerId == learnerId && es.Exercise.LessonID == lessonId)
                 .ToListAsync();
 
             var result = new List<LessonExerciseProgressResponse>();

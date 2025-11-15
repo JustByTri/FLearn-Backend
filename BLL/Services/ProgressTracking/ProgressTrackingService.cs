@@ -227,9 +227,12 @@ namespace BLL.Services.ProgressTracking
                     .FirstOrDefaultAsync(up => up.EnrollmentId == enrollment.EnrollmentID &&
                                              up.CourseUnitId == enrollment.CurrentUnitId);
 
+                if (currentUnitProgress == null)
+                    return BaseResponse<ProgressTrackingResponse>.Fail(new object(), "No active unit progress found", 404);
+
                 var currentLessonProgress = await _unitOfWork.LessonProgresses
                     .Query()
-                    .FirstOrDefaultAsync(lp => currentUnitProgress != null && lp.UnitProgressId == currentUnitProgress.UnitProgressId &&
+                    .FirstOrDefaultAsync(lp => lp.UnitProgressId == currentUnitProgress.UnitProgressId &&
                                              lp.LessonId == enrollment.CurrentLessonId);
 
                 if (currentUnitProgress == null || currentLessonProgress == null)
@@ -272,15 +275,12 @@ namespace BLL.Services.ProgressTracking
 
                 var enrollment = await _unitOfWork.Enrollments.Query()
                     .Include(e => e.Course)
-                    .FirstOrDefaultAsync(e => e.LearnerId == learner.LearnerLanguageId &&
-                                            e.Course.CourseUnits.Any(u => u.CourseUnitID == request.UnitId));
+                    .FirstOrDefaultAsync(e => e.LearnerId == learner.LearnerLanguageId && e.CourseId == course.CourseID);
 
                 if (enrollment == null)
                     return BaseResponse<ProgressTrackingResponse>.Fail(new object(), "Enrollment not found", 404);
 
-                var unitProgress = await _unitOfWork.UnitProgresses.Query()
-                    .FirstOrDefaultAsync(up => up.EnrollmentId == enrollment.EnrollmentID &&
-                                             up.CourseUnitId == request.UnitId);
+                var unitProgress = await _unitOfWork.UnitProgresses.FindAsync(up => up.EnrollmentId == enrollment.EnrollmentID && up.CourseUnitId == request.UnitId);
 
                 if (unitProgress == null)
                 {
@@ -288,7 +288,7 @@ namespace BLL.Services.ProgressTracking
                     {
                         UnitProgressId = Guid.NewGuid(),
                         EnrollmentId = enrollment.EnrollmentID,
-                        CourseUnitId = request.UnitId,
+                        CourseUnitId = unit.CourseUnitID,
                         Status = LearningStatus.InProgress,
                         StartedAt = TimeHelper.GetVietnamTime(),
                         LastUpdated = TimeHelper.GetVietnamTime()
@@ -296,10 +296,7 @@ namespace BLL.Services.ProgressTracking
                     await _unitOfWork.UnitProgresses.CreateAsync(unitProgress);
                 }
 
-                var lessonProgress = await _unitOfWork.LessonProgresses
-                    .Query()
-                    .FirstOrDefaultAsync(lp => lp.UnitProgressId == unitProgress.UnitProgressId &&
-                                             lp.LessonId == request.LessonId);
+                var lessonProgress = await _unitOfWork.LessonProgresses.FindAsync(lp => lp.UnitProgressId == unitProgress.UnitProgressId && lp.LessonId == request.LessonId);
 
                 if (lessonProgress == null)
                 {
@@ -307,14 +304,13 @@ namespace BLL.Services.ProgressTracking
                     {
                         LessonProgressId = Guid.NewGuid(),
                         UnitProgressId = unitProgress.UnitProgressId,
-                        LessonId = request.LessonId,
+                        LessonId = lesson.LessonID,
                         Status = LearningStatus.InProgress,
                         StartedAt = TimeHelper.GetVietnamTime(),
                         LastUpdated = TimeHelper.GetVietnamTime()
                     };
                     await _unitOfWork.LessonProgresses.CreateAsync(lessonProgress);
 
-                    // Award small XP for starting a lesson (once)
                     await _gamificationService.AwardXpAsync(learner, 5, "Start lesson");
                 }
 
@@ -348,7 +344,8 @@ namespace BLL.Services.ProgressTracking
                     return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Unit not found", 404);
 
                 var course = await _unitOfWork.Courses.Query()
-                    .Include(c => c.Language).Where(c => c.CourseID == unit.CourseID).FirstOrDefaultAsync();
+                    .Include(c => c.Language)
+                    .Where(c => c.CourseID == unit.CourseID).FirstOrDefaultAsync();
 
                 if (course == null)
                     return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Course not found", 404);
@@ -361,11 +358,11 @@ namespace BLL.Services.ProgressTracking
                 if (enrollment == null)
                     return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Enrollment not found", 404);
 
-                var unitProgress = await _unitOfWork.UnitProgresses.FindAsync(up => up.EnrollmentId == enrollment.EnrollmentID);
+                var unitProgress = await _unitOfWork.UnitProgresses.FindAsync(up => up.EnrollmentId == enrollment.EnrollmentID && up.CourseUnitId == unit.CourseUnitID);
                 if (unitProgress == null)
                     return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Unit progress not found", 404);
 
-                var lessonProgress = await _unitOfWork.LessonProgresses.FindAsync(lp => lp.UnitProgressId == unitProgress.UnitProgressId);
+                var lessonProgress = await _unitOfWork.LessonProgresses.FindAsync(lp => lp.UnitProgressId == unitProgress.UnitProgressId && lp.LessonId == lesson.LessonID);
                 if (lessonProgress == null)
                     return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Lesson progress not found", 404);
 
@@ -557,11 +554,15 @@ namespace BLL.Services.ProgressTracking
                 if (enrollment == null)
                     return BaseResponse<ProgressTrackingResponse>.Fail(new object(), "Enrollment not found", 404);
 
-                var unitProgress = await _unitOfWork.UnitProgresses.FindAsync(up => up.EnrollmentId == enrollment.EnrollmentID);
+                var unitProgress = await _unitOfWork.UnitProgresses.FindAsync(up => up.EnrollmentId == enrollment.EnrollmentID && up.CourseUnitId == unit.CourseUnitID);
                 if (unitProgress == null)
                     return BaseResponse<ProgressTrackingResponse>.Fail(new object(), "Unit progress not found", 404);
 
-                var lessonProgress = await _unitOfWork.LessonProgresses.FindAsync(lp => lp.UnitProgressId == unitProgress.UnitProgressId);
+                var lessonProgress = await _unitOfWork.LessonProgresses.Query()
+                .Include(lp => lp.UnitProgress)
+                    .ThenInclude(up => up.Enrollment)
+                        .ThenInclude(e => e.Learner)
+                .Where(lp => lp.UnitProgressId == unitProgress.UnitProgressId && lp.LessonId == lesson.LessonID).FirstOrDefaultAsync();
 
                 if (lessonProgress == null)
                     return BaseResponse<ProgressTrackingResponse>.Fail(new object(), "Lesson progress not found", 404);
@@ -603,6 +604,15 @@ namespace BLL.Services.ProgressTracking
         #region
         private ExerciseSubmissionDetailResponse MapToDetailResponse(ExerciseSubmission submission)
         {
+            if (submission?.Exercise?.Lesson?.CourseUnit?.Course == null)
+            {
+                return new ExerciseSubmissionDetailResponse
+                {
+                    ExerciseSubmissionId = submission?.ExerciseSubmissionId ?? Guid.Empty,
+                    Status = submission?.Status.ToString() ?? "Unknown",
+                };
+            }
+
             var exercise = submission.Exercise;
             var lesson = exercise.Lesson;
             var unit = lesson.CourseUnit;
@@ -627,7 +637,7 @@ namespace BLL.Services.ProgressTracking
                 AIFeedback = submission.AIFeedback,
                 TeacherScore = submission.TeacherScore,
                 TeacherFeedback = submission.TeacherFeedback,
-                FinalScore = (submission.TeacherScore == 0) ? submission.AIScore : (submission.AIScore + submission.TeacherScore) / 2,
+                FinalScore = submission.FinalScore,
                 IsPassed = submission.IsPassed,
                 ReviewedAt = submission.ReviewedAt?.ToString("dd-MM-yyyy HH:mm"),
                 LessonId = lesson.LessonID,
@@ -706,6 +716,8 @@ namespace BLL.Services.ProgressTracking
                     .Query()
                     .Where(es => es.LessonProgressId == lessonProgress.LessonProgressId &&
                                 es.Status == ExerciseSubmissionStatus.Passed)
+                    .Select(es => es.ExerciseId)
+                    .Distinct()
                     .CountAsync();
 
                 if (completedExercises == exercises.Count)
