@@ -15,7 +15,7 @@ jobs:
     steps:
       - name: Prepare SSH client
         run: |
-          sudo apt-get update
+          sudo apt-get update || true
           sudo apt-get install -y openssh-client
           mkdir -p ~/.ssh
           echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
