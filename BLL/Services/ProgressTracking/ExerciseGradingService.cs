@@ -5,6 +5,7 @@ using BLL.Services.Wallets;
 using Common.DTO.ApiResponse;
 using Common.DTO.ExerciseGrading.Request;
 using Common.DTO.ExerciseGrading.Response;
+using Common.DTO.Paging.Response;
 using DAL.Helpers;
 using DAL.Models;
 using DAL.Type;
@@ -25,9 +26,207 @@ namespace BLL.Services.ProgressTracking
             _assessmentService = assessmentService;
             _walletService = walletService;
         }
-        public Task<BaseResponse<bool>> CheckAndReassignExpiredAssignmentsAsync()
+        public async Task<BaseResponse<bool>> CheckAndReassignExpiredAssignmentsAsync()
         {
-            throw new Exception();
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                try
+                {
+                    var now = TimeHelper.GetVietnamTime();
+                    var batchSize = 100;
+                    var totalProcessed = 0;
+
+                    while (true)
+                    {
+                        var expiredAssignments = await _unitOfWork.ExerciseGradingAssignments
+                            .Query()
+                            .Include(a => a.ExerciseSubmission)
+                            .Include(a => a.EarningAllocation)
+                            .Where(a => a.Status == GradingStatus.Assigned &&
+                                       a.DeadlineAt < now)
+                            .OrderBy(a => a.DeadlineAt)
+                            .Take(batchSize)
+                            .ToListAsync();
+
+                        if (!expiredAssignments.Any())
+                            break;
+
+                        foreach (var assignment in expiredAssignments)
+                        {
+                            if (assignment.EarningAllocation != null)
+                            {
+                                assignment.EarningAllocation.Status = EarningStatus.Rejected;
+                                assignment.EarningAllocation.UpdatedAt = now;
+                                await _unitOfWork.TeacherEarningAllocations.UpdateAsync(assignment.EarningAllocation);
+                            }
+
+                            assignment.Status = GradingStatus.Expired;
+                            assignment.CompletedAt = now;
+                            await _unitOfWork.ExerciseGradingAssignments.UpdateAsync(assignment);
+
+                            var submission = assignment.ExerciseSubmission;
+                            submission.Status = ExerciseSubmissionStatus.Failed;
+                            submission.TeacherFeedback = "Assignment expired: Teacher did not complete grading in time";
+                            await _unitOfWork.ExerciseSubmissions.UpdateAsync(submission);
+                        }
+
+                        await _unitOfWork.SaveChangesAsync();
+                        totalProcessed += expiredAssignments.Count;
+
+                        if (expiredAssignments.Count < batchSize)
+                            break;
+                    }
+
+                    return BaseResponse<bool>.Success(true,
+                        totalProcessed > 0
+                            ? $"Successfully expired {totalProcessed} overdue assignments"
+                            : "No expired assignments found");
+                }
+                catch (Exception ex)
+                {
+                    return BaseResponse<bool>.Error($"Error expiring assignments: {ex.Message}");
+                }
+            });
+        }
+        public async Task<BaseResponse<bool>> AssignExerciseToTeacherAsync(Guid exerciseSubmissionId, Guid userId, Guid teacherId)
+        {
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                try
+                {
+                    var manager = await _unitOfWork.ManagerLanguages.FindAsync(m => m.UserId == userId);
+                    if (manager == null)
+                        return BaseResponse<bool>.Fail(false, "Access denied. Manager privileges required.", 403);
+
+                    var submission = await _unitOfWork.ExerciseSubmissions
+                        .Query()
+                        .Include(es => es.Exercise)
+                            .ThenInclude(e => e.Lesson)
+                                .ThenInclude(l => l.CourseUnit)
+                                    .ThenInclude(cu => cu.Course)
+                        .Include(es => es.ExerciseGradingAssignments)
+                            .ThenInclude(ega => ega.EarningAllocation)
+                        .FirstOrDefaultAsync(es => es.ExerciseSubmissionId == exerciseSubmissionId);
+
+                    if (submission == null)
+                        return BaseResponse<bool>.Fail(false, "Exercise submission not found", 404);
+
+                    var now = TimeHelper.GetVietnamTime();
+                    var hasOverdueAssignment = submission.ExerciseGradingAssignments
+                        .Any(a => a.Status == GradingStatus.Expired ||
+                                 (a.Status == GradingStatus.Assigned && a.DeadlineAt < now));
+
+                    if (!hasOverdueAssignment)
+                        return BaseResponse<bool>.Fail(false, "Can only reassign overdue or expired assignments", 400);
+
+                    var teacher = await _unitOfWork.TeacherProfiles.Query()
+                        .Include(t => t.User)
+                        .FirstOrDefaultAsync(t => t.TeacherId == teacherId);
+
+                    if (teacher == null)
+                        return BaseResponse<bool>.Fail(false, "Teacher not found", 404);
+
+                    var courseLanguage = submission.Exercise.Lesson.CourseUnit.Course.LanguageId;
+
+                    if (teacher.LanguageId != courseLanguage)
+                        return BaseResponse<bool>.Fail(false, "Teacher language does not match exercise language", 400);
+
+                    var oldAssignment = submission.ExerciseGradingAssignments
+                        .FirstOrDefault(a => a.Status == GradingStatus.Expired ||
+                                           (a.Status == GradingStatus.Assigned && a.DeadlineAt < now));
+
+                    if (oldAssignment == null)
+                        return BaseResponse<bool>.Fail(false, "No expired or overdue assignment found", 400);
+
+                    var activeAssignments = submission.ExerciseGradingAssignments
+                        .Where(a => a.Status == GradingStatus.Assigned)
+                        .ToList();
+
+                    foreach (var activeAssignment in activeAssignments)
+                    {
+                        if (activeAssignment.EarningAllocation != null)
+                        {
+                            activeAssignment.EarningAllocation.Status = EarningStatus.Rejected;
+                            activeAssignment.EarningAllocation.UpdatedAt = now;
+                            await _unitOfWork.TeacherEarningAllocations.UpdateAsync(activeAssignment.EarningAllocation);
+                        }
+
+                        activeAssignment.Status = GradingStatus.Cancelled;
+                        activeAssignment.CompletedAt = now;
+                        await _unitOfWork.ExerciseGradingAssignments.UpdateAsync(activeAssignment);
+                    }
+
+                    var deadline = now.AddHours(48);
+
+                    var newAssignment = new ExerciseGradingAssignment
+                    {
+                        GradingAssignmentId = Guid.NewGuid(),
+                        ExerciseSubmissionId = exerciseSubmissionId,
+                        AssignedTeacherId = teacherId,
+                        Status = GradingStatus.Assigned,
+                        AssignedAt = now,
+                        DeadlineAt = deadline,
+                        CreatedAt = now,
+                    };
+
+                    await _unitOfWork.ExerciseGradingAssignments.AddAsync(newAssignment);
+
+                    decimal exerciseGradingAmount = 0;
+
+                    var course = submission.Exercise.Lesson.CourseUnit.Course;
+                    var learner = submission.Learner;
+
+                    var purchase = await _unitOfWork.Purchases.Query()
+                        .FirstOrDefaultAsync(p => p.UserId == learner.UserId &&
+                                                p.CourseId == course.CourseID &&
+                                                p.Status == PurchaseStatus.Completed);
+
+                    if (purchase != null)
+                    {
+                        var teacherGradingExercises = await _unitOfWork.Exercises.Query()
+                            .CountAsync(e => e.Lesson != null &&
+                                           e.Lesson.CourseUnit != null &&
+                                           e.Lesson.CourseUnit.CourseID == course.CourseID &&
+                                           (e.Type == SpeakingExerciseType.StoryTelling ||
+                                            e.Type == SpeakingExerciseType.Debate));
+
+                        if (teacherGradingExercises > 0)
+                        {
+                            decimal amountForDistribution = purchase.FinalAmount * 0.9m;
+                            decimal gradingFeeAmount = amountForDistribution * 0.35m;
+                            exerciseGradingAmount = gradingFeeAmount / teacherGradingExercises;
+                        }
+                    }
+
+                    if (exerciseGradingAmount == 0 && oldAssignment.EarningAllocation != null)
+                    {
+                        exerciseGradingAmount = (decimal)oldAssignment.EarningAllocation.ExerciseGradingAmount;
+                    }
+
+                    var newAllocation = new TeacherEarningAllocation
+                    {
+                        AllocationId = Guid.NewGuid(),
+                        GradingAssignmentId = newAssignment.GradingAssignmentId,
+                        TeacherId = teacherId,
+                        ExerciseGradingAmount = exerciseGradingAmount,
+                        Status = EarningStatus.Pending,
+                        CreatedAt = now,
+                        UpdatedAt = now
+                    };
+
+                    await _unitOfWork.TeacherEarningAllocations.AddAsync(newAllocation);
+                    submission.Status = ExerciseSubmissionStatus.PendingTeacherReview;
+                    await _unitOfWork.ExerciseSubmissions.UpdateAsync(submission);
+
+                    await _unitOfWork.SaveChangesAsync();
+
+                    return BaseResponse<bool>.Success(true, "Exercise successfully reassigned to teacher");
+                }
+                catch (Exception ex)
+                {
+                    return BaseResponse<bool>.Error($"Error assigning exercise to teacher: {ex.Message}");
+                }
+            });
         }
         public async Task<BaseResponse<ExerciseGradingStatusResponse>> GetGradingStatusAsync(Guid exerciseSubmissionId)
         {
@@ -71,27 +270,49 @@ namespace BLL.Services.ProgressTracking
                 return BaseResponse<ExerciseGradingStatusResponse>.Error($"Error getting grading status: {ex.Message}");
             }
         }
-        public async Task<BaseResponse<List<ExerciseGradingAssignmentResponse>>> GetTeacherAssignmentsAsync(Guid userId, GradingAssignmentFilterRequest filter)
+        public async Task<PagedResponse<List<ExerciseGradingAssignmentResponse>>> GetTeacherAssignmentsAsync(Guid userId, GradingAssignmentFilterRequest filter)
         {
             try
             {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null)
+                    return PagedResponse<List<ExerciseGradingAssignmentResponse>>.Fail(new object(), "Access denied", 401);
+
                 var teacher = await _unitOfWork.TeacherProfiles.FindAsync(t => t.UserId == userId);
                 if (teacher == null)
-                    return BaseResponse<List<ExerciseGradingAssignmentResponse>>.Fail(new object(), "Access denied", 403);
+                    return PagedResponse<List<ExerciseGradingAssignmentResponse>>.Fail(new object(), "Access denied", 403);
 
-                var query = _unitOfWork.ExerciseGradingAssignments
-                    .Query()
+                var query = _unitOfWork.ExerciseGradingAssignments.Query()
                     .Include(a => a.ExerciseSubmission)
-                    .ThenInclude(es => es.Exercise)
+                        .ThenInclude(es => es.Exercise)
+                            .ThenInclude(e => e.Lesson)
+                                .ThenInclude(l => l.CourseUnit)
+                                    .ThenInclude(cu => cu.Course)
                     .Include(a => a.ExerciseSubmission)
-                    .ThenInclude(es => es.Learner)
-                    .ThenInclude(l => l.User)
+                        .ThenInclude(es => es.Learner)
+                            .ThenInclude(l => l.User)
+                    .Include(a => a.EarningAllocation)
                     .Where(a => a.AssignedTeacherId == teacher.TeacherId);
 
                 if (!string.IsNullOrEmpty(filter.Status) &&
                     Enum.TryParse<GradingStatus>(filter.Status, out var statusFilter))
                 {
                     query = query.Where(a => a.Status == statusFilter);
+                }
+
+                if (filter.ExerciseId.HasValue)
+                {
+                    query = query.Where(a => a.ExerciseSubmission.ExerciseId == filter.ExerciseId.Value);
+                }
+
+                if (filter.LessonId.HasValue)
+                {
+                    query = query.Where(a => a.ExerciseSubmission.Exercise.Lesson.LessonID == filter.LessonId.Value);
+                }
+
+                if (filter.CourseId.HasValue)
+                {
+                    query = query.Where(a => a.ExerciseSubmission.Exercise.Lesson.CourseUnit.CourseID == filter.CourseId.Value);
                 }
 
                 if (filter.FromDate.HasValue)
@@ -103,6 +324,8 @@ namespace BLL.Services.ProgressTracking
                 {
                     query = query.Where(a => a.AssignedAt <= filter.ToDate.Value);
                 }
+
+                var totalCount = await query.CountAsync();
 
                 var assignments = await query
                     .OrderByDescending(a => a.AssignedAt)
@@ -119,22 +342,39 @@ namespace BLL.Services.ProgressTracking
                     LearnerName = a.ExerciseSubmission.Learner.User?.FullName ?? "Unknown",
                     ExerciseId = a.ExerciseSubmission.ExerciseId,
                     ExerciseTitle = a.ExerciseSubmission.Exercise.Title,
+                    ExerciseType = a.ExerciseSubmission.Exercise.Type.ToString(),
+                    LessonId = a.ExerciseSubmission.Exercise.Lesson?.LessonID,
+                    LessonTitle = a.ExerciseSubmission.Exercise.Lesson?.Title ?? "Unknown",
+                    CourseId = a.ExerciseSubmission.Exercise.Lesson?.CourseUnit?.CourseID,
+                    CourseName = a.ExerciseSubmission.Exercise.Lesson?.CourseUnit?.Course?.Title ?? "Unknown",
                     AudioUrl = a.ExerciseSubmission.AudioUrl,
                     AIScore = a.ExerciseSubmission.AIScore,
                     AIFeedback = a.ExerciseSubmission.AIFeedback,
                     Status = a.Status.ToString(),
-                    AssignedAt = a.AssignedAt.ToString("dd-MM-yyyy"),
-                    Deadline = a.DeadlineAt.ToString("dd-MM-yyyy"),
+                    GradingStatus = a.Status.ToString(),
+                    EarningStatus = a.EarningAllocation?.Status.ToString() ?? "Not Allocated",
+                    EarningAmount = a.EarningAllocation?.ExerciseGradingAmount ?? 0,
+                    AssignedAt = a.AssignedAt.ToString("dd-MM-yyyy HH:mm"),
+                    Deadline = a.DeadlineAt.ToString("dd-MM-yyyy HH:mm"),
+                    StartedAt = a.StartedAt?.ToString("dd-MM-yyyy HH:mm"),
+                    CompletedAt = a.CompletedAt?.ToString("dd-MM-yyyy HH:mm"),
                     IsOverdue = a.DeadlineAt < now && a.Status == GradingStatus.Assigned,
                     HoursRemaining = a.Status == GradingStatus.Assigned ?
-                        (int)(a.DeadlineAt - now).TotalHours : 0
+                    Math.Max(0, (int)(a.DeadlineAt - now).TotalHours) : 0,
+                    FinalScore = a.FinalScore,
+                    Feedback = a.Feedback
                 }).ToList();
 
-                return BaseResponse<List<ExerciseGradingAssignmentResponse>>.Success(response, "Assignments retrieved successfully");
+                return PagedResponse<List<ExerciseGradingAssignmentResponse>>.Success(
+                    response,
+                    filter.Page,
+                    filter.PageSize,
+                    totalCount,
+                    "Assignments retrieved successfully");
             }
             catch (Exception ex)
             {
-                return BaseResponse<List<ExerciseGradingAssignmentResponse>>.Error($"Error getting assignments: {ex.Message}");
+                return PagedResponse<List<ExerciseGradingAssignmentResponse>>.Error($"Error getting assignments: {ex.Message}");
             }
         }
         public async Task<BaseResponse<bool>> ProcessAIGradingAsync(AssessmentRequest request)
@@ -262,6 +502,10 @@ namespace BLL.Services.ProgressTracking
         {
             return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null)
+                    return BaseResponse<bool>.Fail(new object(), "Access denied. Invalid authentication.", 401);
+
                 if (score < 0 || score > 100)
                     return BaseResponse<bool>.Fail(false, "Score must be between 0 and 100", 400);
 

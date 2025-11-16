@@ -1,11 +1,4 @@
-﻿using DAL.Type;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Common.DTO.Purchases.Request
+﻿namespace Common.DTO.Purchases.Request
 {
     public class PurchasePagingRequest
     {

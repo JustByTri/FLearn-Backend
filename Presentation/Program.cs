@@ -1,8 +1,9 @@
 ﻿using BLL;
 using BLL.Background;
-using BLL.Hubs;
-using BLL.Settings;
 using BLL.HostedServices;
+using BLL.Hubs;
+using BLL.IServices.ProgressTracking;
+using BLL.Settings;
 using Common.Authorization;
 using Hangfire;
 using Hangfire.MySql;
@@ -349,6 +350,11 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
     DashboardTitle = "FLearn Platform - Hangfire Dashboard",
     Authorization = []
 });
+
+RecurringJob.AddOrUpdate<IExerciseGradingService>(
+    "check-expired-assignments",
+    service => service.CheckAndReassignExpiredAssignmentsAsync(),
+    "*/5 * * * *");
 
 app.UseHttpsRedirection();
 

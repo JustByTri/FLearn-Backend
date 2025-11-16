@@ -3,6 +3,7 @@ using Common.DTO.ApiResponse;
 using Common.DTO.Paging.Response;
 using Common.DTO.PayOut;
 using Common.DTO.Teacher;
+using Common.DTO.Teacher.Request;
 using Common.DTO.Teacher.Response;
 using DAL.Helpers;
 using DAL.Models;
@@ -234,10 +235,10 @@ namespace BLL.Services.Teacher
                 .Where(c => c.Status == CourseStatus.Published)
                 .ToList();
 
- 
+
             int totalCourses = publishedCourses.Count;
 
-     
+
             var publishedCoursesDto = publishedCourses.Select(c => new TeacherCourseInfoDto
             {
                 CourseId = c.CourseID,
@@ -257,11 +258,11 @@ namespace BLL.Services.Teacher
 
             int totalStudents = courseStudents;
 
-        
+
             double averageRating = profile.AverageRating;
             int totalReviews = profile.ReviewCount;
 
-         
+
             var resultDto = new PublicTeacherProfileDto
             {
                 TeacherId = profile.TeacherId,
@@ -275,7 +276,7 @@ namespace BLL.Services.Teacher
                 AverageRating = averageRating,
                 TotalReviews = totalReviews,
 
-                PublishedCourses = publishedCoursesDto 
+                PublishedCourses = publishedCoursesDto
             };
 
             return BaseResponse<PublicTeacherProfileDto>.Success(resultDto, "Lấy hồ sơ giáo viên thành công.", (int)HttpStatusCode.OK);
@@ -350,6 +351,130 @@ namespace BLL.Services.Teacher
                     $"An error occurred while retrieving teaching programs: {ex.Message}",
                     500
                 );
+            }
+        }
+        public async Task<PagedResponse<List<TeacherSearchResponse>>> SearchTeachersAsync(TeacherSearchRequest request)
+        {
+            try
+            {
+                var query = _unit.TeacherProfiles.Query()
+                    .Include(t => t.User)
+                    .Include(t => t.Language)
+                    .Include(t => t.TeacherReviews)
+                    .Include(t => t.ExerciseGradingAssignments)
+                    .AsNoTracking();
+
+                query = query.Where(t => t.Status == true);
+
+                if (request.LanguageId.HasValue)
+                {
+                    query = query.Where(t => t.LanguageId == request.LanguageId.Value);
+                }
+
+                if (!string.IsNullOrEmpty(request.LanguageCode))
+                {
+                    query = query.Where(t => t.Language.LanguageCode == request.LanguageCode);
+                }
+
+                if (!string.IsNullOrEmpty(request.ProficiencyCode))
+                {
+                    query = query.Where(t => t.ProficiencyCode == request.ProficiencyCode);
+                }
+
+                if (request.MinProficiencyOrder.HasValue)
+                {
+                    query = query.Where(t => t.ProficiencyOrder >= request.MinProficiencyOrder.Value);
+                }
+
+                if (request.MaxProficiencyOrder.HasValue)
+                {
+                    query = query.Where(t => t.ProficiencyOrder <= request.MaxProficiencyOrder.Value);
+                }
+
+                if (request.MinRating.HasValue)
+                {
+                    query = query.Where(t => t.AverageRating >= request.MinRating.Value);
+                }
+
+                if (request.MaxRating.HasValue)
+                {
+                    query = query.Where(t => t.AverageRating <= request.MaxRating.Value);
+                }
+
+                if (!string.IsNullOrEmpty(request.SearchTerm))
+                {
+                    var searchTerm = request.SearchTerm.ToLower().Trim();
+                    query = query.Where(t =>
+                        t.FullName.ToLower().Contains(searchTerm) ||
+                        t.Email.ToLower().Contains(searchTerm) ||
+                        t.Bio.ToLower().Contains(searchTerm) ||
+                        t.Language.LanguageName.ToLower().Contains(searchTerm));
+                }
+
+                if (request.MinReviewCount.HasValue)
+                {
+                    query = query.Where(t => t.ReviewCount >= request.MinReviewCount.Value);
+                }
+
+                query = request.SortBy?.ToLower() switch
+                {
+                    "rating" => request.SortDescending == true
+                        ? query.OrderByDescending(t => t.AverageRating)
+                        : query.OrderBy(t => t.AverageRating),
+                    "reviews" => request.SortDescending == true
+                        ? query.OrderByDescending(t => t.ReviewCount)
+                        : query.OrderBy(t => t.ReviewCount),
+                    "proficiency" => request.SortDescending == true
+                        ? query.OrderByDescending(t => t.ProficiencyOrder)
+                        : query.OrderBy(t => t.ProficiencyOrder),
+                    "name" => request.SortDescending == true
+                        ? query.OrderByDescending(t => t.FullName)
+                        : query.OrderBy(t => t.FullName),
+                    _ => query.OrderByDescending(t => t.AverageRating)
+                };
+
+                var totalCount = await query.CountAsync();
+
+                var teachers = await query
+                    .Skip((request.Page - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToListAsync();
+
+                var response = teachers.Select(t => new TeacherSearchResponse
+                {
+                    TeacherId = t.TeacherId,
+                    UserId = t.UserId,
+                    FullName = t.FullName,
+                    Email = t.Email,
+                    PhoneNumber = t.PhoneNumber,
+                    Bio = t.Bio,
+                    Avatar = t.Avatar,
+                    LanguageId = t.LanguageId,
+                    LanguageName = t.Language?.LanguageName ?? string.Empty,
+                    LanguageCode = t.Language?.LanguageCode ?? string.Empty,
+                    ProficiencyCode = t.ProficiencyCode,
+                    ProficiencyOrder = t.ProficiencyOrder,
+                    AverageRating = t.AverageRating,
+                    ReviewCount = t.ReviewCount,
+                    MeetingUrl = t.MeetingUrl,
+                    Status = t.Status,
+                    CreatedAt = t.CreatedAt.ToString("dd-MM-yyyy"),
+                    TotalGradedAssignments = t.ExerciseGradingAssignments?
+                        .Count(a => a.Status == GradingStatus.Returned) ?? 0,
+                    ActiveAssignments = t.ExerciseGradingAssignments?
+                        .Count(a => a.Status == GradingStatus.Assigned) ?? 0,
+                }).ToList();
+
+                return PagedResponse<List<TeacherSearchResponse>>.Success(
+                    response,
+                    request.Page,
+                    request.PageSize,
+                    totalCount,
+                    "Teachers retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                return PagedResponse<List<TeacherSearchResponse>>.Error($"Error searching teachers: {ex.Message}");
             }
         }
     }
