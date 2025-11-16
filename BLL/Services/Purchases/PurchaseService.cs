@@ -9,13 +9,11 @@ using Common.DTO.Purchases.Request;
 using Common.DTO.Purchases.Response;
 using Common.DTO.Refund.Request;
 using DAL.Helpers;
-using DAL.Migrations;
 using DAL.Models;
 using DAL.Type;
 using DAL.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json.Linq;
 
 namespace BLL.Services.Purchases
 {
