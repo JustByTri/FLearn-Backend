@@ -92,12 +92,21 @@ namespace Presentation.Controllers.Learner
         /// Cập nhật mục tiêu XP mỗi ngày.
         /// </summary>
         [HttpPut("me/daily-goal")]
-        public async Task<IActionResult> UpdateDailyGoal([FromBody] UpdateDailyGoalDto request)
+        public async Task<IActionResult> UpdateDailyGoal([FromBody] UpdateDailyGoalDto request, [FromQuery] Guid? languageId = null)
         {
             if (!this.TryGetUserId(out var userId, out var error)) return error!;
             if (!ModelState.IsValid) return BadRequest(BaseResponse<object>.Fail("Invalid data"));
 
-            var learner = (await _unitOfWork.LearnerLanguages.GetAllAsync()).FirstOrDefault(l => l.UserId == userId);
+            var allLearner = await _unitOfWork.LearnerLanguages.GetAllAsync();
+            DAL.Models.LearnerLanguage? learner;
+            if (languageId.HasValue)
+            {
+                learner = allLearner.FirstOrDefault(l => l.UserId == userId && l.LanguageId == languageId.Value);
+            }
+            else
+            {
+                learner = allLearner.FirstOrDefault(l => l.UserId == userId);
+            }
             if (learner == null) return NotFound(BaseResponse<object>.Fail("Learner not found"));
 
             learner.DailyXpGoal = request.DailyXpGoal;
