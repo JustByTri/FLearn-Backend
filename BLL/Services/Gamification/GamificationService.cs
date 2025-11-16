@@ -26,6 +26,12 @@ namespace BLL.Services.Gamification
             learner.ExperiencePoints += xp;
             learner.TodayXp += xp;
             learner.UpdatedAt = TimeHelper.GetVietnamTime();
+            // NEW: streak increases immediately when daily goal reached
+            if (learner.TodayXp >= learner.DailyXpGoal && learner.StreakDaysUpdatedAt != TimeHelper.GetVietnamTime().Date)
+            {
+                learner.StreakDays += 1;
+                learner.StreakDaysUpdatedAt = TimeHelper.GetVietnamTime().Date;
+            }
             await _unitOfWork.LearnerLanguages.UpdateAsync(learner);
             try { await LogXpAsync(learner.LearnerLanguageId, xp, reason); }
             catch (Exception ex) { _logger.LogWarning(ex, "Failed to log XP event. Continuing without log."); }
