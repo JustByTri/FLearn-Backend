@@ -469,7 +469,8 @@ namespace BLL.Services.Teacher
             // Build query with public filters and include navigation properties
             IQueryable<TeacherClass> query = _unit.TeacherClasses.Query()
                 .Include(c => c.Language)
-                .Include(c => c.Teacher);
+                .Include(c => c.Teacher)
+                .Include(c => c.Enrollments); // Include enrollments for CurrentEnrollments calculation
             
             if (languageId.HasValue) query = query.Where(c => c.LanguageID == languageId.Value);
             
@@ -516,6 +517,15 @@ namespace BLL.Services.Teacher
             }
             
             var total = list.Count;
+            
+            // Get enrollment counts for all classes in the page
+            var classIds = list.Skip((page-1)*pageSize).Take(pageSize).Select(c => c.ClassID).ToList();
+            var enrollmentCounts = await _unit.ClassEnrollments.Query()
+                .Where(e => classIds.Contains(e.ClassID) && e.Status == DAL.Models.EnrollmentStatus.Paid)
+                .GroupBy(e => e.ClassID)
+                .Select(g => new { ClassID = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.ClassID, x => x.Count);
+            
             var items = list.OrderByDescending(c => c.CreatedAt)
                 .Skip((page-1)*pageSize).Take(pageSize)
                 .Select(c => new TeacherClassDto {
@@ -530,7 +540,7 @@ namespace BLL.Services.Teacher
                     PricePerStudent = c.PricePerStudent,
                     GoogleMeetLink = c.GoogleMeetLink,
                     Status = c.Status.ToString(),
-                    CurrentEnrollments = c.CurrentEnrollments,
+                    CurrentEnrollments = enrollmentCounts.TryGetValue(c.ClassID, out var count) ? count : 0,
                     CreatedAt = c.CreatedAt,
                     UpdatedAt = c.UpdatedAt
                 }).ToList();
