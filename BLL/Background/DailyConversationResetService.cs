@@ -97,16 +97,18 @@ namespace BLL.HostedServices
  if (ll == null) continue;
  if (ll.LastXpResetDate.Date != nowVn.Date)
  {
- // Update streak if met daily goal yesterday
- if (ll.TodayXp >= ll.DailyXpGoal)
+ // Update streak if met daily goal yesterday and not already incremented
+ if (ll.TodayXp >= ll.DailyXpGoal && (ll.StreakDaysUpdatedAt == null || ll.StreakDaysUpdatedAt.Value.Date != nowVn.Date))
  {
- ll.StreakDays +=1;
+ ll.StreakDays += 1;
+ ll.StreakDaysUpdatedAt = nowVn.Date;
  }
- else
+ else if (ll.TodayXp < ll.DailyXpGoal)
  {
- ll.StreakDays =0;
+ ll.StreakDays = 0;
+ ll.StreakDaysUpdatedAt = null;
  }
- ll.TodayXp =0;
+ ll.TodayXp = 0;
  ll.LastXpResetDate = nowVn;
  await unit.LearnerLanguages.UpdateAsync(ll);
  updatedLearners++;
