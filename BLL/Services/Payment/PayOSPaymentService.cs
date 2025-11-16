@@ -211,8 +211,8 @@ namespace BLL.Services.Payment
 
                         if (transaction.Purchase != null && transaction.Purchase.Course != null)
                         {
-                            BackgroundJob.Enqueue<WalletService>(ws => ws.TransferToAdminWalletAsync(transaction.Purchase.PurchasesId));
-                            BackgroundJob.Schedule<TeacherPayoutJobService>(job => job.ProcessTeacherPayoutAsync(transaction.Purchase.PurchasesId), TimeSpan.FromDays(3));
+                            BackgroundJob.Enqueue<IWalletService>(ws => ws.TransferToAdminWalletAsync(transaction.Purchase.PurchasesId));
+                            BackgroundJob.Schedule<IWalletService>(ws => ws.ProcessCourseCreationFeeTransferAsync(transaction.Purchase.PurchasesId), TimeSpan.FromDays(3));
                         }
                     }
                     else

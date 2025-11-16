@@ -90,6 +90,54 @@ namespace Presentation.Controllers.Purchases
             var result = await _paymentService.HandleCallbackAsync(payOSWebhookBody);
             return StatusCode(result.Code, result);
         }
+        [Authorize(Roles = "Learner")]
+        [HttpGet("purchases/courses")]
+        public async Task<IActionResult> GetCoursePurchases([FromQuery] PurchasePagingRequest request)
+        {
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
+
+            request.PageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
+            request.PageSize = request.PageSize < 1 ? 10 : request.PageSize;
+            request.PageSize = request.PageSize > 100 ? 100 : request.PageSize;
+
+            var result = await _purchaseService.GetCoursePurchasesByLanguageAsync(userId, request);
+            return StatusCode(result.Code, result);
+        }
+        [Authorize(Roles = "Learner")]
+        [HttpGet("purchases/{purchaseId:guid}/courses")]
+        public async Task<IActionResult> GetCoursePurchaseDetail(Guid purchaseId)
+        {
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
+
+            var result = await _purchaseService.GetCoursePurchaseDetailAsync(userId, purchaseId);
+            return StatusCode(result.Code, result);
+        }
+        [Authorize(Roles = "Learner")]
+        [HttpGet("purchases/subscription")]
+        public async Task<IActionResult> GetSubscriptionPurchases([FromQuery] PurchasePagingRequest request)
+        {
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
+
+            request.PageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
+            request.PageSize = request.PageSize < 1 ? 10 : request.PageSize;
+            request.PageSize = request.PageSize > 100 ? 100 : request.PageSize;
+
+            var result = await _purchaseService.GetSubscriptionPurchasesAsync(userId, request);
+            return StatusCode(result.Code, result);
+        }
+        [Authorize(Roles = "Learner")]
+        [HttpGet("purchases/{purchaseId:guid}/subscription")]
+        public async Task<IActionResult> GetSubscriptionPurchaseDetail(Guid purchaseId)
+        {
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
+
+            var result = await _purchaseService.GetSubscriptionPurchaseDetailAsync(userId, purchaseId);
+            return StatusCode(result.Code, result);
+        }
         [HttpGet("payments/return-url")]
         public async Task<ContentResult> PaymentReturn()
         {
