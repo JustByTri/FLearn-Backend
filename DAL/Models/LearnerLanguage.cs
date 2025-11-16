@@ -19,7 +19,7 @@ namespace DAL.Models
             public string ProficiencyLevel { get; set; } = string.Empty;
             public int StreakDays { get; set; } = 0;
             public DateTime? StreakDaysUpdatedAt { get; set; } = TimeHelper.GetVietnamTime();
-        // NEW: Gamification fields
+      
         public int ExperiencePoints { get; set; } = 0; // total accumulated XP
             public int DailyXpGoal { get; set; } = 50;     // default daily XP goal
             public int TodayXp { get; set; } = 0;          // XP earned today

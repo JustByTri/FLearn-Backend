@@ -8,7 +8,11 @@ namespace DAL.Repositories
 {
     public class TeacherProfileRepository : GenericRepository<TeacherProfile>, ITeacherProfileRepository
     {
-        public TeacherProfileRepository(AppDbContext context) : base(context) { }
+        private readonly AppDbContext _context;
+        public TeacherProfileRepository(AppDbContext context) : base(context)
+        {
+            _context = context;
+        }
         public async Task<TeacherProfile?> GetPublicProfileByIdAsync(Guid teacherProfileId)
         {
             return await _context.TeacherProfiles
@@ -22,6 +26,10 @@ namespace DAL.Repositories
                              tp.User.Status == true && 
                              tp.Status == true)   
                 .FirstOrDefaultAsync();
+        }
+        public async Task<TeacherProfile?> GetByUserIdAsync(Guid userId)
+        {
+            return await _context.TeacherProfiles.FirstOrDefaultAsync(t => t.UserId == userId);
         }
     }
 }

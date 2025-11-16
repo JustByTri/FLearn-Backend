@@ -27,8 +27,7 @@ namespace Presentation.Controllers.Teacher
         {
             if (!this.TryGetUserId(out var userId, out var error))
                 return error!;
-
-            var response = await _teacherService.GetTeacherProfileAsync(userId);
+            var response = await _teacherService.GetTeacherProfileWithWalletAsync(userId);
             return StatusCode(response.Code, response);
         }
         /// <summary>
@@ -105,6 +104,47 @@ namespace Presentation.Controllers.Teacher
                 return error!;
 
             var response = await _teacherService.GetTeachingProgramAsync(userId, pageNumber, pageSize);
+            return StatusCode(response.Code, response);
+        }
+        /// <summary>
+        /// Tìm kiếm/lọc danh sách lớp của giáo viên
+        /// </summary>
+        [Authorize(Roles = "Learner")]
+        [HttpGet("classes/search")]
+        public async Task<IActionResult> SearchClasses([FromQuery] string? keyword = null, [FromQuery] string? status = null, [FromQuery] DateTime? from = null, [FromQuery] DateTime? to = null, [FromQuery] Guid? programId = null, [FromQuery] Guid? teacherId = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            if (!this.TryGetUserId(out Guid currentTeacherId, out var errorResult))
+                return errorResult!;
+            var response = await _teacherService.SearchClassesAsync(teacherId ?? currentTeacherId, keyword, status, from, to, programId, page, pageSize);
+            return StatusCode(response.Code, response);
+        }
+        /// <summary>
+        /// Public: Search lớp học theo nhiều tiêu chí (không cần auth)
+        /// </summary>
+        [AllowAnonymous]
+        [HttpGet("classes/public/search")]
+        public async Task<IActionResult> PublicSearchClasses(
+            [FromQuery] Guid? languageId = null,
+            [FromQuery] Guid? teacherId = null,
+            [FromQuery] Guid? programId = null,
+            [FromQuery] string? keyword = null,
+            [FromQuery] string? status = null,
+            [FromQuery] DateTime? from = null,
+            [FromQuery] DateTime? to = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var response = await _teacherService.PublicSearchClassesAsync(languageId, teacherId, programId, keyword, status, from, to, page, pageSize);
+            return StatusCode(response.Code, response);
+        }
+        /// <summary>
+        /// Lấy tất cả giáo viên
+        /// </summary>
+        [HttpGet("teachers/all")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetAllTeachers()
+        {
+            var response = await _teacherService.GetAllTeachersAsync();
             return StatusCode(response.Code, response);
         }
     }

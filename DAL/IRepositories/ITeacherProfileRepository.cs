@@ -5,6 +5,7 @@ namespace DAL.IRepositories
 {
     public interface ITeacherProfileRepository : IGenericRepository<TeacherProfile> {
         Task<TeacherProfile?> GetPublicProfileByIdAsync(Guid teacherProfileId);
+        Task<TeacherProfile?> GetByUserIdAsync(Guid userId);
     }
 
 
