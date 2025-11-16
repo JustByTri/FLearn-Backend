@@ -467,10 +467,35 @@ namespace BLL.Services.Teacher
         public async Task<PagedResponse<IEnumerable<TeacherClassDto>>> PublicSearchClassesAsync(Guid? languageId, Guid? teacherId, Guid? programId, string? keyword, string? status, DateTime? from, DateTime? to, int page, int pageSize)
         {
             // Build query with public filters and include navigation properties
-            IQueryable<TeacherClass> query = _unit.TeacherClasses.Query().Include(c => c.Language);
+            IQueryable<TeacherClass> query = _unit.TeacherClasses.Query()
+                .Include(c => c.Language)
+                .Include(c => c.Teacher);
             
             if (languageId.HasValue) query = query.Where(c => c.LanguageID == languageId.Value);
-            if (teacherId.HasValue) query = query.Where(c => c.TeacherID == teacherId.Value);
+            
+            // Support searching by:
+            // 1. User.UserID (TeacherID in TeacherClass)
+            // 2. TeacherProfile.TeacherId (from TeacherProfile table)
+            if (teacherId.HasValue)
+            {
+                // Get all TeacherProfiles with matching TeacherId or UserId
+                var teacherProfiles = await _unit.TeacherProfiles.Query()
+                    .Where(tp => tp.TeacherId == teacherId.Value || tp.UserId == teacherId.Value)
+                    .Select(tp => tp.UserId)
+                    .ToListAsync();
+                
+                if (teacherProfiles.Any())
+                {
+                    // Filter by User.UserID that matches TeacherProfile.UserId
+                    query = query.Where(c => teacherProfiles.Contains(c.TeacherID));
+                }
+                else
+                {
+                    // Fallback: direct match by TeacherID (User.UserID)
+                    query = query.Where(c => c.TeacherID == teacherId.Value);
+                }
+            }
+            
             if (programId.HasValue) query = query.Where(c => c.ProgramId == programId.Value);
             if (!string.IsNullOrWhiteSpace(status)) {
                 if (Enum.TryParse<ClassStatus>(status, true, out var statusEnum))
