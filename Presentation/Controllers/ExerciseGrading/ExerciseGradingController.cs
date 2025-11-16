@@ -37,12 +37,43 @@ namespace Presentation.Controllers.ExerciseGrading
 
             return StatusCode(result.Code, result);
         }
-        [HttpPost("reassign-expired")]
-        [Authorize(Roles = "Admin,Manager")]
-        public async Task<ActionResult<BaseResponse<bool>>> ReassignExpiredAssignments()
+        /// <summary>
+        /// Assign exercise to teacher (Manager only)
+        /// </summary>
+        [HttpPost("assign-exercise")]
+        [Authorize(Roles = "Manager,Admin")]
+        [ProducesResponseType(typeof(BaseResponse<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BaseResponse<object>), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(BaseResponse<object>), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> AssignExerciseToTeacher([FromBody] AssignExerciseRequest request)
         {
-            var result = await _exerciseGradingService.CheckAndReassignExpiredAssignmentsAsync();
-            return StatusCode(result.Code, result);
+            try
+            {
+                var userIdClaim = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(userIdClaim))
+                    return Unauthorized("Teacher ID not found in token.");
+
+                if (!Guid.TryParse(userIdClaim, out Guid userId))
+                    return BadRequest("Invalid user ID format in token.");
+
+                if (request.ExerciseSubmissionId == Guid.Empty)
+                    return BadRequest(BaseResponse<object>.Fail(null, "ExerciseSubmissionId is required", 400));
+
+                if (request.TeacherId == Guid.Empty)
+                    return BadRequest(BaseResponse<object>.Fail(null, "TeacherId is required", 400));
+
+                var result = await _exerciseGradingService.AssignExerciseToTeacherAsync(
+                    request.ExerciseSubmissionId,
+                    userId,
+                    request.TeacherId);
+
+                return StatusCode(result.Code, result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, BaseResponse<object>.Error("An error occurred while assigning exercise to teacher"));
+            }
         }
         [HttpGet("status/{exerciseSubmissionId}")]
         public async Task<ActionResult<BaseResponse<ExerciseGradingStatusResponse>>> GetGradingStatus(Guid exerciseSubmissionId)

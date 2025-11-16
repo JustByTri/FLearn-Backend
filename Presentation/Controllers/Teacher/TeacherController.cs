@@ -1,13 +1,14 @@
 ﻿using BLL.IServices.Teacher;
 using Common.DTO.ApiResponse;
+using Common.DTO.Paging.Response;
 using Common.DTO.PayOut;
 using Common.DTO.Teacher;
+using Common.DTO.Teacher.Request;
 using Common.DTO.Teacher.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Presentation.Helpers;
 using System.Net;
-using System.Security.Claims;
 
 namespace Presentation.Controllers.Teacher
 {
@@ -88,10 +89,10 @@ namespace Presentation.Controllers.Teacher
         /// </summary>
         /// <param name="teacherId">ID của giáo viên (TeacherId).</param>
         [AllowAnonymous]
-        [HttpGet("{teacherId}/profile")] 
+        [HttpGet("{teacherId}/profile")]
         [ProducesResponseType(typeof(BaseResponse<PublicTeacherProfileDto>), (int)HttpStatusCode.OK)]
         [ProducesResponseType(typeof(BaseResponse<object>), (int)HttpStatusCode.NotFound)]
-        public async Task<IActionResult> GetPublicProfile([FromRoute] Guid teacherId) 
+        public async Task<IActionResult> GetPublicProfile([FromRoute] Guid teacherId)
         {
             var response = await _teacherService.GetPublicTeacherProfileAsync(teacherId);
             return StatusCode(response.Code, response);
@@ -105,6 +106,28 @@ namespace Presentation.Controllers.Teacher
 
             var response = await _teacherService.GetTeachingProgramAsync(userId, pageNumber, pageSize);
             return StatusCode(response.Code, response);
+        }
+        [HttpGet("teachers/search")]
+        [ProducesResponseType(typeof(PagedResponse<List<TeacherSearchResponse>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BaseResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> SearchTeachers([FromQuery] TeacherSearchRequest request)
+        {
+            try
+            {
+                if (request.Page < 1)
+                    return BadRequest(BaseResponse<object>.Fail(null, "Page must be greater than 0", 400));
+
+                if (request.PageSize < 1 || request.PageSize > 100)
+                    return BadRequest(BaseResponse<object>.Fail(null, "PageSize must be between 1 and 100", 400));
+
+                var result = await _teacherService.SearchTeachersAsync(request);
+                return StatusCode(result.Code, result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, BaseResponse<object>.Error("An error occurred while searching teachers"));
+            }
         }
         /// <summary>
         /// Tìm kiếm/lọc danh sách lớp của giáo viên
