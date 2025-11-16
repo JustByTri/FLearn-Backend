@@ -10,7 +10,9 @@ using DAL.Models;
 using DAL.Type;
 using DAL.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using System.Net;
+using System.Text;
 
 namespace BLL.Services.Teacher
 {
@@ -477,15 +479,207 @@ namespace BLL.Services.Teacher
                 return PagedResponse<List<TeacherSearchResponse>>.Error($"Error searching teachers: {ex.Message}");
             }
         }
+        private static string RemoveDiacritics(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+            var normalized = text.Normalize(NormalizationForm.FormD);
+            var sb = new System.Text.StringBuilder();
+            foreach (var c in normalized)
+            {
+                var uc = CharUnicodeInfo.GetUnicodeCategory(c);
+                if (uc != UnicodeCategory.NonSpacingMark)
+                    sb.Append(c);
+            }
+            return sb.ToString().Normalize(NormalizationForm.FormC);
+        }
+        public async Task<PagedResponse<IEnumerable<TeacherClassDto>>> SearchClassesAsync(Guid teacherId, string? keyword, string? status, DateTime? from, DateTime? to, Guid? programId, int page, int pageSize)
+        {
+            // Build query with filters that can be translated to SQL
+            var query = _unit.TeacherClasses.Query().Where(c => c.TeacherID == teacherId);
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                if (Enum.TryParse<ClassStatus>(status, true, out var statusEnum))
+                    query = query.Where(c => c.Status == statusEnum);
+            }
+            if (from.HasValue) query = query.Where(c => c.CreatedAt >= from.Value);
+            if (to.HasValue) query = query.Where(c => c.CreatedAt <= to.Value);
+            if (programId.HasValue) query = query.Where(c => c.ProgramId == programId.Value);
+
+            // Execute query and get list
+            var list = await query.ToListAsync();
+
+            // Log total before keyword filter
+            var totalBeforeKeyword = list.Count;
+
+            // Apply keyword filter on client side
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                var keywordNoDiacritics = RemoveDiacritics(keyword.Trim()).ToLower();
+
+                // Debug log
+                System.Diagnostics.Debug.WriteLine($"[SEARCH] Keyword: '{keyword}' -> Normalized: '{keywordNoDiacritics}'");
+                System.Diagnostics.Debug.WriteLine($"[SEARCH] Total classes before keyword filter: {totalBeforeKeyword}");
+
+                var filtered = new List<TeacherClass>();
+                foreach (var c in list)
+                {
+                    var titleOriginal = c.Title ?? string.Empty;
+                    var titleTrimmed = titleOriginal.Trim();
+                    var titleNorm = RemoveDiacritics(titleTrimmed).ToLower();
+
+                    System.Diagnostics.Debug.WriteLine($"[SEARCH] Class '{titleOriginal}' -> Normalized: '{titleNorm}' -> Contains '{keywordNoDiacritics}': {titleNorm.Contains(keywordNoDiacritics)}");
+
+                    if (titleNorm.Contains(keywordNoDiacritics))
+                    {
+                        filtered.Add(c);
+                    }
+                }
+                list = filtered;
+
+                System.Diagnostics.Debug.WriteLine($"[SEARCH] Total after keyword filter: {list.Count}");
+            }
+
+            var total = list.Count;
+            var items = list.OrderByDescending(c => c.CreatedAt)
+                .Skip((page - 1) * pageSize).Take(pageSize)
+                .Select(c => new TeacherClassDto
+                {
+                    ClassID = c.ClassID,
+                    Title = c.Title,
+                    Status = c.Status.ToString(),
+                    CreatedAt = c.CreatedAt,
+                    CurrentEnrollments = c.CurrentEnrollments
+                }).ToList();
+
+            return PagedResponse<IEnumerable<TeacherClassDto>>.Success(items, page, pageSize, total);
+        }
+        public async Task<BaseResponse<TeacherProfileWithWalletResponse>> GetTeacherProfileWithWalletAsync(Guid userId)
+        {
+            var profile = await GetTeacherProfileAsync(userId);
+            var teacher = await _unit.TeacherProfiles.GetByUserIdAsync(userId);
+            var wallet = teacher != null ? await _unit.Wallets.GetByTeacherIdAsync(teacher.TeacherId) : null;
+            var walletDto = wallet != null ? new TeacherWalletDto
+            {
+                WalletId = wallet.WalletId,
+                TotalBalance = wallet.TotalBalance,
+                AvailableBalance = wallet.AvailableBalance,
+                HoldBalance = wallet.HoldBalance,
+                Currency = Enum.GetName(typeof(DAL.Type.CurrencyType), wallet.Currency) ?? "VND"
+            } : null;
+            var result = new TeacherProfileWithWalletResponse
+            {
+                Profile = profile.Data,
+                Wallet = walletDto
+            };
+            return BaseResponse<TeacherProfileWithWalletResponse>.Success(result);
+        }
+        public async Task<BaseResponse<IEnumerable<TeacherProfileResponse>>> GetAllTeachersAsync()
+        {
+            var teachers = await _unit.TeacherProfiles.Query().ToListAsync();
+            var languageDict = (await _unit.Languages.GetAllAsync()).ToDictionary(l => l.LanguageID, l => l.LanguageName);
+            var result = teachers.Select(t => new TeacherProfileResponse
+            {
+                TeacherId = t.TeacherId,
+                Language = languageDict.TryGetValue(t.LanguageId, out var lang) ? lang : null,
+                FullName = t.FullName,
+                DateOfBirth = t.BirthDate.ToString("dd-MM-yyyy"),
+                Bio = t.Bio,
+                Avatar = t.Avatar,
+                Email = t.Email,
+                PhoneNumber = t.PhoneNumber,
+                ProficiencyCode = t.ProficiencyCode,
+                AverageRating = t.AverageRating,
+                ReviewCount = t.ReviewCount,
+                MeetingUrl = t.MeetingUrl
+            }).ToList();
+            return BaseResponse<IEnumerable<TeacherProfileResponse>>.Success(result);
+        }
+        public async Task<PagedResponse<IEnumerable<TeacherClassDto>>> PublicSearchClassesAsync(Guid? languageId, Guid? teacherId, Guid? programId, string? keyword, string? status, DateTime? from, DateTime? to, int page, int pageSize)
+        {
+            // Build query with public filters and include navigation properties
+            IQueryable<TeacherClass> query = _unit.TeacherClasses.Query()
+                .Include(c => c.Language)
+                .Include(c => c.Teacher)
+                .Include(c => c.Enrollments); // Include enrollments for CurrentEnrollments calculation
+
+            if (languageId.HasValue) query = query.Where(c => c.LanguageID == languageId.Value);
+
+            // Support searching by:
+            // 1. User.UserID (TeacherID in TeacherClass)
+            // 2. TeacherProfile.TeacherId (from TeacherProfile table)
+            if (teacherId.HasValue)
+            {
+                // Get all TeacherProfiles with matching TeacherId or UserId
+                var teacherProfiles = await _unit.TeacherProfiles.Query()
+                    .Where(tp => tp.TeacherId == teacherId.Value || tp.UserId == teacherId.Value)
+                    .Select(tp => tp.UserId)
+                    .ToListAsync();
+
+                if (teacherProfiles.Any())
+                {
+                    // Filter by User.UserID that matches TeacherProfile.UserId
+                    query = query.Where(c => teacherProfiles.Contains(c.TeacherID));
+                }
+                else
+                {
+                    // Fallback: direct match by TeacherID (User.UserID)
+                    query = query.Where(c => c.TeacherID == teacherId.Value);
+                }
+            }
+
+            if (programId.HasValue) query = query.Where(c => c.ProgramId == programId.Value);
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                if (Enum.TryParse<ClassStatus>(status, true, out var statusEnum))
+                    query = query.Where(c => c.Status == statusEnum);
+            }
+            if (from.HasValue) query = query.Where(c => c.StartDateTime >= from.Value);
+            if (to.HasValue) query = query.Where(c => c.EndDateTime <= to.Value);
+
+            // Execute query and get list
+            var list = await query.ToListAsync();
+
+            // Apply keyword filter on client side (support Vietnamese with/without diacritics)
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                var keywordNoDiacritics = RemoveDiacritics(keyword.Trim()).ToLower();
+                list = list.Where(c =>
+                    RemoveDiacritics((c.Title ?? string.Empty).Trim()).ToLower().Contains(keywordNoDiacritics)
+                ).ToList();
+            }
+
+            var total = list.Count;
+
+            // Get enrollment counts for all classes in the page
+            var classIds = list.Skip((page - 1) * pageSize).Take(pageSize).Select(c => c.ClassID).ToList();
+            var enrollmentCounts = await _unit.ClassEnrollments.Query()
+                .Where(e => classIds.Contains(e.ClassID) && e.Status == DAL.Models.EnrollmentStatus.Paid)
+                .GroupBy(e => e.ClassID)
+                .Select(g => new { ClassID = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.ClassID, x => x.Count);
+
+            var items = list.OrderByDescending(c => c.CreatedAt)
+                .Skip((page - 1) * pageSize).Take(pageSize)
+                .Select(c => new TeacherClassDto
+                {
+                    ClassID = c.ClassID,
+                    Title = c.Title ?? string.Empty,
+                    Description = c.Description ?? string.Empty,
+                    LanguageID = c.LanguageID,
+                    LanguageName = c.Language?.LanguageName,
+                    StartDateTime = c.StartDateTime,
+                    EndDateTime = c.EndDateTime,
+                    Capacity = c.Capacity,
+                    PricePerStudent = c.PricePerStudent,
+                    GoogleMeetLink = c.GoogleMeetLink,
+                    Status = c.Status.ToString(),
+                    CurrentEnrollments = enrollmentCounts.TryGetValue(c.ClassID, out var count) ? count : 0,
+                    CreatedAt = c.CreatedAt,
+                    UpdatedAt = c.UpdatedAt
+                }).ToList();
+
+            return PagedResponse<IEnumerable<TeacherClassDto>>.Success(items, page, pageSize, total);
+        }
     }
 }
-
-
-
-
-
-
-
-
-
-
