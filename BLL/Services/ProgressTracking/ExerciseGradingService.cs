@@ -1,5 +1,7 @@
 ﻿using BLL.IServices.Assessment;
 using BLL.IServices.ProgressTracking;
+using BLL.IServices.Wallets;
+using BLL.Services.Wallets;
 using Common.DTO.ApiResponse;
 using Common.DTO.ExerciseGrading.Request;
 using Common.DTO.ExerciseGrading.Response;
@@ -7,6 +9,7 @@ using DAL.Helpers;
 using DAL.Models;
 using DAL.Type;
 using DAL.UnitOfWork;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 
 namespace BLL.Services.ProgressTracking
@@ -15,10 +18,12 @@ namespace BLL.Services.ProgressTracking
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IAssessmentService _assessmentService;
-        public ExerciseGradingService(IUnitOfWork unitOfWork, IAssessmentService assessmentService)
+        private readonly IWalletService _walletService;
+        public ExerciseGradingService(IUnitOfWork unitOfWork, IAssessmentService assessmentService, WalletService walletService)
         {
             _unitOfWork = unitOfWork;
             _assessmentService = assessmentService;
+            _walletService = walletService;
         }
         public Task<BaseResponse<bool>> CheckAndReassignExpiredAssignmentsAsync()
         {
@@ -317,7 +322,12 @@ namespace BLL.Services.ProgressTracking
                 if (allocation != null)
                 {
                     allocation.Status = EarningStatus.Approved;
+                    allocation.ApprovedAt = TimeHelper.GetVietnamTime();
                     allocation.UpdatedAt = TimeHelper.GetVietnamTime();
+
+                    await _unitOfWork.TeacherEarningAllocations.UpdateAsync(allocation);
+
+                    BackgroundJob.Enqueue(() => _walletService.TransferExerciseGradingFeeToTeacherAsync(allocation.AllocationId));
                 }
 
                 await _unitOfWork.SaveChangesAsync();

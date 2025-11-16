@@ -9,11 +9,13 @@ using Common.DTO.Purchases.Request;
 using Common.DTO.Purchases.Response;
 using Common.DTO.Refund.Request;
 using DAL.Helpers;
+using DAL.Migrations;
 using DAL.Models;
 using DAL.Type;
 using DAL.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
 
 namespace BLL.Services.Purchases
 {
@@ -76,10 +78,8 @@ namespace BLL.Services.Purchases
         }
         public async Task<BaseResponse<object>> CreateRefundRequestAsync(Guid userId, CreateRefundRequest request)
         {
-            var strategy = _unitOfWork.CreateExecutionStrategy();
-            return await strategy.ExecuteAsync(async () =>
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                await _unitOfWork.BeginTransactionAsync();
                 try
                 {
                     var user = await _unitOfWork.Users.GetByIdAsync(userId);
@@ -88,10 +88,12 @@ namespace BLL.Services.Purchases
                         return BaseResponse<object>.Fail(new object(), "Access denied", 403);
                     }
 
-                    var purchase = await _unitOfWork.Purchases.GetByIdAsync(request.PurchaseId);
+                    var purchase = await _unitOfWork.Purchases.Query()
+                        .FirstOrDefaultAsync(p => p.PurchasesId == request.PurchaseId && p.UserId == userId);
+
                     if (purchase == null)
                     {
-                        return BaseResponse<object>.Fail("Purchase order not found");
+                        return BaseResponse<object>.Fail("Purchase order not found or access denied");
                     }
 
                     if (purchase.Status != PurchaseStatus.Completed)
@@ -99,9 +101,28 @@ namespace BLL.Services.Purchases
                         return BaseResponse<object>.Fail("Refunds can only be requested for paid orders");
                     }
 
-                    if (TimeHelper.GetVietnamTime() > purchase.EligibleForRefundUntil)
+                    var now = TimeHelper.GetVietnamTime();
+                    if (!purchase.EligibleForRefundUntil.HasValue || now > purchase.EligibleForRefundUntil.Value)
                     {
                         return BaseResponse<object>.Fail("The refund request deadline has passed");
+                    }
+
+                    var existingRefundRequest = await _unitOfWork.RefundRequests.Query()
+                        .FirstOrDefaultAsync(r => r.PurchaseId == request.PurchaseId &&
+                                                 r.Status == RefundRequestStatus.Pending);
+
+                    if (existingRefundRequest != null)
+                    {
+                        return BaseResponse<object>.Fail("There is already a pending refund request for this purchase");
+                    }
+
+                    var approvedRefundRequest = await _unitOfWork.RefundRequests.Query()
+                        .FirstOrDefaultAsync(r => r.PurchaseId == request.PurchaseId &&
+                                                 r.Status == RefundRequestStatus.Approved);
+
+                    if (approvedRefundRequest != null)
+                    {
+                        return BaseResponse<object>.Fail("This purchase has already been refunded");
                     }
 
                     var refundAmount = purchase.FinalAmount;
@@ -110,25 +131,27 @@ namespace BLL.Services.Purchases
                     {
                         RefundRequestID = Guid.NewGuid(),
                         PurchaseId = request.PurchaseId,
+                        StudentID = userId,
                         Reason = request.Reason,
                         BankAccountNumber = request.BankAccountNumber,
                         BankName = request.BankName,
                         BankAccountHolderName = request.BankAccountHolderName,
-                        RequestedAt = TimeHelper.GetVietnamTime(),
+                        RequestedAt = now,
                         RefundAmount = refundAmount,
                         Status = RefundRequestStatus.Pending,
-                        CreatedAt = TimeHelper.GetVietnamTime()
+                        CreatedAt = now
                     };
 
                     await _unitOfWork.RefundRequests.CreateAsync(refundRequest);
                     await _unitOfWork.SaveChangesAsync();
-                    await _unitOfWork.CommitTransactionAsync();
+
+                    _logger.LogInformation("Refund request created for purchase {PurchaseId} by user {UserId}",
+                        request.PurchaseId, userId);
 
                     return BaseResponse<object>.Success("Refund request submitted successfully");
                 }
                 catch (Exception ex)
                 {
-                    await _unitOfWork.RollbackTransactionAsync();
                     _logger.LogError(ex, "Error creating refund request: {Message}", ex.Message);
                     return BaseResponse<object>.Error("System error while creating refund request");
                 }
@@ -416,7 +439,334 @@ namespace BLL.Services.Purchases
                 }
             });
         }
+        public async Task<PagedResponse<List<CoursePurchaseResponse>>> GetCoursePurchasesByLanguageAsync(Guid userId, PurchasePagingRequest request)
+        {
+            try
+            {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+
+                if (user == null || !user.IsEmailConfirmed || !user.Status)
+                {
+                    return PagedResponse<List<CoursePurchaseResponse>>.Fail(new object(), "Access denied", 403);
+                }
+
+                if (user.ActiveLanguageId == null)
+                    return PagedResponse<List<CoursePurchaseResponse>>.Fail(new object(), "User has no active language set", 400);
+
+                PurchaseStatus? purchaseStatus = null;
+
+                if (!string.IsNullOrWhiteSpace(request.Status))
+                {
+                    if (!Enum.TryParse<PurchaseStatus>(request.Status.Trim(), true, out var status))
+                    {
+                        return PagedResponse<List<CoursePurchaseResponse>>
+                            .Fail(new object(), "Invalid status", 400);
+                    }
+
+                    purchaseStatus = status;
+                }
+
+                return await GetCoursePurchasesByLanguageInternalAsync(userId, user.ActiveLanguageId.Value, request.PageNumber, request.PageSize, purchaseStatus, request.ActiveOnly);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting course purchases for user {UserId}", userId);
+                return PagedResponse<List<CoursePurchaseResponse>>.Error("System error while retrieving course purchases");
+            }
+        }
+        public async Task<BaseResponse<CoursePurchaseResponse>> GetCoursePurchaseDetailAsync(Guid userId, Guid purchaseId)
+        {
+            try
+            {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null || !user.IsEmailConfirmed || !user.Status)
+                {
+                    return BaseResponse<CoursePurchaseResponse>.Fail(new object(), "Access denied", 403);
+                }
+
+                var purchaseEntity = await _unitOfWork.Purchases.Query()
+                    .Include(p => p.Course)
+                        .ThenInclude(c => c.Language)
+                    .Include(p => p.Course)
+                        .ThenInclude(c => c.Level)
+                    .Include(p => p.Course)
+                        .ThenInclude(c => c.Teacher)
+                        .ThenInclude(t => t.User)
+                    .Include(p => p.Enrollment)
+                    .Where(p => p.PurchasesId == purchaseId &&
+                                p.UserId == userId &&
+                                p.CourseId != null)
+                    .FirstOrDefaultAsync();
+
+                if (purchaseEntity == null)
+                    return BaseResponse<CoursePurchaseResponse>.Fail(new object(), "Purchase not found", 404);
+
+                var now = TimeHelper.GetVietnamTime();
+
+                var purchase = new CoursePurchaseResponse
+                {
+                    PurchaseId = purchaseEntity.PurchasesId,
+                    CourseId = purchaseEntity.CourseId.Value,
+                    CourseTitle = purchaseEntity.Course.Title,
+                    CourseDescription = purchaseEntity.Course.Description,
+                    CourseThumbnail = purchaseEntity.Course.ImageUrl,
+                    LanguageName = purchaseEntity.Course.Language.LanguageName,
+                    LevelName = purchaseEntity.Course.Level.Name,
+                    Price = purchaseEntity.TotalAmount,
+                    DiscountPrice = purchaseEntity.Course.DiscountPrice,
+                    FinalAmount = purchaseEntity.FinalAmount,
+                    DiscountAmount = purchaseEntity.DiscountAmount,
+                    Status = purchaseEntity.Status.ToString(),
+                    PaymentMethod = purchaseEntity.PaymentMethod.ToString(),
+                    CreatedAt = purchaseEntity.CreatedAt.ToString("dd-MM-yyyy HH:mm"),
+                    PaidAt = purchaseEntity.PaidAt?.ToString("dd-MM-yyyy HH:mm"),
+                    StartsAt = purchaseEntity.StartsAt?.ToString("dd-MM-yyyy HH:mm"),
+                    ExpiresAt = purchaseEntity.ExpiresAt?.ToString("dd-MM-yyyy HH:mm"),
+                    EligibleForRefundUntil = purchaseEntity.EligibleForRefundUntil?.ToString("dd-MM-yyyy"),
+                    DaysRemaining = purchaseEntity.ExpiresAt.HasValue ? (int)(purchaseEntity.ExpiresAt.Value - now).TotalDays : -1,
+                    IsRefundEligible = purchaseEntity.EligibleForRefundUntil.HasValue && now <= purchaseEntity.EligibleForRefundUntil.Value,
+                    IsActive = purchaseEntity.Status == PurchaseStatus.Completed &&
+                               (!purchaseEntity.ExpiresAt.HasValue || purchaseEntity.ExpiresAt.Value > now),
+                    EnrollmentId = purchaseEntity.EnrollmentId,
+                    EnrollmentStatus = purchaseEntity.Enrollment != null ? purchaseEntity.Enrollment.Status.ToString() : "No Enrollment",
+                    CourseDetails = new CourseDetailResponse
+                    {
+                        CourseId = purchaseEntity.Course.CourseID,
+                        Title = purchaseEntity.Course.Title,
+                        Description = purchaseEntity.Course.Description,
+                        ImageUrl = purchaseEntity.Course.ImageUrl,
+                        LanguageName = purchaseEntity.Course.Language.LanguageName,
+                        LevelName = purchaseEntity.Course.Level.Name,
+                        CourseType = purchaseEntity.Course.CourseType.ToString(),
+                        GradingType = purchaseEntity.Course.GradingType.ToString(),
+                        NumLessons = purchaseEntity.Course.NumLessons,
+                        NumUnits = purchaseEntity.Course.NumUnits,
+                        DurationDays = purchaseEntity.Course.DurationDays,
+                        EstimatedHours = purchaseEntity.Course.EstimatedHours,
+                        AverageRating = purchaseEntity.Course.AverageRating,
+                        ReviewCount = purchaseEntity.Course.ReviewCount,
+                        LearnerCount = purchaseEntity.Course.LearnerCount,
+                        TeacherName = purchaseEntity.Course.Teacher.User.FullName ?? purchaseEntity.Course.Teacher.User.UserName,
+                        TeacherAvatar = purchaseEntity.Course.Teacher.Avatar ?? string.Empty
+                    }
+                };
+
+                return BaseResponse<CoursePurchaseResponse>.Success(purchase, "Purchase detail retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting course purchase detail for purchase {PurchaseId}", purchaseId);
+                return BaseResponse<CoursePurchaseResponse>.Error("System error while retrieving purchase detail");
+            }
+        }
+        public async Task<PagedResponse<List<SubscriptionPurchaseResponse>>> GetSubscriptionPurchasesAsync(Guid userId, PurchasePagingRequest request)
+        {
+            try
+            {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+
+                if (user == null || !user.IsEmailConfirmed || !user.Status)
+                    return PagedResponse<List<SubscriptionPurchaseResponse>>.Fail(new object(), "Access denied", 403);
+
+                if (user.ActiveLanguageId == null)
+                    return PagedResponse<List<SubscriptionPurchaseResponse>>.Fail(new object(), "User has no active language set", 400);
+
+                PurchaseStatus? status = null;
+                if (!string.IsNullOrWhiteSpace(request.Status))
+                {
+                    if (!Enum.TryParse<PurchaseStatus>(request.Status.Trim(), true, out var parsedStatus))
+                    {
+                        return PagedResponse<List<SubscriptionPurchaseResponse>>.Fail(new object(), "Invalid status", 400);
+                    }
+                    status = parsedStatus;
+                }
+
+                return await GetSubscriptionPurchasesInternalAsync(userId, request.PageNumber, request.PageSize, status, request.ActiveOnly);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting subscription purchases for user {UserId}", userId);
+                return PagedResponse<List<SubscriptionPurchaseResponse>>.Error("System error while retrieving subscription purchases");
+            }
+        }
+        public async Task<BaseResponse<SubscriptionPurchaseResponse>> GetSubscriptionPurchaseDetailAsync(Guid userId, Guid purchaseId)
+        {
+            try
+            {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null || !user.IsEmailConfirmed || !user.Status)
+                    return BaseResponse<SubscriptionPurchaseResponse>.Fail(new object(), "Access denied", 403);
+
+                var now = TimeHelper.GetVietnamTime();
+
+                var purchaseEntity = await _unitOfWork.Purchases.Query()
+                    .Include(p => p.Subscription)
+                    .Where(p => p.PurchasesId == purchaseId &&
+                                p.UserId == userId &&
+                                p.SubscriptionId != null)
+                    .FirstOrDefaultAsync();
+
+                if (purchaseEntity == null)
+                    return BaseResponse<SubscriptionPurchaseResponse>.Fail(new object(), "Purchase not found", 404);
+
+                var purchase = new SubscriptionPurchaseResponse
+                {
+                    PurchaseId = purchaseEntity.PurchasesId,
+                    SubscriptionId = purchaseEntity.SubscriptionId.Value,
+                    SubscriptionType = purchaseEntity.Subscription.SubscriptionType,
+                    ConversationQuota = purchaseEntity.Subscription.ConversationQuota,
+                    Price = purchaseEntity.TotalAmount,
+                    FinalAmount = purchaseEntity.FinalAmount,
+                    DiscountAmount = purchaseEntity.DiscountAmount,
+                    Status = purchaseEntity.Status.ToString(),
+                    PaymentMethod = purchaseEntity.PaymentMethod.ToString(),
+                    CreatedAt = purchaseEntity.CreatedAt.ToString("dd-MM-yyyy HH:mm"),
+                    PaidAt = purchaseEntity.PaidAt?.ToString("dd-MM-yyyy HH:mm"),
+                    StartsAt = purchaseEntity.StartsAt?.ToString("dd-MM-yyyy HH:mm"),
+                    ExpiresAt = purchaseEntity.ExpiresAt?.ToString("dd-MM-yyyy HH:mm"),
+                    EligibleForRefundUntil = purchaseEntity.EligibleForRefundUntil?.ToString("dd-MM-yyyy"),
+                    DaysRemaining = purchaseEntity.ExpiresAt.HasValue ? (int)(purchaseEntity.ExpiresAt.Value - now).TotalDays : -1,
+                    IsRefundEligible = purchaseEntity.EligibleForRefundUntil.HasValue && now <= purchaseEntity.EligibleForRefundUntil.Value,
+                    IsActive = purchaseEntity.Status == PurchaseStatus.Completed && (!purchaseEntity.ExpiresAt.HasValue || purchaseEntity.ExpiresAt.Value > now),
+                    SubscriptionDetails = new SubscriptionDetailResponse
+                    {
+                        SubscriptionId = purchaseEntity.Subscription.SubscriptionID,
+                        SubscriptionType = purchaseEntity.Subscription.SubscriptionType,
+                        ConversationQuota = purchaseEntity.Subscription.ConversationQuota,
+                        StartDate = purchaseEntity.Subscription.StartDate.ToString("dd-MM-yyyy HH:mm"),
+                        EndDate = purchaseEntity.Subscription.EndDate?.ToString("dd-MM-yyyy HH:mm"),
+                        IsActive = purchaseEntity.Subscription.IsActive,
+                        ConversationsUsed = 0,
+                        ConversationsRemaining = purchaseEntity.Subscription.ConversationQuota
+                    }
+                };
+
+                return BaseResponse<SubscriptionPurchaseResponse>.Success(purchase, "Purchase detail retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting subscription purchase detail for purchase {PurchaseId}", purchaseId);
+                return BaseResponse<SubscriptionPurchaseResponse>.Error("System error while retrieving purchase detail");
+            }
+        }
         #region Private Methods
+        private async Task<PagedResponse<List<SubscriptionPurchaseResponse>>> GetSubscriptionPurchasesInternalAsync(Guid userId, int page, int pageSize, PurchaseStatus? status = null, bool? activeOnly = null)
+        {
+            var now = TimeHelper.GetVietnamTime();
+
+            var query = _unitOfWork.Purchases.Query()
+                .Include(p => p.Subscription)
+                .Where(p => p.UserId == userId && p.SubscriptionId != null);
+
+            if (status.HasValue)
+                query = query.Where(p => p.Status == status.Value);
+
+            if (activeOnly.HasValue && activeOnly.Value)
+                query = query.Where(p => p.Status == PurchaseStatus.Completed && (!p.ExpiresAt.HasValue || p.ExpiresAt.Value > now));
+
+            var totalCount = await query.CountAsync();
+
+            var purchasesList = await query
+                .OrderByDescending(p => p.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var purchases = purchasesList.Select(p => new SubscriptionPurchaseResponse
+            {
+                PurchaseId = p.PurchasesId,
+                SubscriptionId = p.SubscriptionId.Value,
+                SubscriptionType = p.Subscription.SubscriptionType,
+                ConversationQuota = p.Subscription.ConversationQuota,
+                Price = p.TotalAmount,
+                FinalAmount = p.FinalAmount,
+                DiscountAmount = p.DiscountAmount,
+                Status = p.Status.ToString(),
+                PaymentMethod = p.PaymentMethod.ToString(),
+                CreatedAt = p.CreatedAt.ToString("dd-MM-yyyy HH:mm"),
+                PaidAt = p.PaidAt?.ToString("dd-MM-yyyy HH:mm"),
+                StartsAt = p.StartsAt?.ToString("dd-MM-yyyy HH:mm"),
+                ExpiresAt = p.ExpiresAt?.ToString("dd-MM-yyyy HH:mm"),
+                EligibleForRefundUntil = p.EligibleForRefundUntil?.ToString("dd-MM-yyyy"),
+                DaysRemaining = p.ExpiresAt.HasValue ? (int)(p.ExpiresAt.Value - now).TotalDays : -1,
+                IsRefundEligible = p.EligibleForRefundUntil.HasValue && now <= p.EligibleForRefundUntil.Value,
+                IsActive = p.Status == PurchaseStatus.Completed && (!p.ExpiresAt.HasValue || p.ExpiresAt.Value > now)
+            }).ToList();
+
+            return PagedResponse<List<SubscriptionPurchaseResponse>>.Success(purchases, page, pageSize, totalCount, "Subscription purchases retrieved successfully");
+        }
+        private async Task<PagedResponse<List<CoursePurchaseResponse>>> GetCoursePurchasesByLanguageInternalAsync(
+           Guid userId,
+           Guid languageId,
+           int page,
+           int pageSize,
+           PurchaseStatus? status = null,
+           bool? activeOnly = null)
+        {
+            var now = TimeHelper.GetVietnamTime();
+
+            // Base query
+            var query = _unitOfWork.Purchases.Query()
+                .Include(p => p.Course)
+                    .ThenInclude(c => c.Language)
+                .Include(p => p.Course)
+                    .ThenInclude(c => c.Level)
+                .Include(p => p.Enrollment)
+                .Where(p => p.UserId == userId &&
+                           p.CourseId != null &&
+                           p.Course.LanguageId == languageId);
+
+            if (status.HasValue)
+            {
+                query = query.Where(p => p.Status == status.Value);
+            }
+
+            if (activeOnly.HasValue && activeOnly.Value)
+            {
+                query = query.Where(p => p.Status == PurchaseStatus.Completed &&
+                                         (!p.ExpiresAt.HasValue || p.ExpiresAt.Value > now));
+            }
+
+            var totalCount = await query.CountAsync();
+
+            // Materialize first to avoid EF Core translation issues
+            var purchasesList = await query
+                .OrderByDescending(p => p.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            // Project in memory
+            var purchases = purchasesList.Select(p => new CoursePurchaseResponse
+            {
+                PurchaseId = p.PurchasesId,
+                CourseId = p.CourseId.Value,
+                CourseTitle = p.Course.Title,
+                CourseDescription = p.Course.Description,
+                CourseThumbnail = p.Course.ImageUrl,
+                LanguageName = p.Course.Language.LanguageName,
+                LevelName = p.Course.Level.Name,
+                Price = p.TotalAmount,
+                DiscountPrice = p.Course.DiscountPrice,
+                FinalAmount = p.FinalAmount,
+                DiscountAmount = p.DiscountAmount,
+                Status = p.Status.ToString(),
+                PaymentMethod = p.PaymentMethod.ToString(),
+                CreatedAt = p.CreatedAt.ToString("dd-MM-yyyy HH:mm"),
+                PaidAt = p.PaidAt?.ToString("dd-MM-yyyy HH:mm"),
+                StartsAt = p.StartsAt?.ToString("dd-MM-yyyy HH:mm"),
+                ExpiresAt = p.ExpiresAt?.ToString("dd-MM-yyyy HH:mm"),
+                EligibleForRefundUntil = p.EligibleForRefundUntil?.ToString("dd-MM-yyyy"),
+                DaysRemaining = p.ExpiresAt.HasValue ? (int)(p.ExpiresAt.Value - now).TotalDays : -1,
+                IsRefundEligible = p.EligibleForRefundUntil.HasValue && now <= p.EligibleForRefundUntil.Value,
+                IsActive = p.Status == PurchaseStatus.Completed && (!p.ExpiresAt.HasValue || p.ExpiresAt.Value > now),
+                EnrollmentId = p.EnrollmentId,
+                EnrollmentStatus = p.Enrollment != null ? p.Enrollment.Status.ToString() : "No Enrollment"
+            }).ToList();
+
+            return PagedResponse<List<CoursePurchaseResponse>>.Success(
+                purchases, page, pageSize, totalCount, "Course purchases retrieved successfully");
+        }
         private async Task<CourseAccessResponse> CheckCourseAccessInternalAsync(Guid userId, Guid courseId)
         {
             try

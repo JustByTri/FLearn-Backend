@@ -384,15 +384,30 @@ namespace BLL.Services.ProgressTracking
                     return BaseResponse<ExerciseSubmissionResponse>.Error($"Exception: {ex.Message}", 500, new object());
                 }
 
-                bool isAITeacherGrading = course.GradingType == GradingType.AIAndTeacher;
-                bool isAIOnlyGrading = course.GradingType == GradingType.AIOnly;
+                var existingGradedSubmissions = await _unitOfWork.ExerciseSubmissions.Query()
+                    .Include(es => es.ExerciseGradingAssignments)
+                        .ThenInclude(ega => ega.EarningAllocation)
+                    .Where(es => es.LearnerId == learner.LearnerLanguageId &&
+                                es.ExerciseId == request.ExerciseId &&
+                                es.ExerciseGradingAssignments.Any(ega =>
+                                    ega.EarningAllocation != null &&
+                                    ega.EarningAllocation.Status == EarningStatus.Approved))
+                    .CountAsync();
+
+                bool hasBeenTeacherGraded = existingGradedSubmissions > 0;
+
+                // Determine grading type and allocate funds
+                bool isTeacherRequired = (exercise.Type == SpeakingExerciseType.StoryTelling ||
+                         exercise.Type == SpeakingExerciseType.Debate) &&
+                         course.GradingType == GradingType.AIAndTeacher &&
+                         !hasBeenTeacherGraded;
 
                 double aiPercentage = 100;
                 double teacherPercentage = 0;
                 decimal exerciseGradingAmount = 0;
-                bool canAssignToTeacher = false;
+                bool canAssignToTeacher = isTeacherRequired;
 
-                if (isAITeacherGrading)
+                if (isTeacherRequired)
                 {
                     var purchase = await _unitOfWork.Purchases.Query()
                         .FirstOrDefaultAsync(p => p.UserId == userId &&
@@ -401,34 +416,29 @@ namespace BLL.Services.ProgressTracking
 
                     if (purchase != null)
                     {
-                        var totalExercisesInCourse = await _unitOfWork.Exercises.Query()
-                            .CountAsync(e => e.Lesson != null && e.Lesson.CourseUnit != null && e.Lesson.CourseUnit.CourseID == course.CourseID);
+                        var teacherGradingExercises = await _unitOfWork.Exercises.Query()
+                            .CountAsync(e => e.Lesson != null &&
+                                           e.Lesson.CourseUnit != null &&
+                                           e.Lesson.CourseUnit.CourseID == course.CourseID &&
+                                           (e.Type == SpeakingExerciseType.StoryTelling ||
+                                            e.Type == SpeakingExerciseType.Debate));
 
-                        if (totalExercisesInCourse > 0)
+                        if (teacherGradingExercises > 0)
                         {
                             decimal amountForDistribution = purchase.FinalAmount * 0.9m;
-                            decimal courseFeeAmount = amountForDistribution * 0.55m;
                             decimal gradingFeeAmount = amountForDistribution * 0.35m;
-                            exerciseGradingAmount = gradingFeeAmount / totalExercisesInCourse;
-                            var existingTeacherSubmissions = await _unitOfWork.ExerciseSubmissions.Query()
-                                .CountAsync(es => es.LearnerId == learner.LearnerLanguageId &&
-                                                es.ExerciseId == request.ExerciseId &&
-                                                es.TeacherScore > 0);
-                            canAssignToTeacher = existingTeacherSubmissions == 0;
-                        }
-                    }
+                            exerciseGradingAmount = gradingFeeAmount / teacherGradingExercises;
 
-                    if (canAssignToTeacher)
+                            aiPercentage = DefaultAIPercentage;
+                            teacherPercentage = DefaultTeacherPercentage;
+                        }
+                    } else
                     {
-                        aiPercentage = DefaultAIPercentage;
-                        teacherPercentage = DefaultTeacherPercentage;
+                        canAssignToTeacher = false;
+                        aiPercentage = 100;
+                        teacherPercentage = 0;
                     }
                 }
-
-                bool isTeacherRequired = isAITeacherGrading &&
-                                       canAssignToTeacher &&
-                                       (exercise.Type == SpeakingExerciseType.StoryTelling ||
-                                        exercise.Type == SpeakingExerciseType.Debate);
 
                 if (exercise.Type == SpeakingExerciseType.RepeatAfterMe ||
                     exercise.Type == SpeakingExerciseType.PictureDescription)
@@ -449,14 +459,14 @@ namespace BLL.Services.ProgressTracking
                     AIPercentage = aiPercentage,
                     TeacherPercentage = teacherPercentage,
                     AIFeedback = "Pending AI Evaluation",
-                    TeacherFeedback = (exercise.Type is SpeakingExerciseType.StoryTelling or SpeakingExerciseType.Debate) ? "Pending Teacher Evaluation" : string.Empty,
+                    TeacherFeedback = isTeacherRequired ? "Pending Teacher Evaluation" : string.Empty,
                     Status = ExerciseSubmissionStatus.PendingAIReview,
                     SubmittedAt = TimeHelper.GetVietnamTime(),
                 };
 
                 await _unitOfWork.ExerciseSubmissions.CreateAsync(submission);
 
-                if (isTeacherRequired && course?.TeacherId != null)
+                if (canAssignToTeacher && course?.TeacherId != null && exerciseGradingAmount > 0)
                 {
                     var gradingAssignment = new ExerciseGradingAssignment
                     {
@@ -471,20 +481,17 @@ namespace BLL.Services.ProgressTracking
 
                     await _unitOfWork.ExerciseGradingAssignments.CreateAsync(gradingAssignment);
 
-                    if (exerciseGradingAmount > 0)
+                    var earningAllocation = new TeacherEarningAllocation
                     {
-                        var earningAllocation = new TeacherEarningAllocation
-                        {
-                            AllocationId = Guid.NewGuid(),
-                            TeacherId = course.TeacherId,
-                            GradingAssignmentId = gradingAssignment.GradingAssignmentId,
-                            ExerciseGradingAmount = exerciseGradingAmount,
-                            EarningType = EarningType.ExerciseGrading,
-                            Status = EarningStatus.Pending,
-                            CreatedAt = TimeHelper.GetVietnamTime()
-                        };
-                        await _unitOfWork.TeacherEarningAllocations.CreateAsync(earningAllocation);
-                    }
+                        AllocationId = Guid.NewGuid(),
+                        TeacherId = course.TeacherId,
+                        GradingAssignmentId = gradingAssignment.GradingAssignmentId,
+                        ExerciseGradingAmount = exerciseGradingAmount,
+                        EarningType = EarningType.ExerciseGrading,
+                        Status = EarningStatus.Pending,
+                        CreatedAt = TimeHelper.GetVietnamTime()
+                    };
+                    await _unitOfWork.TeacherEarningAllocations.CreateAsync(earningAllocation);
                 }
 
                 // XP: submitting an exercise earns small XP

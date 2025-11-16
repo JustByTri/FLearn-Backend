@@ -6,5 +6,7 @@
         GradingFee,          // Phí chấm bài
         TeacherPayout,       // Thanh toán cho giáo viên
         WithdrawalRequest,   // Yêu cầu rút tiền của teacher
+        Refund,
+        CoursePurchase
     }
 }

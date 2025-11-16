@@ -4,5 +4,7 @@
     {
         Task TransferToAdminWalletAsync(Guid purchaseId);
         Task TransferToTeacherWalletAsync(Guid purchaseId);
+        Task TransferExerciseGradingFeeToTeacherAsync(Guid allocationId);
+        Task ProcessCourseCreationFeeTransferAsync(Guid purchaseId);
     }
 }

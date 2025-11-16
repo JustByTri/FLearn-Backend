@@ -80,11 +80,7 @@ namespace BLL.Services.Assessment
             var intonationScore = (azureResult.FluencyScore * 0.4f + azureResult.PronunciationScore * 0.6f);
             intonationScore = Math.Clamp(intonationScore, 0, 100);
 
-            List<HighlightedPhoneme> highlightedPhonemes = azureResult.PhonemeAssessments != null
-                ? MapPhonemes(azureResult.PhonemeAssessments)
-                : new List<HighlightedPhoneme>();
-
-            string phonemeJson = JsonSerializer.Serialize(highlightedPhonemes);
+            var phonemeHighlights = MapPhonemes(azureResult.PhonemeAssessments);
 
             return new AssessmentResult
             {
@@ -103,7 +99,7 @@ namespace BLL.Services.Assessment
                 JlptLevel = languageCode == "ja" ? GetJlptLevel((int)overallScore) : null,
                 HskLevel = languageCode == "zh" ? GetHskLevel((int)overallScore) : null,
                 Overall = (int)overallScore,
-                Feedback = phonemeJson,
+                Feedback = JsonSerializer.Serialize(phonemeHighlights),
                 Transcript = referenceText,
                 IsSuccess = true,
                 ErrorMessage = null
@@ -212,21 +208,24 @@ namespace BLL.Services.Assessment
         {
             var list = new List<HighlightedPhoneme>();
 
+            if (phonemes == null)
+                return list;
+
             foreach (var p in phonemes)
             {
-                string color;
+                var accuracy = (int)p.AccuracyScore;
 
-                if (p.AccuracyScore >= 90)
-                    color = "green";
-                else if (p.AccuracyScore >= 70)
-                    color = "yellow";
-                else
-                    color = "red";
+                var color = accuracy switch
+                {
+                    >= 90 => "green",
+                    >= 70 => "yellow",
+                    _ => "red"
+                };
 
                 list.Add(new HighlightedPhoneme
                 {
-                    Phoneme = p.Phoneme,
-                    Accuracy = (int)p.AccuracyScore,
+                    Phoneme = p.Phoneme ?? string.Empty,
+                    Accuracy = accuracy,
                     Color = color
                 });
             }
