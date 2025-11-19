@@ -170,5 +170,29 @@ namespace Presentation.Controllers.Teacher
             var response = await _teacherService.GetAllTeachersAsync();
             return StatusCode(response.Code, response);
         }
+        /// <summary>
+        /// Xem danh sách đơn payout giáo viên đã gửi
+        /// </summary>
+        [Authorize(Roles = "Teacher")]
+        [HttpGet("payout-requests/mine")]
+        public async Task<IActionResult> GetMyPayoutRequests([FromQuery] string? status = null, [FromQuery] DateTime? from = null, [FromQuery] DateTime? to = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            if (!this.TryGetUserId(out Guid teacherId, out var errorResult))
+                return errorResult!;
+            var response = await _teacherService.GetMyPayoutRequestsAsync(teacherId, status, from, to, page, pageSize);
+            return StatusCode(response.Code, response);
+        }
+        /// <summary>
+        /// Dashboard dành cho giáo viên
+        /// </summary>
+        [Authorize(Roles = "Teacher")]
+        [HttpGet("teacher/dashboard")]
+        public async Task<IActionResult> GetTeacherDashboard([FromQuery] DateTime? from = null, [FromQuery] DateTime? to = null, [FromQuery] string? status = null, [FromQuery] Guid? programId = null)
+        {
+            if (!this.TryGetUserId(out Guid teacherId, out var errorResult))
+                return errorResult!;
+            var response = await _teacherService.GetTeacherDashboardAsync(teacherId, from, to, status, programId);
+            return StatusCode(response.Code, response);
+        }
     }
 }

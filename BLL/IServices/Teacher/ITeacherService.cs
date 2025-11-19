@@ -20,6 +20,8 @@ namespace BLL.IServices.Teacher
         Task<BaseResponse<TeacherProfileWithWalletResponse>> GetTeacherProfileWithWalletAsync(Guid userId);
         Task<BaseResponse<IEnumerable<TeacherProfileResponse>>> GetAllTeachersAsync();
         Task<PagedResponse<IEnumerable<TeacherClassDto>>> PublicSearchClassesAsync(Guid? languageId, Guid? teacherId, Guid? programId, string? keyword, string? status, DateTime? from, DateTime? to, int page, int pageSize);
+        Task<PagedResponse<IEnumerable<PayoutRequestDto>>> GetMyPayoutRequestsAsync(Guid teacherId, string? status, DateTime? from, DateTime? to, int page, int pageSize);
+        Task<BaseResponse<TeacherDashboardDto>> GetTeacherDashboardAsync(Guid teacherId, DateTime? from, DateTime? to, string? status, Guid? programId);
     }
 }
 

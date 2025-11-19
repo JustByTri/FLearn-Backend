@@ -681,5 +681,114 @@ namespace BLL.Services.Teacher
 
             return PagedResponse<IEnumerable<TeacherClassDto>>.Success(items, page, pageSize, total);
         }
+        public async Task<PagedResponse<IEnumerable<PayoutRequestDto>>> GetMyPayoutRequestsAsync(Guid teacherId, string? status, DateTime? from, DateTime? to, int page, int pageSize)
+        {
+            var teacherProfile = await _unit.TeacherProfiles.FindAsync(t => t.UserId == teacherId);
+            if (teacherProfile == null) return PagedResponse<IEnumerable<PayoutRequestDto>>.Success(new List<PayoutRequestDto>(), page, pageSize, 0);
+            var query = _unit.PayoutRequests.Query().Where(p => p.TeacherId == teacherProfile.TeacherId);
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                if (Enum.TryParse<PayoutStatus>(status, true, out var statusEnum))
+                    query = query.Where(p => p.PayoutStatus == statusEnum);
+            }
+            if (from.HasValue) query = query.Where(p => p.RequestedAt >= from.Value);
+            if (to.HasValue) query = query.Where(p => p.RequestedAt <= to.Value);
+            var total = await query.CountAsync();
+            var items = await query.OrderByDescending(p => p.RequestedAt).Skip((page-1)*pageSize).Take(pageSize)
+                .Select(p => new PayoutRequestDto {
+                    PayoutRequestId = p.PayoutRequestId,
+                    Amount = p.Amount,
+                    Status = p.PayoutStatus.ToString(),
+                    RequestedAt = p.RequestedAt,
+                    ProcessedAt = p.UpdatedAt ,
+                    ApprovedAt = p.ApprovedAt,
+                    Note = p.Note,
+                    BankName = p.BankAccount != null ? p.BankAccount.BankName : null,
+                    AccountNumber = p.BankAccount != null ? p.BankAccount.AccountNumber : null
+                }).ToListAsync();
+            return PagedResponse<IEnumerable<PayoutRequestDto>>.Success(items, page, pageSize, total);
+        }
+        public async Task<BaseResponse<TeacherDashboardDto>> GetTeacherDashboardAsync(Guid teacherId, DateTime? from, DateTime? to, string? status, Guid? programId)
+        {
+            var teacherProfile = await _unit.TeacherProfiles.FindAsync(t => t.UserId == teacherId);
+            if (teacherProfile == null) return BaseResponse<TeacherDashboardDto>.Success(new TeacherDashboardDto());
+            var classQuery = _unit.TeacherClasses.Query()
+                .Include(c => c.Program)
+                .Where(c => c.TeacherID == teacherId);
+            if (from.HasValue) classQuery = classQuery.Where(c => c.CreatedAt >= from.Value);
+            if (to.HasValue) classQuery = classQuery.Where(c => c.CreatedAt <= to.Value);
+            if (programId.HasValue) classQuery = classQuery.Where(c => c.ProgramId == programId.Value);
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                if (Enum.TryParse<ClassStatus>(status, true, out var statusEnum))
+                    classQuery = classQuery.Where(c => c.Status == statusEnum);
+            }
+            var classList = await classQuery.ToListAsync();
+            var classIds = classList.Select(c => c.ClassID).ToList();
+            var enrollments = await _unit.ClassEnrollments.Query()
+                .Where(e => classIds.Contains(e.ClassID) && e.Status == DAL.Models.EnrollmentStatus.Paid)
+                .ToListAsync();
+            var classSummaries = classList.Select(c => new ClassSummaryDto {
+                ClassID = c.ClassID,
+                Title = c.Title ?? string.Empty,
+                Status = c.Status.ToString(),
+                StartDateTime = c.StartDateTime,
+                EndDateTime = c.EndDateTime,
+                StudentCount = enrollments.Count(e => e.ClassID == c.ClassID),
+                Revenue = enrollments.Where(e => e.ClassID == c.ClassID).Sum(e => e.AmountPaid),
+                ProgramId = c.ProgramId,
+                ProgramName = c.Program?.Name ?? string.Empty
+            }).ToList();
+            var payoutQuery = _unit.PayoutRequests.Query().Where(p => p.TeacherId == teacherProfile.TeacherId);
+            var payoutList = await payoutQuery.OrderByDescending(p => p.RequestedAt).Take(10).ToListAsync();
+            var payoutSummaries = payoutList.Select(p => new PayoutSummaryDto {
+                PayoutRequestId = p.PayoutRequestId,
+                Amount = p.Amount,
+                Status = p.PayoutStatus.ToString(),
+                RequestedAt = p.RequestedAt,
+                ProcessedAt = p.UpdatedAt
+            }).ToList();
+            var programStats = classList.GroupBy(c => new { c.ProgramId, ProgramName = c.Program?.Name ?? "" })
+                .Select(g => new ProgramStatsDto {
+                    ProgramId = g.Key.ProgramId,
+                    ProgramName = g.Key.ProgramName,
+                    ClassCount = g.Count(),
+                    StudentCount = g.Sum(c => enrollments.Count(e => e.ClassID == c.ClassID)),
+                    Revenue = g.Sum(c => enrollments.Where(e => e.ClassID == c.ClassID).Sum(e => e.AmountPaid))
+                }).ToList();
+            var periodStats = classList.GroupBy(c => c.CreatedAt.ToString("yyyy-MM"))
+                .Select(g => new PeriodStatsDto {
+                    Period = g.Key,
+                    ClassCount = g.Count(),
+                    StudentCount = g.Sum(c => enrollments.Count(e => e.ClassID == c.ClassID)),
+                    Revenue = g.Sum(c => enrollments.Where(e => e.ClassID == c.ClassID).Sum(e => e.AmountPaid))
+                }).OrderByDescending(p => p.Period).ToList();
+            var totalClasses = classList.Count;
+            var activeClasses = classList.Count(c => c.Status == ClassStatus.Published || c.Status == ClassStatus.InProgress);
+            var finishedClasses = classList.Count(c => c.Status == ClassStatus.Finished || c.Status == ClassStatus.Completed_Paid);
+            var totalStudents = enrollments.Count;
+            var totalRevenue = enrollments.Sum(e => e.AmountPaid);
+            var totalPayout = payoutList.Where(p => p.PayoutStatus == PayoutStatus.Completed).Sum(p => p.Amount);
+            var pendingPayouts = payoutList.Count(p => p.PayoutStatus == PayoutStatus.Pending);
+            var completedPayouts = payoutList.Count(p => p.PayoutStatus == PayoutStatus.Completed);
+            var cancelledPayouts = payoutList.Count(p => p.PayoutStatus == PayoutStatus.Cancelled);
+            var dashboard = new TeacherDashboardDto
+            {
+                TotalClasses = totalClasses,
+                ActiveClasses = activeClasses,
+                FinishedClasses = finishedClasses,
+                TotalStudents = totalStudents,
+                TotalRevenue = totalRevenue,
+                TotalPayout = totalPayout,
+                PendingPayouts = pendingPayouts,
+                CompletedPayouts = completedPayouts,
+                CancelledPayouts = cancelledPayouts,
+                Classes = classSummaries,
+                Payouts = payoutSummaries,
+                ProgramStats = programStats,
+                PeriodStats = periodStats
+            };
+            return BaseResponse<TeacherDashboardDto>.Success(dashboard);
+        }
     }
 }
