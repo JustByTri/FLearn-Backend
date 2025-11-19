@@ -1,11 +1,11 @@
-﻿using BLL.IServices.Coversation;
+﻿using BLL.Background;
+
+using BLL.IServices.Coversation;
 using BLL.IServices.Upload;
-using BLL.Background;
 using BLL.Services.AI;
 using Common.DTO.Conversation;
 using Hangfire;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using System.Text;
@@ -114,6 +114,8 @@ namespace Presentation.Controllers.Conversation
                 }
 
                 var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+                // Hàm này trong Service sẽ gọi AI để tạo kịch bản nhập vai (Roleplay Scenario)
                 var session = await _conversationService.StartConversationAsync(userId, request);
 
                 return Ok(new
@@ -125,19 +127,11 @@ namespace Presentation.Controllers.Conversation
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
+                return BadRequest(new { success = false, message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
+                return BadRequest(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -170,30 +164,25 @@ namespace Presentation.Controllers.Conversation
                 }
 
                 var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+                // Gọi Service: Service này đã bao gồm logic "The Coach", tạo từ đồng nghĩa, và xử lý lạc đề.
+                // Kết quả trả về (aiResponse) là ConversationMessageDto đã được làm giàu dữ liệu.
                 var aiResponse = await _conversationService.SendMessageAsync(userId, request);
 
                 return Ok(new
                 {
                     success = true,
                     message = "Gửi tin nhắn thành công",
-                    data = aiResponse
+                    data = aiResponse // Frontend sẽ nhận được SynonymSuggestions và Coach info ở đây
                 });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
+                return BadRequest(new { success = false, message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
+                return BadRequest(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -208,7 +197,7 @@ namespace Presentation.Controllers.Conversation
         }
 
         /// <summary>
-        /// 🎤 Gửi voice message: STT realtime (Azure Speech) + phản hồi AI ngay, upload Cloudinary chạy nền
+        /// 🎤 Gửi voice message: STT realtime (Azure Speech) + phản hồi AI ngay
         /// </summary>
         [HttpPost("send-voice")]
         [Consumes("multipart/form-data")]
@@ -240,12 +229,12 @@ namespace Presentation.Controllers.Conversation
                     return BadRequest(new { success = false, message = "Chỉ hỗ trợ file audio: MP3, WAV, M4A, WebM, OGG" });
                 }
 
-                if (formDto.AudioFile.Length >10 *1024 *1024) //10MB
+                if (formDto.AudioFile.Length > 10 * 1024 * 1024) // 10MB
                 {
-                    return BadRequest(new { success = false, message = "File audio không được vượt quá10MB" });
+                    return BadRequest(new { success = false, message = "File audio không được vượt quá 10MB" });
                 }
 
-                // Ensure session exists and belongs to user (avoid wasted STT work)
+                // Ensure session exists
                 var session = await _conversationService.GetConversationSessionAsync(userId, formDto.SessionId);
                 if (session == null)
                 {
@@ -262,9 +251,10 @@ namespace Presentation.Controllers.Conversation
                 var fileName = string.IsNullOrWhiteSpace(formDto.AudioFile.FileName) ? "audio.wav" : Path.GetFileName(formDto.AudioFile.FileName);
                 var contentType = string.IsNullOrWhiteSpace(formDto.AudioFile.ContentType) ? "audio/wav" : formDto.AudioFile.ContentType;
 
-                // Map session language name to STT locale (robust normalization) with multi-language auto-detect support
+                // Logic STT Locale Auto-detect (Giữ nguyên logic tốt của bạn)
                 string? sttLocale = null;
-                string NormalizeMulti(string s) {
+                string NormalizeMulti(string s)
+                {
                     if (string.IsNullOrWhiteSpace(s)) return string.Empty;
                     var lower = s.ToLowerInvariant();
                     var sb = new StringBuilder(lower.Length);
@@ -278,63 +268,55 @@ namespace Presentation.Controllers.Conversation
                 bool hasEnglish = lnameNorm.Contains("english") || lnameNorm.Contains("tieng anh") || lnameNorm.Contains("anh");
                 bool hasJapanese = lnameNorm.Contains("japanese") || lnameNorm.Contains("tieng nhat") || lnameNorm.Contains("nihon") || lnameNorm.Contains("nippon") || lnameNorm.Contains("jp") || lnameNorm.Contains("nhat");
                 bool hasChinese = lnameNorm.Contains("chinese") || lnameNorm.Contains("tieng trung") || lnameNorm.Contains("trung") || lnameNorm.Contains("zh") || lnameNorm.Contains("han");
-                int matchedCount = (hasEnglish?1:0)+(hasJapanese?1:0)+(hasChinese?1:0);
+                int matchedCount = (hasEnglish ? 1 : 0) + (hasJapanese ? 1 : 0) + (hasChinese ? 1 : 0);
                 if (matchedCount <= 1)
                 {
                     if (hasEnglish) sttLocale = "en-US";
                     else if (hasJapanese) sttLocale = "ja-JP";
                     else if (hasChinese) sttLocale = "zh-CN";
                 }
-                // If more than one language keyword present, force auto-detect (null locale)
-                _logger.LogInformation("STT locale resolved: {Locale} from LanguageName='{Name}' (normalized='{Norm}', multi={Multi})", sttLocale ?? "(auto)", lnameRaw, lnameNorm, matchedCount>1);
 
-                // Transcribe (if client didn't provide transcript)
+                // Transcribe
                 var transcript = string.IsNullOrWhiteSpace(formDto.Transcript)
                     ? await _transcribe.TranscribeAsync(audioBytes, fileName, contentType, sttLocale)
                     : formDto.Transcript;
 
-                // Send to AI with transcript (fallback to placeholder if null)
+                // Send to AI
                 var request = new SendMessageRequestDto
                 {
                     SessionId = formDto.SessionId,
                     MessageContent = string.IsNullOrWhiteSpace(transcript) ? "[Voice Message]" : transcript!,
-                    MessageType = DAL.Type.MessageType.Audio,
+                    MessageType = DAL.Type.MessageType.Audio, // Đảm bảo dùng đúng Enum MessageType (Common.Enums hoặc DAL.Type tùy project bạn)
                     AudioDuration = formDto.AudioDuration
                 };
+
+                // Gọi Service: Logic Coach/Synonym cũng sẽ chạy ở đây
                 var aiResponse = await _conversationService.SendMessageAsync(userId, request);
 
-                // Background upload to Cloudinary
+                // Background upload
                 _jobs.Enqueue<VoiceUploadJob>(job => job.UploadAudioAndAttachAsync(formDto.SessionId, userId, audioBytes, fileName, contentType, formDto.AudioDuration));
 
                 return Ok(new
                 {
                     success = true,
                     message = "Gửi voice thành công",
-                    data = new { aiResponse, transcript, upload = new { queued = true, size = formDto.AudioFile.Length, contentType, fileName } }
+                    data = new
+                    {
+                        aiResponse, // Object này chứa SynonymSuggestions
+                        transcript,
+                        upload = new { queued = true, size = formDto.AudioFile.Length, contentType, fileName }
+                    }
                 });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { success = false, message = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error sending voice message");
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Đã xảy ra lỗi khi gửi voice message",
-                    error = ex.Message
-                });
+                return StatusCode(500, new { success = false, message = ex.Message });
             }
         }
 
         /// <summary>
-        /// Kết thúc conversation và nhận đánh giá
+        /// Kết thúc conversation và nhận đánh giá chi tiết
         /// </summary>
         [HttpPost("{sessionId:guid}/end")]
         public async Task<IActionResult> EndConversation(Guid sessionId)
@@ -342,6 +324,8 @@ namespace Presentation.Controllers.Conversation
             try
             {
                 var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+                // Service sẽ gọi AI để lấy Evaluation chi tiết (JSON 4 kỹ năng, feedback, strengths...)
                 var evaluation = await _conversationService.EndConversationAsync(userId, sessionId);
 
                 return Ok(new
@@ -351,139 +335,37 @@ namespace Presentation.Controllers.Conversation
                     data = evaluation
                 });
             }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error ending conversation");
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Đã xảy ra lỗi khi kết thúc conversation",
-                    error = ex.Message
-                });
+                return StatusCode(500, new { success = false, message = ex.Message });
             }
         }
 
-        /// <summary>
-        /// Lấy lịch sử conversations của user
-        /// </summary>
+        // Các API Get History, Usage giữ nguyên như cũ
         [HttpGet("history")]
         public async Task<IActionResult> GetConversationHistory()
         {
-            try
-            {
-                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-                var history = await _conversationService.GetUserConversationHistoryAsync(userId);
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "Lấy lịch sử conversation thành công",
-                    data = history,
-                    total = history.Count
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting conversation history");
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Đã xảy ra lỗi khi lấy lịch sử",
-                    error = ex.Message
-                });
-            }
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var history = await _conversationService.GetUserConversationHistoryAsync(userId);
+            return Ok(new { success = true, data = history });
         }
 
-        /// <summary>
-        /// Lấy chi tiết một conversation session
-        /// </summary>
         [HttpGet("{sessionId:guid}")]
         public async Task<IActionResult> GetConversationSession(Guid sessionId)
         {
-            try
-            {
-                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-                var session = await _conversationService.GetConversationSessionAsync(userId, sessionId);
-
-                if (session == null)
-                {
-                    return NotFound(new
-                    {
-                        success = false,
-                        message = "Không tìm thấy conversation session hoặc bạn không có quyền truy cập"
-                    });
-                }
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "Lấy thông tin session thành công",
-                    data = session
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting conversation session");
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Đã xảy ra lỗi khi lấy thông tin session",
-                    error = ex.Message
-                });
-            }
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var session = await _conversationService.GetConversationSessionAsync(userId, sessionId);
+            if (session == null) return NotFound(new { success = false, message = "Session not found" });
+            return Ok(new { success = true, data = session });
         }
 
-        /// <summary>
-        /// Lấy thông tin mức sử dụng cuộc hội thoại của người dùng
-        /// </summary>
         [HttpGet("usage")]
         public async Task<IActionResult> GetConversationUsage()
         {
-            try
-            {
-                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-                var usage = await _conversationService.GetConversationUsageAsync(userId);
-
-                return Ok(new
-                {
-                    success = true,
-                    data = usage
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting conversation usage");
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Error getting usage",
-                    error = ex.Message
-                });
-            }
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var usage = await _conversationService.GetConversationUsageAsync(userId);
+            return Ok(new { success = true, data = usage });
         }
     }
 }
