@@ -21,10 +21,9 @@ namespace DAL.Models
         public Guid LevelId { get; set; }
         [ForeignKey(nameof(LevelId))]
         public virtual Level Level { get; set; } = null!;
-        [Required]
-        public Guid TemplateId { get; set; }
+        public Guid? TemplateId { get; set; }
         [ForeignKey(nameof(TemplateId))]
-        public virtual CourseTemplate Template { get; set; } = null!;
+        public virtual CourseTemplate? Template { get; set; }
         [Required]
         public Guid TeacherId { get; set; }
         [ForeignKey(nameof(TeacherId))]

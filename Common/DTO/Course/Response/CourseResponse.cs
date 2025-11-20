@@ -6,7 +6,6 @@ namespace Common.DTO.Course.Response
     public class CourseResponse
     {
         public Guid CourseId { get; set; }
-        public Guid TemplateId { get; set; }
         public string? Language { get; set; }
         public Program? Program { get; set; }
         public Teacher? Teacher { get; set; }

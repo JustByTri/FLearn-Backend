@@ -26,12 +26,12 @@ namespace BLL.Services.CourseUnits
         {
 
             var teacher = await _unit.TeacherProfiles.FindAsync(x => x.UserId == userId);
-            if (teacher == null)
-                return BaseResponse<UnitResponse>.Fail("Teacher does not exist.");
-
+            if (teacher == null || !teacher.Status)
+                return BaseResponse<UnitResponse>.Fail(new object(), "Access denied: the teacher profile is invalid or inactive.", 403);
 
             var selectedCourse = await _unit.Courses.Query()
                 .Include(c => c.CourseUnits)
+                .Include(c => c.Template)
                 .FirstOrDefaultAsync(c => c.CourseID == courseId && c.TeacherId == teacher.TeacherId);
 
             if (selectedCourse == null)
@@ -44,32 +44,33 @@ namespace BLL.Services.CourseUnits
                 return BaseResponse<UnitResponse>.Fail("Only Draft or Rejected courses can be updated.");
             }
 
+            int maxUnits = selectedCourse.Template?.UnitCount ?? 12;
+            if ((selectedCourse.CourseUnits?.Count ?? 0) >= maxUnits)
+                return BaseResponse<UnitResponse>.Fail($"Cannot add more units. Maximum allowed units for this course is {maxUnits}.");
+
             int nextPosition = 1;
-            if (selectedCourse.CourseUnits.Any())
+            if ((selectedCourse.CourseUnits?.Count ?? 0) != 0)
             {
-                nextPosition = selectedCourse.CourseUnits.Max(u => u.Position) + 1;
+                nextPosition = selectedCourse.CourseUnits!.Max(u => u.Position) + 1;
             }
 
             var newUnit = new CourseUnit
             {
                 CourseUnitID = Guid.NewGuid(),
-                Title = request.Title,
+                Title = request.Title ?? $"Unit {nextPosition}",
                 Description = request.Description ?? "No description",
                 Position = nextPosition,
                 CourseID = courseId,
-                IsPreview = (request.IsPreview != null) ? request.IsPreview : false,
+                IsPreview = request.IsPreview ?? false,
                 CreatedAt = TimeHelper.GetVietnamTime(),
                 UpdatedAt = TimeHelper.GetVietnamTime()
             };
 
             try
             {
-                var result = await _unit.CourseUnits.CreateAsync(newUnit);
-
-                if (result < 0)
-                {
-                    return BaseResponse<UnitResponse>.Fail("Failed to create unit. Please try again later.");
-                }
+                selectedCourse.NumUnits += 1;
+                await _unit.CourseUnits.CreateAsync(newUnit);
+                await _unit.SaveChangesAsync();
 
                 var response = new UnitResponse
                 {

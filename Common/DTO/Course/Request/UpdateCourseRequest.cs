@@ -14,7 +14,7 @@ namespace Common.DTO.Course.Request
         [StringLength(1000)]
         public string? LearningOutcome { get; set; }
         public IFormFile? Image { get; set; }
-        [Range(10_000, 5_000_000, ErrorMessage = "Price must be between 10,000VND and 5,000,000VND.")]
+        [Range(0, 5_000_000, ErrorMessage = "Price must be between 0VND and 5,000,000VND.")]
         public decimal? Price { get; set; }
         public CourseType? CourseType { get; set; }
         public GradingType? GradingType { get; set; }

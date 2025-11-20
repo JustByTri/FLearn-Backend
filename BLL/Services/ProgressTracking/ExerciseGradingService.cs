@@ -65,8 +65,8 @@ namespace BLL.Services.ProgressTracking
                             await _unitOfWork.ExerciseGradingAssignments.UpdateAsync(assignment);
 
                             var submission = assignment.ExerciseSubmission;
-                            submission.Status = ExerciseSubmissionStatus.Failed;
-                            submission.TeacherFeedback = "Assignment expired: Teacher did not complete grading in time";
+                            submission.Status = ExerciseSubmissionStatus.PendingTeacherReview;
+                            submission.TeacherFeedback = "Giáo viên đang chấm bài của bạn. Vui lòng chờ để hệ thống cập nhật kết quả khi quá trình hoàn tất.";
                             await _unitOfWork.ExerciseSubmissions.UpdateAsync(submission);
                         }
 
@@ -446,7 +446,10 @@ namespace BLL.Services.ProgressTracking
                     {
                         submission.Status = ExerciseSubmissionStatus.Failed;
                     }
+
                     submission.ReviewedAt = TimeHelper.GetVietnamTime();
+                    await _unitOfWork.SaveChangesAsync();
+
                     await UpdateLessonProgressAfterGrading(submission);
                 }
                 else if (isTeacherRequiredExercise && isAITeacherGrading)
@@ -461,7 +464,10 @@ namespace BLL.Services.ProgressTracking
                         {
                             submission.Status = ExerciseSubmissionStatus.Failed;
                         }
+
                         submission.ReviewedAt = TimeHelper.GetVietnamTime();
+                        await _unitOfWork.SaveChangesAsync();
+
                         await UpdateLessonProgressAfterGrading(submission);
                     }
                     else
@@ -479,7 +485,10 @@ namespace BLL.Services.ProgressTracking
                     {
                         submission.Status = ExerciseSubmissionStatus.Failed;
                     }
+
                     submission.ReviewedAt = TimeHelper.GetVietnamTime();
+                    await _unitOfWork.SaveChangesAsync();
+
                     await UpdateLessonProgressAfterGrading(submission);
                 }
 
@@ -534,6 +543,9 @@ namespace BLL.Services.ProgressTracking
                     submission.Status != ExerciseSubmissionStatus.AIGraded)
                     return BaseResponse<bool>.Fail(false, "Submission is not ready for teacher grading", 400);
 
+                var isResubmission = await IsResubmissionAfterTeacherFail(submission.LearnerId, submission.ExerciseId);
+                var isFirstTeacherGrading = !isResubmission;
+
                 submission.TeacherScore = score;
                 submission.TeacherFeedback = feedback;
 
@@ -563,7 +575,8 @@ namespace BLL.Services.ProgressTracking
                 await _unitOfWork.ExerciseGradingAssignments.UpdateAsync(assignment);
 
                 var allocation = assignment.EarningAllocation;
-                if (allocation != null)
+
+                if (allocation != null && isFirstTeacherGrading)
                 {
                     allocation.Status = EarningStatus.Approved;
                     allocation.ApprovedAt = TimeHelper.GetVietnamTime();
@@ -593,6 +606,23 @@ namespace BLL.Services.ProgressTracking
 
             if (lessonProgress != null && lessonProgress.Lesson != null)
             {
+                var wasExerciseAlreadyPassed = await _unitOfWork.ExerciseSubmissions
+                    .Query()
+                    .AnyAsync(es => es.ExerciseId == submission.ExerciseId &&
+                                   es.LessonProgressId == submission.LessonProgressId &&
+                                   es.IsPassed == true &&
+                                   es.ExerciseSubmissionId != submission.ExerciseSubmissionId &&
+                                   es.SubmittedAt < submission.SubmittedAt);
+
+                Console.WriteLine($"[DEBUG]: Exercise {submission.ExerciseId} was already passed before: {wasExerciseAlreadyPassed}");
+
+                if (wasExerciseAlreadyPassed && submission.IsPassed == true)
+                {
+                    Console.WriteLine($"[DEBUG]: Skipping progress update - exercise was already passed before");
+                    return;
+                }
+
+
                 var passedExercises = lessonProgress.ExerciseSubmissions
                     .Where(es => es.IsPassed == true)
                     .Select(es => es.ExerciseId)
@@ -600,19 +630,15 @@ namespace BLL.Services.ProgressTracking
                     .Count();
 
                 var totalExercises = lessonProgress.Lesson.Exercises.Count;
-
                 double exerciseProgressPercent = totalExercises > 0 ? (passedExercises * 100.0 / totalExercises) : 0;
-
                 await UpdateOverallLessonProgress(lessonProgress, exerciseProgressPercent);
 
                 lessonProgress.LastUpdated = TimeHelper.GetVietnamTime();
+
                 await _unitOfWork.LessonProgresses.UpdateAsync(lessonProgress);
                 await _unitOfWork.SaveChangesAsync();
 
-                if (passedExercises == totalExercises && totalExercises > 0)
-                {
-                    await UpdateUnitProgress(lessonProgress.UnitProgressId);
-                }
+                await UpdateUnitProgress(lessonProgress.UnitProgressId);
             }
         }
         private async Task UpdateOverallLessonProgress(LessonProgress lessonProgress, double exerciseProgressPercent)
@@ -621,47 +647,56 @@ namespace BLL.Services.ProgressTracking
             if (lesson == null) return;
 
             double totalProgress = 0.0;
-            int completedActivities = 0;
-            int totalActivities = 1;
+            int totalParts = 0;
+            int completedParts = 0;
 
+            totalParts++;
             if (lessonProgress.IsContentViewed == true)
             {
-                totalProgress += 0.5;
-                completedActivities++;
+                totalProgress += 1.0;
+                completedParts++;
             }
 
-            if (lesson.VideoUrl != null)
+            if (!string.IsNullOrEmpty(lesson.VideoUrl))
             {
-                totalActivities++;
+                totalParts++;
                 if (lessonProgress.IsVideoWatched == true)
                 {
-                    totalProgress += 0.2;
-                    completedActivities++;
+                    totalProgress += 1.0;
+                    completedParts++;
                 }
             }
 
-            if (lesson.DocumentUrl != null)
+            if (!string.IsNullOrEmpty(lesson.DocumentUrl))
             {
-                totalActivities++;
+                totalParts++;
                 if (lessonProgress.IsDocumentRead == true)
                 {
-                    totalProgress += 0.2;
-                    completedActivities++;
+                    totalProgress += 1.0;
+                    completedParts++;
                 }
             }
 
-            if (lesson.Exercises.Any())
+            var exercises = await _unitOfWork.Exercises
+                .Query()
+                .Where(e => e.LessonID == lessonProgress.LessonId)
+                .ToListAsync();
+
+            if (exercises.Any())
             {
-                totalActivities++;
-                totalProgress += (exerciseProgressPercent / 100) * 0.3;
+                totalParts++;
+
+                double exerciseCompletionRate = exerciseProgressPercent / 100.0;
+                totalProgress += exerciseCompletionRate;
+
                 if (exerciseProgressPercent >= 100)
                 {
-                    completedActivities++;
+                    completedParts++;
                     lessonProgress.IsPracticeCompleted = true;
                 }
             }
 
-            lessonProgress.ProgressPercent = Math.Min(totalProgress * 100, 100);
+            lessonProgress.ProgressPercent = totalParts > 0 ? (totalProgress / totalParts) * 100 : 0;
             lessonProgress.LastUpdated = TimeHelper.GetVietnamTime();
 
             if (lessonProgress.ProgressPercent >= 100)
@@ -750,6 +785,18 @@ namespace BLL.Services.ProgressTracking
             }
 
             await _unitOfWork.Enrollments.UpdateAsync(enrollment);
+        }
+        private async Task<bool> IsResubmissionAfterTeacherFail(Guid learnerId, Guid exerciseId)
+        {
+            var previousTeacherGradedSubmissions = await _unitOfWork.ExerciseSubmissions.Query()
+                .Include(es => es.ExerciseGradingAssignments)
+                .Where(es => es.LearnerId == learnerId &&
+                            es.ExerciseId == exerciseId &&
+                            es.ExerciseGradingAssignments.Any())
+                .OrderByDescending(es => es.SubmittedAt)
+                .ToListAsync();
+
+            return previousTeacherGradedSubmissions.Count > 1;
         }
         #endregion
     }

@@ -27,135 +27,114 @@ namespace BLL.Services.Exercise
             try
             {
                 var teacher = await _unit.TeacherProfiles.FindAsync(x => x.UserId == userId);
-                if (teacher == null)
-                    return BaseResponse<ExerciseResponse>.Fail(new object(), "Access denied", 403);
+                if (teacher == null || !teacher.Status)
+                    return BaseResponse<ExerciseResponse>.Fail(new object(), "Access denied: the teacher profile is invalid or inactive.", 403);
 
-                var selectedLesson = await _unit.Lessons.GetByIdAsync(lessonId);
+                var selectedLesson = await _unit.Lessons.Query()
+                    .Include(l => l.CourseUnit)
+                        .ThenInclude(u => u.Course)
+                            .ThenInclude(c => c.Template)
+                    .FirstOrDefaultAsync(l => l.LessonID == lessonId);
+
                 if (selectedLesson == null)
-                {
-                    return BaseResponse<ExerciseResponse>.Fail("Lesson not found.");
-                }
+                    return BaseResponse<ExerciseResponse>.Fail(new object(), "Lesson not found.", 404);
 
-                var selectedUnit = await _unit.CourseUnits.GetByIdAsync(selectedLesson.CourseUnitID);
+                var selectedUnit = selectedLesson.CourseUnit;
                 if (selectedUnit == null)
-                {
-                    return BaseResponse<ExerciseResponse>.Fail("Course unit not found.");
-                }
+                    return BaseResponse<ExerciseResponse>.Fail(new object(), "Course unit not found.", 404);
 
-                var selectedCourse = await _unit.Courses.GetByIdAsync(selectedUnit.CourseID);
+                var selectedCourse = selectedUnit.Course;
                 if (selectedCourse == null)
-                {
-                    return BaseResponse<ExerciseResponse>.Fail("Course not found.");
-                }
+                    return BaseResponse<ExerciseResponse>.Fail(new object(), "Course not found.", 404);
 
                 if (selectedCourse.Status != CourseStatus.Draft && selectedCourse.Status != CourseStatus.Rejected)
-                {
-                    return BaseResponse<ExerciseResponse>.Fail(
-                        new { CourseStatus = "Invalid course status." },
-                        "Only Draft or Rejected courses can be modified.",
-                        400
-                    );
-                }
+                    return BaseResponse<ExerciseResponse>.Fail(new object(), "Only Draft or Rejected courses can be modified.", 400);
+
+                int maxExercises = selectedCourse.Template?.ExercisesPerLesson ?? 12;
+
+                var existingExercises = await _unit.Exercises.FindAllAsync(ex => ex.LessonID == selectedLesson.LessonID);
+                if ((existingExercises?.Count() ?? 0) >= maxExercises)
+                    return BaseResponse<ExerciseResponse>.Fail(new object(), $"Cannot add more exercises. Maximum allowed exercises for this lesson is {maxExercises}.");
 
                 if (request.PassScore > request.MaxScore)
-                {
-                    return BaseResponse<ExerciseResponse>.Fail(
-                        new { PassScore = "Pass score cannot exceed max score." },
-                        "Invalid score configuration.",
-                        400
-                    );
-                }
+                    return BaseResponse<ExerciseResponse>.Fail(new object(), "Pass score cannot exceed max score.", 400);
 
                 var mediaUrls = new List<string>();
                 var mediaPublicIds = new List<string>();
 
-                try
+
+                if (request.MediaFiles != null && request.MediaFiles.Any())
                 {
-                    if (request.MediaFiles != null && request.MediaFiles.Any())
+                    foreach (var mediaFile in request.MediaFiles)
                     {
-                        foreach (var mediaFile in request.MediaFiles)
+                        if (mediaFile.Length == 0)
+                            continue;
+
+                        var contentType = mediaFile.ContentType.ToLower();
+                        bool isImage = contentType.StartsWith("image/");
+                        bool isAudio = contentType.StartsWith("audio/");
+
+                        if (!isImage && !isAudio)
                         {
-                            if (mediaFile.Length == 0)
-                                continue;
-
-                            var contentType = mediaFile.ContentType.ToLower();
-                            bool isImage = contentType.StartsWith("image/");
-                            bool isAudio = contentType.StartsWith("audio/");
-
-                            if (!isImage && !isAudio)
+                            foreach (var publicId in mediaPublicIds)
                             {
-                                foreach (var publicId in mediaPublicIds)
-                                {
-                                    await _cloudinary.DeleteFileAsync(publicId);
-                                }
-
-                                return BaseResponse<ExerciseResponse>.Fail(
-                                    new { MediaFiles = "Invalid file format." },
-                                    "Only image or audio files are allowed.",
-                                    400
-                                );
+                                await _cloudinary.DeleteFileAsync(publicId);
                             }
 
-                            UploadResultDto uploadResult;
+                            return BaseResponse<ExerciseResponse>.Fail(
+                                new { MediaFiles = "Invalid file format." },
+                                "Only image or audio files are allowed.",
+                                400
+                            );
+                        }
 
-                            if (isImage)
-                            {
-                                uploadResult = await _cloudinary.UploadImageAsync(mediaFile, "exercises/images");
-                            }
-                            else
-                            {
-                                uploadResult = await _cloudinary.UploadAudioAsync(mediaFile, "exercises/audio");
-                            }
+                        UploadResultDto uploadResult;
 
-                            if (uploadResult != null && !string.IsNullOrEmpty(uploadResult.Url))
-                            {
-                                mediaUrls.Add(uploadResult.Url);
-                                mediaPublicIds.Add(uploadResult.PublicId);
-                            }
+                        if (isImage)
+                        {
+                            uploadResult = await _cloudinary.UploadImageAsync(mediaFile, "exercises/images");
+                        }
+                        else
+                        {
+                            uploadResult = await _cloudinary.UploadAudioAsync(mediaFile, "exercises/audio");
+                        }
+
+                        if (uploadResult != null && !string.IsNullOrEmpty(uploadResult.Url))
+                        {
+                            mediaUrls.Add(uploadResult.Url);
+                            mediaPublicIds.Add(uploadResult.PublicId);
                         }
                     }
                 }
-                catch (Exception ex)
-                {
-                    foreach (var publicId in mediaPublicIds)
-                    {
-                        await _cloudinary.DeleteFileAsync(publicId);
-                    }
 
-                    return BaseResponse<ExerciseResponse>.Error($"Upload file failed: {ex.Message}", 500);
-                }
-
-                var existingExercises = await _unit.Exercises.FindAllAsync(ex => ex.LessonID == selectedLesson.LessonID);
-                int nextPosition = existingExercises.Any() ? existingExercises.Max(e => e.Position) + 1 : 1;
-
-                selectedLesson.TotalExercises += 1;
-                _unit.Lessons.Update(selectedLesson);
+                int nextPosition = (existingExercises != null && existingExercises.Any()) ? existingExercises.Max(e => e.Position) + 1 : 1;
 
                 var now = TimeHelper.GetVietnamTime();
-
                 var newExercise = new DAL.Models.Exercise
                 {
                     ExerciseID = Guid.NewGuid(),
                     Title = request.Title.Trim(),
-                    Prompt = string.IsNullOrWhiteSpace(request.Prompt) ? null : request.Prompt.Trim(),
-                    Hints = string.IsNullOrWhiteSpace(request.Hints) ? null : request.Hints.Trim(),
-                    Content = string.IsNullOrWhiteSpace(request.Content) ? null : request.Content.Trim(),
-                    ExpectedAnswer = string.IsNullOrWhiteSpace(request.ExpectedAnswer) ? null : request.ExpectedAnswer.Trim(),
+                    Prompt = string.IsNullOrWhiteSpace(request.Prompt) ? string.Empty : request.Prompt.Trim(),
+                    Hints = string.IsNullOrWhiteSpace(request.Hints) ? string.Empty : request.Hints.Trim(),
+                    Content = string.IsNullOrWhiteSpace(request.Content) ? string.Empty : request.Content.Trim(),
+                    ExpectedAnswer = string.IsNullOrWhiteSpace(request.ExpectedAnswer) ? string.Empty : request.ExpectedAnswer.Trim(),
                     Type = request.Type,
                     Difficulty = request.Difficulty,
                     Position = nextPosition,
                     MaxScore = request.MaxScore,
                     PassScore = request.PassScore,
-                    FeedbackCorrect = string.IsNullOrWhiteSpace(request.FeedbackCorrect) ? null : request.FeedbackCorrect.Trim(),
-                    FeedbackIncorrect = string.IsNullOrWhiteSpace(request.FeedbackIncorrect) ? null : request.FeedbackIncorrect.Trim(),
+                    FeedbackCorrect = string.IsNullOrWhiteSpace(request.FeedbackCorrect) ? string.Empty : request.FeedbackCorrect.Trim(),
+                    FeedbackIncorrect = string.IsNullOrWhiteSpace(request.FeedbackIncorrect) ? string.Empty : request.FeedbackIncorrect.Trim(),
                     LessonID = selectedLesson.LessonID,
-                    MediaUrl = mediaUrls.Any() ? string.Join(";", mediaUrls) : null,
-                    MediaPublicId = mediaPublicIds.Any() ? string.Join(";", mediaPublicIds) : null,
+                    MediaUrl = mediaUrls.Any() ? string.Join(";", mediaUrls) : string.Empty,
+                    MediaPublicId = mediaPublicIds.Any() ? string.Join(";", mediaPublicIds) : string.Empty,
                     CreatedAt = now,
                     UpdatedAt = now
                 };
 
                 await _unit.Exercises.CreateAsync(newExercise);
+                selectedLesson.TotalExercises += 1;
+                await _unit.Lessons.UpdateAsync(selectedLesson);
                 await _unit.SaveChangesAsync();
 
                 var response = new ExerciseResponse
@@ -184,6 +163,7 @@ namespace BLL.Services.Exercise
                     CreatedAt = newExercise.CreatedAt.ToString("dd-MM-yyyy"),
                     UpdatedAt = newExercise.UpdatedAt.ToString("dd-MM-yyyy")
                 };
+
                 return BaseResponse<ExerciseResponse>.Success(response, "Exercise created successfully.", 201);
             }
             catch (Exception ex)

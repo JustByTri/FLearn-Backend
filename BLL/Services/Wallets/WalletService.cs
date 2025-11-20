@@ -146,12 +146,15 @@ namespace BLL.Services.Wallets
 
                 if (purchase == null || purchase.Status != PurchaseStatus.Completed) return;
 
-                // Kiểm tra xem đã có refund chưa
-                var hasRefund = await _unitOfWork.WalletTransactions.Query()
-                    .AnyAsync(wt => wt.ReferenceId == purchaseId &&
-                                   wt.ReferenceType == ReferenceType.Refund);
+                var hasRefund = await _unitOfWork.RefundRequests.Query()
+                    .AnyAsync(r => r.PurchaseId == purchaseId &&
+                                  r.Status == RefundRequestStatus.Approved);
 
-                if (hasRefund) return;
+                if (hasRefund)
+                {
+                    Console.WriteLine("Purchase {PurchaseId} has approved refund, skipping course creation fee transfer", purchaseId);
+                    return;
+                }
 
                 var adminWallet = await GetOrCreateAdminWalletAsync();
                 decimal courseCreationAmount = purchase.FinalAmount * TEACHER_FEE_PERCENTAGE * COURSE_FEE_PERCENTAGE;
