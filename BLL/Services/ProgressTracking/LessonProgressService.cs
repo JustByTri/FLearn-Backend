@@ -1,12 +1,10 @@
 ﻿using BLL.IServices.ProgressTracking;
 using Common.DTO.ApiResponse;
-using Common.DTO.Assement;
 using Common.DTO.LessonProgress.Response;
 using DAL.Models;
 using DAL.Type;
 using DAL.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
 
 namespace BLL.Services.ProgressTracking
 {
