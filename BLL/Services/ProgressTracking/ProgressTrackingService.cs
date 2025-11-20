@@ -652,6 +652,24 @@ namespace BLL.Services.ProgressTracking
                 if (lessonProgress == null)
                     return BaseResponse<ProgressTrackingResponse>.Fail(new object(), "Lesson progress not found", 404);
 
+                if (request.LogType == LessonLogType.VideoProgress && string.IsNullOrEmpty(lesson.VideoUrl))
+                {
+                    return BaseResponse<ProgressTrackingResponse>.Fail(
+                        new object(),
+                        "This lesson does not contain a video.",
+                        400
+                    );
+                }
+
+                if (request.LogType == LessonLogType.PdfOpened && string.IsNullOrEmpty(lesson.DocumentUrl))
+                {
+                    return BaseResponse<ProgressTrackingResponse>.Fail(
+                        new object(),
+                        "This lesson does not contain a PDF document.",
+                        400
+                    );
+                }
+
                 var activityLog = new LessonActivityLog
                 {
                     LessonActivityLogId = Guid.NewGuid(),
@@ -761,10 +779,10 @@ namespace BLL.Services.ProgressTracking
             // Count total available activities
             int totalActivities = 1; // Content is always required
 
-            if (lesson.VideoUrl != null)
+            if (!string.IsNullOrEmpty(lesson.VideoUrl))
                 totalActivities++;
 
-            if (lesson.DocumentUrl != null)
+            if (!string.IsNullOrEmpty(lesson.DocumentUrl))
                 totalActivities++;
 
             var exercises = await _unitOfWork.Exercises
@@ -786,7 +804,7 @@ namespace BLL.Services.ProgressTracking
             }
 
             // Video is optional
-            if (lesson.VideoUrl != null)
+            if (!string.IsNullOrEmpty(lesson.VideoUrl))
             {
                 if (lessonProgress.IsVideoWatched == true)
                 {
@@ -796,7 +814,7 @@ namespace BLL.Services.ProgressTracking
             }
 
             // Document is optional
-            if (lesson.DocumentUrl != null)
+            if (!string.IsNullOrEmpty(lesson.DocumentUrl))
             {
                 if (lessonProgress.IsDocumentRead == true)
                 {

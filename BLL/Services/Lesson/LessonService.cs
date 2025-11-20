@@ -112,10 +112,10 @@ namespace BLL.Services.Lesson
                     Description = request.Description.Trim(),
                     Content = request.Content,
                     Position = nextPosition,
-                    VideoUrl = videoUrl ?? "No URL provided",
-                    VideoPublicId = videoPublicId ?? "No URL provided",
-                    DocumentUrl = docUrl ?? "No URL provided",
-                    DocumentPublicId = docPublicId ?? "No URL provided",
+                    VideoUrl = videoUrl ?? string.Empty,
+                    VideoPublicId = videoPublicId ?? string.Empty,
+                    DocumentUrl = docUrl ?? string.Empty,
+                    DocumentPublicId = docPublicId ?? string.Empty,
                     CourseUnitID = selectedUnit.CourseUnitID,
                     CreatedAt = TimeHelper.GetVietnamTime(),
                     UpdatedAt = TimeHelper.GetVietnamTime()
@@ -373,10 +373,10 @@ namespace BLL.Services.Lesson
                         404
                     );
 
-                string newVideoUrl = "";
-                string newVideoPublicId = "";
-                string newDocUrl = "";
-                string newDocPublicId = "";
+                string? newVideoUrl = null;
+                string? newVideoPublicId = null;
+                string? newDocUrl = null;
+                string? newDocPublicId = null;
 
                 try
                 {
@@ -389,22 +389,21 @@ namespace BLL.Services.Lesson
                                 400
                             );
 
-                        if (!string.IsNullOrEmpty(existingLesson.VideoPublicId))
-                            await _cloudinary.DeleteFileAsync(existingLesson.VideoPublicId);
+                        var uploadedVideo = await _cloudinary.UploadVideoAsync(request.VideoFile, "lessons/videos");
+                        if (uploadedVideo?.Url == null || uploadedVideo?.PublicId == null)
+                            throw new Exception("Video upload returned invalid response.");
 
-                        var video = await _cloudinary.UploadVideoAsync(request.VideoFile, "lessons/videos");
-                        if (video.Url != null && video.PublicId != null)
-                        {
-                            newVideoUrl = video.Url;
-                            newVideoPublicId = video.PublicId;
-                        }
+                        newVideoUrl = uploadedVideo.Url;
+                        newVideoPublicId = uploadedVideo.PublicId;
                     }
 
                     if (request.DocumentFile != null)
                     {
-                        if (!request.DocumentFile.ContentType.Contains("pdf") &&
-                            !request.DocumentFile.ContentType.Contains("msword") &&
-                            !request.DocumentFile.ContentType.Contains("officedocument"))
+                        var contentType = request.DocumentFile.ContentType?.ToLower() ?? "";
+                        if (!(contentType.Contains("pdf") ||
+                              contentType.Contains("msword") ||
+                              contentType.Contains("officedocument") ||
+                              contentType.Contains("wordprocessingml")))
                         {
                             return BaseResponse<LessonResponse>.Fail(
                                 new { DocumentFile = "Invalid document file format." },
@@ -413,20 +412,44 @@ namespace BLL.Services.Lesson
                             );
                         }
 
-                        if (!string.IsNullOrEmpty(existingLesson.DocumentPublicId))
-                            await _cloudinary.DeleteFileAsync(existingLesson.DocumentPublicId);
+                        var uploadedDoc = await _cloudinary.UploadDocumentAsync(request.DocumentFile, "lessons/documents");
+                        if (uploadedDoc?.Url == null || uploadedDoc?.PublicId == null)
+                            throw new Exception("Document upload returned invalid response.");
 
-                        var doc = await _cloudinary.UploadDocumentAsync(request.DocumentFile, "lessons/documents");
-                        newDocUrl = doc.Url;
-                        newDocPublicId = doc.PublicId;
+                        newDocUrl = uploadedDoc.Url;
+                        newDocPublicId = uploadedDoc.PublicId;
+                    }
+
+                    if (newVideoPublicId != null)
+                    {
+                        if (!string.IsNullOrEmpty(existingLesson.VideoPublicId) && existingLesson.VideoPublicId != newVideoPublicId)
+                        {
+                            try { await _cloudinary.DeleteFileAsync(existingLesson.VideoPublicId); } catch { /* log if available */ }
+                        }
+                        existingLesson.VideoUrl = newVideoUrl!;
+                        existingLesson.VideoPublicId = newVideoPublicId!;
+                    }
+
+                    if (newDocPublicId != null)
+                    {
+                        if (!string.IsNullOrEmpty(existingLesson.DocumentPublicId) && existingLesson.DocumentPublicId != newDocPublicId)
+                        {
+                            try { await _cloudinary.DeleteFileAsync(existingLesson.DocumentPublicId); } catch { /* log if available */ }
+                        }
+                        existingLesson.DocumentUrl = newDocUrl!;
+                        existingLesson.DocumentPublicId = newDocPublicId!;
                     }
                 }
                 catch (Exception ex)
                 {
                     if (!string.IsNullOrEmpty(newVideoPublicId))
-                        await _cloudinary.DeleteFileAsync(newVideoPublicId);
+                    {
+                        try { await _cloudinary.DeleteFileAsync(newVideoPublicId); } catch { /* log */ }
+                    }
                     if (!string.IsNullOrEmpty(newDocPublicId))
-                        await _cloudinary.DeleteFileAsync(newDocPublicId);
+                    {
+                        try { await _cloudinary.DeleteFileAsync(newDocPublicId); } catch { /* log */ }
+                    }
 
                     return BaseResponse<LessonResponse>.Error($"Upload file failed: {ex.Message}", 500);
                 }
@@ -435,23 +458,20 @@ namespace BLL.Services.Lesson
                 existingLesson.Description = !string.IsNullOrWhiteSpace(request.Description) ? request.Description.Trim() : existingLesson.Description;
                 existingLesson.Content = !string.IsNullOrWhiteSpace(request.Content) ? request.Content : existingLesson.Content;
 
-                if (newVideoUrl != null)
-                {
-                    existingLesson.VideoUrl = newVideoUrl;
-                    existingLesson.VideoPublicId = newVideoPublicId;
-                }
-
-                if (newDocUrl != null)
-                {
-                    existingLesson.DocumentUrl = newDocUrl;
-                    existingLesson.DocumentPublicId = newDocPublicId;
-                }
-
                 existingLesson.UpdatedAt = TimeHelper.GetVietnamTime();
 
                 var result = await _unit.Lessons.UpdateAsync(existingLesson);
                 if (result <= 0)
                 {
+                    if (!string.IsNullOrEmpty(newVideoPublicId))
+                    {
+                        try { await _cloudinary.DeleteFileAsync(newVideoPublicId); } catch { /* log */ }
+                    }
+                    if (!string.IsNullOrEmpty(newDocPublicId))
+                    {
+                        try { await _cloudinary.DeleteFileAsync(newDocPublicId); } catch { /* log */ }
+                    }
+
                     return BaseResponse<LessonResponse>.Fail("Failed to update lesson.");
                 }
 
