@@ -6,8 +6,9 @@ namespace Common.DTO.Course.Request
 {
     public class CourseRequest
     {
-        [Required(ErrorMessage = "TemplateId is required.")]
-        public Guid TemplateId { get; set; }
+        [Required(ErrorMessage = "LevelId is required.")]
+        public Guid LevelId { get; set; }
+        public Guid? TemplateId { get; set; }
         [Required]
         [StringLength(200, ErrorMessage = "Title cannot exceed 200 characters.")]
         public string? Title { get; set; }

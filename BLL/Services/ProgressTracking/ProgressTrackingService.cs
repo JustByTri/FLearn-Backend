@@ -1,9 +1,7 @@
-﻿using Azure.Core;
+﻿using BLL.IServices.Gamification;
 using BLL.IServices.ProgressTracking;
 using BLL.IServices.Upload;
-using BLL.IServices.Gamification;
 using Common.DTO.ApiResponse;
-using Common.DTO.Assement;
 using Common.DTO.ExerciseGrading.Request;
 using Common.DTO.ExerciseSubmission.Response;
 using Common.DTO.Paging.Response;
@@ -13,9 +11,8 @@ using DAL.Helpers;
 using DAL.Models;
 using DAL.Type;
 using DAL.UnitOfWork;
-using Microsoft.EntityFrameworkCore;
-using StackExchange.Redis;
 using Hangfire;
+using Microsoft.EntityFrameworkCore;
 
 namespace BLL.Services.ProgressTracking
 {
@@ -64,7 +61,7 @@ namespace BLL.Services.ProgressTracking
                     .ThenInclude(ega => ega.Teacher)
                     .ThenInclude(t => t.User)
                     .AsQueryable();
-                
+
                 query = query.Where(es => es.Exercise != null && es.Exercise.Lesson != null && es.Exercise.Lesson.CourseUnit != null && es.Exercise.Lesson.CourseUnit.CourseID == course.CourseID);
                 query = query.Where(es => es.Exercise.LessonID == lessonId);
 
@@ -329,18 +326,22 @@ namespace BLL.Services.ProgressTracking
             try
             {
                 var user = await _unitOfWork.Users.FindAsync(u => u.UserID == userId);
-                if (user == null)
+
+                if (user == null || !user.Status || !user.IsEmailConfirmed)
                     return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Access denied. Invalid authentication.", 401);
 
                 var exercise = await _unitOfWork.Exercises.GetByIdAsync(request.ExerciseId);
+
                 if (exercise == null)
                     return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Exercise not found", 404);
 
                 var lesson = await _unitOfWork.Lessons.GetByIdAsync(exercise.LessonID);
+
                 if (lesson == null)
                     return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Lesson not found", 404);
 
                 var unit = await _unitOfWork.CourseUnits.GetByIdAsync(lesson.CourseUnitID);
+
                 if (unit == null)
                     return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Unit not found", 404);
 
@@ -351,71 +352,108 @@ namespace BLL.Services.ProgressTracking
                 if (course == null)
                     return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Course not found", 404);
 
-                var learner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == user.UserID && l.LanguageId == course.LanguageId);
+                var learner = await _unitOfWork.LearnerLanguages
+                    .FindAsync(l => l.UserId == user.UserID && l.LanguageId == course.LanguageId);
+
                 if (learner == null)
                     return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Access denied", 403);
 
-                var enrollment = await _unitOfWork.Enrollments.FindAsync(e => e.LearnerId == learner.LearnerLanguageId && e.CourseId == course.CourseID);
+                var enrollment = await _unitOfWork.Enrollments
+                    .FindAsync(e => e.LearnerId == learner.LearnerLanguageId && e.CourseId == course.CourseID);
+
                 if (enrollment == null)
                     return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Enrollment not found", 404);
 
-                var unitProgress = await _unitOfWork.UnitProgresses.FindAsync(up => up.EnrollmentId == enrollment.EnrollmentID && up.CourseUnitId == unit.CourseUnitID);
+                var unitProgress = await _unitOfWork.UnitProgresses
+                    .FindAsync(up => up.EnrollmentId == enrollment.EnrollmentID && up.CourseUnitId == unit.CourseUnitID);
+
                 if (unitProgress == null)
                     return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Unit progress not found", 404);
 
-                var lessonProgress = await _unitOfWork.LessonProgresses.FindAsync(lp => lp.UnitProgressId == unitProgress.UnitProgressId && lp.LessonId == lesson.LessonID);
+                var lessonProgress = await _unitOfWork.LessonProgresses
+                    .FindAsync(lp => lp.UnitProgressId == unitProgress.UnitProgressId && lp.LessonId == lesson.LessonID);
                 if (lessonProgress == null)
                     return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Lesson progress not found", 404);
 
+                /*
+                 * Kiểm tra người dùng có thể nộp bài tập không vì một ngày chỉ được nộp tối đa 3 lần cho chính bài tập đó.
+                 */
+                var canSubmit = await CanSubmitExerciseAsync(learner.LearnerLanguageId, request.ExerciseId);
+                if (!canSubmit)
+                {
+                    return BaseResponse<ExerciseSubmissionResponse>.Fail(
+                        new
+                        {
+                            MaxAttempts = 3,
+                            CoolDownHours = 24
+                        },
+                        @"**Giới hạn nộp bài hàng ngày**
+                            Số lần đã nộp: 3/3
+                            Trạng thái: ĐẠT TỐI ĐA
+                            Thời gian reset: 00:00
+                            Bạn đã hoàn thành tất cả lượt nộp bài cho phép trong ngày hôm nay. Tính năng này giúp tối ưu hóa quá trình học tập.
+                            Hệ thống sẽ tự động reset vào đầu ngày mai.",
+                        429);
+                }
+
+                bool allowTeacherGrading = false;
+
+                bool hasTeacherGrading = false;
+
+                bool requiresCheck = exercise.Type is SpeakingExerciseType.StoryTelling or SpeakingExerciseType.Debate;
+
+                if (course.GradingType == GradingType.AIAndTeacher && requiresCheck)
+                {
+                    hasTeacherGrading = await HasTeacherGrading(learner.LearnerLanguageId, request.ExerciseId);
+
+                    allowTeacherGrading = await AllowTeacherGrading(learner.LearnerLanguageId, request.ExerciseId);
+                }
+
+                /*
+                 * Tải âm thanh trong bài nộp của người học lên cloudinary
+                 */
                 string audioUrl = string.Empty;
                 string publicId = string.Empty;
-                try
+
+                var uploadResult = await _cloudinaryService.UploadAudioAsync(request.Audio);
+                if (uploadResult == null)
+                    return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Upload audio failed", 404);
+                else
                 {
-                    var uploadResult = await _cloudinaryService.UploadAudioAsync(request.Audio);
-                    if (uploadResult == null)
-                        return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Upload audio failed", 404);
                     audioUrl = uploadResult.Url;
                     publicId = uploadResult.PublicId;
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                    Console.WriteLine(ex.StackTrace);
-                    return BaseResponse<ExerciseSubmissionResponse>.Error($"Exception: {ex.Message}", 500, new object());
-                }
 
-                var existingGradedSubmissions = await _unitOfWork.ExerciseSubmissions.Query()
-                    .Include(es => es.ExerciseGradingAssignments)
-                        .ThenInclude(ega => ega.EarningAllocation)
-                    .Where(es => es.LearnerId == learner.LearnerLanguageId &&
-                                es.ExerciseId == request.ExerciseId &&
-                                es.ExerciseGradingAssignments.Any(ega =>
-                                    ega.EarningAllocation != null &&
-                                    ega.EarningAllocation.Status == EarningStatus.Approved))
-                    .CountAsync();
-
-                bool hasBeenTeacherGraded = existingGradedSubmissions > 0;
 
                 // Determine grading type and allocate funds
                 bool isTeacherRequired = (exercise.Type == SpeakingExerciseType.StoryTelling ||
                          exercise.Type == SpeakingExerciseType.Debate) &&
                          course.GradingType == GradingType.AIAndTeacher &&
-                         !hasBeenTeacherGraded;
+                         allowTeacherGrading;
 
                 double aiPercentage = 100;
                 double teacherPercentage = 0;
                 decimal exerciseGradingAmount = 0;
                 bool canAssignToTeacher = isTeacherRequired;
 
-                if (isTeacherRequired)
+                if (allowTeacherGrading == false)
                 {
-                    var purchase = await _unitOfWork.Purchases.Query()
-                        .FirstOrDefaultAsync(p => p.UserId == userId &&
-                                                p.CourseId == course.CourseID &&
-                                                p.Status == PurchaseStatus.Completed);
+                    isTeacherRequired = false;
+                    canAssignToTeacher = false;
+                    aiPercentage = 100;
+                    teacherPercentage = 0;
+                }
+
+                if (isTeacherRequired == true && hasTeacherGrading == false)
+                {
+                    var purchase = await _unitOfWork.Purchases.FindAsync(
+                        p => p.UserId == userId &&
+                        p.CourseId == course.CourseID &&
+                        p.Status == PurchaseStatus.Completed);
 
                     if (purchase != null)
                     {
+                        //Tất cả bài tập cần giáo viên chấm của khóa học này.
                         var teacherGradingExercises = await _unitOfWork.Exercises.Query()
                             .CountAsync(e => e.Lesson != null &&
                                            e.Lesson.CourseUnit != null &&
@@ -425,14 +463,30 @@ namespace BLL.Services.ProgressTracking
 
                         if (teacherGradingExercises > 0)
                         {
+                            /* 
+                             * Số tiền cho hệ thống là 10% số tiền của khóa học 
+                             * Còn lại 90% là tiền tạo khóa học và tiền chấm bài tập.
+                             */
                             decimal amountForDistribution = purchase.FinalAmount * 0.9m;
+
+                            /* 
+                             * Số tiền 35% của 90% là tiền chấm bài 
+                             * sẽ được chia đều cho tất cả bài tập cần giáo viên chấm
+                             */
                             decimal gradingFeeAmount = amountForDistribution * 0.35m;
                             exerciseGradingAmount = gradingFeeAmount / teacherGradingExercises;
 
+                            /*
+                             * Nếu khóa học là loại cần cả giáo viên và AI chấm
+                             * Thuộc loại bài tập cần giáo viên chấm (Kể chuyện và Tranh luận)
+                             * Bài nộp của người học cho chính bài tập đó chưa được một giáo viên nào chấm
+                             * Thì % AI chấm là 30% và % Giáo viên chấm là 70%.
+                             */
                             aiPercentage = DefaultAIPercentage;
                             teacherPercentage = DefaultTeacherPercentage;
                         }
-                    } else
+                    }
+                    else
                     {
                         canAssignToTeacher = false;
                         aiPercentage = 100;
@@ -440,8 +494,13 @@ namespace BLL.Services.ProgressTracking
                     }
                 }
 
+                /*
+                 * Nếu khóa học thuộc loại chỉ cần AI chấm
+                 * Thuộc loại bài tập (Lặp lại theo mẫu/ Mô tả tranh)
+                 * Thì % AI chấm sẽ là 100%
+                 */
                 if (exercise.Type == SpeakingExerciseType.RepeatAfterMe ||
-                    exercise.Type == SpeakingExerciseType.PictureDescription)
+                    exercise.Type == SpeakingExerciseType.PictureDescription || course.GradingType == GradingType.AIOnly)
                 {
                     aiPercentage = 100;
                     teacherPercentage = 0;
@@ -458,14 +517,18 @@ namespace BLL.Services.ProgressTracking
                     AudioPublicId = publicId,
                     AIPercentage = aiPercentage,
                     TeacherPercentage = teacherPercentage,
-                    AIFeedback = "Pending AI Evaluation",
-                    TeacherFeedback = isTeacherRequired ? "Pending Teacher Evaluation" : string.Empty,
+                    AIFeedback = @"Bài nộp của bạn đang được AI xem xét và đánh giá. Kết quả sẽ được cập nhật khi quá trình hoàn tất.",
+                    TeacherFeedback = isTeacherRequired ? "Bài nộp của bạn đang chờ giáo viên xem xét và đánh giá." : string.Empty,
                     Status = ExerciseSubmissionStatus.PendingAIReview,
                     SubmittedAt = TimeHelper.GetVietnamTime(),
                 };
 
                 await _unitOfWork.ExerciseSubmissions.CreateAsync(submission);
 
+                /*
+                 * Nếu là lần đầu nộp bài thì hệ thống sẽ giao cho chính giáo viên tạo ra khóa học chấm
+                 * Đồng thời người giáo viên đó sẽ nhận được một khoản tiền sau khi chấm xong (dù Passed hay Failed).
+                 */
                 if (canAssignToTeacher && course?.TeacherId != null && exerciseGradingAmount > 0)
                 {
                     var gradingAssignment = new ExerciseGradingAssignment
@@ -473,6 +536,7 @@ namespace BLL.Services.ProgressTracking
                         GradingAssignmentId = Guid.NewGuid(),
                         ExerciseSubmissionId = submission.ExerciseSubmissionId,
                         AssignedTeacherId = course.TeacherId,
+                        StartedAt = TimeHelper.GetVietnamTime(),
                         AssignedAt = TimeHelper.GetVietnamTime(),
                         Status = GradingStatus.Assigned,
                         DeadlineAt = TimeHelper.GetVietnamTime().AddDays(2),
@@ -481,36 +545,50 @@ namespace BLL.Services.ProgressTracking
 
                     await _unitOfWork.ExerciseGradingAssignments.CreateAsync(gradingAssignment);
 
-                    var earningAllocation = new TeacherEarningAllocation
+                    if (!hasTeacherGrading && exerciseGradingAmount > 0)
                     {
-                        AllocationId = Guid.NewGuid(),
-                        TeacherId = course.TeacherId,
-                        GradingAssignmentId = gradingAssignment.GradingAssignmentId,
-                        ExerciseGradingAmount = exerciseGradingAmount,
-                        EarningType = EarningType.ExerciseGrading,
-                        Status = EarningStatus.Pending,
-                        CreatedAt = TimeHelper.GetVietnamTime()
-                    };
-                    await _unitOfWork.TeacherEarningAllocations.CreateAsync(earningAllocation);
+                        var earningAllocation = new TeacherEarningAllocation
+                        {
+                            AllocationId = Guid.NewGuid(),
+                            TeacherId = course.TeacherId,
+                            GradingAssignmentId = gradingAssignment.GradingAssignmentId,
+                            ExerciseGradingAmount = exerciseGradingAmount,
+                            EarningType = EarningType.ExerciseGrading,
+                            Status = EarningStatus.Pending,
+                            CreatedAt = TimeHelper.GetVietnamTime(),
+                            UpdatedAt = TimeHelper.GetVietnamTime()
+                        };
+
+                        await _unitOfWork.TeacherEarningAllocations.CreateAsync(earningAllocation);
+                    }
                 }
 
                 // XP: submitting an exercise earns small XP
                 await _gamificationService.AwardXpAsync(learner, 10, "Submit exercise");
 
                 lessonProgress.LastUpdated = TimeHelper.GetVietnamTime();
-                await _unitOfWork.LessonProgresses.UpdateAsync(lessonProgress);
-
                 await _unitOfWork.SaveChangesAsync();
 
+                var gradingType = isTeacherRequired ? GradingType.AIAndTeacher.ToString() : GradingType.AIOnly.ToString();
+
+                /*
+                 * Tạo 1 yêu cầu để bên exercise grading service đánh giá
+                 * Gồm ID bài nộp
+                 * Loại chấm là AI chấm hay cả AI và Giáo viên cùng chấm điểm
+                 * Ngôn ngữ của khóa học
+                 * Đường dẫn file nói của người học cho chính bài tập đó
+                 */
                 AssessmentRequest assessmentRequest = new AssessmentRequest
                 {
                     ExerciseSubmissionId = submission.ExerciseSubmissionId,
                     AudioUrl = audioUrl,
                     LanguageCode = (course != null) ? course.Language.LanguageCode : "en",
-                    GradingType = isTeacherRequired ? GradingType.AIAndTeacher.ToString() : GradingType.AIOnly.ToString()
+                    GradingType = gradingType
                 };
 
-                BackgroundJob.Enqueue(() =>_exerciseGradingService.ProcessAIGradingAsync(assessmentRequest));
+                // Tự động chấm điểm ngầm
+                BackgroundJob.Enqueue(() => _exerciseGradingService.ProcessAIGradingAsync(assessmentRequest));
+                //await _exerciseGradingService.ProcessAIGradingAsync(assessmentRequest);
 
                 var response = new ExerciseSubmissionResponse
                 {
@@ -531,7 +609,6 @@ namespace BLL.Services.ProgressTracking
             catch (Exception ex)
             {
                 return BaseResponse<ExerciseSubmissionResponse>.Error($"Error: {ex.Message}", 500, new object());
-                throw new Exception(ex.Message);
             }
         }
         public async Task<BaseResponse<ProgressTrackingResponse>> TrackActivityAsync(Guid userId, TrackActivityRequest request)
@@ -677,40 +754,18 @@ namespace BLL.Services.ProgressTracking
                     lessonProgress.IsDocumentRead = true;
                     break;
             }
-
             // Calculate progress percent
             double progress = 0.0;
             int completedActivities = 0;
+
+            // Count total available activities
             int totalActivities = 1; // Content is always required
 
-            // Content is mandatory (50%)
-            if (lessonProgress.IsContentViewed == true)
-            {
-                progress += 0.5;
-                completedActivities++;
-            }
-
-            // Video is optional (20% if exists)
             if (lesson.VideoUrl != null)
-            {
                 totalActivities++;
-                if (lessonProgress.IsVideoWatched == true)
-                {
-                    progress += 0.2;
-                    completedActivities++;
-                }
-            }
 
-            // Document is optional (20% if exists)
             if (lesson.DocumentUrl != null)
-            {
                 totalActivities++;
-                if (lessonProgress.IsDocumentRead == true)
-                {
-                    progress += 0.2;
-                    completedActivities++;
-                }
-            }
 
             var exercises = await _unitOfWork.Exercises
                 .Query()
@@ -718,8 +773,41 @@ namespace BLL.Services.ProgressTracking
                 .ToListAsync();
 
             if (exercises.Any())
-            {
                 totalActivities++;
+
+            // Calculate equal weight for each activity
+            double activityWeight = 1.0 / totalActivities;
+
+            // Content is mandatory (always counts)
+            if (lessonProgress.IsContentViewed == true)
+            {
+                progress += activityWeight;
+                completedActivities++;
+            }
+
+            // Video is optional
+            if (lesson.VideoUrl != null)
+            {
+                if (lessonProgress.IsVideoWatched == true)
+                {
+                    progress += activityWeight;
+                    completedActivities++;
+                }
+            }
+
+            // Document is optional
+            if (lesson.DocumentUrl != null)
+            {
+                if (lessonProgress.IsDocumentRead == true)
+                {
+                    progress += activityWeight;
+                    completedActivities++;
+                }
+            }
+
+            // Exercises are optional
+            if (exercises.Any())
+            {
                 var completedExercises = await _unitOfWork.ExerciseSubmissions
                     .Query()
                     .Where(es => es.LessonProgressId == lessonProgress.LessonProgressId &&
@@ -728,19 +816,19 @@ namespace BLL.Services.ProgressTracking
                     .Distinct()
                     .CountAsync();
 
+                // Calculate exercise progress based on actual completed exercises
+                double exerciseProgress = (double)completedExercises / exercises.Count;
+                progress += (activityWeight * exerciseProgress);
+
+                // Count as completed activity only if ALL exercises are completed
                 if (completedExercises == exercises.Count)
                 {
-                    progress += 0.3;
                     completedActivities++;
                     lessonProgress.IsPracticeCompleted = true;
                 }
-                else if (completedExercises > 0)
-                {
-                    progress += (0.3 * completedExercises / exercises.Count);
-                }
             }
 
-            lessonProgress.ProgressPercent = Math.Min(progress * 100, 100);
+            lessonProgress.ProgressPercent = progress * 100;
             lessonProgress.LastUpdated = TimeHelper.GetVietnamTime();
 
             // Update status
@@ -882,6 +970,44 @@ namespace BLL.Services.ProgressTracking
             };
 
             return BaseResponse<ProgressTrackingResponse>.Success(response, "Progress retrieved successfully");
+        }
+        private async Task<bool> CanSubmitExerciseAsync(Guid learnerId, Guid exerciseId)
+        {
+            var today = TimeHelper.GetVietnamTime().Date;
+
+            //Đếm số lượng bài tập nộp trong một ngày của một người học cụ thể.
+            var todaysSubmissions = await _unitOfWork.ExerciseSubmissions.Query()
+                .Where(es => es.LearnerId == learnerId &&
+                             es.ExerciseId == exerciseId &&
+                             es.SubmittedAt >= today).CountAsync();
+
+            //Nếu số lượng bài nộp lớn hơn hoặc bằng 3 thì người học không thể nộp được nữa và phải chờ đến ngày mai.
+            if (todaysSubmissions >= 3)
+                return false;
+
+            return true;
+        }
+        private async Task<bool> HasTeacherGrading(Guid learnerId, Guid exerciseId)
+        {
+            //Kiểm tra bài tập đã có giáo viên chấm hay chưa
+            return await _unitOfWork.ExerciseSubmissions.Query()
+                .AnyAsync(es => es.LearnerId == learnerId &&
+                               es.ExerciseId == exerciseId &&
+                               es.ExerciseGradingAssignments.Any(ega =>
+                                   ega.Status != GradingStatus.Expired));
+        }
+        private async Task<bool> AllowTeacherGrading(Guid learnerId, Guid exerciseId)
+        {
+            // Đếm số bài nộp đã được giao cho giáo viên chấm (chưa hết hạn)
+            var gradedSubmissionsCount = await _unitOfWork.ExerciseSubmissions.Query()
+                .Where(es => es.LearnerId == learnerId &&
+                            es.ExerciseId == exerciseId &&
+                            es.ExerciseGradingAssignments.Any(ega =>
+                                ega.Status != GradingStatus.Expired))
+                .CountAsync();
+
+            // Cho phép nếu số bài đã giao chấm < 2 (lần 1 và lần 2)
+            return gradedSubmissionsCount < 2;
         }
         #endregion
     }

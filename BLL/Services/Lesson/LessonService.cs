@@ -26,37 +26,30 @@ namespace BLL.Services.Lesson
             try
             {
                 var teacher = await _unit.TeacherProfiles.FindAsync(x => x.UserId == userId);
-                if (teacher == null)
-                    return BaseResponse<LessonResponse>.Fail(new object(), "Access denied", 403);
+                if (teacher == null || !teacher.Status)
+                    return BaseResponse<LessonResponse>.Fail(new object(), "Access denied: the teacher profile is invalid or inactive.", 403);
 
                 var selectedUnit = await _unit.CourseUnits.Query()
                     .Include(u => u.Course)
                     .Include(u => u.Lessons)
+                    .Include(u => u.Course.Template)
                     .FirstOrDefaultAsync(u => u.CourseUnitID == unitId);
 
                 if (selectedUnit == null)
-                    return BaseResponse<LessonResponse>.Fail(
-                        new { UnitId = "Unit not found." },
-                        "Unit does not exist.",
-                        404
-                    );
+                    return BaseResponse<LessonResponse>.Fail(new object(), "Unit does not exist.", 404);
+
 
                 var selectedCourse = selectedUnit.Course;
                 if (selectedCourse == null)
-                    return BaseResponse<LessonResponse>.Fail(
-                        new { Course = "Course not found for this unit." },
-                        "Invalid course reference.",
-                        404
-                    );
+                    return BaseResponse<LessonResponse>.Fail(new object(), "Invalid course reference.", 404);
 
                 if (selectedCourse.Status != CourseStatus.Draft && selectedCourse.Status != CourseStatus.Rejected)
-                {
-                    return BaseResponse<LessonResponse>.Fail(
-                        new { CourseStatus = "Invalid course status." },
-                        "Only Draft or Rejected courses can be updated.",
-                        400
-                    );
-                }
+                    return BaseResponse<LessonResponse>.Fail(new object(), "Only Draft or Rejected courses can be updated.", 400);
+
+                int maxLessons = selectedCourse.Template?.LessonsPerUnit ?? 8;
+
+                if ((selectedUnit.Lessons?.Count ?? 0) >= maxLessons)
+                    return BaseResponse<LessonResponse>.Fail($"Cannot add more lessons. Maximum allowed lessons for this unit is {maxLessons}.");
 
                 string? videoUrl = null;
                 string? videoPublicId = null;

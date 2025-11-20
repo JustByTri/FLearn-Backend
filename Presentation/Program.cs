@@ -354,7 +354,8 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 RecurringJob.AddOrUpdate<IExerciseGradingService>(
     "check-expired-assignments",
     service => service.CheckAndReassignExpiredAssignmentsAsync(),
-    "*/5 * * * *");
+    "0 2 */3 * *"
+);
 
 app.UseHttpsRedirection();
 
