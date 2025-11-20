@@ -59,8 +59,12 @@ namespace BLL.IServices.AI
 
         // NEW: Gợi ý từ đồng nghĩa theo trình độ
         Task<SynonymSuggestionDto> GenerateSynonymSuggestionsAsync(string userMessage, string targetLanguage, string currentLevel);
-        
+
         Task<string> TranslateTextAsync(string text, string sourceLanguage, string targetLanguage);
+        IAsyncEnumerable<string> GenerateResponseStreamAsync(
+    string systemPrompt,
+    string userMessage,
+    List<string> history);
     }
 
     public class CourseInfoDto
