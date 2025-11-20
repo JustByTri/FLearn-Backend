@@ -1,4 +1,6 @@
-﻿using BLL.IServices.AI;
+﻿using Azure;
+using Azure.AI.OpenAI;
+using BLL.IServices.AI;
 using BLL.Settings;
 using Common.DTO.Assement;
 using Common.DTO.Conversation; // Đảm bảo RoleplayResponseDto nằm trong namespace này
@@ -7,6 +9,7 @@ using Common.DTO.Teacher;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenAI.Chat;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -21,7 +24,7 @@ namespace BLL.Services.AI
         {
             PropertyNameCaseInsensitive = true
         };
-
+        private readonly AzureOpenAIClient _openAiClient;
         public AzureOpenAIService(HttpClient http, IOptions<AzureOpenAISettings> settings, ILogger<AzureOpenAIService> logger)
         {
             _http = http;
@@ -36,6 +39,12 @@ namespace BLL.Services.AI
             if (!string.IsNullOrWhiteSpace(_settings.ApiKey))
             {
                 _http.DefaultRequestHeaders.Add("api-key", _settings.ApiKey);
+            }
+            if (!string.IsNullOrWhiteSpace(_settings.Endpoint) && !string.IsNullOrWhiteSpace(_settings.ApiKey))
+            {
+                _openAiClient = new AzureOpenAIClient(
+                    new Uri(_settings.Endpoint),
+                    new AzureKeyCredential(_settings.ApiKey));
             }
         }
 
@@ -736,6 +745,58 @@ Rules:
                 var x when x.Contains("C2") => "STRICT C2 RULES: Native proficiency, subtle nuances, cultural references.",
                 _ => "Simple English."
             };
+        }
+        public async IAsyncEnumerable<string> GenerateResponseStreamAsync(
+    string systemPrompt,
+    string userMessage,
+    List<string> history)
+        {
+           
+            var deploymentName = !string.IsNullOrWhiteSpace(_settings.ChatDeployment)
+                ? _settings.ChatDeployment
+                : "gpt-4o-mini";
+
+            var chatClient = _openAiClient.GetChatClient(deploymentName);
+
+         
+            var messages = new List<OpenAI.Chat.ChatMessage>    
+    {
+        new SystemChatMessage(systemPrompt)
+    };
+
+    
+            foreach (var hist in history)
+            {
+                if (hist.StartsWith("User:"))
+                    messages.Add(new UserChatMessage(hist.Substring(5).Trim()));
+                else if (hist.StartsWith("AI:"))
+                    messages.Add(new AssistantChatMessage(hist.Substring(3).Trim()));
+            }
+
+         
+            messages.Add(new OpenAI.Chat.UserChatMessage(userMessage));
+
+     
+            var options = new OpenAI.Chat.ChatCompletionOptions
+            {
+                Temperature = 0.7f,
+                MaxOutputTokenCount = 300 
+            };
+
+           
+            var completionUpdates = chatClient.CompleteChatStreamingAsync(messages, options);
+
+            await foreach (var update in completionUpdates)
+            {
+                
+                foreach (var contentPart in update.ContentUpdate)
+                {
+                    if (!string.IsNullOrEmpty(contentPart.Text))
+                    {
+                        yield return contentPart.Text;
+                    }
+                }
+            }
         }
     }
 }
