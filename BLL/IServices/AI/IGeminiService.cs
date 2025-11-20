@@ -48,9 +48,15 @@ namespace BLL.IServices.AI
         Task<VoiceEvaluationResult> EvaluateVoiceResponseDirectlyAsync(VoiceAssessmentQuestion question, IFormFile audioFile, string languageCode);
 
         Task<GeneratedConversationContentDto> GenerateConversationContentAsync(ConversationContextDto context);
-        Task<string> GenerateResponseAsync(string systemPrompt, string userMessage, List<string> conversationHistory);
-        Task<ConversationEvaluationResult> EvaluateConversationAsync(string evaluationPrompt);
-        
+        Task<RoleplayResponseDto> GenerateResponseAsync(
+            string systemPrompt,
+            string userMessage,
+            List<string> conversationHistory,
+            string languageName = "English",
+            string topic = "",
+            string aiRoleName = "AI Partner", string level = "A1");
+        Task<ConversationEvaluationResult> EvaluateConversationAsync(string evaluationPrompt, string targetLanguage);
+
         // NEW: Gợi ý từ đồng nghĩa theo trình độ
         Task<SynonymSuggestionDto> GenerateSynonymSuggestionsAsync(string userMessage, string targetLanguage, string currentLevel);
         

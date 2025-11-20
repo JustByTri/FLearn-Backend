@@ -1,7 +1,7 @@
 ﻿using BLL.IServices.AI;
 using BLL.Settings;
 using Common.DTO.Assement;
-using Common.DTO.Conversation;
+using Common.DTO.Conversation; // Đảm bảo RoleplayResponseDto nằm trong namespace này
 using Common.DTO.Learner;
 using Common.DTO.Teacher;
 using Microsoft.AspNetCore.Http;
@@ -101,178 +101,273 @@ namespace BLL.Services.AI
 
         private sealed class QuestionsWrapper { public List<VoiceAssessmentQuestion>? Questions { get; set; } }
 
-        // Implement IGeminiService by mapping to chat completions
+
         public async Task<GeneratedConversationContentDto> GenerateConversationContentAsync(ConversationContextDto context)
         {
+            var languageConstraints = GetStrictLanguageConstraints(context.Language, context.DifficultyLevel);
             var rubric = BuildDifficultyRubric(context.DifficultyLevel);
 
-            var prompt = $@"# Generate IMMERSIVE Roleplay Scenario for {context.Language}
+            // Random vibe (Giữ nguyên logic random nhưng sửa text cho nhẹ nhàng hơn)
+            var vibes = new[]
+            {
+        "Urgent and rushed",
+        "Relaxed and cozy",
+        "A minor misunderstanding",
+        "Pleasantly surprised",
+        "Seeking advice",
+        "Celebratory mood",
+        "Slightly confused",
+        "Professional and formal",
+        "Busy environment",
+        "Quiet and secretive"
+    };
+            var selectedVibe = vibes[Random.Shared.Next(vibes.Length)];
 
-Create a VIVID, REALISTIC roleplay scenario (NOT a generic description).
+            // --- FIX: PROMPT AN TOÀN HƠN ---
+            var prompt = $@"# Generate Roleplay Scenario
 
-IMPORTANT VARIETY RULES:
-- Every time you answer, create a CLEARLY DIFFERENT scenario.
-- Do NOT reuse the same structure, details, or rhythm as the examples.
-- Do NOT copy any sentences, phrases, or patterns from the examples.
-- Vary time of day, weekday/weekend, location type, relationship between characters, and stakes.
-- Frequently change sentence structure to avoid feeling repetitive.
-
-Base the scenario tightly on:
+CONTEXT:
 - Topic: {context.Topic}
-- Difficulty: {context.DifficultyLevel} — {rubric}
-- Guidelines: {context.ScenarioGuidelines}
-- Roleplay notes: {context.RoleplayInstructions}
-- Evaluation focus: {context.EvaluationCriteria}
+- Level: {context.DifficultyLevel}
+- Tone: {selectedVibe}
 
-## SCENARIO DESCRIPTION (25-50 words in {context.Language}):
-Must include:
-- Exact time & specific place: ""Monday 9 AM at Starbucks 5th Ave"" NOT ""at a cafe""
-- Character name, age, brief appearance
-- What JUST happened to trigger this conversation
-- Current emotion/urgency
-- At least ONE sensory detail (weather, sound, atmosphere, smell, light, etc.)
-- Wide variety of characters, roles, and times across different calls so users don't get repeated patterns.
-- Vary sentence structure heavily (avoid always starting with time, or ""You are..."").
+CRITICAL LANGUAGE CONSTRAINTS:
+{languageConstraints}
 
-Examples below are ONLY to show level of detail and style. 
-Do NOT copy their structure, order of information, or wording.
+INSTRUCTIONS:
+...
+## 3. CHARACTER GUIDELINES (System Prompt):
+- Embody the character '{selectedVibe}'.
+- **IMPORTANT**: You must speak strictly according to: {languageConstraints}
+- If A1/N5/HSK1: Use very short, simple sentences. Be patient.
+...
 
-GOOD example (for level of detail ONLY):
-""It's 2 PM, raining. You're Emma, 25, sitting in the HR office at Tech Solutions. The interviewer just asked about your previous job failure. Your coffee is cold. This interview could change everything.""
+## 1. SCENARIO DETAILS (in {context.Language}):
+- Describe the scene, fitting the '{selectedVibe}' tone.
+- Include sensory details (sound, lighting, etc.).
+- Explain the immediate reason for the conversation.
 
-BAD example:
-""You are having a job interview to discuss your experience.""
+## 2. CHARACTER IDENTITY (in {context.Language}):
+- Define a character matching the tone.
+- Format: ""[Name], [Role] ([Personality])""
 
-Forbidden patterns:
-- Do NOT start with ""It's 2 PM, raining."" or any slight variation.
-- Do NOT end with sentences like ""This X could change everything.""
-- Do NOT always use ""You're [name], [age], sitting in..."". Change it.
+## 3. CHARACTER GUIDELINES (Internal Instructions):
+- The AI should embody the character and the '{selectedVibe}' tone.
+- Language: {context.Language} only.
+- Length: Keep replies concise (1-2 sentences).
 
-## AI ROLE (in {context.Language}, max 40 chars):
-Format: ""[Name], [Role] ([personality trait])""
-Example: ""Mr. Chen, Hiring Manager (严肃但公正)"" or ""Sophie, Server (friendly but busy)""
-Vary names, roles, and traits across scenarios.
+## 4. OPENING LINE (in {context.Language}):
+- Start directly in the situation. Avoid generic greetings like ""Hello"" if they don't fit the urgency.
+- Demonstrate the emotion immediately.
 
-## SYSTEM PROMPT:
-Create detailed character instructions:
-- Full character identity and personality
-- Speak AS the character, never describe from outside
-- Reply ONLY in {context.Language}, no other languages
-- Use natural conversational tone for {context.DifficultyLevel} level
-- Keep responses 1-2 sentences, realistic dialogue
-- Show emotion through word choice
-- Reference specific scenario details
-- Stay on topic: {context.Topic}
-- Gently redirect if user goes off-topic, staying in character
-- NO emojis, NO markdown, NO role labels like ""AI:"" or ""Character:""
+## 5. TASKS (3 items):
+- Task 1 (Easy) -> Task 2 (Medium) -> Task 3 (Hard).
+- Specific to this scenario.
 
-## FIRST MESSAGE (in {context.Language}):
-MUST be spoken IN-CHARACTER as direct dialogue, NOT a greeting template.
-- Include brief action/emotion in *asterisks* if needed
-- Reference something specific from scenario
-- Ask a question or create situation requiring response
-- Show personality immediately
-- Do NOT reuse any of the example sentences below.
-
-GOOD examples (for style ONLY, do NOT copy):
-- ""*glances at your resume* I see a gap here between March and July. What happened?""
-- ""*approaches your table with notepad* I'm so sorry for the wait! Ready to order?""
-- ""*looks up from computer* Your flight number? I'll search our system right away.""
-
-BAD examples:
-- ""Hello! Let's start our conversation.""
-- ""Hi there! I'm excited to discuss {context.Topic} with you.""
-- ""Welcome! How can I help you today?"" (too generic)
-
-## TASKS (exactly 3):
-Progressive difficulty for {context.DifficultyLevel} level.
-Each task: one specific action, max 80 chars, imperative form.
-Task 1 (easy) → Task 2 (medium) → Task 3 (challenging)
-
-Examples for {context.Topic}:
-Task 1: ""Greet and explain your situation clearly""
-Task 2: ""Ask specific questions about the resolution process""
-Task 3: ""Negotiate a satisfactory solution professionally""
-
-## RETURN STRICT JSON FORMAT:
+## JSON OUTPUT FORMAT:
 {{
-  ""scenarioDescription"": ""[detailed scenario in {context.Language}]"",
-  ""aiRole"": ""[Name, Role (trait)]"",
-  ""systemPrompt"": ""[character instructions as described above]"",
-  ""firstMessage"": ""[in-character dialogue in {context.Language}]"",
-  ""tasks"": [
-    {{""taskDescription"": ""[task 1 in {context.Language}]""}},
-    {{""taskDescription"": ""[task 2 in {context.Language}]""}},
-    {{""taskDescription"": ""[task 3 in {context.Language}]""}}
-  ]
-}}
+  ""scenarioDescription"": ""..."",
+  ""aiRole"": ""..."",
+  ""systemPrompt"": ""..."",
+  ""firstMessage"": ""..."",
+  ""tasks"": [ {{""taskDescription"": ""...""}}, ... ]
+}}";
 
-Return ONLY valid JSON, no markdown blocks, no extra text.";
+           
+            var json = await ChatAsync(context.MasterPrompt, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 800, temperature: 0.8);
 
-            var json = await ChatAsync(context.MasterPrompt, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 800, temperature: 0.6);
             try
             {
                 return JsonSerializer.Deserialize<GeneratedConversationContentDto>(json, _json) ?? new GeneratedConversationContentDto
                 {
-                    ScenarioDescription = $"Practice {context.Topic} in {context.Language} at {context.DifficultyLevel} level.",
-                    AIRole = "Conversation Partner",
+                    ScenarioDescription = $"Practice {context.Topic}",
+                    AIRole = "Partner",
                     SystemPrompt = context.MasterPrompt,
-                    FirstMessage = "Hello! Let's start!",
+                    FirstMessage = "Hello.",
                     Tasks = new List<ConversationTaskDto>()
                 };
             }
             catch
             {
-                return new GeneratedConversationContentDto
-                {
-                    ScenarioDescription = $"Practice {context.Topic} in {context.Language} at {context.DifficultyLevel} level.",
-                    AIRole = "Conversation Partner",
-                    SystemPrompt = context.MasterPrompt,
-                    FirstMessage = "Hello! Let's start!",
-                    Tasks = new List<ConversationTaskDto>()
-                };
+                return new GeneratedConversationContentDto();
             }
         }
 
-        public async Task<string> GenerateResponseAsync(string systemPrompt, string userMessage, List<string> conversationHistory)
-        => await ChatAsync(systemPrompt, userMessage, conversationHistory, jsonMode: false);
+        public async Task<RoleplayResponseDto> GenerateResponseAsync(
+    string systemPrompt,
+    string userMessage,
+    List<string> conversationHistory,
+    string languageName = "English",
+    string topic = "",
+    string aiRoleName = "AI Partner",
+    string level = "A1") 
+        {
+
+            var levelConstraints = GetStrictLanguageConstraints(languageName, level);
+            var goodbyeKeywords = new[] { "bye", "goodbye", "see you", "tạm biệt", "さようなら", "再见", "zàijiàn", "sayonara" };
+            var userLower = userMessage.ToLowerInvariant();
+
+            if (goodbyeKeywords.Any(k => userLower.Contains(k)))
+            {
+              
+                var langInput = languageName?.ToLowerInvariant()?.Trim() ?? "";
+
+                string byeResponse;
+
+              
+                if (langInput.Contains("japan") || langInput.Contains("jp") || langInput.Contains("nhật") || langInput.Contains("ja"))
+                {
+                    byeResponse = "さようなら！良い一日を！"; // Tiếng Nhật
+                }
+                else if (langInput.Contains("chin") || langInput.Contains("zh") || langInput.Contains("trung") || langInput.Contains("cn"))
+                {
+                    byeResponse = "再见！祝你有美好的一天！"; // Tiếng Trung
+                }
+                else if (langInput.Contains("english") || langInput.Contains("en") || langInput.Contains("anh") || langInput.Contains("us") || langInput.Contains("uk"))
+                {
+                    byeResponse = "Goodbye! Have a great day!"; // Tiếng Anh
+                }
+                else
+                {
+                    byeResponse = "Tạm biệt! Chúc bạn một ngày tốt lành!"; // Mặc định (Tiếng Việt)
+                }
+
+                return new RoleplayResponseDto
+                {
+                    Content = byeResponse,
+                    IsConversationFinished = true,
+                    IsOffTopic = false
+                };
+            }
+
+            // 2. Build Guidance & Roleplay Prompt
+            // Kỹ thuật: Yêu cầu AI kiểm tra Condition trước khi trả lời.
+            // Nếu lạc đề -> Trả về lời nhắc (Tiếng Việt). Nếu đúng -> Trả về hội thoại (Target Language).
+            var guidancePrompt = $@"
+{systemPrompt}
+
+---
+### UPDATE FOR NEXT RESPONSE:
+User Input: ""{userMessage}""
+Context: Topic '{topic}', Role '{aiRoleName}', Level '{level}'.
+
+**STRICT LANGUAGE ENFORCEMENT:**
+{levelConstraints}
+(Ensure your response strictly matches this complexity level. Do not use words/grammar above this level).
+
+Please respond using ONE of these modes:
+
+MODE A: GUIDANCE (If user is off-topic/confused)
+- JSON `isOffTopic: true`.
+- Content (Vietnamese): ""Có thể bạn đang hơi lạc đề. Tôi là {aiRoleName}. Với trình độ {level}, bạn nên nói: '[Suggest sentence strictly complying with {levelConstraints}]'""
+
+MODE B: ROLEPLAY (Normal conversation)
+- JSON `isOffTopic: false`.
+- Content ({languageName}): Your in-character reply. MUST follow: {levelConstraints}.
+
+### REQUIRED JSON OUTPUT:
+{{
+  ""content"": ""..."",
+  ""isOffTopic"": true/false,
+  ""isTaskCompleted"": true/false
+}}
+";
+
+            _logger.LogInformation("AzureOpenAI: Prompting with Safe Guidance Logic");
+
+            // Giảm Temperature xuống 0.3 hoặc 0.4 để AI tuân thủ luật JSON tốt hơn
+            var json = await ChatAsync(string.Empty, guidancePrompt, conversationHistory, jsonMode: true, maxTokens: 500, temperature: 0.4);
+
+            try
+            {
+                var result = JsonSerializer.Deserialize<RoleplayResponseDto>(json, _json);
+                return result ?? new RoleplayResponseDto { Content = "..." };
+            }
+            catch (Exception ex)
+            {
+                // Fallback
+                var content = await ChatAsync(systemPrompt, userMessage, conversationHistory);
+                return new RoleplayResponseDto { Content = content, IsOffTopic = false };
+            }
+        }
 
         // UPDATED: Đánh giá chi tiết hơn, không set điểm cứng
-        public async Task<ConversationEvaluationResult> EvaluateConversationAsync(string evaluationPrompt)
+        public async Task<ConversationEvaluationResult> EvaluateConversationAsync(string evaluationPrompt, string targetLanguage)
         {
-            // Cải thiện prompt để yêu cầu phân tích chi tiết
+            string outputLang = targetLanguage;
+
+            // FIX: Cung cấp JSON Skeleton cụ thể để AI không trả về sai cấu trúc
             var enhancedPrompt = $@"{evaluationPrompt}
 
-CRITICAL: Provide a DETAILED, QUALITATIVE analysis. Don't just give scores.
-Return JSON with:
-- overallScore (0-100, for compatibility)
-- fluentAnalysis, grammarAnalysis, vocabularyAnalysis, culturalAnalysis (each with detailed object containing:
-  * skillName: name of the skill
-  * qualitativeAssessment: detailed narrative description
-  * specificExamples: array of concrete examples from conversation
-  * suggestedImprovements: array of actionable advice
-  * currentLevel: ""Beginner""/""Intermediate""/""Advanced"")
-- specificObservations: array of objects with category, observation, impact, example
-- positivePatterns: array of strings (what user did well)
-- areasNeedingWork: array of strings (specific things to improve)
-- progressSummary: overall narrative assessment
+---
+### CRITICAL OUTPUT INSTRUCTIONS:
 
-For each skill analysis, provide concrete examples and practical suggestions.
-Return valid JSON only, no markdown.";
+1. **LANGUAGE**: Write all text analysis in **{outputLang}**.
 
-            var json = await ChatAsync(string.Empty, enhancedPrompt, Array.Empty<string>(), jsonMode: true, maxTokens: 1500, temperature: 0.3);
+2. **STRICT JSON STRUCTURE**:
+You must return a valid JSON object matching EXACTLY this structure. Do not change property names.
+
+{{
+  ""overallScore"": 0,
+  ""fluentAnalysis"": {{
+    ""skillName"": ""Fluency"",
+    ""qualitativeAssessment"": ""Detailed analysis here"",
+    ""specificExamples"": [""example 1"", ""example 2""],
+    ""suggestedImprovements"": [""advice 1"", ""advice 2""],
+    ""currentLevel"": ""Beginner/Intermediate/Advanced""
+  }},
+  ""grammarAnalysis"": {{
+    ""skillName"": ""Grammar"",
+    ""qualitativeAssessment"": ""..."",
+    ""specificExamples"": [],
+    ""suggestedImprovements"": [],
+    ""currentLevel"": ""...""
+  }},
+  ""vocabularyAnalysis"": {{
+    ""skillName"": ""Vocabulary"",
+    ""qualitativeAssessment"": ""..."",
+    ""specificExamples"": [],
+    ""suggestedImprovements"": [],
+    ""currentLevel"": ""...""
+  }},
+  ""culturalAnalysis"": {{
+    ""skillName"": ""Culture"",
+    ""qualitativeAssessment"": ""..."",
+    ""specificExamples"": [],
+    ""suggestedImprovements"": [],
+    ""currentLevel"": ""...""
+  }},
+  ""specificObservations"": [
+    {{
+      ""category"": ""Engagement/Grammar/Tone"",
+      ""observation"": ""What happened"",
+      ""impact"": ""Why it matters"",
+      ""example"": ""Quote from user""
+    }}
+  ],
+  ""positivePatterns"": [""What user did well""],
+  ""areasNeedingWork"": [""What needs improvement""],
+  ""progressSummary"": ""Overall summary""
+}}
+
+IMPORTANT: `specificObservations` MUST be an array of OBJECTS (with category, observation, impact, example), NOT strings.
+";
+
+          
+            var json = await ChatAsync(string.Empty, enhancedPrompt, Array.Empty<string>(), jsonMode: true, maxTokens: 2500, temperature: 0.3);
+
             try
             {
                 var result = JsonSerializer.Deserialize<ConversationEvaluationResult>(json, _json);
                 if (result != null)
                 {
-                    // Ensure backwards compatibility: nếu có detailed analysis thì tính điểm từ đó
-                    if (result.FluentAnalysis != null || result.GrammarAnalysis != null)
+                    
+                    if (result.OverallScore > 0)
                     {
-                        result.FluentScore = result.OverallScore * 0.9f;
-                        result.GrammarScore = result.OverallScore * 0.85f;
-                        result.VocabularyScore = result.OverallScore * 0.95f;
-                        result.CulturalScore = result.OverallScore * 0.8f;
+                        if (result.FluentScore == 0) result.FluentScore = result.OverallScore;
+                        if (result.GrammarScore == 0) result.GrammarScore = result.OverallScore;
+                        if (result.VocabularyScore == 0) result.VocabularyScore = result.OverallScore;
+                        if (result.CulturalScore == 0) result.CulturalScore = result.OverallScore;
                     }
                     return result;
                 }
@@ -280,85 +375,86 @@ Return valid JSON only, no markdown.";
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to parse detailed evaluation");
-                return new ConversationEvaluationResult { AIFeedback = json };
+                _logger.LogError(ex, "Failed to parse detailed evaluation. JSON: {Json}", json);
+
+               
+                return new ConversationEvaluationResult
+                {
+                    AIFeedback = "AI Error: Could not parse evaluation results.",
+                    ProgressSummary = "Evaluation failed due to format error."
+                };
             }
         }
 
-        // NEW: Generate synonym suggestions
+       
         public async Task<SynonymSuggestionDto> GenerateSynonymSuggestionsAsync(string userMessage, string targetLanguage, string currentLevel)
         {
             try
             {
-                _logger.LogInformation("AzureOpenAI: Generating synonyms for '{Message}' in {Language} at {Level}", 
+                _logger.LogInformation("AzureOpenAI: Generating synonyms for '{Message}' in {Language} at {Level}",
                     userMessage, targetLanguage, currentLevel);
-                
-                // Determine next level only
+
                 var nextLevel = GetNextLevel(currentLevel);
-                _logger.LogInformation("AzureOpenAI: Current level={Current}, Next level={Next}", currentLevel, nextLevel);
-                
-                // Special handling for max levels
+
+              
                 var isMaxLevel = (currentLevel == nextLevel);
-                var levelGuidance = isMaxLevel 
+                var levelGuidance = isMaxLevel
                     ? $"at the current {currentLevel} level with more sophisticated/native-like expressions"
                     : $"at the NEXT proficiency level only ({nextLevel})";
-                
-                _logger.LogInformation("AzureOpenAI: IsMaxLevel={IsMax}, LevelGuidance={Guidance}", isMaxLevel, levelGuidance);
-                
-                var prompt = $@"User said: ""{userMessage}"" in {targetLanguage} (current level: {currentLevel})
+                var levelRules = GetStrictLanguageConstraints(targetLanguage, nextLevel);
+                // =================================================================================
+                // FIX: CẬP NHẬT PROMPT ĐỂ ÉP NGÔN NGỮ ĐÍCH
+                // =================================================================================
+                var prompt = $@"
+CONTEXT:
+- User is learning: {targetLanguage} (Target Language).
+- User's Current Level: {currentLevel}.
+- User Input: ""{userMessage}""
 
-Provide 2-3 BETTER alternatives {levelGuidance}.
-Do NOT suggest multiple levels - focus on natural progression.
+TASK:
+Provide 2-3 better, more natural, or more sophisticated expressions for the User Input strictly IN {targetLanguage}.
+CRITICAL LEVEL RULES for suggestions:
+{{levelRules}}
+(The `alternativeText` must strictly follow these rules. Do not suggest words that are too difficult for {{nextLevel}}).
+...
+"";
+CRITICAL RULES:
+1. **Output Language**: The `alternativeText` field MUST ALWAYS be in {targetLanguage}. 
+   - IF User Input is in Vietnamese/English: Translate the MEANING to {targetLanguage} first, then provide improved versions in {targetLanguage}.
+   - IF User Input is in {targetLanguage}: Improve it directly in {targetLanguage}.
+2. **Explanation Language**: The `difference` and `explanation` fields MUST be in VIETNAMESE (so the learner understands why it's better).
+3. **Level**: Suggestions should be {levelGuidance}.
 
-{(isMaxLevel ? 
-$@"Since user is at {currentLevel} (highest level), suggest:
-- More native-like expressions
-- More sophisticated vocabulary
-- More idiomatic phrases
-All at {currentLevel} level." :
-$@"Example:
-If user (A2) said: ""I want to buy this""
-Suggest (B1): ""I would like to purchase this"" or ""I'd like to buy this item""
-NOT B2/C1/C2 - only the NEXT level!")}
-
-Return JSON:
+JSON OUTPUT FORMAT:
 {{
   ""originalMessage"": ""{userMessage}"",
   ""currentLevel"": ""{currentLevel}"",
   ""alternatives"": [
     {{
       ""level"": ""{nextLevel}"",
-      ""alternativeText"": ""better expression at {nextLevel}"",
-      ""difference"": ""why this is more advanced"",
-      ""exampleUsage"": ""example in context""
+      ""alternativeText"": ""[SUGGESTION IN {targetLanguage}]"", 
+      ""difference"": ""[GIẢI THÍCH NGẮN GỌN BẰNG TIẾNG VIỆT]"",
+      ""exampleUsage"": ""[EXAMPLE IN {targetLanguage}]""
     }}
   ],
-  ""explanation"": ""brief summary""
+  ""explanation"": ""[TỔNG QUAN BẰNG TIẾNG VIỆT]""
 }}
 
-Return 2-3 alternatives only, all at level {nextLevel}.";
+Return valid JSON only.";
 
-                _logger.LogDebug("AzureOpenAI: Calling ChatAsync with prompt (first 200 chars): {Prompt}", 
-                    prompt.Length > 200 ? prompt.Substring(0, 200) + "..." : prompt);
+                // Gọi AI
+                var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 800, temperature: 0.4);
 
-                var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 600, temperature: 0.4);
-                
-                _logger.LogInformation("AzureOpenAI: Received JSON response (length={Length})", json?.Length ?? 0);
-                _logger.LogDebug("AzureOpenAI: JSON response: {Json}", json);
-                
-                var result = !string.IsNullOrWhiteSpace(json) 
+                var result = !string.IsNullOrWhiteSpace(json)
                     ? JsonSerializer.Deserialize<SynonymSuggestionDto>(json, _json)
                     : null;
-                
+
                 if (result != null)
                 {
-                    _logger.LogInformation("AzureOpenAI: Successfully deserialized. OriginalMessage={Orig}, Alternatives count={Count}", 
-                        result.OriginalMessage, result.Alternatives?.Count ?? 0);
                     return result;
                 }
                 else
                 {
-                    _logger.LogWarning("AzureOpenAI: Deserialization returned NULL");
                     return new SynonymSuggestionDto
                     {
                         OriginalMessage = userMessage,
@@ -388,7 +484,7 @@ Return 2-3 alternatives only, all at level {nextLevel}.";
                 { "N5", "N4" }, { "N4", "N3" }, { "N3", "N2" }, { "N2", "N1" }, { "N1", "N1" },
                 { "HSK1", "HSK2" }, { "HSK2", "HSK3" }, { "HSK3", "HSK4" }, { "HSK4", "HSK5" }, { "HSK5", "HSK5" }
             };
-            
+
             return levelMap.TryGetValue(currentLevel, out var next) ? next : currentLevel;
         }
 
@@ -413,15 +509,13 @@ Return 2-3 alternatives only, all at level {nextLevel}.";
             string fields = "Each item fields: questionNumber (1..4), question, promptText (<=15 words), vietnameseTranslation, wordGuides (nullable), questionType='speaking', difficulty (one of the ordered labels), maxRecordingSeconds =30/60/90/120. Return JSON only.";
             var prompt1 = $"{constraints}\n{fields}";
             var json = await ChatAsync(string.Empty, prompt1, Array.Empty<string>(), jsonMode: true, maxTokens: 640, temperature: 0.25);
-            _logger.LogInformation("AI questions raw JSON: {Json}", json);
+
             var list = TryParseQuestions(json);
             list = SanitizeQuestions(list, languageName);
             if (IsLowDiversity(list))
             {
-                // Second attempt with stronger constraints and a bit more temperature for variety
                 var prompt2 = $"{constraints} Use practical, real-life contexts for '{programName}' (e.g., meetings, pitches, negotiations, customer service, travel). Avoid duplicates. {fields}";
                 var json2 = await ChatAsync(string.Empty, prompt2, Array.Empty<string>(), jsonMode: true, maxTokens: 680, temperature: 0.35);
-                _logger.LogInformation("AI questions retry JSON: {Json}", json2);
                 var list2 = TryParseQuestions(json2);
                 list2 = SanitizeQuestions(list2, languageName);
                 if (list2.Any()) return list2;
@@ -436,7 +530,6 @@ Return 2-3 alternatives only, all at level {nextLevel}.";
                 var wrap = JsonSerializer.Deserialize<QuestionsWrapper>(json, _json);
                 if (wrap?.Questions != null && wrap.Questions.Any())
                 {
-                    _logger.LogInformation("Parsed AI questions: {Count}. First: {Q}", wrap.Questions.Count, wrap.Questions.First().Question);
                     return wrap.Questions;
                 }
             }
@@ -447,10 +540,6 @@ Return 2-3 alternatives only, all at level {nextLevel}.";
             try
             {
                 var arr = JsonSerializer.Deserialize<List<VoiceAssessmentQuestion>>(json, _json) ?? new();
-                if (arr.Any())
-                {
-                    _logger.LogInformation("Parsed AI questions from array: {Count}. First: {Q}", arr.Count, arr.First().Question);
-                }
                 return arr;
             }
             catch (Exception ex)
@@ -491,27 +580,27 @@ Return 2-3 alternatives only, all at level {nextLevel}.";
                 "Introduce yourself", "Daily routine", "Recent experience", "Give an opinion"
             };
             int similar = items.Count(q => bannedStarts.Any(b => (q.Question ?? string.Empty).StartsWith(b, StringComparison.OrdinalIgnoreCase)));
-            return similar >= 2; // if >=2 items match banned templates, consider low-diversity
+            return similar >= 2;
         }
 
         public async Task<BatchVoiceEvaluationResult> EvaluateBatchVoiceResponsesAsync(List<VoiceAssessmentQuestion> questions, string languageCode, string languageName, List<string>? programLevelNames = null)
         {
-            var scale = programLevelNames != null && programLevelNames.Any() 
-       ? $"[{string.Join(", ", programLevelNames)}]" 
-        : "CEFR/HSK/JLPT";
-            
+            var scale = programLevelNames != null && programLevelNames.Any()
+                ? $"[{string.Join(", ", programLevelNames)}]"
+                : "CEFR/HSK/JLPT";
+
             var qData = questions.Select(q => new
-    {
-        q.QuestionNumber,
+            {
+                q.QuestionNumber,
                 q.Difficulty,
-      q.PromptText,
-         q.IsSkipped,
-      Transcript = q.Transcript ?? "(empty)"
-        }).ToList();
+                q.PromptText,
+                q.IsSkipped,
+                Transcript = q.Transcript ?? "(empty)"
+            }).ToList();
 
-    var qJson = JsonSerializer.Serialize(qData, new JsonSerializerOptions { WriteIndented = false });
+            var qJson = JsonSerializer.Serialize(qData, new JsonSerializerOptions { WriteIndented = false });
 
-    var prompt = $@"You are evaluating {languageName} speaking responses based on transcripts only (no audio).
+            var prompt = $@"You are evaluating {languageName} speaking responses based on transcripts only (no audio).
 Return a JSON object with:
 - overallLevel: string from {scale}
 - overallScore: number 0-100
@@ -528,59 +617,56 @@ Rules:
 2. overallLevel MUST be one of {scale}.
 3. Return valid JSON only, no markdown.";
 
-            _logger.LogInformation("Batch eval prompt length: {Len} chars, maxTokens: 1200", prompt.Length);
-   var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 1200, temperature: 0.3);
-            _logger.LogInformation("AI raw response (first 300 chars): {Preview}", json.Length > 300 ? json.Substring(0, 300) : json);
+            var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 1200, temperature: 0.3);
 
-       try 
-            { 
-     var result = JsonSerializer.Deserialize<BatchVoiceEvaluationResult>(json, _json);
+            try
+            {
+                var result = JsonSerializer.Deserialize<BatchVoiceEvaluationResult>(json, _json);
                 if (result == null || string.IsNullOrWhiteSpace(result.OverallLevel))
-         {
-     _logger.LogWarning("Parsed result is null or OverallLevel empty. Falling back.");
-     return CreateFallbackBatch(questions, programLevelNames?.FirstOrDefault() ?? "Beginner");
+                {
+                    return CreateFallbackBatch(questions, programLevelNames?.FirstOrDefault() ?? "Beginner");
                 }
-         return result;
-         } 
+                return result;
+            }
             catch (Exception ex)
             {
-         _logger.LogError(ex, "JSON parse failed. Raw: {Json}", json.Length > 500 ? json.Substring(0, 500) : json);
-      return CreateFallbackBatch(questions, programLevelNames?.FirstOrDefault() ?? "Beginner");
+                _logger.LogError(ex, "JSON parse failed for batch eval");
+                return CreateFallbackBatch(questions, programLevelNames?.FirstOrDefault() ?? "Beginner");
             }
         }
 
-     private BatchVoiceEvaluationResult CreateFallbackBatch(List<VoiceAssessmentQuestion> questions, string defaultLevel)
+        private BatchVoiceEvaluationResult CreateFallbackBatch(List<VoiceAssessmentQuestion> questions, string defaultLevel)
         {
-            return new BatchVoiceEvaluationResult 
-            { 
-       OverallLevel = defaultLevel, 
-      OverallScore = 50,
-     QuestionResults = questions.Select(q => new QuestionEvaluationResult
-    {
-    QuestionNumber = q.QuestionNumber,
-         Feedback = q.IsSkipped ? "Skipped" : "Unable to evaluate - AI error",
-        AccuracyScore = 50,
-    PronunciationScore = 50,
-          FluencyScore = 50,
-   GrammarScore = 50
+            return new BatchVoiceEvaluationResult
+            {
+                OverallLevel = defaultLevel,
+                OverallScore = 50,
+                QuestionResults = questions.Select(q => new QuestionEvaluationResult
+                {
+                    QuestionNumber = q.QuestionNumber,
+                    Feedback = q.IsSkipped ? "Skipped" : "Unable to evaluate - AI error",
+                    AccuracyScore = 50,
+                    PronunciationScore = 50,
+                    FluencyScore = 50,
+                    GrammarScore = 50
                 }).ToList(),
-          Strengths = new List<string> { "Completed assessment" },
-      Weaknesses = new List<string> { "AI evaluation unavailable" },
-    RecommendedCourses = new List<CourseRecommendation>()
- };
+                Strengths = new List<string> { "Completed assessment" },
+                Weaknesses = new List<string> { "AI evaluation unavailable" },
+                RecommendedCourses = new List<CourseRecommendation>()
+            };
         }
 
         public async Task<VoiceEvaluationResult> EvaluateVoiceResponseDirectlyAsync(VoiceAssessmentQuestion question, IFormFile audioFile, string languageCode)
-      {
-   var prompt = $"Evaluate recorded response for: {question.Question} ({question.Difficulty}). Provide JSON VoiceEvaluationResult.";
-var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 400, temperature: 0.2);
+        {
+            var prompt = $"Evaluate recorded response for: {question.Question} ({question.Difficulty}). Provide JSON VoiceEvaluationResult.";
+            var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 400, temperature: 0.2);
             try { return JsonSerializer.Deserialize<VoiceEvaluationResult>(json, _json) ?? new VoiceEvaluationResult(); } catch { return new VoiceEvaluationResult { OverallScore = 70 }; }
         }
 
-      public async Task<AiCourseRecommendationDto> GenerateCourseRecommendationsAsync(UserSurveyResponseDto survey, List<CourseInfoDto> availableCourses)
+        public async Task<AiCourseRecommendationDto> GenerateCourseRecommendationsAsync(UserSurveyResponseDto survey, List<CourseInfoDto> availableCourses)
         {
-       var payload = new { survey, availableCourses };
-    var prompt = $"Recommend3-5 courses for the user below. Return JSON AiCourseRecommendationDto.\n{JsonSerializer.Serialize(payload, _json)}";
+            var payload = new { survey, availableCourses };
+            var prompt = $"Recommend3-5 courses for the user below. Return JSON AiCourseRecommendationDto.\n{JsonSerializer.Serialize(payload, _json)}";
             var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 600, temperature: 0.2);
             try { return JsonSerializer.Deserialize<AiCourseRecommendationDto>(json, _json) ?? new AiCourseRecommendationDto(); } catch { return new AiCourseRecommendationDto(); }
         }
@@ -589,20 +675,68 @@ var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode
         {
             var prompt = $"Create a weekly study plan as plain text for this learner: {JsonSerializer.Serialize(survey, _json)}";
             return await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: false, maxTokens: 800, temperature: 0.4);
-      }
+        }
 
-  public async Task<List<string>> GenerateStudyTipsAsync(UserSurveyResponseDto survey)
+        public async Task<List<string>> GenerateStudyTipsAsync(UserSurveyResponseDto survey)
         {
- var prompt = $"Return8-10 study tips as a plain text list (one per line) for this learner: {JsonSerializer.Serialize(survey, _json)}";
- var text = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: false, maxTokens: 300, temperature: 0.3);
+            var prompt = $"Return8-10 study tips as a plain text list (one per line) for this learner: {JsonSerializer.Serialize(survey, _json)}";
+            var text = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: false, maxTokens: 300, temperature: 0.3);
             return text.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(s => s.TrimStart('-', ' ', '•').Trim()).ToList();
         }
 
-   public async Task<TeacherQualificationAnalysisDto> AnalyzeTeacherQualificationsAsync(TeacherApplicationDto application, List<TeacherCredentialDto> credentials)
-      {
+        public async Task<TeacherQualificationAnalysisDto> AnalyzeTeacherQualificationsAsync(TeacherApplicationDto application, List<TeacherCredentialDto> credentials)
+        {
             var prompt = $"Analyze teacher qualifications. Return JSON TeacherQualificationAnalysisDto.\nApplication: {JsonSerializer.Serialize(application, _json)}\nCredentials: {JsonSerializer.Serialize(credentials, _json)}";
             var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 700, temperature: 0.2);
-     try { return JsonSerializer.Deserialize<TeacherQualificationAnalysisDto>(json, _json) ?? new TeacherQualificationAnalysisDto(); } catch { return new TeacherQualificationAnalysisDto(); }
+            try { return JsonSerializer.Deserialize<TeacherQualificationAnalysisDto>(json, _json) ?? new TeacherQualificationAnalysisDto(); } catch { return new TeacherQualificationAnalysisDto(); }
+        }
+        private static string GetStrictLanguageConstraints(string language, string level)
+        {
+            var lang = language?.ToLowerInvariant() ?? "";
+            var lvl = level?.ToUpperInvariant() ?? "";
+
+            // --- TIẾNG NHẬT (JLPT) ---
+            if (lang.Contains("japan") || lang.Contains("jp") || lang.Contains("nhật"))
+            {
+                return lvl switch
+                {
+                    "N5" => "STRICT N5 RULES: Use ONLY basic vocabulary (approx 800 words). Use polite forms (Desu/Masu). Avoid complex Kanji (use Hiragana/Katakana primarily). Simple sentences (Subject-Object-Verb). NO casual/slang.",
+                    "N4" => "STRICT N4 RULES: Basic conjunctions (kara, node). Simple compound sentences. Polite forms mainly, but can introduce some plain forms if context fits. Kanji limited to N4 list.",
+                    "N3" => "STRICT N3 RULES: Everyday conversation speed. Introduction of specific grammatical structures (koto ga aru, tsumori). Mix of polite and plain forms appropriate for the role.",
+                    "N2" => "STRICT N2 RULES: Business/Formal level. Use Keigo (Honorifics) if role requires. Complex sentence structures and abstract topics.",
+                    "N1" => "STRICT N1 RULES: Native level. Idioms, nuanced expressions, advanced vocabulary. Full natural speed and complexity.",
+                    _ => "Adjust simple polite Japanese."
+                };
+            }
+
+            // --- TIẾNG TRUNG (HSK) ---
+            if (lang.Contains("chin") || lang.Contains("zh") || lang.Contains("trung") || lang.Contains("cn"))
+            {
+                return lvl switch
+                {
+                    "HSK1" => "STRICT HSK1 RULES: Use ONLY the 150 basic HSK1 words. Very short sentences (3-6 words). No complex grammar. Pinyin support if possible (but output characters).",
+                    "HSK2" => "STRICT HSK2 RULES: HSK2 vocabulary (300 words). Simple daily exchanges. Basic questions and answers.",
+                    "HSK3" => "STRICT HSK3 RULES: HSK3 vocabulary (600 words). Connected paragraphs. Daily life topics.",
+                    "HSK4" => "STRICT HSK4 RULES: HSK4 vocabulary (1200 words). Discuss abstract topics moderately. Complex grammar allowed.",
+                    "HSK5" => "STRICT HSK5 RULES: Formal speech, newspapers, movies. Full fluency.",
+                    "HSK6" => "STRICT HSK6 RULES: Native level literary and technical proficiency.",
+                    _ => "Simple Chinese."
+                };
+            }
+
+            // --- TIẾNG ANH (CEFR) ---
+            // Mặc định là Tiếng Anh nếu không khớp trên
+            return lvl switch
+            {
+                var x when x.Contains("A1") => "STRICT A1 RULES: Use top 500 most common words ONLY. Present Simple & Present Continuous tenses mainly. Short sentences (max 8 words). NO idioms. NO passive voice. Speak slowly and clearly text-wise.",
+                var x when x.Contains("A2") => "STRICT A2 RULES: Top 1000 common words. Past Simple, Future with 'going to'. Simple descriptions. Connectors like 'and', 'but', 'because'.",
+                var x when x.Contains("B1") => "STRICT B1 RULES: Standard English. Present Perfect, Conditionals (Type 1). Can express opinions and reasons.",
+                var x when x.Contains("B2") => "STRICT B2 RULES: Fluency and spontaneity. Complex arguments. Phrasal verbs allowed.",
+                var x when x.Contains("C1") => "STRICT C1 RULES: Advanced vocabulary, idiomatic expressions, flexible sentence structure.",
+                var x when x.Contains("C2") => "STRICT C2 RULES: Native proficiency, subtle nuances, cultural references.",
+                _ => "Simple English."
+            };
         }
     }
 }
+

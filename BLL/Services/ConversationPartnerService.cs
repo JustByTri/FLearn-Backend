@@ -270,6 +270,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
 
                 var nextSequence = (session.ConversationMessages?.Count ?? 0) + 1;
 
+                // 1. Save User Message
                 var userMessage = new ConversationMessage
                 {
                     ConversationMessageID = Guid.NewGuid(),
@@ -285,133 +286,107 @@ Never respond in Vietnamese or any other language, regardless of what language t
                 };
                 await _unitOfWork.ConversationMessages.CreateAsync(userMessage);
 
-                // XP: reward per meaningful message to encourage practice (cap by length)
+           
                 var grant = (!string.IsNullOrWhiteSpace(request.MessageContent) && request.MessageContent.Length >= 10) ? 2 : 1;
                 await _gamificationService.AwardXpAsync(ll, grant, "Conversation message");
 
-                var aiResponse = await GenerateAIResponseAsync(session, request.MessageContent);
-                var enhancedAIResponse = EnhanceResponseWithTranslationHint(aiResponse, request.MessageContent, session.Language?.LanguageCode ?? "EN");
-                var finalAIResponse = EnsureTargetLanguageOnly(enhancedAIResponse);
+                var aiResponseDto = await GenerateAIResponseAsync(session, request.MessageContent);
 
+                string finalAIResponseContent;
+
+              
+                if (aiResponseDto.IsOffTopic)
+                {
+                   
+                    finalAIResponseContent = aiResponseDto.Content;
+                }
+                else
+                {
+                  
+                    var enhancedAIResponse = EnhanceResponseWithTranslationHint(aiResponseDto.Content, request.MessageContent, session.Language?.LanguageCode ?? "EN");
+                    finalAIResponseContent = EnsureTargetLanguageOnly(enhancedAIResponse);
+                }
+
+             
                 var aiMessage = new ConversationMessage
                 {
                     ConversationMessageID = Guid.NewGuid(),
                     ConversationSessionID = request.SessionId,
                     Sender = MessageSender.AI,
-                    MessageContent = finalAIResponse,
+                    MessageContent = finalAIResponseContent,
                     MessageType = MessageType.Text,
                     SequenceOrder = nextSequence + 1,
                     SentAt = TimeHelper.GetVietnamTime()
                 };
                 await _unitOfWork.ConversationMessages.CreateAsync(aiMessage);
+             
 
                 session.MessageCount += 2;
                 session.UpdatedAt = TimeHelper.GetVietnamTime();
+
+            
+
                 await _unitOfWork.ConversationSessions.UpdateAsync(session);
                 await _unitOfWork.SaveChangesAsync();
 
-                // NEW: Generate synonym suggestions for user's message
+              
                 SynonymSuggestionDto? synonymSuggestions = null;
                 try
                 {
-                    _logger.LogInformation("=== SYNONYM GENERATION START ===");
-                    _logger.LogInformation("Message content: '{Content}', Length: {Length}", request.MessageContent, request.MessageContent?.Length ?? 0);
-                    _logger.LogInformation("Session difficulty level: {Level}", session.DifficultyLevel);
-                    _logger.LogInformation("Session language: {Language}", session.Language?.LanguageName);
-                    
-                    // IMPORTANT: Skip synonym generation for voice message placeholder OR language mismatch
+                   
                     var isVoicePlaceholder = request.MessageContent?.Equals("[Voice Message]", StringComparison.OrdinalIgnoreCase) == true;
                     var sessionLangName = session.Language?.LanguageName ?? string.Empty;
                     var userMsgLower = request.MessageContent?.ToLowerInvariant() ?? string.Empty;
                     bool languageMismatch = IsVietnamese(userMsgLower) && !sessionLangName.ToLowerInvariant().Contains("vi");
 
-                    if (!string.IsNullOrWhiteSpace(request.MessageContent) && 
-                        request.MessageContent.Length > 2 && 
+                    if (!string.IsNullOrWhiteSpace(request.MessageContent) &&
+                        request.MessageContent.Length > 2 &&
                         !isVoicePlaceholder && !languageMismatch)
                     {
-                        _logger.LogInformation("Condition passed - generating synonym suggestions");
-                        
                         synonymSuggestions = await _geminiService.GenerateSynonymSuggestionsAsync(
                             request.MessageContent,
                             session.Language?.LanguageName ?? "English",
                             session.DifficultyLevel
                         );
-                        
-                        if (synonymSuggestions != null)
-                        {
-                            _logger.LogInformation("Synonym result: OriginalMessage='{Original}', CurrentLevel='{Level}', AlternativeCount={Count}", 
-                                synonymSuggestions.OriginalMessage, synonymSuggestions.CurrentLevel, synonymSuggestions.Alternatives?.Count ?? 0);
-                            
-                            if (synonymSuggestions.Alternatives?.Any() == true)
-                            {
-                                _logger.LogInformation("Generated {Count} synonym suggestions successfully", synonymSuggestions.Alternatives.Count);
-                                foreach (var alt in synonymSuggestions.Alternatives)
-                                {
-                                    _logger.LogDebug("Alternative: Level={Level}, Text='{Text}'", alt.Level, alt.AlternativeText);
-                                }
-                            }
-                            else
-                            {
-                                _logger.LogWarning("Synonym suggestions returned NULL or EMPTY alternatives array");
-                            }
-                        }
-                        else
-                        {
-                            _logger.LogWarning("GenerateSynonymSuggestionsAsync returned NULL");
-                        }
                     }
-                    else
-                    {
-                        if (isVoicePlaceholder)
-                        {
-                            _logger.LogInformation("Skipping synonym generation - voice message placeholder");
-                        }
-                        else
-                        {
-                            _logger.LogDebug("Skipping synonym generation - message too short or empty: '{Message}'", request.MessageContent);
-                        }
-                    }
-                    
-                    _logger.LogInformation("=== SYNONYM GENERATION END ===");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "EXCEPTION in synonym generation for message: '{Message}'", request.MessageContent);
+                    _logger.LogError(ex, "EXCEPTION in synonym generation");
                 }
 
                 var aiMessageDto = MapToMessageDto(aiMessage);
                 aiMessageDto.SynonymSuggestions = synonymSuggestions;
 
+          
                 await _hubContext.Clients.Group($"Conversation_{request.SessionId}")
-                    .SendAsync("MessageProcessed", new { userMessage = MapToMessageDto(userMessage), aiMessage = aiMessageDto });
+                    .SendAsync("MessageProcessed", new
+                    {
+                        userMessage = MapToMessageDto(userMessage),
+                        aiMessage = aiMessageDto,
+                      
+                        coachInfo = new
+                        {
+                            isOffTopic = aiResponseDto.IsOffTopic,
+                            isTaskCompleted = aiResponseDto.IsTaskCompleted
+                        }
+                    });
 
                 return aiMessageDto;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error sending message");
-
-                var languageCode = session?.Language?.LanguageCode ?? "EN";
-                var errorMessage = languageCode.ToUpper() switch
-                {
-                    "EN" => "Cannot send message",
-                    "JP" => "メッセージを送信できません",
-                    "ZH" => "无法发送消息",
-                    _ => "Cannot send message"
-                };
-
-                await _hubContext.Clients.Group($"User_{userId}")
-                    .SendAsync("MessageError", new { sessionId = request.SessionId, error = errorMessage, details = ex.Message });
-
+             
                 throw;
             }
         }
-
         public async Task<ConversationEvaluationDto> EndConversationAsync(Guid userId, Guid sessionId)
         {
             ConversationSession? session = null;
             try
             {
+                // 1. Validate Session
                 session = await _unitOfWork.ConversationSessions.GetSessionWithMessagesAsync(sessionId);
                 if (session == null) throw new ArgumentException("Session not found or access denied");
 
@@ -420,44 +395,92 @@ Never respond in Vietnamese or any other language, regardless of what language t
 
                 if (session.Status != ConversationSessionStatus.Active) throw new InvalidOperationException("Session is not active");
 
-                var evaluation = await GenerateEvaluationAsync(session);
+                // 2. Chuẩn bị Transcript (Lịch sử chat) để gửi AI
+                var messages = session.ConversationMessages.OrderBy(m => m.SequenceOrder).ToList();
+                var transcript = new StringBuilder();
+                foreach (var msg in messages)
+                {
+                    // Format: "User: Hello" / "AI: Hi there"
+                    transcript.AppendLine($"{(msg.Sender == MessageSender.User ? "User" : "AI")}: {msg.MessageContent}");
+                }
 
+                // 3. Tạo Prompt đánh giá
+                var prompt = $@"
+Evaluate this roleplay conversation.
+Roleplay Context: {session.AICharacterRole} (Topic: {session.Topic?.Name}).
+Target Language: {session.Language?.LanguageName}.
+Difficulty Level: {session.DifficultyLevel}.
+
+TRANSCRIPT:
+{transcript}
+";
+
+                // 4. GỌI AI (Quan trọng: Truyền LanguageName để feedback đúng tiếng đang học)
+                var targetLanguage = session.Language?.LanguageName ?? "English";
+                var evaluationResult = await _geminiService.EvaluateConversationAsync(prompt, targetLanguage);
+
+                // 5. Cập nhật vào Database (Entity Session)
                 session.Status = ConversationSessionStatus.Completed;
                 session.EndedAt = TimeHelper.GetVietnamTime();
-                session.OverallScore = evaluation.OverallScore;
-                session.FluentScore = evaluation.FluentScore;
-                session.GrammarScore = evaluation.GrammarScore;
-                session.VocabularyScore = evaluation.VocabularyScore;
-                session.CulturalScore = evaluation.CulturalScore;
-                session.AIFeedback = evaluation.AIFeedback;
-                session.Improvements = evaluation.Improvements;
-                session.Strengths = evaluation.Strengths;
                 session.Duration = (int)(TimeHelper.GetVietnamTime() - session.StartedAt).TotalSeconds;
+
+                // Map điểm số
+                session.OverallScore = evaluationResult.OverallScore;
+                session.FluentScore = evaluationResult.FluentScore;
+                session.GrammarScore = evaluationResult.GrammarScore;
+                session.VocabularyScore = evaluationResult.VocabularyScore;
+                session.CulturalScore = evaluationResult.CulturalScore;
+
+                // Map Text Summary (Lưu vào DB các trường text chính)
+                // Nếu DB không có chỗ lưu JSON chi tiết, ta lưu Summary vào AIFeedback
+                session.AIFeedback = evaluationResult.ProgressSummary ?? evaluationResult.AIFeedback;
+                session.Improvements = string.Join("\n", evaluationResult.AreasNeedingWork ?? new List<string>());
+                session.Strengths = string.Join("\n", evaluationResult.PositivePatterns ?? new List<string>());
 
                 await _unitOfWork.ConversationSessions.UpdateAsync(session);
                 await _unitOfWork.SaveChangesAsync();
 
-                // XP: completion bonus based on duration and activity
-                var messagesFromUser = session.ConversationMessages?.Count(m => m.Sender == MessageSender.User) ?? 0;
+                // 6. Tính điểm XP (Gamification)
+                var messagesFromUser = messages.Count(m => m.Sender == MessageSender.User);
                 var baseXp = Math.Min(20, messagesFromUser * 2);
-                baseXp += session.Duration >= 300 ? 10 : 0; // +10 if >=5 minutes
+                baseXp += session.Duration >= 300 ? 10 : 0; // +10 XP nếu > 5 phút
                 await _gamificationService.AwardXpAsync(ll!, baseXp, "Complete conversation session");
 
-                await _hubContext.Clients.Group($"User_{userId}")
- .SendAsync("ConversationEvaluated", new
- {
-     sessionId,
-     evaluation = new
-     {
-         overallScore = evaluation.OverallScore,
-         feedback = evaluation.AIFeedback,
-         strengths = evaluation.Strengths,
-         improvements = evaluation.Improvements,
-         completedAt = TimeHelper.GetVietnamTime()
-     }
- });
+                // 7. Chuẩn bị DTO trả về (Chứa full dữ liệu chi tiết)
+                var resultDto = new ConversationEvaluationDto
+                {
+                    SessionId = sessionId,
+                    OverallScore = session.OverallScore ?? 0,
+                    FluentScore = session.FluentScore ?? 0,
+                    GrammarScore = session.GrammarScore ?? 0,
+                    VocabularyScore = session.VocabularyScore ?? 0,
+                    CulturalScore = session.CulturalScore ?? 0,
+                    AIFeedback = session.AIFeedback,
+                    Improvements = session.Improvements,
+                    Strengths = session.Strengths,
+                    SessionDuration = session.Duration ,
+                    TotalMessages = messages.Count,
 
-                return evaluation;
+                    // Truyền dữ liệu phân tích chi tiết (cho Frontend hiển thị đẹp)
+                    FluentAnalysis = evaluationResult.FluentAnalysis,
+                    GrammarAnalysis = evaluationResult.GrammarAnalysis,
+                    VocabularyAnalysis = evaluationResult.VocabularyAnalysis,
+                    CulturalAnalysis = evaluationResult.CulturalAnalysis,
+                    SpecificObservations = evaluationResult.SpecificObservations,
+                    PositivePatterns = evaluationResult.PositivePatterns,
+                    AreasNeedingWork = evaluationResult.AreasNeedingWork,
+                    ProgressSummary = evaluationResult.ProgressSummary
+                };
+
+                // 8. Gửi SignalR (Realtime notification)
+                await _hubContext.Clients.Group($"User_{userId}")
+                    .SendAsync("ConversationEvaluated", new
+                    {
+                        sessionId,
+                        evaluation = resultDto // Gửi full DTO xuống client
+                    });
+
+                return resultDto;
             }
             catch (Exception ex)
             {
@@ -469,16 +492,16 @@ Never respond in Vietnamese or any other language, regardless of what language t
                     "EN" => "Cannot evaluate conversation",
                     "JP" => "会話を評価できません",
                     "ZH" => "无法评估对话",
+                    "VI" => "Không thể đánh giá cuộc hội thoại",
                     _ => "Cannot evaluate conversation"
                 };
 
                 await _hubContext.Clients.Group($"User_{userId}")
- .SendAsync("EvaluationError", new { sessionId, error = errorMessage });
+                    .SendAsync("EvaluationError", new { sessionId, error = errorMessage });
 
                 throw;
             }
         }
-
         public async Task<List<ConversationSessionDto>> GetUserConversationHistoryAsync(Guid userId)
         {
             try
@@ -810,13 +833,12 @@ Never respond in Vietnamese or any other language, regardless of what language t
             return string.Join(' ', builder.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries));
         }
 
-        private async Task<string> GenerateAIResponseAsync(ConversationSession session, string userMessage)
+        private async Task<RoleplayResponseDto> GenerateAIResponseAsync(ConversationSession session, string userMessage)
         {
             try
             {
                 if (_geminiService != null)
                 {
-
                     var enforcedSystemPrompt = $@"{session.GeneratedSystemPrompt}
 
 IMPORTANT: You MUST respond ONLY in {session.Language?.LanguageName ?? "English"}.
@@ -824,27 +846,40 @@ Do NOT respond in any other language (including Vietnamese), regardless of the u
 Always stick to the {session.GeneratedScenario} context and your role as {MakeConciseRole(session.AICharacterRole ?? string.Empty, session.Topic?.Name ?? string.Empty)}.
 Always respond in {session.Language?.LanguageName ?? "English"} only.";
 
-                    var response = await _geminiService.GenerateResponseAsync(
-                    enforcedSystemPrompt,
-                    userMessage,
-                    session.ConversationMessages?
-                    .OrderBy(m => m.SequenceOrder)
-                    .Select(m => $"{m.Sender}: {m.MessageContent}")
-                    .ToList() ?? new List<string>());
+                    var responseDto = await _geminiService.GenerateResponseAsync(
+                        enforcedSystemPrompt,
+                        userMessage,
+                        session.ConversationMessages?
+                            .OrderBy(m => m.SequenceOrder)
+                            .Select(m => $"{m.Sender}: {m.MessageContent}")
+                            .ToList() ?? new List<string>(),
+                        languageName: session.Language?.LanguageName ?? "English",
+                        topic: session.Topic?.Name ?? "",
+                        aiRoleName: session.AICharacterRole ?? "AI Partner"
+                    );
 
-                    // Clean AI prefix if exists
-                    return CleanAIPrefix(response);
+                    // Làm sạch phần nội dung text bên trong DTO
+                    responseDto.Content = CleanAIPrefix(responseDto.Content);
+
+                    return responseDto;
                 }
 
-                return GetSimpleResponse(userMessage, session.Language?.LanguageCode ?? "EN");
+                // Fallback: Trả về DTO giả nếu service null
+                return new RoleplayResponseDto
+                {
+                    Content = GetSimpleResponse(userMessage, session.Language?.LanguageCode ?? "EN")
+                };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error generating AI response");
-                return GetDefaultResponse(session.Language?.LanguageCode ?? "EN");
+                // Fallback: Trả về DTO giả nếu lỗi
+                return new RoleplayResponseDto
+                {
+                    Content = GetDefaultResponse(session.Language?.LanguageCode ?? "EN")
+                };
             }
         }
-
         private string CleanAIPrefix(string response)
         {
             if (string.IsNullOrWhiteSpace(response)) return response;
@@ -1071,7 +1106,10 @@ Conversation history:
 
 Provide detailed qualitative analysis.";
 
-                    var aiEvaluation = await _geminiService.EvaluateConversationAsync(evaluationPrompt);
+                    var aiEvaluation = await _geminiService.EvaluateConversationAsync(
+    evaluationPrompt,
+    session.Language?.LanguageName ?? "English" 
+);
                     if (aiEvaluation != null)
                     {
                         return new ConversationEvaluationDto
