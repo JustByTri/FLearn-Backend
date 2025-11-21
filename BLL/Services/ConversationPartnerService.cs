@@ -260,6 +260,7 @@ Never respond in Vietnamese or any other language, regardless of what language t
             ConversationSession? session = null;
             try
             {
+                // 1. Validate Session & User
                 session = await _unitOfWork.ConversationSessions.GetSessionWithMessagesAsync(request.SessionId);
                 if (session == null) throw new ArgumentException("Session not found or access denied");
 
@@ -269,106 +270,124 @@ Never respond in Vietnamese or any other language, regardless of what language t
                 if (session.Status != ConversationSessionStatus.Active) throw new InvalidOperationException("Session is not active");
 
                 var nextSequence = (session.ConversationMessages?.Count ?? 0) + 1;
+                var sentAt = TimeHelper.GetVietnamTime();
 
-                // 1. Save User Message
+                // 2. Lưu User Message vào DB trước (để đảm bảo lịch sử không bị mất)
                 var userMessage = new ConversationMessage
                 {
                     ConversationMessageID = Guid.NewGuid(),
                     ConversationSessionID = request.SessionId,
                     Sender = MessageSender.User,
                     MessageContent = request.MessageContent,
-                    MessageType = request.MessageType,
+                    MessageType = request.MessageType, // Text hoặc Audio
                     AudioUrl = request.AudioUrl,
                     AudioPublicId = request.AudioPublicId,
                     AudioDuration = request.AudioDuration,
                     SequenceOrder = nextSequence,
-                    SentAt = TimeHelper.GetVietnamTime()
+                    SentAt = sentAt
                 };
                 await _unitOfWork.ConversationMessages.CreateAsync(userMessage);
 
-           
+                // 3. CHẠY SONG SONG (Parallel Execution) - Tối ưu tốc độ
+                // Gamification: Chạy ngầm, không cần await ngay
                 var grant = (!string.IsNullOrWhiteSpace(request.MessageContent) && request.MessageContent.Length >= 10) ? 2 : 1;
-                await _gamificationService.AwardXpAsync(ll, grant, "Conversation message");
+                var xpTask = _gamificationService.AwardXpAsync(ll, grant, "Conversation message");
 
-                var aiResponseDto = await GenerateAIResponseAsync(session, request.MessageContent);
+                // Synonym: Chạy ngầm
+                Task<SynonymSuggestionDto?> synonymTask = Task.FromResult<SynonymSuggestionDto?>(null);
 
-                string finalAIResponseContent;
+                // Logic check điều kiện tạo Synonym (giữ nguyên của bạn)
+                var isVoicePlaceholder = request.MessageContent?.Equals("[Voice Message]", StringComparison.OrdinalIgnoreCase) == true;
+                var sessionLangName = session.Language?.LanguageName ?? string.Empty;
+                bool languageMismatch = IsVietnamese(request.MessageContent ?? "") && !sessionLangName.ToLower().Contains("vi");
 
-              
-                if (aiResponseDto.IsOffTopic)
+                if (!string.IsNullOrWhiteSpace(request.MessageContent) &&
+                    request.MessageContent.Length > 2 &&
+                    !isVoicePlaceholder && !languageMismatch)
                 {
-                   
-                    finalAIResponseContent = aiResponseDto.Content;
-                }
-                else
-                {
-                  
-                    var enhancedAIResponse = EnhanceResponseWithTranslationHint(aiResponseDto.Content, request.MessageContent, session.Language?.LanguageCode ?? "EN");
-                    finalAIResponseContent = EnsureTargetLanguageOnly(enhancedAIResponse);
+                    synonymTask = _geminiService.GenerateSynonymSuggestionsAsync(
+                        request.MessageContent,
+                        session.Language?.LanguageName ?? "English",
+                        session.DifficultyLevel
+                    );
                 }
 
-             
+                // 4. XỬ LÝ STREAMING AI RESPONSE
+                var fullAiContentBuilder = new StringBuilder();
+
+                // Chuẩn bị Prompt
+                var enforcedSystemPrompt = $@"{session.GeneratedSystemPrompt}
+IMPORTANT: You MUST respond ONLY in {session.Language?.LanguageName ?? "English"}.
+Keep response concise (1-2 sentences).";
+
+                var historyList = session.ConversationMessages?
+                    .OrderBy(m => m.SequenceOrder)
+                    .Select(m => $"{m.Sender}: {m.MessageContent}")
+                    .ToList() ?? new List<string>();
+
+                // Báo cho Mobile: "AI bắt đầu trả lời" (để hiện loading hoặc typing indicator)
+                await _hubContext.Clients.Group($"Conversation_{request.SessionId}")
+                    .SendAsync("StreamStart", new { sender = "AI", timestamp = TimeHelper.GetVietnamTime() });
+
+                // Gọi hàm Streaming từ Service
+                await foreach (var chunk in _geminiService.GenerateResponseStreamAsync(
+                    enforcedSystemPrompt,
+                    request.MessageContent,
+                    historyList))
+                {
+                    fullAiContentBuilder.Append(chunk);
+
+                    // Bắn từng chữ (chunk) xuống Mobile ngay lập tức
+                    await _hubContext.Clients.Group($"Conversation_{request.SessionId}")
+                        .SendAsync("StreamChunk", new
+                        {
+                            chunk = chunk,
+                            fullTextSoFar = fullAiContentBuilder.ToString() // Gửi kèm full text để Mobile dễ sync nếu rớt gói tin
+                        });
+                }
+
+                // 5. Hoàn tất Streaming & Lưu AI Message
+                var finalAIContent = fullAiContentBuilder.ToString();
+                finalAIContent = CleanAIPrefix(finalAIContent); // Hàm clean cũ của bạn
+
                 var aiMessage = new ConversationMessage
                 {
                     ConversationMessageID = Guid.NewGuid(),
                     ConversationSessionID = request.SessionId,
                     Sender = MessageSender.AI,
-                    MessageContent = finalAIResponseContent,
+                    MessageContent = finalAIContent,
                     MessageType = MessageType.Text,
                     SequenceOrder = nextSequence + 1,
                     SentAt = TimeHelper.GetVietnamTime()
                 };
                 await _unitOfWork.ConversationMessages.CreateAsync(aiMessage);
-             
 
+                // Cập nhật Session
                 session.MessageCount += 2;
                 session.UpdatedAt = TimeHelper.GetVietnamTime();
-
-            
-
                 await _unitOfWork.ConversationSessions.UpdateAsync(session);
+
+                // Lưu DB một lần cho tất cả
                 await _unitOfWork.SaveChangesAsync();
 
-              
-                SynonymSuggestionDto? synonymSuggestions = null;
-                try
-                {
-                   
-                    var isVoicePlaceholder = request.MessageContent?.Equals("[Voice Message]", StringComparison.OrdinalIgnoreCase) == true;
-                    var sessionLangName = session.Language?.LanguageName ?? string.Empty;
-                    var userMsgLower = request.MessageContent?.ToLowerInvariant() ?? string.Empty;
-                    bool languageMismatch = IsVietnamese(userMsgLower) && !sessionLangName.ToLowerInvariant().Contains("vi");
+                // 6. Đợi các tác vụ phụ hoàn thành (thường là đã xong trong lúc stream)
+                await Task.WhenAll(synonymTask, xpTask);
+                var synonymSuggestions = await synonymTask;
 
-                    if (!string.IsNullOrWhiteSpace(request.MessageContent) &&
-                        request.MessageContent.Length > 2 &&
-                        !isVoicePlaceholder && !languageMismatch)
-                    {
-                        synonymSuggestions = await _geminiService.GenerateSynonymSuggestionsAsync(
-                            request.MessageContent,
-                            session.Language?.LanguageName ?? "English",
-                            session.DifficultyLevel
-                        );
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "EXCEPTION in synonym generation");
-                }
-
+                // 7. Gửi sự kiện chốt (Finalize) cho Mobile
                 var aiMessageDto = MapToMessageDto(aiMessage);
                 aiMessageDto.SynonymSuggestions = synonymSuggestions;
 
-          
+                // Mobile sẽ dùng event này để thay thế text tạm bằng message chính thức (có ID, có Synonym)
                 await _hubContext.Clients.Group($"Conversation_{request.SessionId}")
                     .SendAsync("MessageProcessed", new
                     {
                         userMessage = MapToMessageDto(userMessage),
                         aiMessage = aiMessageDto,
-                      
                         coachInfo = new
                         {
-                            isOffTopic = aiResponseDto.IsOffTopic,
-                            isTaskCompleted = aiResponseDto.IsTaskCompleted
+                            isOffTopic = false, // Streaming thường bỏ qua check lạc đề để nhanh
+                            isTaskCompleted = false
                         }
                     });
 
@@ -377,7 +396,9 @@ Never respond in Vietnamese or any other language, regardless of what language t
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error sending message");
-             
+                // Báo lỗi cho Mobile nếu đang stream dở
+                await _hubContext.Clients.Group($"Conversation_{request.SessionId}")
+                    .SendAsync("StreamError", new { error = "AI processing failed" });
                 throw;
             }
         }
@@ -1022,23 +1043,24 @@ Always respond in {session.Language?.LanguageName ?? "English"} only.";
             return role;
         }
 
-        private string EnhanceResponseWithTranslationHint(string aiResponse, string userMessage, string targetLanguageCode)
+        private async Task<string> EnhanceResponseWithTranslationHintAsync(string aiResponse, string userMessage, string targetLanguageCode)
         {
             if (!IsVietnamese(userMessage)) return aiResponse;
             if (targetLanguageCode.ToUpper() == "VI") return aiResponse;
 
-            // Optional: compute hint but do not append
-            _ = GetTranslationHint(userMessage, targetLanguageCode);
+         
+            await GetTranslationHintAsync(userMessage, targetLanguageCode);
+           
+
             return aiResponse;
         }
-
         private bool IsVietnamese(string text)
         {
             var vietnameseDiacritics = new[] { 'ả', 'ă', 'â', 'ấ', 'ầ', 'ẩ', 'ẫ', 'ậ', 'đ', 'ế', 'ề', 'ễ', 'ệ', 'ì', 'í', 'ỉ', 'ĩ', 'ị', 'ố', 'ồ', 'ổ', 'ỗ', 'ộ', 'ớ', 'ờ', 'ở', 'ỡ', 'ợ', 'ù', 'ú', 'ủ', 'ũ', 'ụ', 'ứ', 'ừ', 'ử', 'ữ', 'ự', 'ỳ', 'ý', 'ỷ', 'ỹ', 'ỵ' };
             return text.ToLower().Any(c => vietnameseDiacritics.Contains(c));
         }
 
-        private string GetTranslationHint(string vietnameseText, string targetLanguageCode)
+        private async Task<string> GetTranslationHintAsync(string vietnameseText, string targetLanguageCode)
         {
             if (_geminiService != null)
             {
@@ -1051,9 +1073,10 @@ Always respond in {session.Language?.LanguageName ?? "English"} only.";
                         "ZH" => "Chinese",
                         _ => "English"
                     };
-                    var t = _geminiService.TranslateTextAsync(vietnameseText, "Vietnamese", languageName);
-                    t.Wait(5000);
-                    return t.IsCompletedSuccessfully ? (t.Result ?? vietnameseText) : GetSimpleTranslation(vietnameseText, targetLanguageCode);
+
+                  
+                    return await _geminiService.TranslateTextAsync(vietnameseText, "Vietnamese", languageName)
+                           ?? GetSimpleTranslation(vietnameseText, targetLanguageCode);
                 }
                 catch (Exception ex)
                 {

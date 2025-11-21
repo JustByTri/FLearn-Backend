@@ -79,6 +79,10 @@
               "target": "Package",
               "version": "[8.0.5, )"
             },
+            "OpenAI": {
+              "target": "Package",
+              "version": "[2.1.0, )"
+            },
             "System.Text.Json": {
               "target": "Package",
               "version": "[8.0.5, )"
@@ -186,6 +190,10 @@
             "Microsoft.Extensions.Configuration.Json": {
               "target": "Package",
               "version": "[8.0.0, )"
+            },
+            "OpenAI": {
+              "target": "Package",
+              "version": "[2.1.0, )"
             },
             "Pomelo.EntityFrameworkCore.MySql": {
               "target": "Package",
