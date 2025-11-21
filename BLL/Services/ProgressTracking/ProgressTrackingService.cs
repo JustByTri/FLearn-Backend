@@ -587,7 +587,7 @@ namespace BLL.Services.ProgressTracking
                 };
 
                 // Tự động chấm điểm ngầm
-                BackgroundJob.Enqueue(() => _exerciseGradingService.ProcessAIGradingAsync(assessmentRequest));
+                BackgroundJob.Enqueue<IExerciseGradingService>(x => x.ProcessAIGradingAsync(assessmentRequest));
                 //await _exerciseGradingService.ProcessAIGradingAsync(assessmentRequest);
 
                 var response = new ExerciseSubmissionResponse

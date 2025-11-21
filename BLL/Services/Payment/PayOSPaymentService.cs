@@ -1,6 +1,5 @@
 ﻿using BLL.IServices.Payment;
 using BLL.IServices.Wallets;
-using BLL.Services.Wallets;
 using Common.DTO.ApiResponse;
 using Common.DTO.Payment.Response;
 using DAL.Helpers;
