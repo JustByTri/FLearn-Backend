@@ -63,11 +63,7 @@ namespace BLL.Services.Assessment
 
                 if (!studentTranscript.IsSuccess)
                 {
-                    return new AssessmentResult
-                    {
-                        Overall = 0,
-                        Feedback = "Unable to transcribe student audio. Please check audio quality and try again."
-                    };
+                    throw new Exception("Transcript failed: " + studentTranscript.Content);
                 }
 
                 List<string> imageUrls = new List<string>();
@@ -143,60 +139,63 @@ namespace BLL.Services.Assessment
             try
             {
                 var jsonStart = aiResponse.IndexOf('{');
-                var jsonEnd = aiResponse.LastIndexOf('}') + 1;
+                var jsonEndIndex = aiResponse.LastIndexOf('}');
 
-                if (jsonStart >= 0 && jsonEnd > jsonStart)
+                if (jsonStart == -1 || jsonEndIndex == -1 || jsonEndIndex < jsonStart)
                 {
-                    var jsonContent = aiResponse.Substring(jsonStart, jsonEnd - jsonStart);
-
-                    var jsonObject = JsonSerializer.Deserialize<JsonElement>(jsonContent);
-
-                    var result = new AssessmentResult();
-
-                    if (jsonObject.TryGetProperty("pronunciation", out var pronunciation))
-                        result.Scores.Pronunciation = pronunciation.GetInt32();
-
-                    if (jsonObject.TryGetProperty("fluency", out var fluency))
-                        result.Scores.Fluency = fluency.GetInt32();
-
-                    if (jsonObject.TryGetProperty("coherence", out var coherence))
-                        result.Scores.Coherence = coherence.GetInt32();
-
-                    if (jsonObject.TryGetProperty("accuracy", out var accuracy))
-                        result.Scores.Accuracy = accuracy.GetInt32();
-
-                    if (jsonObject.TryGetProperty("intonation", out var intonation))
-                        result.Scores.Intonation = intonation.GetInt32();
-
-                    if (jsonObject.TryGetProperty("grammar", out var grammar))
-                        result.Scores.Grammar = grammar.GetInt32();
-
-                    if (jsonObject.TryGetProperty("vocabulary", out var vocabulary))
-                        result.Scores.Vocabulary = vocabulary.GetInt32();
-
-                    if (jsonObject.TryGetProperty("cefr_level", out var cefrLevel))
-                        result.CefrLevel = cefrLevel.GetString() ?? "A1";
-
-                    if (jsonObject.TryGetProperty("overall", out var overall))
-                        result.Overall = overall.GetInt32();
-
-                    if (jsonObject.TryGetProperty("feedback", out var feedback))
-                        result.Feedback = feedback.GetString() ?? "";
-
-                    if (jsonObject.TryGetProperty("transcript", out var transcript))
-                        result.Transcript = transcript.GetString() ?? "";
-
-                    SetLanguageSpecificLevels(result, languageCode);
-
-                    return result;
+                    throw new JsonException($"No valid JSON boundaries found. Raw response: {aiResponse.Trim()}");
                 }
+
+                var length = jsonEndIndex - jsonStart + 1;
+
+                var cleanJson = aiResponse.Substring(jsonStart, length);
+
+                var jsonObject = JsonSerializer.Deserialize<JsonElement>(cleanJson);
+
+                var result = new AssessmentResult();
+
+                if (jsonObject.TryGetProperty("pronunciation", out var pronunciation))
+                    result.Scores.Pronunciation = pronunciation.GetInt32();
+
+                if (jsonObject.TryGetProperty("fluency", out var fluency))
+                    result.Scores.Fluency = fluency.GetInt32();
+
+                if (jsonObject.TryGetProperty("coherence", out var coherence))
+                    result.Scores.Coherence = coherence.GetInt32();
+
+                if (jsonObject.TryGetProperty("accuracy", out var accuracy))
+                    result.Scores.Accuracy = accuracy.GetInt32();
+
+                if (jsonObject.TryGetProperty("intonation", out var intonation))
+                    result.Scores.Intonation = intonation.GetInt32();
+
+                if (jsonObject.TryGetProperty("grammar", out var grammar))
+                    result.Scores.Grammar = grammar.GetInt32();
+
+                if (jsonObject.TryGetProperty("vocabulary", out var vocabulary))
+                    result.Scores.Vocabulary = vocabulary.GetInt32();
+
+                if (jsonObject.TryGetProperty("cefr_level", out var cefrLevel))
+                    result.CefrLevel = cefrLevel.GetString() ?? "A1";
+
+                if (jsonObject.TryGetProperty("overall", out var overall))
+                    result.Overall = overall.GetInt32();
+
+                if (jsonObject.TryGetProperty("feedback", out var feedback))
+                    result.Feedback = feedback.GetString() ?? "";
+
+                if (jsonObject.TryGetProperty("transcript", out var transcript))
+                    result.Transcript = transcript.GetString() ?? "";
+
+                SetLanguageSpecificLevels(result, languageCode);
+
+                return result;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error parsing AI response: {ex.Message}");
+                Console.WriteLine($"[FINAL JSON PARSE FAIL]: {ex.Message}");
+                throw;
             }
-
-            return CreateDefaultAssessmentResult();
         }
         private AssessmentResult CreateDefaultAssessmentResult()
         {
@@ -377,64 +376,106 @@ namespace BLL.Services.Assessment
             if (string.IsNullOrWhiteSpace(audioUrl))
                 return new CommonResponse { IsSuccess = false, Content = "Invalid audio URL." };
 
+            Console.WriteLine($"[Azure Speech] Downloading audio from: {audioUrl}");
+
+            byte[] audioBytes;
+            using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(20) })
+            {
+                try
+                {
+                    audioBytes = await client.GetByteArrayAsync(audioUrl);
+                    if (audioBytes == null || audioBytes.Length < 500)
+                        return new CommonResponse { IsSuccess = false, Content = "Audio file is too short or empty." };
+                }
+                catch (Exception ex)
+                {
+                    return new CommonResponse { IsSuccess = false, Content = $"Audio download failed: {ex.Message}" };
+                }
+            }
+
+            string tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.wav");
+
             try
             {
-                byte[] audioBytes;
-                using (var client = new HttpClient())
+                await File.WriteAllBytesAsync(tempPath, audioBytes);
+
+                try
                 {
-                    client.Timeout = TimeSpan.FromSeconds(30);
-                    audioBytes = await client.GetByteArrayAsync(audioUrl);
+                    var speechKey = _configuration["SpeechSettings:ApiKey"];
+                    var speechRegion = _configuration["SpeechSettings:Region"];
+                    if (string.IsNullOrWhiteSpace(speechKey) || string.IsNullOrWhiteSpace(speechRegion))
+                        return new CommonResponse { IsSuccess = false, Content = "Azure Speech configuration missing." };
+
+                    var config = SpeechConfig.FromSubscription(speechKey, speechRegion);
+                    config.SpeechRecognitionLanguage = MapToAzureLanguage(languageCode);
+
+                    int retryCount = 3;
+                    for (int attempt = 1; attempt <= retryCount; attempt++)
+                    {
+                        try
+                        {
+                            Console.WriteLine($"[Azure Speech] Attempt {attempt}/3");
+
+                            using var audioConfig = AudioConfig.FromWavFileInput(tempPath);
+                            using var recognizer = new SpeechRecognizer(config, audioConfig);
+
+                            var result = await recognizer.RecognizeOnceAsync();
+
+                            switch (result.Reason)
+                            {
+                                case ResultReason.RecognizedSpeech:
+                                    Console.WriteLine($"[Azure Speech] Transcript: {result.Text}");
+                                    return new CommonResponse
+                                    {
+                                        IsSuccess = true,
+                                        Content = result.Text.Trim()
+                                    };
+
+                                case ResultReason.NoMatch:
+                                    Console.WriteLine("[Azure Speech] No speech could be recognized.");
+                                    if (attempt == retryCount)
+                                        return new CommonResponse { IsSuccess = false, Content = "No speech recognized." };
+                                    break;
+
+                                case ResultReason.Canceled:
+                                    var cancellation = CancellationDetails.FromResult(result);
+                                    Console.WriteLine($"[Azure Speech] Canceled: {cancellation.Reason}; ErrorDetails: {cancellation.ErrorDetails}");
+                                    if (attempt == retryCount)
+                                        return new CommonResponse { IsSuccess = false, Content = $"Speech recognition canceled: {cancellation.ErrorDetails}" };
+                                    break;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[Azure Speech] Exception on attempt {attempt}: {ex.Message}");
+                            if (attempt == retryCount)
+                                return new CommonResponse { IsSuccess = false, Content = $"Speech recognition failed: {ex.Message}" };
+                        }
+
+                        await Task.Delay(800);
+                    }
+
+                    return new CommonResponse { IsSuccess = false, Content = "Speech not recognized after retries." };
                 }
-
-                if (audioBytes == null || audioBytes.Length == 0)
-                    return new CommonResponse { IsSuccess = false, Content = "Downloaded audio is empty." };
-
-                // 2. Cấu hình Azure Speech
-                var speechKey = _configuration["SpeechSettings:ApiKey"];
-                var speechRegion = _configuration["SpeechSettings:Region"];
-
-                if (string.IsNullOrEmpty(speechKey) || string.IsNullOrEmpty(speechRegion))
-                    return new CommonResponse { IsSuccess = false, Content = "Azure Speech configuration missing." };
-
-                var config = SpeechConfig.FromSubscription(speechKey, speechRegion);
-                config.SpeechRecognitionLanguage = MapToAzureLanguage(languageCode);
-
-                var stopRecognition = new TaskCompletionSource<int>();
-                var transcriptionResult = new StringBuilder();
-
-                using var audioInputStream = AudioInputStream.CreatePushStream(
-                    AudioStreamFormat.GetCompressedFormat(AudioStreamContainerFormat.ANY)
-                );
-
-                audioInputStream.Write(audioBytes);
-                audioInputStream.Close();
-
-                using var audioConfig = AudioConfig.FromStreamInput(audioInputStream);
-                using var recognizer = new SpeechRecognizer(config, audioConfig);
-
-                var result = await recognizer.RecognizeOnceAsync();
-
-                if (result.Reason == ResultReason.RecognizedSpeech)
+                finally
                 {
-                    Console.WriteLine($"[Azure Speech]: {result.Text}");
-                    return new CommonResponse { IsSuccess = true, Content = result.Text };
+                    try
+                    {
+                        if (File.Exists(tempPath))
+                        {
+                            File.Delete(tempPath);
+                            Console.WriteLine($"[Azure Speech] Deleted temp file: {tempPath}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[Azure Speech] Failed to delete temp file {tempPath}: {ex.Message}");
+                    }
                 }
-                else if (result.Reason == ResultReason.NoMatch)
-                {
-                    return new CommonResponse { IsSuccess = false, Content = "Speech could not be recognized." };
-                }
-                else if (result.Reason == ResultReason.Canceled)
-                {
-                    var cancellation = CancellationDetails.FromResult(result);
-                    return new CommonResponse { IsSuccess = false, Content = $"Canceled: {cancellation.Reason}. Error: {cancellation.ErrorDetails}" };
-                }
-
-                return new CommonResponse { IsSuccess = false, Content = "Unknown transcription error." };
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Azure Transcription Error: {ex.Message}");
-                return new CommonResponse { IsSuccess = false, Content = $"Exception: {ex.Message}" };
+                return new CommonResponse { IsSuccess = false, Content = $"Failed to save audio file: {ex.Message}" };
             }
         }
         private async Task<CommonResponse> DescribeImagesByAzureAsync(string[] imageUrls, CancellationToken cancellationToken = default)

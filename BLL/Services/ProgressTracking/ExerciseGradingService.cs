@@ -377,6 +377,7 @@ namespace BLL.Services.ProgressTracking
                 return PagedResponse<List<ExerciseGradingAssignmentResponse>>.Error($"Error getting assignments: {ex.Message}");
             }
         }
+        [AutomaticRetry(Attempts = 5, OnAttemptsExceeded = AttemptsExceededAction.Fail)]
         public async Task<BaseResponse<bool>> ProcessAIGradingAsync(AssessmentRequest request)
         {
             var submission = await _unitOfWork.ExerciseSubmissions.Query()
