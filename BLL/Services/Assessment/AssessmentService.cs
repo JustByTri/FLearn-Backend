@@ -11,7 +11,6 @@ using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
 using Microsoft.Extensions.Configuration;
 using OpenAI.Chat;
-using System.ClientModel;
 using System.Text;
 using System.Text.Json;
 
@@ -64,8 +63,23 @@ namespace BLL.Services.Assessment
 
                 if (!studentTranscript.IsSuccess)
                 {
-                    Console.WriteLine($"[Transcribe Fail]: {studentTranscript.Content}");
-                    return CreateFallbackResult("Không thể nhận diện giọng nói rõ ràng hoặc âm thanh quá ồn. Hệ thống chấm điểm mặc định cho nỗ lực nộp bài.", req.LanguageCode);
+                    Console.WriteLine($"[Azure Speech Failed]: {studentTranscript.Content}. Switching to Gemini Transcribe...");
+
+                    studentTranscript = await TranscribeSpeechByGeminiAsync(req.AudioUrl);
+
+                    if (studentTranscript.IsSuccess)
+                    {
+                        Console.WriteLine($"[Gemini Transcribe Success]: {studentTranscript.Content}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[Gemini Transcribe Failed]: {studentTranscript.Content}");
+                    }
+                }
+
+                if (!studentTranscript.IsSuccess)
+                {
+                    return CreateFallbackResult("Không thể nhận diện giọng nói rõ ràng hoặc âm thanh quá ồn (Cả Azure và AI đều không xử lý được).", req.LanguageCode);
                 }
 
                 List<string> imageUrls = new List<string>();
@@ -92,68 +106,56 @@ namespace BLL.Services.Assessment
                     _ => GenerateEnglishPrompt(exercise, studentTranscript)
                 };
 
-                string deploymentName = _configuration["AzureOpenAISettings:ChatDeployment"];
-                string endpoint = _configuration["AzureOpenAISettings:Endpoint"];
-                string key = _configuration["AzureOpenAISettings:ApiKey"];
-
-                AzureOpenAIClient openAIClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(key));
-                var chatClient = openAIClient.GetChatClient(deploymentName);
-
-                var messageContentParts = new List<ChatMessageContentPart>();
-
-                string safeTextInstruction = !string.IsNullOrWhiteSpace(textInstruction)
-                    ? textInstruction
-                    : "Please grade this speaking submission based on the provided context.";
-
-                messageContentParts.Add(ChatMessageContentPart.CreateTextPart(textInstruction));
-
-                foreach (var url in imageUrls)
+                try
                 {
-                    messageContentParts.Add(ChatMessageContentPart.CreateImagePart(new Uri(url), ChatImageDetailLevel.Low));
+                    string deploymentName = _configuration["AzureOpenAISettings:ChatDeployment"];
+                    string endpoint = _configuration["AzureOpenAISettings:Endpoint"];
+                    string key = _configuration["AzureOpenAISettings:ApiKey"];
+
+                    AzureOpenAIClient openAIClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(key));
+                    var chatClient = openAIClient.GetChatClient(deploymentName);
+
+                    var messageContentParts = new List<ChatMessageContentPart>
+                    {
+                        ChatMessageContentPart.CreateTextPart(textInstruction)
+                    };
+
+                    foreach (var url in imageUrls)
+                    {
+                        messageContentParts.Add(ChatMessageContentPart.CreateImagePart(new Uri(url), ChatImageDetailLevel.Low));
+                    }
+
+                    var chatMessages = new List<ChatMessage>
+                    {
+                        new SystemChatMessage(MULTILINGUAL_SCORING_SYSTEM_PROMPT),
+                        new UserChatMessage(messageContentParts)
+                    };
+
+                    ChatCompletion chatCompletion = await chatClient.CompleteChatAsync(chatMessages);
+
+                    if (chatCompletion == null || chatCompletion.Content.Count == 0)
+                        throw new Exception("Azure returned empty response.");
+
+                    Console.WriteLine($"[Azure Response]: {chatCompletion.Content[0].Text}");
+
+                    var assessmentResult = ParseAIResponseToAssessmentResult(chatCompletion.Content[0].Text, req.LanguageCode);
+
+                    assessmentResult.Overall = Math.Clamp(assessmentResult.Overall, 0, 100);
+                    return assessmentResult;
                 }
-
-                var chatMessages = new List<ChatMessage>
+                catch (Exception ex)
                 {
-                    new SystemChatMessage(MULTILINGUAL_SCORING_SYSTEM_PROMPT),
-                    new UserChatMessage(messageContentParts)
-                };
-
-                ChatCompletion chatCompletion = null;
-                int maxRetries = 3;
-                int delaySeconds = 2;
-
-                for (int i = 0; i < maxRetries; i++)
-                {
+                    Console.WriteLine($"[Azure AI ERROR]: {ex.Message}. Switching to Gemini...");
                     try
                     {
-                        chatCompletion = await chatClient.CompleteChatAsync(chatMessages);
-                        break;
+                        return await EvaluateSpeakingByGeminiAsync(textInstruction, imageUrls, req.LanguageCode);
                     }
-                    catch (ClientResultException ex) when (ex.Status == 429)
+                    catch (Exception geminiEx)
                     {
-                        if (i == maxRetries - 1)
-                        {
-                            Console.WriteLine($"[AI 429 ERROR] Rate limit exceeded after {maxRetries} retries.");
-                            throw;
-                        }
-
-                        var waitTime = TimeSpan.FromSeconds(delaySeconds * Math.Pow(2, i));
-
-                        Console.WriteLine($"[AI RATE LIMIT] Waiting {waitTime.TotalSeconds}s before retry {i + 1}...");
-                        await Task.Delay(waitTime);
+                        Console.WriteLine($"[Gemini Fallback FAILED]: {geminiEx.Message}");
+                        return CreateFallbackResult("Hệ thống AI đang bận. Điểm số được ghi nhận cho nỗ lực.", req.LanguageCode);
                     }
                 }
-
-                if (chatCompletion == null) throw new Exception("Failed to get response from AI.");
-
-                Console.WriteLine($"[AI Raw Response]: {chatCompletion.Content[0].Text}");
-
-                var assessmentResult = ParseAIResponseToAssessmentResult(chatCompletion.Content[0].Text, req.LanguageCode);
-
-                if (assessmentResult.Overall < 0) assessmentResult.Overall = 0;
-                if (assessmentResult.Overall > 100) assessmentResult.Overall = 100;
-
-                return assessmentResult;
             }
             catch (Exception ex)
             {
@@ -323,22 +325,24 @@ namespace BLL.Services.Assessment
         }
         public static async Task<CommonResponse> TranscribeSpeechByGeminiAsync(string audioUrl, CancellationToken cancellationToken = default)
         {
-            string apiKey = "AIzaSyAsAA8w7QSEdW5k2CcbuWuEhXLV17hiYHI";
+            string[] apiKeys = new[]
+            {
+                "AIzaSyAsAA8w7QSEdW5k2CcbuWuEhXLV17hiYHI",
+                "AIzaSyAtrnbsgiyDAQP1OCXpCbfXkroblGrryP0"
+            };
 
             if (string.IsNullOrWhiteSpace(audioUrl))
                 return new CommonResponse { IsSuccess = false, Content = "Invalid audio URL." };
 
             byte[] audioBytes;
-            using (var client = new HttpClient())
+            string mimeType;
+
+            using (var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(180) })
             {
-                client.Timeout = TimeSpan.FromSeconds(15);
                 try
                 {
-                    audioBytes = await client.GetByteArrayAsync(audioUrl, cancellationToken);
-                }
-                catch (TaskCanceledException)
-                {
-                    return new CommonResponse { IsSuccess = false, Content = "Audio download timeout." };
+                    audioBytes = await httpClient.GetByteArrayAsync(audioUrl, cancellationToken);
+                    mimeType = GetMimeType(audioUrl);
                 }
                 catch (Exception ex)
                 {
@@ -348,80 +352,85 @@ namespace BLL.Services.Assessment
             }
 
             string audioBase64 = Convert.ToBase64String(audioBytes);
-            string mimeType = GetMimeType(audioUrl);
 
-            var payload = new
+            for (int i = 0; i < apiKeys.Length; i++)
             {
-                contents = new[]
+                string currentKey = apiKeys[i];
+                Console.WriteLine($"[Gemini Transcribe] Trying Key #{i + 1}...");
+
+                try
                 {
-                    new {
-                        parts = new object[]
+                    var payload = new
+                    {
+                        contents = new[]
                         {
-                            new { text = "Please transcribe this audio into text accurately. Return only the transcription without any additional text:" },
                             new {
-                                inline_data = new {
-                                    mime_type = mimeType,
-                                    data = audioBase64
-                                }
+                                    parts = new object[]
+                                    {
+                                        new
+                                        {
+                                            text = "Please transcribe this audio into text accurately. Return only the transcription without any additional text:"
+                                        },
+                                        new
+                                        {
+                                            inline_data = new
+                                            {
+                                                mime_type = mimeType,
+                                                data = audioBase64
+                                            }
+                                        }
+                                    }
                             }
+                        },
+                        generationConfig = new
+                        {
+                            maxOutputTokens = 1000,
+                            temperature = 0.1
+                        }
+                    };
+
+                    var json = JsonSerializer.Serialize(payload);
+                    var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                    using var geminiClient = new HttpClient();
+                    geminiClient.Timeout = TimeSpan.FromSeconds(30);
+
+                    geminiClient.DefaultRequestHeaders.Remove("x-goog-api-key");
+                    geminiClient.DefaultRequestHeaders.Add("x-goog-api-key", currentKey);
+
+                    var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+
+                    var response = await geminiClient.PostAsync(url, content, cancellationToken);
+                    var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        using var doc = JsonDocument.Parse(responseText);
+                        var candidates = doc.RootElement.GetProperty("candidates");
+                        if (candidates.GetArrayLength() > 0)
+                        {
+                            var transcript = candidates[0]
+                                .GetProperty("content")
+                                .GetProperty("parts")[0]
+                                .GetProperty("text")
+                                .GetString()?
+                                .Trim();
+
+                            return !string.IsNullOrWhiteSpace(transcript)
+                                ? new CommonResponse { IsSuccess = true, Content = transcript }
+                                : new CommonResponse { IsSuccess = false, Content = "Empty transcription" };
                         }
                     }
-                },
-                generationConfig = new
-                {
-                    maxOutputTokens = 1000,
-                    temperature = 0.1
+
+                    Console.WriteLine($"[Gemini Key #{i + 1} Failed]: {response.StatusCode} - {responseText}");
                 }
-            };
-
-            var json = JsonSerializer.Serialize(payload);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            using var geminiClient = new HttpClient();
-            geminiClient.Timeout = TimeSpan.FromSeconds(25);
-            geminiClient.DefaultRequestHeaders.Add("x-goog-api-key", apiKey);
-
-            var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
-            try
-            {
-                var response = await geminiClient.PostAsync(url, content, cancellationToken);
-                var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
-
-                if (!response.IsSuccessStatusCode)
+                catch (Exception ex)
                 {
-                    Console.WriteLine($"Gemini API error: {response.StatusCode} - {responseText}");
-                    return new CommonResponse { IsSuccess = false, Content = "Transcription service error." };
+                    Console.WriteLine($"[Gemini Key #{i + 1} Exception]: {ex.Message}");
                 }
-
-                Console.WriteLine($"Gemini response: {responseText}");
-
-                using var doc = JsonDocument.Parse(responseText);
-                var candidates = doc.RootElement.GetProperty("candidates");
-                if (candidates.GetArrayLength() == 0)
-                {
-                    return new CommonResponse { IsSuccess = false, Content = "No transcription generated." };
-                }
-
-                var transcript = candidates[0]
-                    .GetProperty("content")
-                    .GetProperty("parts")[0]
-                    .GetProperty("text")
-                    .GetString()?
-                    .Trim();
-
-                return !string.IsNullOrWhiteSpace(transcript)
-                    ? new CommonResponse { IsSuccess = true, Content = transcript }
-                    : new CommonResponse { IsSuccess = false, Content = "Empty transcription" };
             }
-            catch (TaskCanceledException)
-            {
-                return new CommonResponse { IsSuccess = false, Content = "Transcription timeout." };
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in transcription: {ex.Message}");
-                return new CommonResponse { IsSuccess = false, Content = "Failed to process transcription." };
-            }
+
+            return new CommonResponse { IsSuccess = false, Content = "All Gemini API keys failed." };
         }
         private async Task<CommonResponse> TranscribeSpeechByAzureAsync(string audioUrl, string languageCode)
         {
@@ -643,6 +652,104 @@ namespace BLL.Services.Assessment
 
             var result = string.Join("\n---\n", descriptions);
             return !string.IsNullOrWhiteSpace(result) ? new CommonResponse { IsSuccess = true, Content = result } : new CommonResponse { IsSuccess = false, Content = "No response" };
+        }
+        private async Task<AssessmentResult> EvaluateSpeakingByGeminiAsync(string promptInstruction, List<string> imageUrls, string languageCode)
+        {
+            string[] apiKeys = new[]
+            {
+                "AIzaSyAsAA8w7QSEdW5k2CcbuWuEhXLV17hiYHI",
+                "AIzaSyAtrnbsgiyDAQP1OCXpCbfXkroblGrryP0"
+            };
+
+            var parts = new List<object>();
+            string combinedPrompt = $"{MULTILINGUAL_SCORING_SYSTEM_PROMPT}\n\n---\n\n{promptInstruction}";
+            parts.Add(new { text = combinedPrompt });
+
+            if (imageUrls != null && imageUrls.Any())
+            {
+                using var imgClient = new HttpClient();
+                foreach (var imgUrl in imageUrls)
+                {
+                    try
+                    {
+                        byte[] imageBytes = await imgClient.GetByteArrayAsync(imgUrl);
+                        parts.Add(new
+                        {
+                            inline_data = new
+                            {
+                                mime_type = GetImageMimeType(imgUrl),
+                                data = Convert.ToBase64String(imageBytes)
+                            }
+                        });
+                    }
+                    catch { /* Ignore bad images */ }
+                }
+            }
+
+            var payload = new
+            {
+                contents = new[] { new { parts = parts.ToArray() } },
+                generationConfig = new { temperature = 0.2, response_mime_type = "application/json" }
+            };
+
+            string jsonPayload = JsonSerializer.Serialize(payload);
+
+            for (int i = 0; i < apiKeys.Length; i++)
+            {
+                string currentKey = apiKeys[i];
+                Console.WriteLine($"[Gemini Grading] Trying Key #{i + 1}...");
+
+                try
+                {
+                    string url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={currentKey}";
+
+                    using var client = new HttpClient();
+                    client.Timeout = TimeSpan.FromSeconds(60);
+
+                    var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+                    var response = await client.PostAsync(url, content);
+                    var responseString = await response.Content.ReadAsStringAsync();
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        using var doc = JsonDocument.Parse(responseString);
+                        var candidates = doc.RootElement.GetProperty("candidates");
+
+                        if (candidates.GetArrayLength() > 0)
+                        {
+                            var resultText = candidates[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString();
+
+                            var assessmentResult = ParseAIResponseToAssessmentResult(resultText, languageCode);
+                            if (assessmentResult.Overall < 0) assessmentResult.Overall = 0;
+                            if (assessmentResult.Overall > 100) assessmentResult.Overall = 100;
+
+                            return assessmentResult;
+                        }
+                    }
+
+                    Console.WriteLine($"[Gemini Grading Key #{i + 1} Failed]: {response.StatusCode} - {responseString}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Gemini Grading Key #{i + 1} Error]: {ex.Message}");
+                    if (i < apiKeys.Length - 1) continue;
+                }
+            }
+
+            throw new Exception("All Gemini API keys failed to grade submission.");
+        }
+        private string GetImageMimeType(string url)
+        {
+            var ext = Path.GetExtension(url).ToLower();
+            return ext switch
+            {
+                ".png" => "image/png",
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".webp" => "image/webp",
+                ".heic" => "image/heic",
+                ".heif" => "image/heif",
+                _ => "image/jpeg"
+            };
         }
         public static string GetMimeType(string url)
         {
