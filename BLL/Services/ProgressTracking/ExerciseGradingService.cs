@@ -402,6 +402,9 @@ namespace BLL.Services.ProgressTracking
         [AutomaticRetry(Attempts = 5, OnAttemptsExceeded = AttemptsExceededAction.Fail)]
         public async Task<BaseResponse<bool>> ProcessAIGradingAsync(AssessmentRequest request)
         {
+            Random rnd = new Random();
+            await Task.Delay(rnd.Next(1000, 3000));
+
             var submission = await _unitOfWork.ExerciseSubmissions.Query()
                 .Include(es => es.Exercise)
                 .Include(es => es.Learner)

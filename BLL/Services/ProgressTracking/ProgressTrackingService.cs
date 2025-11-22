@@ -1036,8 +1036,8 @@ namespace BLL.Services.ProgressTracking
                              es.ExerciseId == exerciseId &&
                              es.SubmittedAt >= today).CountAsync();
 
-            //Nếu số lượng bài nộp lớn hơn hoặc bằng 3 thì người học không thể nộp được nữa và phải chờ đến ngày mai.
-            if (todaysSubmissions >= 3)
+            //Nếu số lượng bài nộp lớn hơn hoặc bằng 5 thì người học không thể nộp được nữa và phải chờ đến ngày mai.
+            if (todaysSubmissions >= 5)
                 return false;
 
             return true;
