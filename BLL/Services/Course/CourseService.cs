@@ -87,6 +87,15 @@ namespace BLL.Services.Course
                             return BaseResponse<CourseResponse>.Fail("Template does not exist.");
                     }
 
+                    if (request.Price == 0 && request.GradingType == GradingType.AIAndTeacher)
+                    {
+                        return BaseResponse<CourseResponse>.Fail(
+                            new object(),
+                            "Invalid configuration: Free courses cannot support Teacher Grading. Please select 'AI Only' or set a Price.",
+                            400
+                        );
+                    }
+
                     var level = await _unit.Levels.GetByIdAsync(request.LevelId);
                     if (level == null)
                         return BaseResponse<CourseResponse>.Fail("Level not found within the selected program.");
@@ -144,14 +153,14 @@ namespace BLL.Services.Course
                         );
                     }
 
-                    string imageUrl = "";
-                    string publicId = "";
+                    string? imageUrl = null;
+                    string? publicId = null;
 
-                    if (request.Image != null)
+                    if (request.Image is { Length: > 0 })
                     {
                         var result = await _cloudinaryService.UploadImageAsync(request.Image);
 
-                        if (result.Url == null)
+                        if (result?.Url is null)
                         {
                             return BaseResponse<CourseResponse>.Fail("Failed when uploading the image.");
                         }

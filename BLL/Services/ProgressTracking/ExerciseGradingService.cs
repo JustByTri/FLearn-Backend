@@ -35,9 +35,13 @@ namespace BLL.Services.ProgressTracking
                     var now = TimeHelper.GetVietnamTime();
                     var batchSize = 100;
                     var totalProcessed = 0;
+                    var maxLoops = 50;
+                    var currentLoop = 0;
 
-                    while (true)
+                    while (currentLoop < maxLoops)
                     {
+                        currentLoop++;
+
                         var expiredAssignments = await _unitOfWork.ExerciseGradingAssignments
                             .Query()
                             .Include(a => a.ExerciseSubmission)
@@ -111,6 +115,29 @@ namespace BLL.Services.ProgressTracking
                     if (submission == null)
                         return BaseResponse<bool>.Fail(false, "Exercise submission not found", 404);
 
+                    var courseId = submission.Exercise.Lesson.CourseUnit.CourseID;
+                    var learnerUserId = submission.Learner.UserId;
+
+                    var purchase = await _unitOfWork.Purchases.Query()
+                        .FirstOrDefaultAsync(p => p.UserId == learnerUserId &&
+                                                  p.CourseId == courseId &&
+                                                  p.Status == PurchaseStatus.Completed);
+
+                    if (purchase == null)
+                        return BaseResponse<bool>.Fail(false, "Valid course purchase not found", 400);
+
+                    // Kiểm tra xem có yêu cầu hoàn tiền nào đang treo hoặc đã duyệt không
+                    var hasRefundRequest = await _unitOfWork.RefundRequests.Query()
+                        .AnyAsync(r => r.PurchaseId == purchase.PurchasesId &&
+                                      (r.Status == RefundRequestStatus.Pending ||
+                                       r.Status == RefundRequestStatus.Approved));
+
+                    if (hasRefundRequest)
+                    {
+                        return BaseResponse<bool>.Fail(false, "Cannot assign teacher: Course is being refunded or already refunded.", 400);
+                    }
+
+
                     var now = TimeHelper.GetVietnamTime();
                     var hasOverdueAssignment = submission.ExerciseGradingAssignments
                         .Any(a => a.Status == GradingStatus.Expired ||
@@ -175,11 +202,6 @@ namespace BLL.Services.ProgressTracking
 
                     var course = submission.Exercise.Lesson.CourseUnit.Course;
                     var learner = submission.Learner;
-
-                    var purchase = await _unitOfWork.Purchases.Query()
-                        .FirstOrDefaultAsync(p => p.UserId == learner.UserId &&
-                                                p.CourseId == course.CourseID &&
-                                                p.Status == PurchaseStatus.Completed);
 
                     if (purchase != null)
                     {
@@ -524,11 +546,15 @@ namespace BLL.Services.ProgressTracking
                     return BaseResponse<bool>.Fail(new object(), "Access denied", 403);
 
                 var submission = await _unitOfWork.ExerciseSubmissions
-                    .Query()
-                    .Include(es => es.Exercise)
-                    .Include(es => es.ExerciseGradingAssignments)
-                        .ThenInclude(eg => eg.EarningAllocation)
-                    .FirstOrDefaultAsync(es => es.ExerciseSubmissionId == exerciseSubmissionId);
+                                .Query()
+                                .Include(es => es.Exercise)
+                                    .ThenInclude(e => e.Lesson)
+                                        .ThenInclude(l => l.CourseUnit)
+                                .Include(es => es.Learner)
+                                    .ThenInclude(l => l.User)
+                                .Include(es => es.ExerciseGradingAssignments)
+                                    .ThenInclude(eg => eg.EarningAllocation)
+                                .FirstOrDefaultAsync(es => es.ExerciseSubmissionId == exerciseSubmissionId);
 
                 if (submission == null)
                     return BaseResponse<bool>.Fail(false, "Exercise submission not found", 404);
@@ -579,16 +605,69 @@ namespace BLL.Services.ProgressTracking
 
                 if (allocation != null && isFirstTeacherGrading)
                 {
-                    allocation.Status = EarningStatus.Approved;
-                    allocation.ApprovedAt = TimeHelper.GetVietnamTime();
-                    allocation.UpdatedAt = TimeHelper.GetVietnamTime();
+                    var learnerId = submission.Learner.UserId;
+                    var courseId = submission.Exercise.Lesson.CourseUnit.CourseID;
+
+                    var purchase = await _unitOfWork.Purchases.Query()
+                    .FirstOrDefaultAsync(p => p.UserId == learnerId && p.CourseId == courseId);
+
+                    bool isRefundSafe = true;
+                    if (purchase != null)
+                    {
+                        // Nếu Purchase đã Refunded hoặc Failed -> Không trả tiền
+                        if (purchase.Status == PurchaseStatus.Refunded ||
+                            purchase.Status == PurchaseStatus.Failed ||
+                            purchase.Status == PurchaseStatus.Cancelled)
+                        {
+                            isRefundSafe = false;
+                        }
+                        else
+                        {
+                            // Nếu có yêu cầu Refund đang Pending -> Cũng tạm thời KHÔNG trả tiền
+                            var pendingRefund = await _unitOfWork.RefundRequests.Query()
+                                .AnyAsync(r => r.PurchaseId == purchase.PurchasesId &&
+                                              (r.Status == RefundRequestStatus.Pending ||
+                                               r.Status == RefundRequestStatus.Approved));
+
+                            if (pendingRefund) isRefundSafe = false;
+                        }
+                    }
+                    else
+                    {
+                        // Không tìm thấy purchase (lỗi data) -> Không trả tiền cho chắc
+                        isRefundSafe = false;
+                    }
+
+                    if (isRefundSafe)
+                    {
+                        // KHỚP LOGIC: Chỉ Approved khi an toàn
+                        allocation.Status = EarningStatus.Approved;
+                        allocation.ApprovedAt = TimeHelper.GetVietnamTime();
+                        allocation.UpdatedAt = TimeHelper.GetVietnamTime();
+
+                        // Lưu ý: Việc gọi Job chuyển tiền sẽ thực hiện SAU KHI save changes thành công
+                    }
+                    else
+                    {
+                        // Nếu đang Refund, ta set trạng thái là Cancelled (hoặc Rejected)
+                        // Giáo viên đã chấm nhưng do User refund nên Allocation này bị hủy.
+                        // (Tuỳ policy bên bạn có trả tiền cho GV hay ko trong case này, 
+                        // nhưng để an toàn tài chính thì thường là không hoặc xử lý thủ công).
+                        allocation.Status = EarningStatus.Rejected;
+                        allocation.UpdatedAt = TimeHelper.GetVietnamTime();
+
+                        Console.WriteLine($"[INFO] Allocation {allocation.AllocationId} cancelled due to Refund/Invalid Purchase status.");
+                    }
 
                     await _unitOfWork.TeacherEarningAllocations.UpdateAsync(allocation);
-
-                    BackgroundJob.Enqueue(() => _walletService.TransferExerciseGradingFeeToTeacherAsync(allocation.AllocationId));
                 }
 
                 await _unitOfWork.SaveChangesAsync();
+
+                if (allocation != null && allocation.Status == EarningStatus.Approved)
+                {
+                    BackgroundJob.Enqueue<IWalletService>(ws => ws.TransferExerciseGradingFeeToTeacherAsync(allocation.AllocationId));
+                }
 
                 await UpdateLessonProgressAfterGrading(submission);
 

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Common.DTO.Learner
+﻿namespace Common.DTO.Learner
 {
     public class CourseRecommendationDto
     {
@@ -15,6 +9,6 @@ namespace Common.DTO.Learner
         public decimal MatchScore { get; set; } // 0-100
         public string MatchReason { get; set; } = string.Empty;
         public int EstimatedDuration { get; set; } // in hours
-    
+        public Guid UserId { get; set; }
     }
 }

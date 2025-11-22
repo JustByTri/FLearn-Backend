@@ -6,6 +6,7 @@ using Common.DTO.Payment.Response;
 using Common.DTO.Purchases.Request;
 using Common.DTO.Purchases.Response;
 using Common.DTO.Refund.Request;
+using Common.DTO.Refund.Response;
 
 namespace BLL.IServices.Purchases
 {
@@ -15,6 +16,9 @@ namespace BLL.IServices.Purchases
         Task<BaseResponse<PaymentCreateResponse>> CreatePaymentForPurchaseAsync(Guid userId, Guid purchaseId);
         Task<BaseResponse<CourseAccessResponse>> CheckCourseAccessAsync(Guid userId, Guid courseId);
         Task<BaseResponse<object>> CreateRefundRequestAsync(Guid userId, CreateRefundRequest request);
+        Task<BaseResponse<object>> ProcessRefundDecisionAsync(Guid userId, Guid refundRequestId, bool isApproved, string note);
+        Task<PagedResponse<List<RefundRequestResponse>>> GetRefundRequestsAsync(Guid userId, RefundRequestFilterRequest request);
+        Task<BaseResponse<RefundRequestResponse>> GetMyRefundRequestDetailAsync(Guid userId, Guid purchaseId);
         Task<PagedResponse<List<PurchaseDetailResponse>>> GetPurchaseDetailsByUserIdAsync(Guid userId, PagingRequest request);
         Task<BaseResponse<PurchaseDetailResponse>> GetPurchaseByIdAsync(Guid purchaseId, Guid userId);
         Task<PagedResponse<List<CoursePurchaseResponse>>> GetCoursePurchasesByLanguageAsync(Guid userId, PurchasePagingRequest request);

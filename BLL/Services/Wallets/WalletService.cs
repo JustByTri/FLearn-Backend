@@ -3,7 +3,6 @@ using DAL.Helpers;
 using DAL.Models;
 using DAL.Type;
 using DAL.UnitOfWork;
-using Hangfire;
 using Microsoft.EntityFrameworkCore;
 
 namespace BLL.Services.Wallets
@@ -49,10 +48,6 @@ namespace BLL.Services.Wallets
 
             await _unitOfWork.WalletTransactions.CreateAsync(adminWalletTransaction);
             await _unitOfWork.SaveChangesAsync();
-
-            // Schedule refund check after 3 days
-            BackgroundJob.Schedule(() => ProcessCourseCreationFeeTransferAsync(purchaseId),
-                TimeSpan.FromDays(3));
         }
         public async Task TransferToTeacherWalletAsync(Guid purchaseId)
         {
@@ -133,7 +128,6 @@ namespace BLL.Services.Wallets
 
             await _unitOfWork.WalletTransactions.CreateAsync(teacherCreditTransaction);
         }
-
         public async Task ProcessCourseCreationFeeTransferAsync(Guid purchaseId)
         {
             await _unitOfWork.ExecuteInTransactionAsync(async () =>
@@ -146,19 +140,22 @@ namespace BLL.Services.Wallets
 
                 if (purchase == null || purchase.Status != PurchaseStatus.Completed) return;
 
-                var hasRefund = await _unitOfWork.RefundRequests.Query()
-                    .AnyAsync(r => r.PurchaseId == purchaseId &&
-                                  r.Status == RefundRequestStatus.Approved);
+                var hasActiveRefundRequest = await _unitOfWork.RefundRequests.Query().AnyAsync(r => r.PurchaseId == purchaseId &&
+                          (r.Status == RefundRequestStatus.Approved ||
+                           r.Status == RefundRequestStatus.Pending));
 
-                if (hasRefund)
+                if (hasActiveRefundRequest)
                 {
-                    Console.WriteLine("Purchase {PurchaseId} has approved refund, skipping course creation fee transfer", purchaseId);
+                    Console.WriteLine($"Purchase {purchaseId} has Pending/Approved refund. Skipping automatic transfer.");
                     return;
                 }
 
                 var adminWallet = await GetOrCreateAdminWalletAsync();
+
+                // Tính toán: 55% của 90%
                 decimal courseCreationAmount = purchase.FinalAmount * TEACHER_FEE_PERCENTAGE * COURSE_FEE_PERCENTAGE;
 
+                // Lưu ý: Admin HoldBalance giảm, Admin Available tăng (bước trung gian), sau đó chuyển sang Teacher
                 // Chuyển tiền từ hold balance sang available balance của admin
                 adminWallet.HoldBalance -= courseCreationAmount;
                 adminWallet.AvailableBalance += courseCreationAmount;
@@ -302,7 +299,6 @@ namespace BLL.Services.Wallets
                 await _unitOfWork.SaveChangesAsync();
             });
         }
-
         #region Private Methods
         private async Task<Wallet> GetOrCreateTeacherWalletAsync(Guid teacherId)
         {

@@ -282,16 +282,6 @@ namespace BLL.Services.Payment
                 }
             });
         }
-
-        public Task<BaseResponse<object>> ProcessRefundAsync(Guid paymentTransactionId, decimal amount)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<BaseResponse<object>> VerifyPaymentAsync(string transactionReference)
-        {
-            throw new NotImplementedException();
-        }
         #region Private Methods
         #endregion
     }
