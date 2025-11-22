@@ -11,6 +11,7 @@ using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
 using Microsoft.Extensions.Configuration;
 using OpenAI.Chat;
+using System.ClientModel;
 using System.Text;
 using System.Text.Json;
 
@@ -57,13 +58,14 @@ namespace BLL.Services.Assessment
                 var exercise = await exerciseTask;
 
                 if (submission == null || exercise == null)
-                    return CreateDefaultAssessmentResult();
+                    return CreateFallbackResult("Không thể nhận diện giọng nói rõ ràng hoặc âm thanh quá ồn. Hệ thống chấm điểm mặc định cho nỗ lực nộp bài.", req.LanguageCode);
 
                 var studentTranscript = await TranscribeSpeechByAzureAsync(req.AudioUrl, req.LanguageCode);
 
                 if (!studentTranscript.IsSuccess)
                 {
-                    throw new Exception("Transcript failed: " + studentTranscript.Content);
+                    Console.WriteLine($"[Transcribe Fail]: {studentTranscript.Content}");
+                    return CreateFallbackResult("Không thể nhận diện giọng nói rõ ràng hoặc âm thanh quá ồn. Hệ thống chấm điểm mặc định cho nỗ lực nộp bài.", req.LanguageCode);
                 }
 
                 List<string> imageUrls = new List<string>();
@@ -72,7 +74,7 @@ namespace BLL.Services.Assessment
                     exercise.Type == SpeakingExerciseType.StoryTelling ||
                     exercise.Type == SpeakingExerciseType.Debate))
                 {
-                    imageUrls = ExtractImageUrls(exercise.MediaUrl).Take(5).ToList();
+                    imageUrls = ExtractImageUrls(exercise.MediaUrl).Take(3).ToList();
                 }
 
                 if (exercise.Type == SpeakingExerciseType.RepeatAfterMe && !string.IsNullOrEmpty(exercise.MediaUrl))
@@ -80,7 +82,7 @@ namespace BLL.Services.Assessment
                     var result = await _pronunciationService.AssessPronunciationAsync(submission.AudioUrl, exercise.Content, req.LanguageCode);
                     return result != null
                         ? _pronunciationService.ConvertToAssessmentResult(result, exercise.Content, req.LanguageCode)
-                        : CreateDefaultAssessmentResult();
+                        : CreateFallbackResult("Không thể nhận diện giọng nói rõ ràng hoặc âm thanh quá ồn. Hệ thống chấm điểm mặc định cho nỗ lực nộp bài.", req.LanguageCode);
                 }
 
                 string textInstruction = req.LanguageCode switch
@@ -107,7 +109,7 @@ namespace BLL.Services.Assessment
 
                 foreach (var url in imageUrls)
                 {
-                    messageContentParts.Add(ChatMessageContentPart.CreateImagePart(new Uri(url)));
+                    messageContentParts.Add(ChatMessageContentPart.CreateImagePart(new Uri(url), ChatImageDetailLevel.Low));
                 }
 
                 var chatMessages = new List<ChatMessage>
@@ -116,7 +118,34 @@ namespace BLL.Services.Assessment
                     new UserChatMessage(messageContentParts)
                 };
 
-                ChatCompletion chatCompletion = await chatClient.CompleteChatAsync(chatMessages);
+                ChatCompletion chatCompletion = null;
+                int maxRetries = 3;
+                int delaySeconds = 2;
+
+                for (int i = 0; i < maxRetries; i++)
+                {
+                    try
+                    {
+                        chatCompletion = await chatClient.CompleteChatAsync(chatMessages);
+                        break;
+                    }
+                    catch (ClientResultException ex) when (ex.Status == 429)
+                    {
+                        if (i == maxRetries - 1)
+                        {
+                            Console.WriteLine($"[AI 429 ERROR] Rate limit exceeded after {maxRetries} retries.");
+                            throw;
+                        }
+
+                        var waitTime = TimeSpan.FromSeconds(delaySeconds * Math.Pow(2, i));
+
+                        Console.WriteLine($"[AI RATE LIMIT] Waiting {waitTime.TotalSeconds}s before retry {i + 1}...");
+                        await Task.Delay(waitTime);
+                    }
+                }
+
+                if (chatCompletion == null) throw new Exception("Failed to get response from AI.");
+
                 Console.WriteLine($"[AI Raw Response]: {chatCompletion.Content[0].Text}");
 
                 var assessmentResult = ParseAIResponseToAssessmentResult(chatCompletion.Content[0].Text, req.LanguageCode);
@@ -130,7 +159,7 @@ namespace BLL.Services.Assessment
             {
                 Console.WriteLine($"Error in EvaluateSpeakingAsync: {ex.Message}");
                 Console.WriteLine($"Stack trace: {ex.StackTrace}");
-                return CreateDefaultAssessmentResult();
+                return CreateFallbackResult("Hệ thống AI đang bận hoặc gặp sự cố gián đoạn. Điểm số được ghi nhận cho nỗ lực hoàn thành bài tập.", req.LanguageCode);
             }
         }
         #region
@@ -138,17 +167,30 @@ namespace BLL.Services.Assessment
         {
             try
             {
-                var jsonStart = aiResponse.IndexOf('{');
-                var jsonEndIndex = aiResponse.LastIndexOf('}');
+                string cleanJson = aiResponse;
+                if (cleanJson.Contains("```json"))
+                {
+                    cleanJson = cleanJson.Replace("```json", "").Replace("```", "");
+                }
+                else if (cleanJson.Contains("```"))
+                {
+                    cleanJson = cleanJson.Replace("```", "");
+                }
+
+                cleanJson = cleanJson.Trim();
+
+                var jsonStart = cleanJson.IndexOf('{');
+                var jsonEndIndex = cleanJson.LastIndexOf('}');
 
                 if (jsonStart == -1 || jsonEndIndex == -1 || jsonEndIndex < jsonStart)
                 {
-                    throw new JsonException($"No valid JSON boundaries found. Raw response: {aiResponse.Trim()}");
+                    Console.WriteLine($"[AI JSON ERROR] Raw: {aiResponse}");
+                    var fallback = CreateFallbackResult("Hệ thống AI đang bận hoặc gặp sự cố gián đoạn. Điểm số được ghi nhận cho nỗ lực hoàn thành bài tập.", languageCode);
+                    fallback.Feedback = "AI output format error. Raw: " + aiResponse.Substring(0, Math.Min(50, aiResponse.Length));
+                    return fallback;
                 }
 
-                var length = jsonEndIndex - jsonStart + 1;
-
-                var cleanJson = aiResponse.Substring(jsonStart, length);
+                cleanJson = cleanJson.Substring(jsonStart, jsonEndIndex - jsonStart + 1);
 
                 var jsonObject = JsonSerializer.Deserialize<JsonElement>(cleanJson);
 
@@ -197,25 +239,35 @@ namespace BLL.Services.Assessment
                 throw;
             }
         }
-        private AssessmentResult CreateDefaultAssessmentResult()
+        private AssessmentResult CreateFallbackResult(string feedbackReason, string languageCode)
         {
-            return new AssessmentResult
+            int fallbackScore = 35;
+
+            var result = new AssessmentResult
             {
                 Scores = new ExtendedScores
                 {
-                    Pronunciation = 5,
-                    Fluency = 5,
-                    Coherence = 5,
-                    Accuracy = 5,
-                    Intonation = 5,
-                    Grammar = 5,
-                    Vocabulary = 5
+                    Pronunciation = fallbackScore,
+                    Fluency = fallbackScore,
+                    Coherence = fallbackScore,
+                    Accuracy = fallbackScore,
+                    Intonation = fallbackScore,
+                    Grammar = fallbackScore,
+                    Vocabulary = fallbackScore
                 },
-                CefrLevel = "A1",
-                Overall = 5,
-                Feedback = "Unable to evaluate at this time. Please try again.",
-                Transcript = "Unable to transcribe."
+                Overall = fallbackScore,
+                Feedback = feedbackReason,
+                Transcript = "Audio quality was unclear or system encountered an error."
             };
+
+            SetLanguageSpecificLevels(result, languageCode);
+
+            if (string.IsNullOrEmpty(result.CefrLevel))
+            {
+                result.CefrLevel = "A1";
+            }
+
+            return result;
         }
         private void SetLanguageSpecificLevels(AssessmentResult result, string languageCode)
         {
@@ -379,7 +431,7 @@ namespace BLL.Services.Assessment
             Console.WriteLine($"[Azure Speech] Downloading audio from: {audioUrl}");
 
             byte[] audioBytes;
-            using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(20) })
+            using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(180) })
             {
                 try
                 {
