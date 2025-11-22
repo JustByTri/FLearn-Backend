@@ -57,7 +57,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging; // added
-using Microsoft.Extensions.Options; // added
 using StackExchange.Redis;
 
 namespace BLL
@@ -168,7 +167,6 @@ namespace BLL
             services.AddScoped<IPaymentService, PayOSPaymentService>();
             services.AddScoped<IWalletService, WalletService>();
             services.AddScoped<WalletService>();
-            services.AddScoped<TeacherPayoutJobService>();
             services.AddScoped<IEnrollmentService, EnrollmentService>();
             services.AddScoped<IAssessmentService, AssessmentService>();
             services.AddScoped<IProgressTrackingService, ProgressTrackingService>();

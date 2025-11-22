@@ -1,5 +1,4 @@
-﻿using Azure;
-using BLL.IServices.Enrollment;
+﻿using BLL.IServices.Enrollment;
 using BLL.IServices.Purchases;
 using Common.DTO.ApiResponse;
 using Common.DTO.Enrollment.Request;
@@ -171,7 +170,7 @@ namespace BLL.Services.Enrollment
                     TotalLessons = course.NumLessons,
                     EnrolledAt = TimeHelper.GetVietnamTime()
                 };
-                
+
                 await _unitOfWork.Enrollments.CreateAsync(enrollment);
                 await _unitOfWork.SaveChangesAsync();
 
@@ -514,6 +513,13 @@ namespace BLL.Services.Enrollment
 
                 if (enrollment == null)
                     return BaseResponse<EnrolledCourseCurriculumResponse>.Fail(new object(), "Enrollment not found", 404);
+
+                if (enrollment.Status == DAL.Type.EnrollmentStatus.Cancelled || enrollment.Status == DAL.Type.EnrollmentStatus.Expired)
+                    return BaseResponse<EnrolledCourseCurriculumResponse>.Fail(
+                        new object(),
+                        "Enrollment has been cancelled or expired. Access to course curriculum is denied.",
+                        400
+                    );
 
                 var units = await _unitOfWork.CourseUnits.Query()
                     .Where(u => u.CourseID == enrollment.CourseId)

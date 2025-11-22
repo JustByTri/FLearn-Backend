@@ -75,13 +75,43 @@ namespace Presentation.Controllers.Purchases
             return StatusCode(result.Code, result);
         }
         [Authorize(Roles = "Learner")]
-        [HttpPost("payments/refund")]
-        public async Task<IActionResult> CreateRefundRequest([FromBody] CreateRefundRequest request)
+        [HttpPost("purchases/refunds")]
+        public async Task<IActionResult> CreateRefundRequest([FromForm] CreateRefundRequest request)
         {
             if (!this.TryGetUserId(out var userId, out var error))
                 return error!;
 
             var result = await _purchaseService.CreateRefundRequestAsync(userId, request);
+            return StatusCode(result.Code, result);
+        }
+        [Authorize(Roles = "Admin")]
+        [HttpPost("purchases/refunds/process")]
+        public async Task<IActionResult> ProcessRefundRequest([FromBody] ProcessRefundRequest request)
+        {
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
+
+            var result = await _purchaseService.ProcessRefundDecisionAsync(userId, request.RefundRequestId, request.isApproved, request.Note);
+            return StatusCode(result.Code, result);
+        }
+        [Authorize(Roles = "Admin")]
+        [HttpGet("purchases/refunds/by-admin")]
+        public async Task<IActionResult> GetRefundRequest([FromQuery] RefundRequestFilterRequest request)
+        {
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
+
+            var result = await _purchaseService.GetRefundRequestsAsync(userId, request);
+            return StatusCode(result.Code, result);
+        }
+        [Authorize(Roles = "Learner")]
+        [HttpGet("purchases/{purchaseId:guid}/refunds/me")]
+        public async Task<IActionResult> GetMyRefundRequest(Guid purchaseId)
+        {
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
+
+            var result = await _purchaseService.GetMyRefundRequestDetailAsync(userId, purchaseId);
             return StatusCode(result.Code, result);
         }
         [HttpPost("payments/payos-callback")]

@@ -9,7 +9,6 @@ using DAL.Type;
 using DAL.UnitOfWork;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -105,7 +104,7 @@ namespace BLL.Services.Assessment
                 // Chuẩn hóa và sắp xếp tăng dần
                 questions = questions
                     .OrderBy(q => MapDifficultyOrder(q.Difficulty, programLevelNames))
-                    .Select((q, idx) => { q.QuestionNumber = idx +1; return q; })
+                    .Select((q, idx) => { q.QuestionNumber = idx + 1; return q; })
                     .ToList();
 
                 // Lưu cache9 giờ
@@ -120,7 +119,7 @@ namespace BLL.Services.Assessment
                 LanguageName = language.LanguageName,
                 Questions = questions!,
                 CreatedAt = TimeHelper.GetVietnamTime(),
-                CurrentQuestionIndex =0,
+                CurrentQuestionIndex = 0,
                 ProgramId = programId,
                 ProgramName = program.Name,
                 ProgramLevelNames = programLevelNames
@@ -135,12 +134,12 @@ namespace BLL.Services.Assessment
             var input = string.Join('|', programLevelNames.Select(s => s.Trim()));
             using var sha = SHA256.Create();
             var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(input));
-            return Convert.ToHexString(bytes).Substring(0,12);
+            return Convert.ToHexString(bytes).Substring(0, 12);
         }
 
         private List<VoiceAssessmentQuestion> BuildLocalizedFallbackQuestions(string languageCode, string languageName, List<string> programLevelNames)
         {
-            var diffs = programLevelNames.Count >=4 ? programLevelNames.Take(4).ToArray() : BuildDefaultDifficulties(languageCode);
+            var diffs = programLevelNames.Count >= 4 ? programLevelNames.Take(4).ToArray() : BuildDefaultDifficulties(languageCode);
             var code = (languageCode ?? string.Empty).ToLowerInvariant();
             if (code.StartsWith("ja"))
             {
@@ -226,8 +225,8 @@ namespace BLL.Services.Assessment
                         question.AudioFilePath,
                         response.AudioFile.Length,
                         response.AudioFile.ContentType,
-                        question.Transcript?.Length ??0,
-                        Trunc(question.Transcript,120)
+                        question.Transcript?.Length ?? 0,
+                        Trunc(question.Transcript, 120)
                     );
                 }
                 catch (Exception ex)
@@ -407,7 +406,8 @@ namespace BLL.Services.Assessment
                     CourseId = rc.CourseID,
                     CourseName = rc.CourseName,
                     Level = rc.Level,
-                    MatchReason = rc.MatchReason
+                    MatchReason = rc.MatchReason,
+                    UserId = rc.UserId
                 }).ToList(),
                 CompletedAt = TimeHelper.GetVietnamTime()
             };
@@ -433,26 +433,26 @@ namespace BLL.Services.Assessment
         {
             if (string.IsNullOrWhiteSpace(difficulty)) return int.MaxValue;
             var index = programLevelNames.FindIndex(l => l.Equals(difficulty, StringComparison.OrdinalIgnoreCase));
-            if (index >=0) return index;
+            if (index >= 0) return index;
             var d = difficulty.Trim().ToUpperInvariant();
             if (d.StartsWith("HSK"))
             {
                 var numStr = new string(d.Skip(3).TakeWhile(char.IsDigit).ToArray());
                 if (int.TryParse(numStr, out var n))
-                    return Math.Clamp(n -1,0,5);
+                    return Math.Clamp(n - 1, 0, 5);
             }
-            if (d.Length >=2 && d[0] == 'N' && char.IsDigit(d[1]))
+            if (d.Length >= 2 && d[0] == 'N' && char.IsDigit(d[1]))
             {
-                return d[1] switch { '5' =>0, '4' =>1, '3' =>2, '2' =>3, '1' =>4, _ => int.MaxValue };
+                return d[1] switch { '5' => 0, '4' => 1, '3' => 2, '2' => 3, '1' => 4, _ => int.MaxValue };
             }
             return d switch
             {
-                "A1" =>0,
-                "A2" =>1,
-                "B1" =>2,
-                "B2" =>3,
-                "C1" =>4,
-                "C2" =>5,
+                "A1" => 0,
+                "A2" => 1,
+                "B1" => 2,
+                "B2" => 3,
+                "C1" => 4,
+                "C2" => 5,
                 _ => int.MaxValue
             };
         }
@@ -604,7 +604,7 @@ namespace BLL.Services.Assessment
 
                 int targetOrderIndex = determinedLevel?.OrderIndex
                     ?? programLevels.Min(l => (int?)l.OrderIndex)
-                    ??0;
+                    ?? 0;
 
                 var targetLevelIds = programLevels
                     .Where(l => l.OrderIndex >= targetOrderIndex)
@@ -623,7 +623,8 @@ namespace BLL.Services.Assessment
                     CourseID = c.CourseID,
                     CourseName = c.Title,
                     Level = programLevels.FirstOrDefault(l => l.LevelId == c.LevelId)?.Name ?? "N/A",
-                    MatchReason = "Phù hợp với trình độ và khung chương trình của bạn"
+                    MatchReason = "Phù hợp với trình độ và khung chương trình của bạn",
+                    UserId = c.TeacherId,
                 }).ToList();
             }
             catch (Exception ex)

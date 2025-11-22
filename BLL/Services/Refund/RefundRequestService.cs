@@ -320,8 +320,8 @@ namespace BLL.Services.Refund
             {
                 RefundRequestID = r.RefundRequestID,
                 StudentID = r.StudentID,
-                EnrollmentID = r.EnrollmentID,
-                ClassID = r.ClassID,
+                EnrollmentID = (Guid)r.EnrollmentID,
+                ClassID = (Guid)r.ClassID,
                 RefundAmount = r.RefundAmount,
                 RequestType = r.RequestType,
                 Reason = r.Reason,
@@ -334,14 +334,14 @@ namespace BLL.Services.Refund
                 AdminNote = r.AdminNote,
                 ProofImageUrl = r.ProofImageUrl,
 
-                
+
                 StudentName = r.Student?.UserName ?? "N/A",
 
-               
+
                 ClassName = r.TeacherClass?.Title ?? (r.ClassEnrollment?.Class?.Title ?? "Lớp học không còn tồn tại")
             }).ToList();
 
-         
+
             return BaseResponse<IEnumerable<RefundRequestDto>>.Success(
                 requestsDto,
                 "Lấy lịch sử yêu cầu hoàn tiền thành công.",

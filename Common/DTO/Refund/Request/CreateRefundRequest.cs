@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.AspNetCore.Http;
+using System.ComponentModel.DataAnnotations;
 
 namespace Common.DTO.Refund.Request
 {
@@ -19,5 +20,6 @@ namespace Common.DTO.Refund.Request
         public string? BankAccountHolderName { get; set; }
         [StringLength(1000, ErrorMessage = "Lý do không được vượt quá 1000 ký tự")]
         public string? Reason { get; set; }
+        public IFormFile? ProofImage { get; set; }
     }
 }

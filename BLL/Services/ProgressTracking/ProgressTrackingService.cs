@@ -375,6 +375,32 @@ namespace BLL.Services.ProgressTracking
                 if (lessonProgress == null)
                     return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Lesson progress not found", 404);
 
+                // Trước khi cho nộp bài, phải chắc chắn user không đang đòi lại tiền
+                Purchase? purchase = null;
+
+                // Chỉ kiểm tra Purchase nếu khóa học có tính phí (>0)
+                if (course.Price > 0)
+                {
+                    purchase = await _unitOfWork.Purchases.Query()
+                        .OrderByDescending(p => p.CreatedAt)
+                        .FirstOrDefaultAsync(p => p.UserId == userId &&
+                                                p.CourseId == course.CourseID &&
+                                                p.Status == PurchaseStatus.Completed);
+
+                    if (purchase == null)
+                        return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Valid purchase not found for this paid course.", 403);
+
+                    // Kiểm tra Refund
+                    var hasPendingRefund = await _unitOfWork.RefundRequests.Query()
+                        .AnyAsync(r => r.PurchaseId == purchase.PurchasesId &&
+                                      (r.Status == RefundRequestStatus.Pending || r.Status == RefundRequestStatus.Approved));
+
+                    if (hasPendingRefund)
+                    {
+                        return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(),
+                            "Bạn không thể nộp bài trong khi yêu cầu hoàn tiền đang được xử lý hoặc đã được chấp nhận.", 400);
+                    }
+                }
                 /*
                  * Kiểm tra người dùng có thể nộp bài tập không vì một ngày chỉ được nộp tối đa 3 lần cho chính bài tập đó.
                  */
@@ -397,33 +423,55 @@ namespace BLL.Services.ProgressTracking
                 }
 
                 bool allowTeacherGrading = false;
-
                 bool hasTeacherGrading = false;
-
                 bool requiresCheck = exercise.Type is SpeakingExerciseType.StoryTelling or SpeakingExerciseType.Debate;
 
                 if (course.GradingType == GradingType.AIAndTeacher && requiresCheck)
                 {
-                    hasTeacherGrading = await HasTeacherGrading(learner.LearnerLanguageId, request.ExerciseId);
-
-                    allowTeacherGrading = await AllowTeacherGrading(learner.LearnerLanguageId, request.ExerciseId);
+                    // Nếu khóa học là Free (Price == 0), TUYỆT ĐỐI KHÔNG cho giáo viên chấm
+                    // Dù Admin có lỡ set nhầm GradingType là AIAndTeacher thì code này sẽ chặn lại.
+                    if (course.Price == 0)
+                    {
+                        allowTeacherGrading = false;
+                        Console.WriteLine($"[WARN] Course {course.CourseID} is FREE but set to AIAndTeacher. Forcing AI Only.");
+                    }
+                    else
+                    {
+                        // Chỉ chạy logic kiểm tra giáo viên nếu khóa học CÓ TÍNH PHÍ
+                        hasTeacherGrading = await HasTeacherGrading(learner.LearnerLanguageId, request.ExerciseId);
+                        allowTeacherGrading = await AllowTeacherGrading(learner.LearnerLanguageId, request.ExerciseId);
+                    }
                 }
-
                 /*
                  * Tải âm thanh trong bài nộp của người học lên cloudinary
                  */
-                string audioUrl = string.Empty;
-                string publicId = string.Empty;
+                string? audioUrl = null;
+                string? publicId = null;
 
-                var uploadResult = await _cloudinaryService.UploadAudioAsync(request.Audio);
-                if (uploadResult == null)
-                    return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Upload audio failed", 404);
-                else
+                if (request.Audio is { Length: > 0 })
                 {
+                    var uploadResult = await _cloudinaryService.UploadAudioAsync(request.Audio);
+
+                    if (uploadResult?.Url is null)
+                    {
+                        return BaseResponse<ExerciseSubmissionResponse>.Fail(
+                            new object(),
+                            "Upload audio failed",
+                            404
+                        );
+                    }
+
                     audioUrl = uploadResult.Url;
                     publicId = uploadResult.PublicId;
                 }
-
+                else
+                {
+                    return BaseResponse<ExerciseSubmissionResponse>.Fail(
+                        new object(),
+                        "Audio file is required",
+                        400
+                    );
+                }
 
                 // Determine grading type and allocate funds
                 bool isTeacherRequired = (exercise.Type == SpeakingExerciseType.StoryTelling ||
@@ -446,20 +494,15 @@ namespace BLL.Services.ProgressTracking
 
                 if (isTeacherRequired == true && hasTeacherGrading == false)
                 {
-                    var purchase = await _unitOfWork.Purchases.FindAsync(
-                        p => p.UserId == userId &&
-                        p.CourseId == course.CourseID &&
-                        p.Status == PurchaseStatus.Completed);
-
                     if (purchase != null)
                     {
                         //Tất cả bài tập cần giáo viên chấm của khóa học này.
                         var teacherGradingExercises = await _unitOfWork.Exercises.Query()
-                            .CountAsync(e => e.Lesson != null &&
-                                           e.Lesson.CourseUnit != null &&
-                                           e.Lesson.CourseUnit.CourseID == course.CourseID &&
-                                           (e.Type == SpeakingExerciseType.StoryTelling ||
-                                            e.Type == SpeakingExerciseType.Debate));
+                        .CountAsync(e => e.Lesson != null &&
+                                       e.Lesson.CourseUnit != null &&
+                                       e.Lesson.CourseUnit.CourseID == course.CourseID &&
+                                       (e.Type == SpeakingExerciseType.StoryTelling ||
+                                        e.Type == SpeakingExerciseType.Debate));
 
                         if (teacherGradingExercises > 0)
                         {
@@ -486,21 +529,15 @@ namespace BLL.Services.ProgressTracking
                             teacherPercentage = DefaultTeacherPercentage;
                         }
                     }
-                    else
-                    {
-                        canAssignToTeacher = false;
-                        aiPercentage = 100;
-                        teacherPercentage = 0;
-                    }
                 }
-
                 /*
                  * Nếu khóa học thuộc loại chỉ cần AI chấm
                  * Thuộc loại bài tập (Lặp lại theo mẫu/ Mô tả tranh)
                  * Thì % AI chấm sẽ là 100%
                  */
                 if (exercise.Type == SpeakingExerciseType.RepeatAfterMe ||
-                    exercise.Type == SpeakingExerciseType.PictureDescription || course.GradingType == GradingType.AIOnly)
+                    exercise.Type == SpeakingExerciseType.PictureDescription ||
+                    course.GradingType == GradingType.AIOnly)
                 {
                     aiPercentage = 100;
                     teacherPercentage = 0;

@@ -1,5 +1,7 @@
 ﻿using BLL.IServices.Payment;
 using BLL.IServices.Purchases;
+using BLL.IServices.Upload;
+using BLL.IServices.Wallets;
 using Common.DTO.ApiResponse;
 using Common.DTO.Course.Response;
 using Common.DTO.Paging.Request;
@@ -8,10 +10,12 @@ using Common.DTO.Payment.Response;
 using Common.DTO.Purchases.Request;
 using Common.DTO.Purchases.Response;
 using Common.DTO.Refund.Request;
+using Common.DTO.Refund.Response;
 using DAL.Helpers;
 using DAL.Models;
 using DAL.Type;
 using DAL.UnitOfWork;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -22,11 +26,17 @@ namespace BLL.Services.Purchases
         private readonly IUnitOfWork _unitOfWork;
         private readonly IPaymentService _paymentService;
         private readonly ILogger<PurchaseService> _logger;
-        public PurchaseService(IUnitOfWork unitOfWork, IPaymentService paymentService, ILogger<PurchaseService> logger)
+        private readonly IBackgroundJobClient _backgroundJobClient;
+        private readonly ICloudinaryService _cloudinaryService;
+        private const decimal SYSTEM_FEE_PERCENTAGE = 0.10m;
+        private const decimal TEACHER_FEE_PERCENTAGE = 0.90m;
+        public PurchaseService(IUnitOfWork unitOfWork, IPaymentService paymentService, ILogger<PurchaseService> logger, IBackgroundJobClient backgroundJobClient, ICloudinaryService cloudinaryService)
         {
             _unitOfWork = unitOfWork;
             _paymentService = paymentService;
             _logger = logger;
+            _backgroundJobClient = backgroundJobClient;
+            _cloudinaryService = cloudinaryService;
         }
         public async Task<BaseResponse<CourseAccessResponse>> CheckCourseAccessAsync(Guid userId, Guid courseId)
         {
@@ -86,8 +96,7 @@ namespace BLL.Services.Purchases
                         return BaseResponse<object>.Fail(new object(), "Access denied", 403);
                     }
 
-                    var purchase = await _unitOfWork.Purchases.Query()
-                        .FirstOrDefaultAsync(p => p.PurchasesId == request.PurchaseId && p.UserId == userId);
+                    var purchase = await _unitOfWork.Purchases.FindAsync(p => p.PurchasesId == request.PurchaseId && p.UserId == userId);
 
                     if (purchase == null)
                     {
@@ -123,6 +132,21 @@ namespace BLL.Services.Purchases
                         return BaseResponse<object>.Fail("This purchase has already been refunded");
                     }
 
+                    string? proofImageUrl = null;
+                    if (request.ProofImage != null)
+                    {
+                        var uploadResult = await _cloudinaryService.UploadImageAsync(request.ProofImage);
+
+                        if (uploadResult != null)
+                        {
+                            proofImageUrl = uploadResult.Url;
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Failed to upload proof image for user {UserId}", userId);
+                        }
+                    }
+
                     var refundAmount = purchase.FinalAmount;
 
                     var refundRequest = new RefundRequest
@@ -134,6 +158,7 @@ namespace BLL.Services.Purchases
                         BankAccountNumber = request.BankAccountNumber,
                         BankName = request.BankName,
                         BankAccountHolderName = request.BankAccountHolderName,
+                        ProofImageUrl = proofImageUrl,
                         RequestedAt = now,
                         RefundAmount = refundAmount,
                         Status = RefundRequestStatus.Pending,
@@ -154,6 +179,315 @@ namespace BLL.Services.Purchases
                     return BaseResponse<object>.Error("System error while creating refund request");
                 }
             });
+        }
+        public async Task<BaseResponse<object>> ProcessRefundDecisionAsync(Guid userId, Guid refundRequestId, bool isApproved, string note)
+        {
+            var strategy = _unitOfWork.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                await _unitOfWork.BeginTransactionAsync();
+
+                try
+                {
+                    var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                    if (user == null)
+                        return BaseResponse<object>.Fail(new object(), "Access denied.", 401);
+
+                    var userRole = await _unitOfWork.UserRoles.FindAsync(x => x.UserID == userId);
+                    if (userRole == null)
+                    {
+                        return BaseResponse<object>.Fail(new object(), "User role not found.", 404);
+                    }
+
+                    var role = await _unitOfWork.Roles.GetByIdAsync(userRole.RoleID);
+                    if (role == null)
+                    {
+                        return BaseResponse<object>.Fail(new object(), "Role not found.", 404);
+                    }
+
+                    if (role.Name != "Admin")
+                    {
+                        return BaseResponse<object>.Fail(new object(), "Permission denied for this role.", 403);
+                    }
+
+                    var refundRequest = await _unitOfWork.RefundRequests.Query()
+                        .Include(r => r.Purchase)
+                        .FirstOrDefaultAsync(r => r.RefundRequestID == refundRequestId);
+
+                    if (refundRequest == null)
+                        return BaseResponse<object>.Fail("Refund request not found");
+
+                    if (refundRequest.Status != RefundRequestStatus.Pending)
+                        return BaseResponse<object>.Fail("Request is not in pending status");
+
+                    var purchase = refundRequest.Purchase;
+                    if (purchase == null) return BaseResponse<object>.Fail("Purchase info missing");
+
+                    refundRequest.ProcessedByAdminID = userId;
+                    refundRequest.ProcessedAt = TimeHelper.GetVietnamTime();
+                    refundRequest.AdminNote = note;
+
+                    // =========================================================
+                    // TRƯỜNG HỢP 1: TỪ CHỐI HOÀN TIỀN (REJECT)
+                    // =========================================================
+                    if (!isApproved)
+                    {
+                        refundRequest.Status = RefundRequestStatus.Rejected;
+                        await _unitOfWork.SaveChangesAsync();
+                        await _unitOfWork.CommitTransactionAsync();
+
+                        // Kiểm tra xem thời hạn 3 ngày đã qua chưa?
+                        // Dựa vào PaidAt hoặc CreatedAt (theo logic PayOSPaymentService của bạn)
+                        var paymentTime = purchase.PaidAt ?? purchase.CreatedAt;
+                        var refundDeadline = paymentTime.AddDays(3);
+                        var now = TimeHelper.GetVietnamTime();
+
+                        if (now > refundDeadline)
+                        {
+                            // Nếu đã quá hạn 3 ngày, nghĩa là Job tự động cũ đã chạy và bị SKIP.
+                            // Ta cần chạy lại nó ngay bây giờ.
+                            _logger.LogInformation($"Refund rejected after 3 days. Retriggering transfer for Purchase {purchase.PurchasesId}");
+
+                            // Gọi Job chuyển tiền (hàm này đã được bạn sửa để check trạng thái Pending/Approved ở bước trước)
+                            _backgroundJobClient.Enqueue<IWalletService>(ws => ws.ProcessCourseCreationFeeTransferAsync(purchase.PurchasesId));
+                        }
+                        else
+                        {
+                            // Nếu chưa quá 3 ngày, không cần làm gì cả. 
+                            // Job tự động gốc vẫn đang nằm trong hàng đợi (Scheduled) và sẽ chạy trong tương lai.
+                            _logger.LogInformation($"Refund rejected within 3 days. Original scheduled job will handle transfer for Purchase {purchase.PurchasesId}");
+                        }
+
+                        return BaseResponse<object>.Success("Refund request rejected. Wallet transfer logic handled.");
+                    }
+
+                    // =========================================================
+                    // TRƯỜNG HỢP 2: CHẤP NHẬN HOÀN TIỀN (APPROVED)
+                    // =========================================================
+                    refundRequest.Status = RefundRequestStatus.Approved;
+                    purchase.Status = PurchaseStatus.Refunded;
+
+                    // 1. Cập nhật Purchase & Enrollment
+                    purchase.Status = PurchaseStatus.Refunded;
+
+                    // Tìm enrollment để hủy
+                    var enrollment = await _unitOfWork.Enrollments.FindAsync(e => e.EnrollmentID == purchase.EnrollmentId);
+
+                    if (enrollment != null)
+                    {
+                        enrollment.Status = DAL.Type.EnrollmentStatus.Cancelled;
+                    }
+
+                    // Logic trừ tiền Admin Wallet (Revert tiền)
+                    var adminWallet = await _unitOfWork.Wallets.FindAsync(w => w.OwnerType == OwnerType.Admin && w.Currency == CurrencyType.VND);
+
+                    if (adminWallet != null)
+                    {
+                        decimal systemShare = purchase.FinalAmount * SYSTEM_FEE_PERCENTAGE;
+                        decimal teacherShare = purchase.FinalAmount * TEACHER_FEE_PERCENTAGE;
+
+                        // Kiểm tra số dư trước khi trừ (Optional nhưng recommend)
+                        if (adminWallet.AvailableBalance < systemShare || adminWallet.HoldBalance < teacherShare)
+                        {
+                            throw new Exception("System wallet does not have enough balance to refund (Critical Error)");
+                        }
+
+                        adminWallet.AvailableBalance -= systemShare; // Trả lại phí hệ thống
+                        adminWallet.HoldBalance -= teacherShare;     // Trả lại phần giữ của GV
+                        adminWallet.TotalBalance -= purchase.FinalAmount;
+                        adminWallet.UpdatedAt = TimeHelper.GetVietnamTime();
+
+                        // Tạo Transaction log cho Admin Wallet
+                        var walletTrans = new WalletTransaction
+                        {
+                            WalletTransactionId = Guid.NewGuid(),
+                            WalletId = adminWallet.WalletId,
+                            TransactionType = TransactionType.Payout,
+                            Amount = -purchase.FinalAmount,
+                            ReferenceId = refundRequest.RefundRequestID,
+                            ReferenceType = ReferenceType.Refund,
+                            Description = $"Refund for purchase {purchase.PurchasesId}",
+                            Status = TransactionStatus.Succeeded,
+                            CreatedAt = TimeHelper.GetVietnamTime()
+                        };
+                        await _unitOfWork.WalletTransactions.CreateAsync(walletTrans);
+                    }
+
+                    await _unitOfWork.SaveChangesAsync();
+                    await _unitOfWork.CommitTransactionAsync();
+
+                    return BaseResponse<object>.Success("Refund approved successfully.");
+                }
+                catch (Exception ex)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    _logger.LogError(ex, "Error processing refund decision");
+                    return BaseResponse<object>.Error("System error processing refund");
+                }
+            });
+        }
+        public async Task<PagedResponse<List<RefundRequestResponse>>> GetRefundRequestsAsync(Guid userId, RefundRequestFilterRequest request)
+        {
+            try
+            {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null)
+                    return PagedResponse<List<RefundRequestResponse>>.Fail(new object(), "Access denied.", 401);
+
+                var userRole = await _unitOfWork.UserRoles.FindAsync(x => x.UserID == userId);
+                if (userRole == null) return PagedResponse<List<RefundRequestResponse>>.Fail(new object(), "User role not found.", 403);
+
+                var role = await _unitOfWork.Roles.GetByIdAsync(userRole.RoleID);
+                if (role == null || role.Name != "Admin")
+                    return PagedResponse<List<RefundRequestResponse>>.Fail(new object(), "Permission denied. Admin access required.", 403);
+
+                var query = _unitOfWork.RefundRequests.Query()
+                    .Include(r => r.Student)
+                    .Include(r => r.Purchase)
+                        .ThenInclude(p => p.Course)
+                    .Include(r => r.ProcessedByAdmin)
+                    .AsQueryable();
+
+
+                if (!string.IsNullOrEmpty(request.SearchTerm))
+                {
+                    var term = request.SearchTerm.ToLower().Trim();
+                    query = query.Where(r =>
+                        r.Student.FullName.ToLower().Contains(term) ||
+                        r.Student.Email.ToLower().Contains(term) ||
+                        (r.Purchase != null && r.Purchase.Course != null && r.Purchase.Course.Title.ToLower().Contains(term)) ||
+                        r.RefundRequestID.ToString().Contains(term)
+                    );
+                }
+
+                if (!string.IsNullOrEmpty(request.Status) && Enum.TryParse<RefundRequestStatus>(request.Status, true, out var statusEnum))
+                {
+                    query = query.Where(r => r.Status == statusEnum);
+                }
+
+                if (request.FromDate.HasValue)
+                {
+                    query = query.Where(r => r.RequestedAt >= request.FromDate.Value);
+                }
+                if (request.ToDate.HasValue)
+                {
+                    var toDate = request.ToDate.Value.Date.AddDays(1).AddTicks(-1);
+                    query = query.Where(r => r.RequestedAt <= toDate);
+                }
+
+                var totalItems = await query.CountAsync();
+
+                var items = await query
+                    .OrderByDescending(r => r.RequestedAt)
+                    .Skip((request.Page - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .Select(r => new RefundRequestResponse
+                    {
+                        RefundRequestId = r.RefundRequestID,
+                        PurchaseId = r.PurchaseId ?? Guid.Empty,
+
+                        StudentId = r.StudentID,
+                        StudentName = r.Student.FullName ?? r.Student.UserName,
+                        StudentEmail = r.Student.Email,
+                        StudentAvatar = r.Student.Avatar,
+
+                        CourseName = r.Purchase != null && r.Purchase.Course != null
+                                     ? r.Purchase.Course.Title
+                                     : "Unknown Course",
+                        RefundAmount = r.RefundAmount,
+                        OriginalAmount = r.Purchase != null ? r.Purchase.FinalAmount : 0,
+
+                        RequestType = r.RequestType.ToString(),
+                        Reason = r.Reason,
+                        BankName = r.BankName,
+                        BankAccountNumber = r.BankAccountNumber,
+                        BankAccountHolderName = r.BankAccountHolderName,
+                        ProofImageUrl = r.ProofImageUrl,
+
+                        Status = r.Status.ToString(),
+                        RequestedAt = r.RequestedAt.ToString("dd-MM-yyyy HH:mm"),
+                        ProcessedAt = r.ProcessedAt.HasValue ? r.ProcessedAt.Value.ToString("dd-MM-yyyy HH:mm") : null,
+                        AdminNote = r.AdminNote,
+                        ProcessedByAdminName = r.ProcessedByAdmin != null ? r.ProcessedByAdmin.FullName : null
+                    })
+                    .ToListAsync();
+
+                return PagedResponse<List<RefundRequestResponse>>.Success(
+                    items,
+                    request.Page,
+                    request.PageSize,
+                    totalItems,
+                    "Refund requests retrieved successfully"
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting refund requests for admin {AdminId}", userId);
+                return PagedResponse<List<RefundRequestResponse>>.Error("System error while retrieving refund requests");
+            }
+        }
+        public async Task<BaseResponse<RefundRequestResponse>> GetMyRefundRequestDetailAsync(Guid userId, Guid purchaseId)
+        {
+            try
+            {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null)
+                {
+                    return BaseResponse<RefundRequestResponse>.Fail(new object(), "Access denied. User not found.", 401);
+                }
+
+                var refundRequest = await _unitOfWork.RefundRequests.Query()
+                    .Include(r => r.Purchase)
+                        .ThenInclude(p => p.Course)
+                    .Include(r => r.ProcessedByAdmin)
+                    .FirstOrDefaultAsync(r => r.PurchaseId == purchaseId && r.StudentID == userId);
+
+                if (refundRequest == null)
+                {
+                    var purchaseExists = await _unitOfWork.Purchases.Query()
+                        .AnyAsync(p => p.PurchasesId == purchaseId && p.UserId == userId);
+
+                    if (!purchaseExists)
+                    {
+                        return BaseResponse<RefundRequestResponse>.Fail(new object(), "Purchase not found.", 404);
+                    }
+
+                    return BaseResponse<RefundRequestResponse>.Fail(new object(), "No refund request found for this purchase.", 404);
+                }
+
+                var response = new RefundRequestResponse
+                {
+                    RefundRequestId = refundRequest.RefundRequestID,
+                    PurchaseId = refundRequest.PurchaseId ?? Guid.Empty,
+                    StudentId = refundRequest.StudentID,
+                    StudentName = user.FullName ?? user.UserName,
+                    StudentEmail = user.Email,
+                    StudentAvatar = user.Avatar,
+                    CourseName = refundRequest.Purchase?.Course?.Title ?? "Unknown Course",
+                    RefundAmount = refundRequest.RefundAmount,
+                    OriginalAmount = refundRequest.Purchase?.FinalAmount ?? 0,
+                    RequestType = refundRequest.RequestType.ToString(),
+                    Reason = refundRequest.Reason,
+                    BankName = refundRequest.BankName,
+                    BankAccountNumber = refundRequest.BankAccountNumber,
+                    BankAccountHolderName = refundRequest.BankAccountHolderName,
+                    ProofImageUrl = refundRequest.ProofImageUrl,
+                    Status = refundRequest.Status.ToString(),
+                    RequestedAt = refundRequest.RequestedAt.ToString("dd-MM-yyyy HH:mm"),
+                    ProcessedAt = refundRequest.ProcessedAt?.ToString("dd-MM-yyyy HH:mm"),
+
+                    AdminNote = refundRequest.AdminNote,
+
+                    ProcessedByAdminName = refundRequest.ProcessedByAdmin?.FullName ?? "Admin"
+                };
+
+                return BaseResponse<RefundRequestResponse>.Success(response, "Refund request details retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving refund request detail for user {UserId}, purchase {PurchaseId}", userId, purchaseId);
+                return BaseResponse<RefundRequestResponse>.Error("System error while retrieving refund details");
+            }
         }
         public async Task<BaseResponse<PurchaseDetailResponse>> GetPurchaseByIdAsync(Guid purchaseId, Guid userId)
         {
