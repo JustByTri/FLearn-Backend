@@ -104,6 +104,7 @@ namespace BLL.Services.ProgressTracking
 
                     var submission = await _unitOfWork.ExerciseSubmissions
                         .Query()
+                        .Include(es => es.Learner)
                         .Include(es => es.Exercise)
                             .ThenInclude(e => e.Lesson)
                                 .ThenInclude(l => l.CourseUnit)
@@ -115,7 +116,11 @@ namespace BLL.Services.ProgressTracking
                     if (submission == null)
                         return BaseResponse<bool>.Fail(false, "Exercise submission not found", 404);
 
+                    if (submission.Exercise?.Lesson?.CourseUnit == null)
+                        return BaseResponse<bool>.Fail(false, "Course information not found for this submission", 404);
+
                     var courseId = submission.Exercise.Lesson.CourseUnit.CourseID;
+
                     var learnerUserId = submission.Learner.UserId;
 
                     var purchase = await _unitOfWork.Purchases.Query()
