@@ -292,11 +292,17 @@ namespace BLL.Services.Refund
             return new RefundRequestDto
             {
                 RefundRequestID = request.RefundRequestID,
-                EnrollmentID = (Guid)request.EnrollmentID,
+
+            
+                EnrollmentID = request.EnrollmentID ?? Guid.Empty,
+                ClassID = request.ClassID ?? Guid.Empty,
+           
+
                 StudentID = request.StudentID,
                 StudentName = studentName ?? request.Student?.UserName ?? "N/A",
-                ClassID = (Guid)request.ClassID,
+
                 ClassName = className ?? request.TeacherClass?.Title ?? "N/A",
+
                 RequestType = request.RequestType,
                 Reason = request.Reason,
                 BankName = request.BankName,
@@ -305,48 +311,26 @@ namespace BLL.Services.Refund
                 Status = request.Status,
                 RefundAmount = request.RefundAmount,
                 RequestedAt = request.RequestedAt,
+
+              
                 ProcessedAt = request.ProcessedAt,
+
                 AdminNote = request.AdminNote,
                 ProofImageUrl = request.ProofImageUrl
             };
         }
         public async Task<BaseResponse<IEnumerable<RefundRequestDto>>> GetMyRefundRequestsAsync(Guid learnerId)
         {
-            // 1. Lấy dữ liệu từ DAL (Hàm này phải Include các bảng liên quan)
             var requests = await _unitOfWork.RefundRequests.GetByLearnerIdAsync(learnerId);
 
-            // 2. Map thủ công từ Model sang DTO
-            var requestsDto = requests.Select(r => new RefundRequestDto
-            {
-                RefundRequestID = r.RefundRequestID,
-                StudentID = r.StudentID,
-                EnrollmentID = (Guid)r.EnrollmentID,
-                ClassID = (Guid)r.ClassID,
-                RefundAmount = r.RefundAmount,
-                RequestType = r.RequestType,
-                Reason = r.Reason,
-                BankName = r.BankName ?? string.Empty,
-                BankAccountHolderName = r.BankAccountHolderName ?? string.Empty,
-                BankAccountNumber = r.BankAccountNumber ?? string.Empty,
-                Status = r.Status,
-                RequestedAt = r.RequestedAt,
-                ProcessedAt = r.ProcessedAt,
-                AdminNote = r.AdminNote,
-                ProofImageUrl = r.ProofImageUrl,
+          
+            var requestsDto = requests.Select(r => MapToDto(
+                r,
+                r.Student?.UserName,
+                r.TeacherClass?.Title ?? (r.ClassEnrollment?.Class?.Title ?? "Lớp học không còn tồn tại")
+            )).ToList();
 
-
-                StudentName = r.Student?.UserName ?? "N/A",
-
-
-                ClassName = r.TeacherClass?.Title ?? (r.ClassEnrollment?.Class?.Title ?? "Lớp học không còn tồn tại")
-            }).ToList();
-
-
-            return BaseResponse<IEnumerable<RefundRequestDto>>.Success(
-                requestsDto,
-                "Lấy lịch sử yêu cầu hoàn tiền thành công.",
-                (int)HttpStatusCode.OK
-            );
+            return BaseResponse<IEnumerable<RefundRequestDto>>.Success(requestsDto, "Thành công", 200);
         }
     }
 }
