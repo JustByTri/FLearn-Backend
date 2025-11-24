@@ -12,7 +12,7 @@ namespace Common.DTO.Admin
         public int TotalStaff { get; set; }
         public int TotalCourses { get; set; }
         public int ActiveUsers { get; set; }
-        public int PendingCourses { get; set; }
+        public int PendingRequest{ get; set; }
         public List<UserListDto> RecentUsers { get; set; } = new List<UserListDto>();
     }
 }

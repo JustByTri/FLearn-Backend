@@ -55,10 +55,10 @@ namespace BLL.Services.Admin
             var adminUser = await _unitOfWork.Users.GetUserWithRolesAsync(adminUserId);
             if (adminUser == null || !adminUser.UserRoles.Any(ur => ur.Role.Name == "Admin"))
             {
-                throw new UnauthorizedAccessException("Chỉ admin mới có thể xem danh sách staff");
+                throw new UnauthorizedAccessException("Chỉ admin mới có thể xem danh sách manager");
             }
 
-            var staffUsers = await _unitOfWork.Users.GetUsersByRoleAsync("Staff");
+            var staffUsers = await _unitOfWork.Users.GetUsersByRoleAsync("Manager");
 
             return staffUsers.Select(user => new UserListDto
             {
@@ -82,15 +82,19 @@ namespace BLL.Services.Admin
             }
 
             var totalUsers = await _unitOfWork.Users.GetTotalUsersCountAsync();
-            var totalStaff = await _unitOfWork.Users.GetUsersCountByRoleAsync("Staff");
+            var totalStaff = await _unitOfWork.Users.GetUsersCountByRoleAsync("Manager");
             var activeUsers = await _unitOfWork.Users.GetActiveUsersCountAsync();
             var recentUsers = await _unitOfWork.Users.GetRecentUsersAsync(5);
+            var totalCourses = await _unitOfWork.Courses.GetAllAsync();
+            var refundResquest = await _unitOfWork.RefundRequests.GetPendingCountAsync();
 
             return new AdminDashboardDto
             {
                 TotalUsers = totalUsers,
                 TotalStaff = totalStaff,
                 ActiveUsers = activeUsers,
+                TotalCourses = totalCourses.Count(),
+             PendingRequest = refundResquest,
                 RecentUsers = recentUsers.Select(user => new UserListDto
                 {
                     UserID = user.UserID,
@@ -600,6 +604,7 @@ namespace BLL.Services.Admin
         }
     }
 }
+
 
 
 
