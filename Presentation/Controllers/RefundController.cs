@@ -57,16 +57,9 @@ namespace Presentation.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetRefundRequests([FromQuery] RefundRequestStatus? status)
         {
-            try
-            {
-                var requests = await _refundRequestService.GetRefundRequestsAsync(status);
-                return Ok(new { success = true, data = requests });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi Admin lấy danh sách RefundRequest");
-                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống." });
-            }
+           
+            var requests = await _refundRequestService.GetRefundRequestsAsync(status);
+            return Ok(new { success = true, data = requests });
         }
 
         /// <summary>
