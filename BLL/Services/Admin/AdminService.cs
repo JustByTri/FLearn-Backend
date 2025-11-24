@@ -2,6 +2,7 @@
 using BLL.IServices.Auth;
 using BLL.Settings;
 using Common.DTO.Admin;
+using Common.DTO.Payment;
 using DAL.Helpers;
 using DAL.Models;
 using DAL.UnitOfWork;
@@ -87,6 +88,7 @@ namespace BLL.Services.Admin
             var recentUsers = await _unitOfWork.Users.GetRecentUsersAsync(5);
             var totalCourses = await _unitOfWork.Courses.GetAllAsync();
             var refundResquest = await _unitOfWork.RefundRequests.GetPendingCountAsync();
+            var totalTeachers = await _unitOfWork.Users.GetUsersCountByRoleAsync( "Teacher");
 
             return new AdminDashboardDto
             {
@@ -95,6 +97,7 @@ namespace BLL.Services.Admin
                 ActiveUsers = activeUsers,
                 TotalCourses = totalCourses.Count(),
              PendingRequest = refundResquest,
+             TotalTeachers = totalTeachers,
                 RecentUsers = recentUsers.Select(user => new UserListDto
                 {
                     UserID = user.UserID,
@@ -600,6 +603,39 @@ namespace BLL.Services.Admin
                 CreatedAt = program.CreatedAt,
                 UpdatedAt = program.UpdatedAt,
                 Levels = levels
+            };
+        }
+        public async Task<WalletDto> GetAdminWalletAsync(Guid adminId)
+        {
+
+            var wallet = await _unitOfWork.Wallets.GetByAdminIdAsync(adminId);
+
+            if (wallet == null)
+            {
+                throw new Exception("Không tìm thấy ví của Admin.");
+            }
+
+            // Map từ Entity sang DTO
+            return new WalletDto
+            {
+                WalletId = wallet.WalletId,
+
+
+                OwnerId = wallet.OwnerId ?? wallet.TeacherId,
+
+                Name = wallet.Name,
+
+                
+                OwnerType = wallet.OwnerType.ToString(),
+
+                TotalBalance = wallet.TotalBalance,
+                AvailableBalance = wallet.AvailableBalance,
+                HoldBalance = wallet.HoldBalance,
+
+                Currency = wallet.Currency.ToString(),
+                Status = wallet.Status,
+                CreatedAt = wallet.CreatedAt,
+                UpdatedAt = wallet.UpdatedAt
             };
         }
     }

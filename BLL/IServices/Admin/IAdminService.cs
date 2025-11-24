@@ -1,4 +1,5 @@
 ﻿using Common.DTO.Admin;
+using Common.DTO.Payment;
 using DAL.Models;
 using System;
 using System.Collections.Generic;
@@ -39,6 +40,7 @@ namespace BLL.IServices.Admin
         Task<AdminProgramLevelDto> CreateLevelAsync(LevelCreateDto dto);
         Task<AdminProgramLevelDto> UpdateLevelAsync(Guid levelId, LevelUpdateDto dto);
         Task SoftDeleteLevelAsync(Guid levelId);
+        Task<WalletDto> GetAdminWalletAsync(Guid adminId);
 
 
 
