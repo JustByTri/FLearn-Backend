@@ -434,12 +434,12 @@ namespace BLL.Services.Auth
             var adminUser = await _unitOfWork.Users.GetUserWithRolesAsync(adminUserId);
             if (adminUser == null || !adminUser.UserRoles.Any(ur => ur.Role.Name == "Admin"))
             {
-                throw new UnauthorizedAccessException("Chỉ admin mới có thể đổi mật khẩu staff");
+                throw new UnauthorizedAccessException("Chỉ admin mới có thể đổi mật khẩu manager");
             }
 
 
             var staffUser = await _unitOfWork.Users.GetUserWithRolesAsync(changePasswordDto.StaffUserId);
-            if (staffUser == null || !staffUser.UserRoles.Any(ur => ur.Role.Name == "Staff"))
+            if (staffUser == null || !staffUser.UserRoles.Any(ur => ur.Role.Name == "Manager"))
             {
                 throw new InvalidOperationException("Người dùng được chọn không phải là staff");
             }
