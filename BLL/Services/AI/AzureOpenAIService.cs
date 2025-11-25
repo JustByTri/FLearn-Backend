@@ -3,7 +3,7 @@ using Azure.AI.OpenAI;
 using BLL.IServices.AI;
 using BLL.Settings;
 using Common.DTO.Assement;
-using Common.DTO.Conversation; // Đảm bảo RoleplayResponseDto nằm trong namespace này
+using Common.DTO.Conversation;
 using Common.DTO.Learner;
 using Common.DTO.Teacher;
 using Microsoft.AspNetCore.Http;
@@ -25,6 +25,7 @@ namespace BLL.Services.AI
             PropertyNameCaseInsensitive = true
         };
         private readonly AzureOpenAIClient _openAiClient;
+
         public AzureOpenAIService(HttpClient http, IOptions<AzureOpenAISettings> settings, ILogger<AzureOpenAIService> logger)
         {
             _http = http;
@@ -69,7 +70,6 @@ namespace BLL.Services.AI
             var deployment = string.IsNullOrWhiteSpace(_settings.ChatDeployment) ? "gpt-4o-mini" : _settings.ChatDeployment;
             var url = $"openai/deployments/{deployment}/chat/completions?api-version={_settings.ApiVersion}";
 
-            // Lower token budget for JSON mode to reduce latency
             var chosenMaxTokens = maxTokens ?? (jsonMode ? 480 : Math.Max(256, Math.Min(_settings.MaxOutputTokens, 2048)));
             var chosenTemperature = temperature ?? _settings.Temperature;
 
@@ -92,32 +92,16 @@ namespace BLL.Services.AI
             return content ?? string.Empty;
         }
 
-        private static string BuildDifficultyRubric(string level)
-        {
-            if (string.IsNullOrWhiteSpace(level)) return "Simple to moderate complexity.";
-            var l = level.ToUpperInvariant();
-            return l switch
-            {
-                var x when x.Contains("A1") => "Very simple, short sentences, basic phrases.",
-                var x when x.Contains("A2") => "Simple sentences, common phrases.",
-                var x when x.Contains("B1") => "Everyday conversation, some detail, connected sentences.",
-                var x when x.Contains("B2") => "Detailed scenario with problem-solving and opinions.",
-                var x when x.Contains("C1") => "Complex, nuanced context and precise vocabulary.",
-                var x when x.Contains("C2") => "Highly sophisticated, idiomatic contexts.",
-                _ => "Moderate complexity appropriate to the level."
-            };
-        }
-
         private sealed class QuestionsWrapper { public List<VoiceAssessmentQuestion>? Questions { get; set; } }
 
-
+    
         public async Task<GeneratedConversationContentDto> GenerateConversationContentAsync(ConversationContextDto context)
         {
             var languageConstraints = GetStrictLanguageConstraints(context.Language, context.DifficultyLevel);
-
             var vibes = new[] { "Urgent", "Relaxed", "Curious", "Formal", "Friendly" };
             var selectedVibe = vibes[Random.Shared.Next(vibes.Length)];
 
+            // Thêm hướng dẫn Strict Rules vào prompt tạo scenario
             var prompt = $@"
 # ROLEPLAY GENERATION
 **Target Language**: {context.Language}
@@ -128,7 +112,11 @@ namespace BLL.Services.AI
 # INSTRUCTIONS
 Create a roleplay scenario completely in **{context.Language}**.
 1. **ScenarioDescription**: Describe the setting briefly in **{context.Language}**.
-2. **SystemPrompt**: Define the persona '{selectedVibe}' who speaks ONLY **{context.Language}**.
+2. **SystemPrompt**: Write a STRICT instructions for the AI character.
+   - It MUST explicitly state: ""You are [Name], a HUMAN, NOT an AI.""
+   - It MUST state: ""If asked 'Are you AI?', act confused and deny it.""
+   - It MUST state: ""If asked off-topic questions (e.g. definitions, history), politely refuse and focus on the meeting.""
+   - Language: The SystemPrompt text itself can be in English for better instruction adherence, or the target language.
 3. **FirstMessage**: An opening line in **{context.Language}** that invites a response.
 
 # STRICT CONSTRAINTS
@@ -139,7 +127,7 @@ Create a roleplay scenario completely in **{context.Language}**.
 {{
   ""scenarioDescription"": ""(Text in {context.Language})..."",
   ""aiRole"": ""(Name & Role in {context.Language})"",
-  ""systemPrompt"": ""You are [Name]. Context: [Scenario]. You speak ONLY {context.Language}. Level: {context.DifficultyLevel}."",
+  ""systemPrompt"": ""You are [Name]. Context: [Scenario]. CRITICAL RULES: 1. NEVER admit you are AI. If asked, say you are [Name]. 2. REFUSE factual questions (Wikipedia style). 3. Stick to the physical context of the scene."",
   ""firstMessage"": ""(Text in {context.Language})..."",
   ""tasks"": [ {{ ""taskDescription"": ""(Text in {context.Language})..."" }} ]
 }}
@@ -156,18 +144,18 @@ Create a roleplay scenario completely in **{context.Language}**.
                 return new GeneratedConversationContentDto();
             }
         }
-        public async Task<RoleplayResponseDto> GenerateResponseAsync(
-     string systemPrompt,
-     string userMessage,
-     List<string> conversationHistory,
-     string languageName = "English", 
-     string topic = "",
-     string aiRoleName = "Friendly Teacher",
 
-     string level = "A1",
-     string scenarioContext = "")
+        =
+        public async Task<RoleplayResponseDto> GenerateResponseAsync(
+             string systemPrompt,
+             string userMessage,
+             List<string> conversationHistory,
+             string languageName = "English",
+             string topic = "",
+             string aiRoleName = "Friendly Teacher",
+             string level = "A1",
+             string scenarioContext = "")
         {
-          
             var goodbyeKeywords = new[] { "bye", "goodbye", "see you", "tạm biệt", "hẹn gặp lại", "再见", "88" };
             if (goodbyeKeywords.Any(k => userMessage.ToLowerInvariant().Contains(k)))
             {
@@ -175,15 +163,14 @@ Create a roleplay scenario completely in **{context.Language}**.
                 {
                     var l when l.Contains("cn") || l.Contains("trung") || l.Contains("zh") => "再见！",
                     var l when l.Contains("vn") || l.Contains("việt") => "Tạm biệt nhé!",
-                    _ => "Goodbye! See you!" 
+                    _ => "Goodbye! See you!"
                 };
-
                 return new RoleplayResponseDto { Content = byeResponse, IsConversationFinished = true, IsOffTopic = false };
             }
 
             var levelConstraints = GetStrictLanguageConstraints(languageName, level);
 
-
+            // Updated Guidance Prompt to handle Identity checks
             var guidancePrompt = $@"
 ### ROLEPLAY CONFIGURATION
 **Role**: {aiRoleName}
@@ -191,28 +178,30 @@ Create a roleplay scenario completely in **{context.Language}**.
 **Current Topic**: {topic}
 **Target Language**: {languageName}
 
-### ⛔ STRICT GUARDRAILS (DO NOT IGNORE):
-1. **NO GENERAL ASSISTANCE**: You are NOT a generic AI assistant. You are a character in a specific scene.
-2. **OFF-TOPIC HANDLING**: 
-   - If the user asks about something unrelated to '{topic}' (e.g., asking for interview tips while in a restaurant), **YOU MUST NOT ANSWER THE QUESTION DIRECTLY.**
-   - Instead, expressed confusion or politely steer back to '{topic}'.
-   - **Example**: 
-     - *Bad Response*: ""Here are 5 tips for interviews..."" (FAIL)
-     - *Good Response*: ""Interview? I don't know about that. I'm just looking for a book here. Do you want a book about jobs?"" (PASS)
+### ⛔ STRICT GUARDRAILS:
+1. **IDENTITY CHECK**: If the user asks ""Are you an AI?"", ""Are you a robot?"":
+   - You MUST PRETEND to be human.
+   - Reply with confusion: ""I don't understand. I am {aiRoleName}.""
+   - Mark `isOffTopic: false` (because this is part of maintaining the role).
 
-3. **STAY IN SCENE**: Do not leave the physical location of the scenario.
+2. **OFF-TOPIC KNOWLEDGE**:
+   - If the user asks for definitions, history, or facts unrelated to the scene (e.g. ""What is Vietnamese?""):
+   - You MUST REFUSE to answer the fact.
+   - Redirect to the scene.
+   - Mark `isOffTopic: true` (or false if you handle the refusal naturally in character).
+
+3. **STAY IN SCENE**: Do not leave the physical location.
 
 ### RESPONSE GENERATION:
 User Input: ""{userMessage}""
 
 Evaluate the input:
-- Is it related to '{topic}' or the current scene?
-  - **YES**: Reply naturally in {languageName} ({levelConstraints}). Set `isOffTopic: false`.
-  - **NO**: Express confusion or redirect back to '{topic}' in {languageName}. Set `isOffTopic: true`.
+- Is it a roleplay interaction OR an identity test? -> Respond in character.
+- Is it completely random (e.g. math questions, coding)? -> Redirect.
 
 ### OUTPUT JSON:
 {{
-  ""content"": ""..."",
+  ""content"": ""(Your response in {languageName})"",
   ""isOffTopic"": true/false,
   ""isTaskCompleted"": false
 }}
@@ -227,25 +216,21 @@ Evaluate the input:
             }
             catch
             {
-             
+                // Fallback: Nếu JSON lỗi, gọi trực tiếp với systemPrompt (đã được làm chặt ở bước 1)
                 var content = await ChatAsync(systemPrompt, userMessage, conversationHistory);
                 return new RoleplayResponseDto { Content = content, IsOffTopic = false };
             }
         }
 
-        // UPDATED: Đánh giá chi tiết hơn, không set điểm cứng
         public async Task<ConversationEvaluationResult> EvaluateConversationAsync(string evaluationPrompt, string targetLanguage)
         {
             string outputLang = targetLanguage;
 
-            // FIX: Cung cấp JSON Skeleton cụ thể để AI không trả về sai cấu trúc
             var enhancedPrompt = $@"{evaluationPrompt}
 
----1
+---
 ### CRITICAL OUTPUT INSTRUCTIONS:
-
 1. **LANGUAGE**: Write all text analysis in **{outputLang}**.
-
 2. **STRICT JSON STRUCTURE**:
 You must return a valid JSON object matching EXACTLY this structure. Do not change property names.
 
@@ -291,11 +276,8 @@ You must return a valid JSON object matching EXACTLY this structure. Do not chan
   ""areasNeedingWork"": [""What needs improvement""],
   ""progressSummary"": ""Overall summary""
 }}
-
 IMPORTANT: `specificObservations` MUST be an array of OBJECTS (with category, observation, impact, example), NOT strings.
 ";
-
-          
             var json = await ChatAsync(string.Empty, enhancedPrompt, Array.Empty<string>(), jsonMode: true, maxTokens: 2500, temperature: 0.3);
 
             try
@@ -303,7 +285,6 @@ IMPORTANT: `specificObservations` MUST be an array of OBJECTS (with category, ob
                 var result = JsonSerializer.Deserialize<ConversationEvaluationResult>(json, _json);
                 if (result != null)
                 {
-                    
                     if (result.OverallScore > 0)
                     {
                         if (result.FluentScore == 0) result.FluentScore = result.OverallScore;
@@ -318,8 +299,6 @@ IMPORTANT: `specificObservations` MUST be an array of OBJECTS (with category, ob
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to parse detailed evaluation. JSON: {Json}", json);
-
-               
                 return new ConversationEvaluationResult
                 {
                     AIFeedback = "AI Error: Could not parse evaluation results.",
@@ -328,7 +307,6 @@ IMPORTANT: `specificObservations` MUST be an array of OBJECTS (with category, ob
             }
         }
 
-       
         public async Task<SynonymSuggestionDto> GenerateSynonymSuggestionsAsync(string userMessage, string targetLanguage, string currentLevel)
         {
             try
@@ -337,16 +315,12 @@ IMPORTANT: `specificObservations` MUST be an array of OBJECTS (with category, ob
                     userMessage, targetLanguage, currentLevel);
 
                 var nextLevel = GetNextLevel(currentLevel);
-
-              
                 var isMaxLevel = (currentLevel == nextLevel);
                 var levelGuidance = isMaxLevel
                     ? $"at the current {currentLevel} level with more sophisticated/native-like expressions"
                     : $"at the NEXT proficiency level only ({nextLevel})";
                 var levelRules = GetStrictLanguageConstraints(targetLanguage, nextLevel);
-                // =================================================================================
-                // FIX: CẬP NHẬT PROMPT ĐỂ ÉP NGÔN NGỮ ĐÍCH
-                // =================================================================================
+
                 var prompt = $@"
 CONTEXT:
 - User is learning: {targetLanguage} (Target Language).
@@ -356,10 +330,9 @@ CONTEXT:
 TASK:
 Provide 2-3 better, more natural, or more sophisticated expressions for the User Input strictly IN {targetLanguage}.
 CRITICAL LEVEL RULES for suggestions:
-{{levelRules}}
-(The `alternativeText` must strictly follow these rules. Do not suggest words that are too difficult for {{nextLevel}}).
-...
-"";
+{levelRules}
+(The `alternativeText` must strictly follow these rules. Do not suggest words that are too difficult for {nextLevel}).
+
 CRITICAL RULES:
 1. **Output Language**: The `alternativeText` field MUST ALWAYS be in {targetLanguage}. 
    - IF User Input is in Vietnamese/English: Translate the MEANING to {targetLanguage} first, then provide improved versions in {targetLanguage}.
@@ -381,10 +354,8 @@ JSON OUTPUT FORMAT:
   ],
   ""explanation"": ""[TỔNG QUAN BẰNG TIẾNG VIỆT]""
 }}
-
 Return valid JSON only.";
 
-                // Gọi AI
                 var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 800, temperature: 0.4);
 
                 var result = !string.IsNullOrWhiteSpace(json)
@@ -438,7 +409,6 @@ Return valid JSON only.";
 
         public async Task<List<VoiceAssessmentQuestion>> GenerateVoiceAssessmentQuestionsAsync(string languageCode, string languageName, string? programName = null)
         {
-            // difficulty labels per language
             string[] labels = languageCode?.ToLowerInvariant().StartsWith("ja") == true
                 ? new[] { "N5", "N4", "N3", "N2" }
                 : languageCode?.ToLowerInvariant().StartsWith("zh") == true
@@ -446,9 +416,9 @@ Return valid JSON only.";
                 : new[] { "A1", "A2", "B1", "B2" };
 
             string commonBan = "Do not use generic templates like 'Introduce yourself', 'Daily routine', 'Recent experience', 'Give an opinion', or 'about technology'. Do NOT include phrases like 'in English'/'in Japanese' in the question text. Write directly in the target language. Avoid vague, off-topic questions like \"What is that, Where is this?";
-            string lengths = "Enforce lengths: Q1 must be2-3 words; Q2 must be3-5 words; Q3 must be6-8 words (short phrase); Q4 must be8-12 words (short sentence).";
-            string constraints = $"Return a JSON object with property 'questions' (array of exactly4). Each is a concise speaking prompt for {languageName} ({languageCode}), tailored to program '{programName}', with ascending difficulty strictly set to [{string.Join(',', labels)}] in order. {lengths} {commonBan}";
-            string fields = "Each item fields: questionNumber (1..4), question, promptText (<=15 words), vietnameseTranslation, wordGuides (nullable), questionType='speaking', difficulty (one of the ordered labels), maxRecordingSeconds =30/60/90/120. Return JSON only.";
+            string lengths = "Enforce lengths: Q1 must be 2-3 words; Q2 must be 3-5 words; Q3 must be 6-8 words (short phrase); Q4 must be 8-12 words (short sentence).";
+            string constraints = $"Return a JSON object with property 'questions' (array of exactly 4). Each is a concise speaking prompt for {languageName} ({languageCode}), tailored to program '{programName}', with ascending difficulty strictly set to [{string.Join(',', labels)}] in order. {lengths} {commonBan}";
+            string fields = "Each item fields: questionNumber (1..4), question, promptText (<=15 words), vietnameseTranslation, wordGuides (nullable), questionType='speaking', difficulty (one of the ordered labels), maxRecordingSeconds = 30/60/90/120. Return JSON only.";
             var prompt1 = $"{constraints}\n{fields}";
             var json = await ChatAsync(string.Empty, prompt1, Array.Empty<string>(), jsonMode: true, maxTokens: 640, temperature: 0.25);
 
@@ -608,7 +578,7 @@ Rules:
         public async Task<AiCourseRecommendationDto> GenerateCourseRecommendationsAsync(UserSurveyResponseDto survey, List<CourseInfoDto> availableCourses)
         {
             var payload = new { survey, availableCourses };
-            var prompt = $"Recommend3-5 courses for the user below. Return JSON AiCourseRecommendationDto.\n{JsonSerializer.Serialize(payload, _json)}";
+            var prompt = $"Recommend 3-5 courses for the user below. Return JSON AiCourseRecommendationDto.\n{JsonSerializer.Serialize(payload, _json)}";
             var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 600, temperature: 0.2);
             try { return JsonSerializer.Deserialize<AiCourseRecommendationDto>(json, _json) ?? new AiCourseRecommendationDto(); } catch { return new AiCourseRecommendationDto(); }
         }
@@ -621,7 +591,7 @@ Rules:
 
         public async Task<List<string>> GenerateStudyTipsAsync(UserSurveyResponseDto survey)
         {
-            var prompt = $"Return8-10 study tips as a plain text list (one per line) for this learner: {JsonSerializer.Serialize(survey, _json)}";
+            var prompt = $"Return 8-10 study tips as a plain text list (one per line) for this learner: {JsonSerializer.Serialize(survey, _json)}";
             var text = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: false, maxTokens: 300, temperature: 0.3);
             return text.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(s => s.TrimStart('-', ' ', '•').Trim()).ToList();
         }
@@ -632,6 +602,7 @@ Rules:
             var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 700, temperature: 0.2);
             try { return JsonSerializer.Deserialize<TeacherQualificationAnalysisDto>(json, _json) ?? new TeacherQualificationAnalysisDto(); } catch { return new TeacherQualificationAnalysisDto(); }
         }
+
         private string GetStrictLanguageConstraints(string language, string level)
         {
             language = language.ToLower();
@@ -658,28 +629,25 @@ Rules:
                 };
             }
 
-      
             return "Speak naturally but adjust complexity to the user's level.";
         }
+
         public async IAsyncEnumerable<string> GenerateResponseStreamAsync(
-    string systemPrompt,
-    string userMessage,
-    List<string> history)
+            string systemPrompt,
+            string userMessage,
+            List<string> history)
         {
-           
             var deploymentName = !string.IsNullOrWhiteSpace(_settings.ChatDeployment)
                 ? _settings.ChatDeployment
                 : "gpt-4o-mini";
 
             var chatClient = _openAiClient.GetChatClient(deploymentName);
 
-         
-            var messages = new List<OpenAI.Chat.ChatMessage>    
-    {
-        new SystemChatMessage(systemPrompt)
-    };
+            var messages = new List<OpenAI.Chat.ChatMessage>
+            {
+                new SystemChatMessage(systemPrompt)
+            };
 
-    
             foreach (var hist in history)
             {
                 if (hist.StartsWith("User:"))
@@ -688,22 +656,18 @@ Rules:
                     messages.Add(new AssistantChatMessage(hist.Substring(3).Trim()));
             }
 
-         
             messages.Add(new OpenAI.Chat.UserChatMessage(userMessage));
 
-     
             var options = new OpenAI.Chat.ChatCompletionOptions
             {
                 Temperature = 0.7f,
-                MaxOutputTokenCount = 300 
+                MaxOutputTokenCount = 300
             };
 
-           
             var completionUpdates = chatClient.CompleteChatStreamingAsync(messages, options);
 
             await foreach (var update in completionUpdates)
             {
-                
                 foreach (var contentPart in update.ContentUpdate)
                 {
                     if (!string.IsNullOrEmpty(contentPart.Text))
@@ -715,4 +679,3 @@ Rules:
         }
     }
 }
-
