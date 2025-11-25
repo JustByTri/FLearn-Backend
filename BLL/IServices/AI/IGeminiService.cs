@@ -54,7 +54,7 @@ namespace BLL.IServices.AI
             List<string> conversationHistory,
             string languageName = "English",
             string topic = "",
-            string aiRoleName = "AI Partner", string level = "A1");
+            string aiRoleName = "AI Partner", string level = "A1", string scenarioContext = "");
         Task<ConversationEvaluationResult> EvaluateConversationAsync(string evaluationPrompt, string targetLanguage);
 
         // NEW: Gợi ý từ đồng nghĩa theo trình độ
