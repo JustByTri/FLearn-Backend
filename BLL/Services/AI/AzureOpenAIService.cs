@@ -145,7 +145,7 @@ Create a roleplay scenario completely in **{context.Language}**.
             }
         }
 
-        =
+        
         public async Task<RoleplayResponseDto> GenerateResponseAsync(
              string systemPrompt,
              string userMessage,
