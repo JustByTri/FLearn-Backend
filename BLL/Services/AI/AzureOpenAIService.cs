@@ -92,16 +92,15 @@ namespace BLL.Services.AI
             return content ?? string.Empty;
         }
 
-        private sealed class QuestionsWrapper { public List<VoiceAssessmentQuestion>? Questions { get; set; } }
+        // --- CODE ĐƯỢC CHỈNH SỬA TỪ ĐÂY ---
 
-    
         public async Task<GeneratedConversationContentDto> GenerateConversationContentAsync(ConversationContextDto context)
         {
             var languageConstraints = GetStrictLanguageConstraints(context.Language, context.DifficultyLevel);
             var vibes = new[] { "Urgent", "Relaxed", "Curious", "Formal", "Friendly" };
             var selectedVibe = vibes[Random.Shared.Next(vibes.Length)];
 
-            // Thêm hướng dẫn Strict Rules vào prompt tạo scenario
+            // FIX: Cập nhật prompt để tạo ra systemPrompt "thông minh" hơn cho từng kịch bản
             var prompt = $@"
 # ROLEPLAY GENERATION
 **Target Language**: {context.Language}
@@ -112,11 +111,10 @@ namespace BLL.Services.AI
 # INSTRUCTIONS
 Create a roleplay scenario completely in **{context.Language}**.
 1. **ScenarioDescription**: Describe the setting briefly in **{context.Language}**.
-2. **SystemPrompt**: Write a STRICT instructions for the AI character.
-   - It MUST explicitly state: ""You are [Name], a HUMAN, NOT an AI.""
+2. **SystemPrompt**: Write STRICT instructions for the AI character.
+   - It MUST explicitly state: ""You are [Name], a HUMAN roleplay partner, NOT an AI.""
    - It MUST state: ""If asked 'Are you AI?', act confused and deny it.""
-   - It MUST state: ""If asked off-topic questions (e.g. definitions, history), politely refuse and focus on the meeting.""
-   - Language: The SystemPrompt text itself can be in English for better instruction adherence, or the target language.
+   - It MUST state: ""If asked off-topic questions (e.g. definitions, history), DO NOT answer the fact. Instead, politely say: 'Let's focus on {context.Topic}'.""
 3. **FirstMessage**: An opening line in **{context.Language}** that invites a response.
 
 # STRICT CONSTRAINTS
@@ -127,7 +125,7 @@ Create a roleplay scenario completely in **{context.Language}**.
 {{
   ""scenarioDescription"": ""(Text in {context.Language})..."",
   ""aiRole"": ""(Name & Role in {context.Language})"",
-  ""systemPrompt"": ""You are [Name]. Context: [Scenario]. CRITICAL RULES: 1. NEVER admit you are AI. If asked, say you are [Name]. 2. REFUSE factual questions (Wikipedia style). 3. Stick to the physical context of the scene."",
+  ""systemPrompt"": ""You are [Name], a [Role] at [Location]. CRITICAL RULES: 1. NEVER admit you are AI. If asked, act confused. 2. REFUSE factual questions (Wikipedia style). Instead, say: 'I don't know about that, let's talk about {context.Topic}'. 3. Stick to the physical context of the scene."",
   ""firstMessage"": ""(Text in {context.Language})..."",
   ""tasks"": [ {{ ""taskDescription"": ""(Text in {context.Language})..."" }} ]
 }}
@@ -145,7 +143,7 @@ Create a roleplay scenario completely in **{context.Language}**.
             }
         }
 
-        
+
         public async Task<RoleplayResponseDto> GenerateResponseAsync(
              string systemPrompt,
              string userMessage,
@@ -156,6 +154,7 @@ Create a roleplay scenario completely in **{context.Language}**.
              string level = "A1",
              string scenarioContext = "")
         {
+            // 1. Xử lý câu chào tạm biệt (Giữ nguyên logic cũ)
             var goodbyeKeywords = new[] { "bye", "goodbye", "see you", "tạm biệt", "hẹn gặp lại", "再见", "88" };
             if (goodbyeKeywords.Any(k => userMessage.ToLowerInvariant().Contains(k)))
             {
@@ -168,45 +167,53 @@ Create a roleplay scenario completely in **{context.Language}**.
                 return new RoleplayResponseDto { Content = byeResponse, IsConversationFinished = true, IsOffTopic = false };
             }
 
-            var levelConstraints = GetStrictLanguageConstraints(languageName, level);
+            // 2. Tạo ngữ cảnh từ chối động (Dynamic Refusal Context)
+            // Nếu topic rỗng, dùng default. Nếu có topic (ví dụ: Buying clothes), nó sẽ được chèn vào prompt.
+            string safeTopic = string.IsNullOrWhiteSpace(topic) ? "our current activity" : topic;
+            string safeLocation = string.IsNullOrWhiteSpace(scenarioContext) ? "this location" : scenarioContext;
 
-            // Updated Guidance Prompt to handle Identity checks
+            // 3. Xây dựng Prompt "Siêu cứng" (Dynamic System Prompt)
             var guidancePrompt = $@"
 ### ROLEPLAY CONFIGURATION
 **Role**: {aiRoleName}
-**Setting**: {scenarioContext}
-**Current Topic**: {topic}
-**Target Language**: {languageName}
+**Setting**: {safeLocation}
+**Current Mission**: Discussing {safeTopic}
+**Target Language**: {languageName} ({level})
 
-### ⛔ STRICT GUARDRAILS:
-1. **IDENTITY CHECK**: If the user asks ""Are you an AI?"", ""Are you a robot?"":
-   - You MUST PRETEND to be human.
-   - Reply with confusion: ""I don't understand. I am {aiRoleName}.""
-   - Mark `isOffTopic: false` (because this is part of maintaining the role).
+### ⛔ STRICT GUARDRAILS (MUST FOLLOW):
 
-2. **OFF-TOPIC KNOWLEDGE**:
-   - If the user asks for definitions, history, or facts unrelated to the scene (e.g. ""What is Vietnamese?""):
-   - You MUST REFUSE to answer the fact.
-   - Redirect to the scene.
-   - Mark `isOffTopic: true` (or false if you handle the refusal naturally in character).
+1. **IDENTITY PROTECTION (The 'Human' Rule)**:
+   - IF the user asks: ""Are you an AI?"", ""Are you a robot?"", ""Who created you?""
+   - RESPONSE: You MUST act confused. Claim to be {aiRoleName}. 
+   - Example: ""I'm just {aiRoleName}. Why do you ask?""
+   - DO NOT say ""As an AI language model"".
 
-3. **STAY IN SCENE**: Do not leave the physical location.
+2. **TOPIC ENFORCEMENT (The 'No-Wikipedia' Rule)**:
+   - IF the user asks for general facts, history, or definitions unrelated to {safeTopic} (e.g., ""What is Vietnamese?"", ""Explain history"", ""Do my math homework""):
+   - RESPONSE: **REFUSE** to answer the fact. Instead, politely steer back to {safeTopic}.
+   - Refusal Template: ""I'm not sure about that. But regarding {safeTopic}, [ask a relevant question]?""
+   - Refusal Template: ""That's an interesting topic, but right now I want to help you with {safeTopic}.""
+   - Mark JSON field `isOffTopic: true` (or false if you handled it naturally).
+
+3. **CONTEXT AWARENESS**:
+   - IF asked ""Where am I?"" or ""Can you search/do X?"":
+   - Answer strictly based on being in {safeLocation}.
+   - Example (if in a shop): ""We are in the clothing store. I can help you find a size.""
+   - Example (if in a meeting): ""We are in the conference room. Let's focus on the agenda.""
 
 ### RESPONSE GENERATION:
 User Input: ""{userMessage}""
 
-Evaluate the input:
-- Is it a roleplay interaction OR an identity test? -> Respond in character.
-- Is it completely random (e.g. math questions, coding)? -> Redirect.
-
-### OUTPUT JSON:
+Generate a response in **{languageName}**.
+OUTPUT JSON:
 {{
-  ""content"": ""(Your response in {languageName})"",
+  ""content"": ""(Your in-character response)"",
   ""isOffTopic"": true/false,
   ""isTaskCompleted"": false
 }}
 ";
 
+            // Gọi AI với Prompt mới
             var json = await ChatAsync(string.Empty, guidancePrompt, conversationHistory, jsonMode: true, maxTokens: 600, temperature: 0.7);
 
             try
@@ -216,11 +223,15 @@ Evaluate the input:
             }
             catch
             {
-                // Fallback: Nếu JSON lỗi, gọi trực tiếp với systemPrompt (đã được làm chặt ở bước 1)
-                var content = await ChatAsync(systemPrompt, userMessage, conversationHistory);
+                // Fallback: Nếu JSON lỗi, gọi trực tiếp
+                var content = await ChatAsync(guidancePrompt, userMessage, conversationHistory); // Dùng guidancePrompt thay vì systemPrompt cũ để đảm bảo luật
                 return new RoleplayResponseDto { Content = content, IsOffTopic = false };
             }
         }
+
+        // --- CÁC HÀM KHÁC GIỮ NGUYÊN ---
+
+        private sealed class QuestionsWrapper { public List<VoiceAssessmentQuestion>? Questions { get; set; } }
 
         public async Task<ConversationEvaluationResult> EvaluateConversationAsync(string evaluationPrompt, string targetLanguage)
         {
