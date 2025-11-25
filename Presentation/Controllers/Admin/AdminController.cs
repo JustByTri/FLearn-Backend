@@ -1,10 +1,13 @@
 ﻿using BLL.IServices.Admin;
 using BLL.IServices.Auth;
 using Common.DTO.Admin;
+using Common.DTO.ApiResponse;
 using Common.DTO.Auth;
+using Common.DTO.Payment;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Presentation.Helpers;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 
@@ -569,6 +572,28 @@ namespace Presentation.Controllers.Admin
             {
                 _logger.LogError(ex, "Lỗi khi xóa Level {LevelId}", levelId);
                 return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống." });
+            }
+        }
+        [HttpGet("wallet")]
+        public async Task<IActionResult> GetMyWallet()
+        {
+            try
+            {
+             
+                var adminUserId = this.GetUserId();
+
+                var wallet = await _adminService.GetAdminWalletAsync(adminUserId);
+
+                return Ok(new BaseResponse<WalletDto>
+                {
+                    Status = "Success",
+                    Message = "Lấy thông tin ví Admin thành công",
+                    Data = wallet
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
             }
         }
 

@@ -491,6 +491,24 @@ namespace Presentation.Controllers.Course
             return StatusCode(response.Code, response);
         }
         /// <summary>
+        /// Lấy danh sách các khoá học phổ biến theo ngôn ngữ.
+        /// </summary>
+        /// <param name="count">Số lượng khoá học muốn lấy (mặc định 10, tối đa 50).</param>
+        /// <param name="languageId">ID ngôn ngữ cần lọc.</param>
+        /// <returns>Danh sách khoá học phổ biến theo ngôn ngữ.</returns>
+        
+        [AllowAnonymous]
+        [HttpGet("popular/by-language")]
+        [ProducesResponseType(typeof(BaseResponse<IEnumerable<PopularCourseDto>>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> GetPopularCoursesByLanguage(
+            [FromQuery][Required] Guid languageId,      
+            [FromQuery][Range(1, 50)] int count = 10    
+        )
+        {
+            var response = await _courseService.GetPopularCoursesByLanguageAsync(count, languageId);
+            return StatusCode(response.Code, response);
+        }
+        /// <summary>
         /// Delete a course (only for Draft or Rejected courses)
         /// </summary>
         [HttpDelete("{courseId:guid}")]

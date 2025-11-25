@@ -2,6 +2,7 @@
 using BLL.IServices.Auth;
 using BLL.Settings;
 using Common.DTO.Admin;
+using Common.DTO.Payment;
 using DAL.Helpers;
 using DAL.Models;
 using DAL.UnitOfWork;
@@ -55,10 +56,10 @@ namespace BLL.Services.Admin
             var adminUser = await _unitOfWork.Users.GetUserWithRolesAsync(adminUserId);
             if (adminUser == null || !adminUser.UserRoles.Any(ur => ur.Role.Name == "Admin"))
             {
-                throw new UnauthorizedAccessException("Chỉ admin mới có thể xem danh sách staff");
+                throw new UnauthorizedAccessException("Chỉ admin mới có thể xem danh sách manager");
             }
 
-            var staffUsers = await _unitOfWork.Users.GetUsersByRoleAsync("Staff");
+            var staffUsers = await _unitOfWork.Users.GetUsersByRoleAsync("Manager");
 
             return staffUsers.Select(user => new UserListDto
             {
@@ -82,15 +83,21 @@ namespace BLL.Services.Admin
             }
 
             var totalUsers = await _unitOfWork.Users.GetTotalUsersCountAsync();
-            var totalStaff = await _unitOfWork.Users.GetUsersCountByRoleAsync("Staff");
+            var totalStaff = await _unitOfWork.Users.GetUsersCountByRoleAsync("Manager");
             var activeUsers = await _unitOfWork.Users.GetActiveUsersCountAsync();
             var recentUsers = await _unitOfWork.Users.GetRecentUsersAsync(5);
+            var totalCourses = await _unitOfWork.Courses.GetAllAsync();
+            var refundResquest = await _unitOfWork.RefundRequests.GetPendingCountAsync();
+            var totalTeachers = await _unitOfWork.Users.GetUsersCountByRoleAsync( "Teacher");
 
             return new AdminDashboardDto
             {
                 TotalUsers = totalUsers,
                 TotalStaff = totalStaff,
                 ActiveUsers = activeUsers,
+                TotalCourses = totalCourses.Count(),
+             PendingRequest = refundResquest,
+             TotalTeachers = totalTeachers,
                 RecentUsers = recentUsers.Select(user => new UserListDto
                 {
                     UserID = user.UserID,
@@ -598,8 +605,42 @@ namespace BLL.Services.Admin
                 Levels = levels
             };
         }
+        public async Task<WalletDto> GetAdminWalletAsync(Guid adminId)
+        {
+
+            var wallet = await _unitOfWork.Wallets.GetByAdminIdAsync(adminId);
+
+            if (wallet == null)
+            {
+                throw new Exception("Không tìm thấy ví của Admin.");
+            }
+
+            // Map từ Entity sang DTO
+            return new WalletDto
+            {
+                WalletId = wallet.WalletId,
+
+
+                OwnerId = wallet.OwnerId ?? wallet.TeacherId,
+
+                Name = wallet.Name,
+
+                
+                OwnerType = wallet.OwnerType.ToString(),
+
+                TotalBalance = wallet.TotalBalance,
+                AvailableBalance = wallet.AvailableBalance,
+                HoldBalance = wallet.HoldBalance,
+
+                Currency = wallet.Currency.ToString(),
+                Status = wallet.Status,
+                CreatedAt = wallet.CreatedAt,
+                UpdatedAt = wallet.UpdatedAt
+            };
+        }
     }
 }
+
 
 
 

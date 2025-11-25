@@ -1566,6 +1566,38 @@ namespace BLL.Services.Course
         {
             return template.UnitCount * 2 + template.UnitCount * template.LessonsPerUnit / 2;
         }
+        public async Task<BaseResponse<IEnumerable<PopularCourseDto>>> GetPopularCoursesByLanguageAsync(int count, Guid languageId)
+        {
+            var query = _unit.Courses.Query()
+                .Include(c => c.Teacher)
+                .Include(c => c.Level)
+                .Include(c => c.Program)
+                .Where(c => c.LanguageId == languageId && c.Status == CourseStatus.Published)
+                .OrderByDescending(c => c.LearnerCount)
+                .Take(count);
+
+            var courses = await query.ToListAsync();
+
+            var popularCoursesDto = courses.Select(course => new PopularCourseDto
+            {
+                CourseId = course.CourseID,
+                Title = course.Title,
+                TeacherName = course.Teacher?.FullName ?? "N/A",
+                Price = course.Price,
+                AverageRating = course.AverageRating,
+                ReviewCount = course.ReviewCount,
+                LearnerCount = course.LearnerCount,
+                ImageUrl = course.ImageUrl,
+                ProficiencyCode = course.Level?.Name ?? "N/A",
+                ProgramName = course.Program?.Name ?? "N/A"
+            });
+
+            return BaseResponse<IEnumerable<PopularCourseDto>>.Success(
+                popularCoursesDto,
+                "Lấy danh sách khóa học phổ biến theo ngôn ngữ thành công.",
+                (int)HttpStatusCode.OK
+            );
+        }
         #endregion
     }
 }

@@ -13,6 +13,12 @@ namespace DAL.Repositories
         {
             _context = context;
         }
+
+        public async Task<Wallet?> GetByAdminIdAsync(Guid OwnerId)
+        {
+            return await _context.Wallets.FirstOrDefaultAsync(w => w.OwnerId == OwnerId);
+        }
+
         public async Task<Wallet?> GetByTeacherIdAsync(Guid teacherId)
         {
             return await _context.Wallets.FirstOrDefaultAsync(w => w.TeacherId == teacherId);

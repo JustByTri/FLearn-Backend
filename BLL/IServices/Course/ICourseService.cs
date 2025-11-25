@@ -29,6 +29,8 @@ namespace BLL.IServices.Course
         Task<BaseResponse<IEnumerable<PopularCourseDto>>> GetPopularCoursesAsync(int count = 10);
         Task<BaseResponse<object>> DeleteCourseAsync(Guid userId, Guid courseId);
         Task<BaseResponse<object>> ToggleCourseVisibilityAsync(Guid userId, Guid courseId, bool isHidden);
+        Task<BaseResponse<IEnumerable<PopularCourseDto>>> GetPopularCoursesByLanguageAsync(int count, Guid languageId);
+
     }
 
 }
