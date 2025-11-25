@@ -30,9 +30,6 @@ namespace Common.DTO.Teacher
         [Range(0.01, 10000000, ErrorMessage = "Giá học phí phải lớn hơn 0")]
         public decimal PricePerStudent { get; set; }
 
-        // Gỡ link meet khỏi DTO. Lấy từ TeacherProfile.MeetingUrl khi tạo lớp
-
-        // Optional: cho phép chọn assignment cụ thể; nếu null hệ thống tự chọn assignment level cao nhất
         public Guid? ProgramAssignmentId { get; set; }
     }
 

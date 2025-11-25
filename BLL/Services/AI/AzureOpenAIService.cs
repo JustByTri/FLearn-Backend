@@ -114,187 +114,120 @@ namespace BLL.Services.AI
         public async Task<GeneratedConversationContentDto> GenerateConversationContentAsync(ConversationContextDto context)
         {
             var languageConstraints = GetStrictLanguageConstraints(context.Language, context.DifficultyLevel);
-            var rubric = BuildDifficultyRubric(context.DifficultyLevel);
 
-            // Random vibe (Giữ nguyên logic random nhưng sửa text cho nhẹ nhàng hơn)
-            var vibes = new[]
-            {
-        "Urgent and rushed",
-        "Relaxed and cozy",
-        "A minor misunderstanding",
-        "Pleasantly surprised",
-        "Seeking advice",
-        "Celebratory mood",
-        "Slightly confused",
-        "Professional and formal",
-        "Busy environment",
-        "Quiet and secretive"
-    };
+            var vibes = new[] { "Urgent", "Relaxed", "Curious", "Formal", "Friendly" };
             var selectedVibe = vibes[Random.Shared.Next(vibes.Length)];
 
-            // --- FIX: PROMPT AN TOÀN HƠN ---
-            var prompt = $@"# Generate Roleplay Scenario
+            var prompt = $@"
+# ROLEPLAY GENERATION
+**Target Language**: {context.Language}
+**Topic**: {context.Topic}
+**Level**: {context.DifficultyLevel}
+**Vibe**: {selectedVibe}
 
-CONTEXT:
-- Topic: {context.Topic}
-- Level: {context.DifficultyLevel}
-- Tone: {selectedVibe}
+# INSTRUCTIONS
+Create a roleplay scenario completely in **{context.Language}**.
+1. **ScenarioDescription**: Describe the setting briefly in **{context.Language}**.
+2. **SystemPrompt**: Define the persona '{selectedVibe}' who speaks ONLY **{context.Language}**.
+3. **FirstMessage**: An opening line in **{context.Language}** that invites a response.
 
-CRITICAL LANGUAGE CONSTRAINTS:
-{languageConstraints}
+# STRICT CONSTRAINTS
+- Use vocabulary suitable for {context.DifficultyLevel} ({languageConstraints}).
+- Do NOT use Vietnamese (unless it is the target language).
 
-INSTRUCTIONS:
-...
-## 3. CHARACTER GUIDELINES (System Prompt):
-- Embody the character '{selectedVibe}'.
-- **IMPORTANT**: You must speak strictly according to: {languageConstraints}
-- If A1/N5/HSK1: Use very short, simple sentences. Be patient.
-...
-
-## 1. SCENARIO DETAILS (in {context.Language}):
-- Describe the scene, fitting the '{selectedVibe}' tone.
-- Include sensory details (sound, lighting, etc.).
-- Explain the immediate reason for the conversation.
-
-## 2. CHARACTER IDENTITY (in {context.Language}):
-- Define a character matching the tone.
-- Format: ""[Name], [Role] ([Personality])""
-
-## 3. CHARACTER GUIDELINES (Internal Instructions):
-- The AI should embody the character and the '{selectedVibe}' tone.
-- Language: {context.Language} only.
-- Length: Keep replies concise (1-2 sentences).
-
-## 4. OPENING LINE (in {context.Language}):
-- Start directly in the situation. Avoid generic greetings like ""Hello"" if they don't fit the urgency.
-- Demonstrate the emotion immediately.
-
-## 5. TASKS (3 items):
-- Task 1 (Easy) -> Task 2 (Medium) -> Task 3 (Hard).
-- Specific to this scenario.
-
-## JSON OUTPUT FORMAT:
+# OUTPUT JSON:
 {{
-  ""scenarioDescription"": ""..."",
-  ""aiRole"": ""..."",
-  ""systemPrompt"": ""..."",
-  ""firstMessage"": ""..."",
-  ""tasks"": [ {{""taskDescription"": ""...""}}, ... ]
-}}";
+  ""scenarioDescription"": ""(Text in {context.Language})..."",
+  ""aiRole"": ""(Name & Role in {context.Language})"",
+  ""systemPrompt"": ""You are [Name]. Context: [Scenario]. You speak ONLY {context.Language}. Level: {context.DifficultyLevel}."",
+  ""firstMessage"": ""(Text in {context.Language})..."",
+  ""tasks"": [ {{ ""taskDescription"": ""(Text in {context.Language})..."" }} ]
+}}
+";
 
-           
-            var json = await ChatAsync(context.MasterPrompt, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 800, temperature: 0.8);
+            var json = await ChatAsync(context.MasterPrompt, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 1000, temperature: 0.8);
 
             try
             {
-                return JsonSerializer.Deserialize<GeneratedConversationContentDto>(json, _json) ?? new GeneratedConversationContentDto
-                {
-                    ScenarioDescription = $"Practice {context.Topic}",
-                    AIRole = "Partner",
-                    SystemPrompt = context.MasterPrompt,
-                    FirstMessage = "Hello.",
-                    Tasks = new List<ConversationTaskDto>()
-                };
+                return JsonSerializer.Deserialize<GeneratedConversationContentDto>(json, _json) ?? new GeneratedConversationContentDto();
             }
             catch
             {
                 return new GeneratedConversationContentDto();
             }
         }
-
         public async Task<RoleplayResponseDto> GenerateResponseAsync(
-    string systemPrompt,
-    string userMessage,
-    List<string> conversationHistory,
-    string languageName = "English",
-    string topic = "",
-    string aiRoleName = "AI Partner",
-    string level = "A1") 
+     string systemPrompt,
+     string userMessage,
+     List<string> conversationHistory,
+     string languageName = "English", 
+     string topic = "",
+     string aiRoleName = "AI Partner",
+     string level = "A1")
         {
-
-            var levelConstraints = GetStrictLanguageConstraints(languageName, level);
-            var goodbyeKeywords = new[] { "bye", "goodbye", "see you", "tạm biệt", "さようなら", "再见", "zàijiàn", "sayonara" };
-            var userLower = userMessage.ToLowerInvariant();
-
-            if (goodbyeKeywords.Any(k => userLower.Contains(k)))
+          
+            var goodbyeKeywords = new[] { "bye", "goodbye", "see you", "tạm biệt", "hẹn gặp lại", "再见", "88" };
+            if (goodbyeKeywords.Any(k => userMessage.ToLowerInvariant().Contains(k)))
             {
-              
-                var langInput = languageName?.ToLowerInvariant()?.Trim() ?? "";
-
-                string byeResponse;
-
-              
-                if (langInput.Contains("japan") || langInput.Contains("jp") || langInput.Contains("nhật") || langInput.Contains("ja"))
+                string byeResponse = languageName.ToLower() switch
                 {
-                    byeResponse = "さようなら！良い一日を！"; // Tiếng Nhật
-                }
-                else if (langInput.Contains("chin") || langInput.Contains("zh") || langInput.Contains("trung") || langInput.Contains("cn"))
-                {
-                    byeResponse = "再见！祝你有美好的一天！"; // Tiếng Trung
-                }
-                else if (langInput.Contains("english") || langInput.Contains("en") || langInput.Contains("anh") || langInput.Contains("us") || langInput.Contains("uk"))
-                {
-                    byeResponse = "Goodbye! Have a great day!"; // Tiếng Anh
-                }
-                else
-                {
-                    byeResponse = "Tạm biệt! Chúc bạn một ngày tốt lành!"; // Mặc định (Tiếng Việt)
-                }
-
-                return new RoleplayResponseDto
-                {
-                    Content = byeResponse,
-                    IsConversationFinished = true,
-                    IsOffTopic = false
+                    var l when l.Contains("cn") || l.Contains("trung") || l.Contains("zh") => "再见！",
+                    var l when l.Contains("vn") || l.Contains("việt") => "Tạm biệt nhé!",
+                    _ => "Goodbye! See you!" 
                 };
+
+                return new RoleplayResponseDto { Content = byeResponse, IsConversationFinished = true, IsOffTopic = false };
             }
 
-            // 2. Build Guidance & Roleplay Prompt
-            // Kỹ thuật: Yêu cầu AI kiểm tra Condition trước khi trả lời.
-            // Nếu lạc đề -> Trả về lời nhắc (Tiếng Việt). Nếu đúng -> Trả về hội thoại (Target Language).
+            var levelConstraints = GetStrictLanguageConstraints(languageName, level);
+
+            
             var guidancePrompt = $@"
-{systemPrompt}
+### SYSTEM INSTRUCTION
+You are strictly embodying the character: **{aiRoleName}**.
+Target Language: **{languageName}**.
+Context: Topic '{topic}', Level '{level}'.
 
----
-### UPDATE FOR NEXT RESPONSE:
-User Input: ""{userMessage}""
-Context: Topic '{topic}', Role '{aiRoleName}', Level '{level}'.
+### CRITICAL RULES (IMMERSION):
+1. **NO META-TALK**: Never speak Vietnamese (unless it is the Target Language). Never explain grammar rules. Never say ""As an AI"".
+2. **STAY IN CHARACTER**: If the user speaks a different language or makes no sense, react AS THE CHARACTER would (e.g., be confused, ask for clarification in {languageName}).
+3. **LEVEL ADHERENCE**: Speak strictly using: {levelConstraints}.
 
-**STRICT LANGUAGE ENFORCEMENT:**
-{levelConstraints}
-(Ensure your response strictly matches this complexity level. Do not use words/grammar above this level).
+### INPUT EVALUATION
+User said: ""{userMessage}""
 
-Please respond using ONE of these modes:
+### RESPONSE MODES (Choose One):
 
-MODE A: GUIDANCE (If user is off-topic/confused)
-- JSON `isOffTopic: true`.
-- Content (Vietnamese): ""Có thể bạn đang hơi lạc đề. Tôi là {aiRoleName}. Với trình độ {level}, bạn nên nói: '[Suggest sentence strictly complying with {levelConstraints}]'""
+**MODE A: CONFUSION / REDIRECTION (User is off-topic/unclear)**
+- Scenario: User talks about wrong topic or speaks wrong language.
+- Action: Express confusion or bring them back to '{topic}' naturally.
+- Content: MUST BE IN **{languageName}**. (e.g., ""What? I don't understand. Let's talk about..."")
+- `isOffTopic`: true
 
-MODE B: ROLEPLAY (Normal conversation)
-- JSON `isOffTopic: false`.
-- Content ({languageName}): Your in-character reply. MUST follow: {levelConstraints}.
+**MODE B: ROLEPLAY (Normal flow)**
+- Scenario: User replies relevantly.
+- Action: Continue conversation.
+- Content: MUST BE IN **{languageName}**.
+- `isOffTopic`: false
 
 ### REQUIRED JSON OUTPUT:
 {{
-  ""content"": ""..."",
+  ""content"": ""(Text in {languageName} only)..."",
   ""isOffTopic"": true/false,
-  ""isTaskCompleted"": true/false
+  ""isTaskCompleted"": false
 }}
 ";
 
-            _logger.LogInformation("AzureOpenAI: Prompting with Safe Guidance Logic");
-
-            // Giảm Temperature xuống 0.3 hoặc 0.4 để AI tuân thủ luật JSON tốt hơn
-            var json = await ChatAsync(string.Empty, guidancePrompt, conversationHistory, jsonMode: true, maxTokens: 500, temperature: 0.4);
+            var json = await ChatAsync(string.Empty, guidancePrompt, conversationHistory, jsonMode: true, maxTokens: 600, temperature: 0.7);
 
             try
             {
                 var result = JsonSerializer.Deserialize<RoleplayResponseDto>(json, _json);
                 return result ?? new RoleplayResponseDto { Content = "..." };
             }
-            catch (Exception ex)
+            catch
             {
-                // Fallback
+             
                 var content = await ChatAsync(systemPrompt, userMessage, conversationHistory);
                 return new RoleplayResponseDto { Content = content, IsOffTopic = false };
             }
@@ -308,7 +241,7 @@ MODE B: ROLEPLAY (Normal conversation)
             // FIX: Cung cấp JSON Skeleton cụ thể để AI không trả về sai cấu trúc
             var enhancedPrompt = $@"{evaluationPrompt}
 
----
+---1
 ### CRITICAL OUTPUT INSTRUCTIONS:
 
 1. **LANGUAGE**: Write all text analysis in **{outputLang}**.
@@ -699,52 +632,34 @@ Rules:
             var json = await ChatAsync(string.Empty, prompt, Array.Empty<string>(), jsonMode: true, maxTokens: 700, temperature: 0.2);
             try { return JsonSerializer.Deserialize<TeacherQualificationAnalysisDto>(json, _json) ?? new TeacherQualificationAnalysisDto(); } catch { return new TeacherQualificationAnalysisDto(); }
         }
-        private static string GetStrictLanguageConstraints(string language, string level)
+        private string GetStrictLanguageConstraints(string language, string level)
         {
-            var lang = language?.ToLowerInvariant() ?? "";
-            var lvl = level?.ToUpperInvariant() ?? "";
+            language = language.ToLower();
+            level = level.ToUpper();
 
-            // --- TIẾNG NHẬT (JLPT) ---
-            if (lang.Contains("japan") || lang.Contains("jp") || lang.Contains("nhật"))
+            if (language.Contains("chin") || language.Contains("zh") || language.Contains("trung"))
             {
-                return lvl switch
+                return level switch
                 {
-                    "N5" => "STRICT N5 RULES: Use ONLY basic vocabulary (approx 800 words). Use polite forms (Desu/Masu). Avoid complex Kanji (use Hiragana/Katakana primarily). Simple sentences (Subject-Object-Verb). NO casual/slang.",
-                    "N4" => "STRICT N4 RULES: Basic conjunctions (kara, node). Simple compound sentences. Polite forms mainly, but can introduce some plain forms if context fits. Kanji limited to N4 list.",
-                    "N3" => "STRICT N3 RULES: Everyday conversation speed. Introduction of specific grammatical structures (koto ga aru, tsumori). Mix of polite and plain forms appropriate for the role.",
-                    "N2" => "STRICT N2 RULES: Business/Formal level. Use Keigo (Honorifics) if role requires. Complex sentence structures and abstract topics.",
-                    "N1" => "STRICT N1 RULES: Native level. Idioms, nuanced expressions, advanced vocabulary. Full natural speed and complexity.",
-                    _ => "Adjust simple polite Japanese."
+                    "HSK1" or "A1" => "Use ONLY very basic words (HSK1). Short sentences. Pinyin is optional but focus on simple Hanzi.",
+                    "HSK2" or "A2" => "Simple daily conversation. Avoid idioms (Chengyu).",
+                    _ => "Natural native expression."
                 };
             }
 
-            // --- TIẾNG TRUNG (HSK) ---
-            if (lang.Contains("chin") || lang.Contains("zh") || lang.Contains("trung") || lang.Contains("cn"))
+            if (language.Contains("eng") || language.Contains("anh"))
             {
-                return lvl switch
+                return level switch
                 {
-                    "HSK1" => "STRICT HSK1 RULES: Use ONLY the 150 basic HSK1 words. Very short sentences (3-6 words). No complex grammar. Pinyin support if possible (but output characters).",
-                    "HSK2" => "STRICT HSK2 RULES: HSK2 vocabulary (300 words). Simple daily exchanges. Basic questions and answers.",
-                    "HSK3" => "STRICT HSK3 RULES: HSK3 vocabulary (600 words). Connected paragraphs. Daily life topics.",
-                    "HSK4" => "STRICT HSK4 RULES: HSK4 vocabulary (1200 words). Discuss abstract topics moderately. Complex grammar allowed.",
-                    "HSK5" => "STRICT HSK5 RULES: Formal speech, newspapers, movies. Full fluency.",
-                    "HSK6" => "STRICT HSK6 RULES: Native level literary and technical proficiency.",
-                    _ => "Simple Chinese."
+                    "A1" => "Use basic Subject-Verb-Object sentences. Common words only (Top 500). No slang.",
+                    "A2" => "Simple past/future tense allowed. Conversational but clear.",
+                    "B1" or "B2" => "Business casual allowed, more complex grammar.",
+                    _ => "Fluent and sophisticated."
                 };
             }
 
-            // --- TIẾNG ANH (CEFR) ---
-            // Mặc định là Tiếng Anh nếu không khớp trên
-            return lvl switch
-            {
-                var x when x.Contains("A1") => "STRICT A1 RULES: Use top 500 most common words ONLY. Present Simple & Present Continuous tenses mainly. Short sentences (max 8 words). NO idioms. NO passive voice. Speak slowly and clearly text-wise.",
-                var x when x.Contains("A2") => "STRICT A2 RULES: Top 1000 common words. Past Simple, Future with 'going to'. Simple descriptions. Connectors like 'and', 'but', 'because'.",
-                var x when x.Contains("B1") => "STRICT B1 RULES: Standard English. Present Perfect, Conditionals (Type 1). Can express opinions and reasons.",
-                var x when x.Contains("B2") => "STRICT B2 RULES: Fluency and spontaneity. Complex arguments. Phrasal verbs allowed.",
-                var x when x.Contains("C1") => "STRICT C1 RULES: Advanced vocabulary, idiomatic expressions, flexible sentence structure.",
-                var x when x.Contains("C2") => "STRICT C2 RULES: Native proficiency, subtle nuances, cultural references.",
-                _ => "Simple English."
-            };
+      
+            return "Speak naturally but adjust complexity to the user's level.";
         }
         public async IAsyncEnumerable<string> GenerateResponseStreamAsync(
     string systemPrompt,
