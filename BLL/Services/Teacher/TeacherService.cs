@@ -321,6 +321,7 @@ namespace BLL.Services.Teacher
                     .Take(pageSize)
                     .Select(tpa => new TeachingProgramResponse
                     {
+                        ProgramAssignmentId = tpa.ProgramAssignmentId,
                         ProgramId = tpa.ProgramId,
                         ProgramName = tpa.Program.Name,
                         LevelId = tpa.LevelId,
@@ -694,13 +695,14 @@ namespace BLL.Services.Teacher
             if (from.HasValue) query = query.Where(p => p.RequestedAt >= from.Value);
             if (to.HasValue) query = query.Where(p => p.RequestedAt <= to.Value);
             var total = await query.CountAsync();
-            var items = await query.OrderByDescending(p => p.RequestedAt).Skip((page-1)*pageSize).Take(pageSize)
-                .Select(p => new PayoutRequestDto {
+            var items = await query.OrderByDescending(p => p.RequestedAt).Skip((page - 1) * pageSize).Take(pageSize)
+                .Select(p => new PayoutRequestDto
+                {
                     PayoutRequestId = p.PayoutRequestId,
                     Amount = p.Amount,
                     Status = p.PayoutStatus.ToString(),
                     RequestedAt = p.RequestedAt,
-                    ProcessedAt = p.UpdatedAt ,
+                    ProcessedAt = p.UpdatedAt,
                     ApprovedAt = p.ApprovedAt,
                     Note = p.Note,
                     BankName = p.BankAccount != null ? p.BankAccount.BankName : null,
@@ -728,7 +730,8 @@ namespace BLL.Services.Teacher
             var enrollments = await _unit.ClassEnrollments.Query()
                 .Where(e => classIds.Contains(e.ClassID) && e.Status == DAL.Models.EnrollmentStatus.Paid)
                 .ToListAsync();
-            var classSummaries = classList.Select(c => new ClassSummaryDto {
+            var classSummaries = classList.Select(c => new ClassSummaryDto
+            {
                 ClassID = c.ClassID,
                 Title = c.Title ?? string.Empty,
                 Status = c.Status.ToString(),
@@ -741,7 +744,8 @@ namespace BLL.Services.Teacher
             }).ToList();
             var payoutQuery = _unit.PayoutRequests.Query().Where(p => p.TeacherId == teacherProfile.TeacherId);
             var payoutList = await payoutQuery.OrderByDescending(p => p.RequestedAt).Take(10).ToListAsync();
-            var payoutSummaries = payoutList.Select(p => new PayoutSummaryDto {
+            var payoutSummaries = payoutList.Select(p => new PayoutSummaryDto
+            {
                 PayoutRequestId = p.PayoutRequestId,
                 Amount = p.Amount,
                 Status = p.PayoutStatus.ToString(),
@@ -749,7 +753,8 @@ namespace BLL.Services.Teacher
                 ProcessedAt = p.UpdatedAt
             }).ToList();
             var programStats = classList.GroupBy(c => new { c.ProgramId, ProgramName = c.Program?.Name ?? "" })
-                .Select(g => new ProgramStatsDto {
+                .Select(g => new ProgramStatsDto
+                {
                     ProgramId = g.Key.ProgramId,
                     ProgramName = g.Key.ProgramName,
                     ClassCount = g.Count(),
@@ -757,7 +762,8 @@ namespace BLL.Services.Teacher
                     Revenue = g.Sum(c => enrollments.Where(e => e.ClassID == c.ClassID).Sum(e => e.AmountPaid))
                 }).ToList();
             var periodStats = classList.GroupBy(c => c.CreatedAt.ToString("yyyy-MM"))
-                .Select(g => new PeriodStatsDto {
+                .Select(g => new PeriodStatsDto
+                {
                     Period = g.Key,
                     ClassCount = g.Count(),
                     StudentCount = g.Sum(c => enrollments.Count(e => e.ClassID == c.ClassID)),
