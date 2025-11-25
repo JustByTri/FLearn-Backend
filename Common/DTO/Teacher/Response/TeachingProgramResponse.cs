@@ -2,6 +2,7 @@
 {
     public class TeachingProgramResponse
     {
+        public Guid ProgramAssignmentId { get; set; }
         public Guid ProgramId { get; set; }
         public string? ProgramName { get; set; }
         public Guid LevelId { get; set; }
