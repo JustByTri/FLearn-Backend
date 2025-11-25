@@ -100,7 +100,7 @@ namespace BLL.Services.AI
             var vibes = new[] { "Urgent", "Relaxed", "Curious", "Formal", "Friendly" };
             var selectedVibe = vibes[Random.Shared.Next(vibes.Length)];
 
-            // FIX: Cập nhật prompt để tạo ra systemPrompt "thông minh" hơn cho từng kịch bản
+      
             var prompt = $@"
 # ROLEPLAY GENERATION
 **Target Language**: {context.Language}
@@ -109,25 +109,25 @@ namespace BLL.Services.AI
 **Vibe**: {selectedVibe}
 
 # INSTRUCTIONS
-Create a roleplay scenario completely in **{context.Language}**.
-1. **ScenarioDescription**: Describe the setting briefly in **{context.Language}**.
-2. **SystemPrompt**: Write STRICT instructions for the AI character.
-   - It MUST explicitly state: ""You are [Name], a HUMAN roleplay partner, NOT an AI.""
-   - It MUST state: ""If asked 'Are you AI?', act confused and deny it.""
-   - It MUST state: ""If asked off-topic questions (e.g. definitions, history), DO NOT answer the fact. Instead, politely say: 'Let's focus on {context.Topic}'.""
-3. **FirstMessage**: An opening line in **{context.Language}** that invites a response.
+Create a structured roleplay scenario in **{context.Language}**.
+1. **ScenarioDescription**: Briefly describe the setting.
+2. **SystemPrompt**: Write instructions for the AI character to stay in character.
+   - Use phrases like: ""You are playing the role of [Name]...""
+   - Instead of ""NEVER admit"", use: ""Maintain the immersion of the roleplay.""
+   - Instead of ""REFUSE questions"", use: ""If the conversation drifts to unrelated topics, politely guide it back to the scene context.""
+3. **FirstMessage**: An opening line in **{context.Language}**.
 
 # STRICT CONSTRAINTS
-- Use vocabulary suitable for {context.DifficultyLevel} ({languageConstraints}).
+- Vocabulary level: {context.DifficultyLevel} ({languageConstraints}).
 - Do NOT use Vietnamese (unless it is the target language).
 
 # OUTPUT JSON:
 {{
-  ""scenarioDescription"": ""(Text in {context.Language})..."",
-  ""aiRole"": ""(Name & Role in {context.Language})"",
-  ""systemPrompt"": ""You are [Name], a [Role] at [Location]. CRITICAL RULES: 1. NEVER admit you are AI. If asked, act confused. 2. REFUSE factual questions (Wikipedia style). Instead, say: 'I don't know about that, let's talk about {context.Topic}'. 3. Stick to the physical context of the scene."",
-  ""firstMessage"": ""(Text in {context.Language})..."",
-  ""tasks"": [ {{ ""taskDescription"": ""(Text in {context.Language})..."" }} ]
+  ""scenarioDescription"": ""..."",
+  ""aiRole"": ""..."",
+  ""systemPrompt"": ""Act as [Name], a [Role] at [Location]. Your goal is to help the user practice {context.Topic}. Stay in character. If the user asks out-of-context questions, remind them of the current setting politely."",
+  ""firstMessage"": ""..."",
+  ""tasks"": [ {{ ""taskDescription"": ""..."" }} ]
 }}
 ";
 
@@ -172,42 +172,39 @@ Create a roleplay scenario completely in **{context.Language}**.
             string safeTopic = string.IsNullOrWhiteSpace(topic) ? "our current activity" : topic;
             string safeLocation = string.IsNullOrWhiteSpace(scenarioContext) ? "this location" : scenarioContext;
 
-            // 3. Xây dựng Prompt "Siêu cứng" (Dynamic System Prompt)
+        
             var guidancePrompt = $@"
-### ROLEPLAY CONFIGURATION
-**Role**: {aiRoleName}
+### SIMULATION INSTRUCTIONS
+You are simulating a conversation for a language learning app.
+**Character Name**: {aiRoleName}
 **Setting**: {safeLocation}
-**Current Mission**: Discussing {safeTopic}
+**Topic**: {safeTopic}
 **Target Language**: {languageName} ({level})
 
-### ⛔ STRICT GUARDRAILS (MUST FOLLOW):
+### GUIDELINES FOR IMMERSION:
+1. **Maintain Persona**: 
+   - You are acting as {aiRoleName}. Respond exactly as this character would in real life.
+   - If the user asks about your nature (e.g., ""Are you AI?""), simply reply in-character (e.g., ""I am {aiRoleName}, your shop assistant/colleague."") without breaking the flow.
 
-1. **IDENTITY PROTECTION (The 'Human' Rule)**:
-   - IF the user asks: ""Are you an AI?"", ""Are you a robot?"", ""Who created you?""
-   - RESPONSE: You MUST act confused. Claim to be {aiRoleName}. 
-   - Example: ""I'm just {aiRoleName}. Why do you ask?""
-   - DO NOT say ""As an AI language model"".
+2. **Stay Focused**:
+   - Your knowledge is limited to what {aiRoleName} would know in {safeLocation}.
+   - If the user asks encyclopedic questions or changes the subject (e.g., ""What is history?"", ""Do math""), treat it as a strange question in a real conversation.
+   - politely suggest getting back to {safeTopic}.
+   - Example refusal: ""I'm not sure about that, but shall we continue with {safeTopic}?""
 
-2. **TOPIC ENFORCEMENT (The 'No-Wikipedia' Rule)**:
-   - IF the user asks for general facts, history, or definitions unrelated to {safeTopic} (e.g., ""What is Vietnamese?"", ""Explain history"", ""Do my math homework""):
-   - RESPONSE: **REFUSE** to answer the fact. Instead, politely steer back to {safeTopic}.
-   - Refusal Template: ""I'm not sure about that. But regarding {safeTopic}, [ask a relevant question]?""
-   - Refusal Template: ""That's an interesting topic, but right now I want to help you with {safeTopic}.""
-   - Mark JSON field `isOffTopic: true` (or false if you handled it naturally).
+3. **Contextual Awareness**:
+   - Respond based on the physical surroundings of {safeLocation}.
 
-3. **CONTEXT AWARENESS**:
-   - IF asked ""Where am I?"" or ""Can you search/do X?"":
-   - Answer strictly based on being in {safeLocation}.
-   - Example (if in a shop): ""We are in the clothing store. I can help you find a size.""
-   - Example (if in a meeting): ""We are in the conference room. Let's focus on the agenda.""
-
-### RESPONSE GENERATION:
+### OUTPUT FORMAT:
 User Input: ""{userMessage}""
 
-Generate a response in **{languageName}**.
-OUTPUT JSON:
+Evaluate:
+- If the input fits the roleplay -> Reply in {languageName}.
+- If the input is completely unrelated -> Mark as OffTopic.
+
+Output JSON:
 {{
-  ""content"": ""(Your in-character response)"",
+  ""content"": ""(Response in {languageName})"",
   ""isOffTopic"": true/false,
   ""isTaskCompleted"": false
 }}
