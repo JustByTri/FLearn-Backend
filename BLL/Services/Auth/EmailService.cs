@@ -14,316 +14,335 @@ namespace BLL.Services.Auth
         private readonly IConfiguration _configuration;
         private readonly ILogger<EmailService> _logger;
 
+        // --- BRAND COLORS (Ocean Blue Theme) ---
+        private const string PrimaryColor = "#0052CC";
+        private const string SecondaryColor = "#2684FF";
+        private const string SuccessColor = "#36B37E";
+        private const string WarningColor = "#FFAB00";
+        private const string DangerColor = "#FF5630";
+
+        // Text Colors
+        private const string TextDark = "#091E42"; // Xanh đen đậm
+        private const string TextLight = "#505F79"; // Xám xanh trung tính
+        private const string BgBody = "#F4F5F7";
+
         public EmailService(IConfiguration configuration, ILogger<EmailService> logger)
         {
             _configuration = configuration;
             _logger = logger;
         }
 
+        // --- 1. AUTHENTICATION EMAILS ---
+
         public async Task<bool> SendWelcomeEmailAsync(string toEmail, string userName)
         {
-            try
-            {
-                var subject = "🎉 Chào mừng bạn đến với nền tảng học ngôn ngữ Flearn!";
-                var body = $@"
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset='UTF-8'>
-                        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-                        <title>Chào mừng đến Flearn</title>
-                    </head>
-                    <body style='margin:0; padding:0; font-family: Arial, sans-serif; background: linear-gradient(135deg, #667eea0%, #764ba2100%);'>
-                        <div style='max-width:600px; margin:0 auto; background-color: #ffffff;'>
-                            <!-- Header -->
-                            <div style='background: linear-gradient(135deg, #667eea0%, #764ba2100%); padding:40px20px; text-align: center;'>
-                                <h1 style='color: white; margin:0; font-size:28px; font-weight:700;'>🎓 Flearn</h1>
-                                <p style='color: rgba(255,255,255,0.9); margin:10px000; font-size:16px;'>Nền tảng học ngôn ngữ thông minh</p>
-                            </div>
-                            
-                            <!-- Content -->
-                            <div style='padding:40px30px;'>
-                                <div style='text-align: center; margin-bottom:30px;'>
-                                    <div style='background: linear-gradient(135deg, #667eea0%, #764ba2100%); width:80px; height:80px; border-radius:50%; margin:0 auto20px; display: flex; align-items: center; justify-content: center;'>
-                                        <span style='font-size:36px; color: white;'>🎉</span>
-                                    </div>
-                                    <h2 style='color: #2c3e50; margin:0; font-size:24px; font-weight:600;'>Xin chào {userName}!</h2>
-                                </div>
-                                
-                                <div style='background-color: #f8f9ff; padding:25px; border-radius:12px; margin:25px0; border-left:4px solid #667eea;'>
-                                    <p style='font-size:16px; line-height:1.6; color: #333; margin:0015px0;'>
-                                        Cảm ơn bạn đã đăng ký tài khoản tại <strong>Flearn</strong> - nền tảng học ngôn ngữ hàng đầu!
-                                    </p>
-                                    <p style='font-size:16px; line-height:1.6; color: #333; margin:0;'>
-                                        Chúng tôi rất vui mừng có bạn và sẵn sàng đồng hành cùng bạn trong hành trình chinh phục ngôn ngữ mới.
-                                    </p>
-                                </div>
-                                
-                                <div style='background: linear-gradient(135deg, #667eea0%, #764ba2100%); padding:25px; border-radius:12px; text-align: center; margin:30px0;'>
-                                    <h3 style='color: white; margin:0015px0; font-size:20px;'>✅ Đăng ký thành công!</h3>
-                                    <p style='color: rgba(255,255,255,0.9); margin:0; font-size:16px;'>Tài khoản của bạn đã được kích hoạt và sẵn sàng sử dụng</p>
-                                </div>
-                                
-                                
-                                <div style='background-color: #fff3cd; border:1px solid #ffeaa7; padding:20px; border-radius:8px; margin:25px0;'>
-                                    <p style='margin:0; color: #856404; font-size:14px; text-align: center;'>
-                                        💡 <strong>Mẹo:</strong> Hãy đăng nhập và khám phá các khóa học thú vị đang chờ bạn!
-                                    </p>
-                                </div>
-                            </div>
-                            
-                            <!-- Footer -->
-                            <div style='background-color: #f8f9fa; padding:30px; text-align: center; border-top:1px solid #e9ecef;'>
-                                <p style='color: #6c757d; margin:0010px0; font-size:14px;'>
-                                    Cần hỗ trợ? Liên hệ với chúng tôi tại 
-                                    <a href='mailto:support@flearn.com' style='color: #667eea; text-decoration: none;'>support@flearn.com</a>
-                                </p>
-                                <p style='color: #6c757d; margin:0; font-size:12px;'>
-                                    ©2025 Flearn - Nền tảng học ngôn ngữ thông minh<br/>
-                                    📧 Bạn nhận được email này vì đã đăng ký tài khoản Flearn
-                                </p>
-                            </div>
-                        </div>
-                    </body>
-                    </html>";
+            var subject = "Chào mừng gia nhập Flearn!";
 
-                return await SendEmailAsync(toEmail, subject, body);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending welcome email to {Email}", toEmail);
-                return false;
-            }
+            var content = $@"
+                <div style='text-align: center;'>
+                    <h2 style='margin-top: 20px;'>Xin chào, {userName}!</h2>
+                    <p class='lead-text'>
+                        Cảm ơn bạn đã chọn <strong>Flearn</strong>. Chúng tôi đã sẵn sàng cùng bạn chinh phục những mục tiêu ngôn ngữ mới.
+                    </p>
+                    <div style='margin: 40px 0;'>
+                        <a href='{_configuration["AppSettings:BaseUrl"]}' style='{GetButtonStyle()}'>
+                            Bắt đầu hành trình
+                        </a>
+                    </div>
+                </div>";
+
+            return await SendEmailAsync(toEmail, subject, GetPremiumTemplate("Welcome to Flearn", content));
         }
 
         public async Task<bool> SendPasswordResetEmailAsync(string toEmail, string userName, string resetToken)
         {
-            try
-            {
-                var subject = "🔐 Yêu cầu đặt lại mật khẩu - Flearn";
-                var resetLink = $"{_configuration["AppSettings:BaseUrl"]}/reset-password?token={resetToken}";
-                var body = $@"
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset='UTF-8'>
-                        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-                        <title>Đặt lại mật khẩu</title>
-                    </head>
-                    <body style='margin:0; padding:0; font-family: Arial, sans-serif; background: linear-gradient(135deg, #ff6b6b0%, #ee5a24100%);'>
-                        <div style='max-width:600px; margin:0 auto; background-color: #ffffff;'>
-                            <!-- Header -->
-                            <div style='background: linear-gradient(135deg, #ff6b6b0%, #ee5a24100%); padding:40px20px; text-align: center;'>
-                                <h1 style='color: white; margin:0; font-size:28px; font-weight:700;'>🔐 Flearn</h1>
-                                <p style='color: rgba(255,255,255,0.9); margin:10px000; font-size:16px;'>Đặt lại mật khẩu</p>
-                            </div>
-                            
-                            <!-- Content -->
-                            <div style='padding:40px30px;'>
-                                <div style='text-align: center; margin-bottom:30px;'>
-                                    <div style='background: linear-gradient(135deg, #ff6b6b0%, #ee5a24100%); width:80px; height:80px; border-radius:50%; margin:0 auto20px; display: flex; align-items: center; justify-content: center;'>
-                                        <span style='font-size:36px; color: white;'>🔑</span>
-                                    </div>
-                                    <h2 style='color: #2c3e50; margin:0; font-size:24px; font-weight:600;'>Xin chào {userName}!</h2>
-                                </div>
-                                
-                                <div style='background-color: #fff5f5; padding:25px; border-radius:12px; margin:25px0; border-left:4px solid #ff6b6b;'>
-                                    <p style='font-size:16px; line-height:1.6; color: #333; margin:0015px0;'>
-                                        Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.
-                                    </p>
-                                    <p style='font-size:16px; line-height:1.6; color: #333; margin:0;'>
-                                        Nhấp vào nút bên dưới để tạo mật khẩu mới:
-                                    </p>
-                                </div>
-                                
-                                <div style='text-align: center; margin:30px0;'>
-                                    <a href='{resetLink}' style='display: inline-block; background: linear-gradient(135deg, #ff6b6b0%, #ee5a24100%); color: white; padding:15px35px; text-decoration: none; border-radius:50px; font-weight:600; font-size:16px; box-shadow:04px15px rgba(255,107,107,0.4);'>
-                                        🔐 Đặt lại mật khẩu
-                                    </a>
-                                </div>
-                                
-                                <div style='background-color: #fff3cd; border:1px solid #ffeaa7; padding:20px; border-radius:8px; margin:25px0;'>
-                                    <p style='margin:0010px0; color: #856404; font-weight: bold; font-size:14px;'>⚠️ Lưu ý quan trọng:</p>
-                                    <ul style='margin:0; padding-left:20px; color: #856404; font-size:14px;'>
-                                        <li>Link này sẽ hết hạn sau <strong>24 giờ</strong></li>
-                                        <li>Nếu không phải bạn yêu cầu, hãy bỏ qua email này</li>
-                                        <li>Không chia sẻ link này với bất kỳ ai</li>
-                                    </ul>
-                                </div>
-                            </div>
-                            
-                            <!-- Footer -->
-                            <div style='background-color: #f8f9fa; padding:30px; text-align: center; border-top:1px solid #e9ecef;'>
-                                <p style='color: #6c757d; margin:0010px0; font-size:14px;'>
-                                    Cần hỗ trợ? Liên hệ với chúng tôi tại 
-                                    <a href='mailto:support@flearn.com' style='color: #ff6b6b; text-decoration: none;'>support@flearn.com</a>
-                                </p>
-                                <p style='color: #6c757d; margin:0; font-size:12px;'>
-                                    ©2025 Flearn - Nền tảng học ngôn ngữ thông minh
-                                </p>
-                            </div>
-                        </div>
-                    </body>
-                    </html>";
+            var resetLink = $"{_configuration["AppSettings:BaseUrl"]}/reset-password?token={resetToken}";
+            var subject = "Yêu cầu đặt lại mật khẩu";
 
-                return await SendEmailAsync(toEmail, subject, body);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending password reset email to {Email}", toEmail);
-                return false;
-            }
+            var content = $@"
+                <div style='text-align: center;'>
+                    <h2 style='margin-top: 20px;'>Đặt lại mật khẩu</h2>
+                    <p style='color: {TextLight}; font-size: 16px;'>Chúng tôi nhận được yêu cầu thay đổi mật khẩu cho tài khoản <strong>{userName}</strong>.</p>
+                    
+                    <div style='margin: 40px 0;'>
+                        <a href='{resetLink}' style='{GetButtonStyle(DangerColor)}'>
+                            Thiết lập mật khẩu mới
+                        </a>
+                    </div>
+                    <p style='color: {TextLight}; font-size: 14px;'>Link này chỉ có hiệu lực trong 24 giờ.</p>
+                </div>";
+
+            return await SendEmailAsync(toEmail, subject, GetPremiumTemplate("Bảo mật tài khoản", content));
         }
 
         public async Task<bool> SendEmailConfirmationAsync(string toEmail, string userName, string otpCode)
         {
-            try
-            {
-                var subject = "🔐 Mã OTP xác thực đăng ký - Flearn";
-                var body = $@"
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset='UTF-8'>
-                        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-                        <title>Mã OTP xác thực</title>
-                    </head>
-                    <body style='margin:0; padding:0; font-family: Arial, sans-serif; background: linear-gradient(135deg, #3498db0%, #2980b9100%);'>
-                        <div style='max-width:600px; margin:0 auto; background-color: #ffffff;'>
-                            <!-- Header -->
-                            <div style='background: linear-gradient(135deg, #3498db0%, #2980b9100%); padding:40px20px; text-align: center;'>
-                                <h1 style='color: white; margin:0; font-size:28px; font-weight:700;'>🛡️ Flearn</h1>
-                                <p style='color: rgba(255,255,255,0.9); margin:10px000; font-size:16px;'>Xác thực tài khoản</p>
-                            </div>
-                            
-                            <!-- Content -->
-                            <div style='padding:40px30px;'>
-                                <div style='text-align: center; margin-bottom:30px;'>
-                                    <div style='background: linear-gradient(135deg, #3498db0%, #2980b9100%); width:80px; height:80px; border-radius:50%; margin:0 auto20px; display: flex; align-items: center; justify-content: center;'>
-                                        <span style='font-size:36px; color: white;'>📧</span>
-                                    </div>
-                                    <h2 style='color: #2c3e50; margin:0; font-size:24px; font-weight:600;'>Xin chào {userName}!</h2>
-                                </div>
-                                
-                                <div style='background-color: #f0f8ff; padding:25px; border-radius:12px; margin:25px0; border-left:4px solid #3498db;'>
-                                    <p style='font-size:16px; line-height:1.6; color: #333; margin:0015px0;'>
-                                        Để hoàn tất đăng ký tài khoản, vui lòng sử dụng mã OTP bên dưới:
-                                    </p>
-                                </div>
-                                
-                                <!-- OTP Code -->
-                                <div style='text-align: center; margin:40px0;'>
-                                    <div style='background: linear-gradient(135deg, #3498db0%, #2980b9100%); color: white; font-size:36px; font-weight: bold; padding:25px20px; border-radius:15px; letter-spacing:12px; display: inline-block; box-shadow:08px25px rgba(52,152,219,0.3);'>
-                                        {otpCode}
-                                    </div>
-                                    <p style='color: #7f8c8d; margin:15px000; font-size:14px;'>Mã xác thực OTP của bạn</p>
-                                </div>
-                                
-                                <div style='background-color: #fff3cd; border:1px solid #ffeaa7; padding:20px; border-radius:8px; margin:25px0;'>
-                                    <p style='margin:0010px0; color: #856404; font-weight: bold; font-size:14px;'>⚠️ Lưu ý quan trọng:</p>
-                                    <ul style='margin:0; padding-left:20px; color: #856404; font-size:14px;'>
-                                        <li>Mã này sẽ hết hạn sau <strong>5 phút</strong></li>
-                                        <li>Vui lòng hoàn tất đăng ký trước khi mã hết hạn</li>
-                                        <li>Không chia sẻ mã này với bất kỳ ai</li>
-                                        <li>Nếu không phải bạn đăng ký, hãy bỏ qua email này</li>
-                                    </ul>
-                                </div>
-                                
-                                <div style='text-align: center; margin:30px0;'>
-                                    <p style='color: #7f8c8d; font-size:14px; margin:0;'>
-                                        Sau khi xác thực thành công, bạn sẽ có thể trải nghiệm đầy đủ các tính năng của Flearn! 🎉
-                                    </p>
-                                </div>
-                            </div>
-                            
-                            <!-- Footer -->
-                            <div style='background-color: #f8f9fa; padding:30px; text-align: center; border-top:1px solid #e9ecef;'>
-                                <p style='color: #6c757d; margin:0010px0; font-size:14px;'>
-                                    Cần hỗ trợ? Liên hệ với chúng tôi tại 
-                                    <a href='mailto:support@flearn.com' style='color: #3498db; text-decoration: none;'>support@flearn.com</a>
-                                </p>
-                                <p style='color: #6c757d; margin:0; font-size:12px;'>
-                                    ©2025 Flearn - Nền tảng học ngôn ngữ thông minh<br/>
-                                    📧 Bạn nhận được email này vì đã yêu cầu đăng ký tài khoản Flearn
-                                </p>
-                            </div>
-                        </div>
-                    </body>
-                    </html>";
-
-                return await SendEmailAsync(toEmail, subject, body);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending OTP email to {Email}", toEmail);
-                return false;
-            }
+            return await SendOtpEmailBase(toEmail, userName, otpCode, "Xác thực tài khoản");
         }
 
-        // New: resend OTP
         public async Task<bool> SendOtpResendAsync(string toEmail, string userName, string otpCode)
         {
-            try
-            {
-                var subject = "🔁 Mã OTP - Flearn (Gửi lại)";
-                var body = $@"
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset='UTF-8'>
-                        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-                        <title>Mã OTP</title>
-                    </head>
-                    <body style='margin:0;padding:0;font-family:Arial,sans-serif;background:#f0f2f5;'>
-                        <div style='max-width:600px;margin:0 auto;background:#ffffff;padding:30px;border-radius:8px;'>
-                            <h2 style='color:#2c3e50;'>Xin chào {userName},</h2>
-                            <p style='color:#333;'>Bạn đã yêu cầu gửi lại mã OTP. Mã OTP của bạn là:</p>
-                            <div style='font-size:32px;font-weight:bold;background:#3498db;color:#fff;padding:16px;border-radius:8px;display:inline-block;margin:10px0;'>{otpCode}</div>
-                            <p style='color:#6c757d;'>Mã sẽ hết hạn sau 5 phút. Nếu bạn không yêu cầu, vui lòng bỏ qua email này.</p>
-                        </div>
-                    </body>
-                    </html>";
-
-                return await SendEmailAsync(toEmail, subject, body);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending OTP resend email to {Email}", toEmail);
-                return false;
-            }
+            return await SendOtpEmailBase(toEmail, userName, otpCode, "Mã xác thực mới");
         }
 
-        // New: password reset OTP
         public async Task<bool> SendPasswordResetOtpAsync(string toEmail, string userName, string otpCode)
         {
-            try
-            {
-                var subject = "🔐 Mã OTP đặt lại mật khẩu - Flearn";
-                var body = $@"
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset='UTF-8'>
-                        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-                        <title>Mã OTP đặt lại mật khẩu</title>
-                    </head>
-                    <body style='margin:0;padding:0;font-family:Arial,sans-serif;background:#f8f9fa;'>
-                        <div style='max-width:600px;margin:0 auto;background:#ffffff;padding:30px;border-radius:8px;'>
-                            <h2 style='color:#2c3e50;'>Xin chào {userName},</h2>
-                            <p style='color:#333;'>Bạn đã yêu cầu đặt lại mật khẩu. Vui lòng sử dụng mã OTP sau để xác nhận:</p>
-                            <div style='font-size:32px;font-weight:bold;background:#ff6b6b;color:#fff;padding:16px;border-radius:8px;display:inline-block;margin:10px0;'>{otpCode}</div>
-                            <p style='color:#6c757d;'>Mã sẽ hết hạn sau 5 phút. Nếu bạn không yêu cầu, hãy bỏ qua email này.</p>
-                        </div>
-                    </body>
-                    </html>";
+            return await SendOtpEmailBase(toEmail, userName, otpCode, "Quên mật khẩu", true);
+        }
 
-                return await SendEmailAsync(toEmail, subject, body);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending password reset OTP to {Email}", toEmail);
-                return false;
-            }
+        // --- 2. TEACHER & APPLICATION EMAILS ---
+
+        public async Task<bool> SendTeacherApplicationSubmittedAsync(string toEmail, string userName)
+        {
+            var subject = "Đã nhận đơn ứng tuyển";
+
+            var content = $@"
+                <div style='text-align: center;'>
+                    <h2 style='margin-top: 20px;'>Đang xét duyệt hồ sơ</h2>
+                    <p style='color: {TextLight}; font-size: 16px;'>Chào {userName}, cảm ơn bạn đã quan tâm đến vị trí Giáo viên tại Flearn.</p>
+                    
+                    <div style='margin: 30px 0;'>
+                        <div style='background-color: #DEEBFF; color: {PrimaryColor}; padding: 20px 40px; border-radius: 8px; font-weight: 700; font-size: 18px; display: inline-block;'>
+                            Dự kiến phản hồi: 3-5 ngày làm việc
+                        </div>
+                    </div>
+                    
+                    <p style='color: {TextLight}; font-size: 14px;'>Vui lòng kiểm tra email thường xuyên để nhận cập nhật.</p>
+                </div>";
+
+            return await SendEmailAsync(toEmail, subject, GetPremiumTemplate("Tuyển dụng", content));
+        }
+
+        public async Task<bool> SendTeacherApplicationApprovedAsync(string toEmail, string userName)
+        {
+            var subject = "Chúc mừng Giáo viên mới!";
+
+            var content = $@"
+                <div style='text-align: center;'>
+                    <h2 style='color: {SuccessColor}; margin-top: 20px;'>Chúc mừng {userName}!</h2>
+                    <p class='lead-text'>Hồ sơ của bạn đã được chấp thuận.</p>
+                    <p style='color: {TextLight};'>Giờ đây bạn đã là một phần của đội ngũ giáo viên Flearn. Hãy bắt đầu tạo khóa học đầu tiên ngay thôi.</p>
+                    
+                    <div style='margin: 40px 0;'>
+                        <a href='{_configuration["AppSettings:BaseUrl"]}/teacher/dashboard' style='{GetButtonStyle(SuccessColor)}'>
+                            Vào Dashboard Giáo viên
+                        </a>
+                    </div>
+                </div>";
+
+            return await SendEmailAsync(toEmail, subject, GetPremiumTemplate("Kết quả ứng tuyển", content));
+        }
+
+        public async Task<bool> SendTeacherApplicationRejectedAsync(string toEmail, string userName, string reason)
+        {
+            var subject = "Thông báo kết quả ứng tuyển";
+
+            var content = $@"
+                <div>
+                    <h2 style='margin-top: 10px;'>Thông báo kết quả</h2>
+                    <p style='color: {TextLight};'>Chào {userName}, cảm ơn bạn đã dành thời gian ứng tuyển.</p>
+                    <p style='color: {TextLight};'>Rất tiếc, sau khi xem xét kỹ lưỡng, hồ sơ của bạn chưa phù hợp ở thời điểm hiện tại.</p>
+                    
+                    <div style='border-left: 4px solid {DangerColor}; background: #FFF5F5; padding: 25px; border-radius: 0 8px 8px 0; margin: 30px 0;'>
+                        <div style='font-size: 12px; color: {DangerColor}; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;'>Lý do từ chối</div>
+                        <div style='color: {TextDark}; font-weight: 600; font-size: 16px;'>{reason}</div>
+                    </div>
+                    <p style='color: {TextLight}; font-size: 14px;'>Cánh cửa Flearn vẫn luôn mở, bạn có thể cập nhật hồ sơ và thử lại sau.</p>
+                </div>";
+
+            return await SendEmailAsync(toEmail, subject, GetPremiumTemplate("Tuyển dụng", content));
+        }
+
+        // --- 3. ACCOUNT & TRANSACTIONS ---
+
+        public async Task SendBanNotificationAsync(string toEmail, string fullName, string reason)
+        {
+            var subject = "⚠️ Thông báo tạm khóa tài khoản";
+
+            var content = $@"
+                <div style='text-align: center;'>
+                    <h2 style='color: {DangerColor}; margin-top: 20px;'>Tài khoản bị tạm dừng</h2>
+                    <p style='color: {TextLight}; margin-bottom: 30px;'>Chúng tôi đã phát hiện hoạt động vi phạm chính sách trên tài khoản <strong>{fullName}</strong>.</p>
+                    
+                    <div style='background-color: #FFF5F5; padding: 25px; border-radius: 12px; margin: 0 auto; text-align: left; border: 1px solid #FFBDAD;'>
+                        <div style='color: {DangerColor}; font-weight: 700; text-transform: uppercase; font-size: 12px; margin-bottom: 8px;'>Nguyên nhân cụ thể</div>
+                        <div style='color: {TextDark}; font-weight: 600; font-size: 16px;'>{reason}</div>
+                    </div>
+                    
+                    <p style='color: {TextLight}; font-size: 14px; margin-top: 30px;'>Nếu bạn cho rằng đây là sự nhầm lẫn, vui lòng liên hệ bộ phận hỗ trợ.</p>
+                </div>";
+
+            await SendEmailAsync(toEmail, subject, GetPremiumTemplate("Thông báo vi phạm", content));
+        }
+
+        public async Task SendUnbanNotificationAsync(string toEmail, string fullName)
+        {
+            var subject = "Tài khoản đã được mở lại";
+
+            var content = $@"
+                <div style='text-align: center;'>
+                    <h2 style='color: {SuccessColor}; margin-top: 20px;'>Khôi phục thành công!</h2>
+                    <p class='lead-text'>Chào {fullName}, tài khoản của bạn đã hoạt động bình thường trở lại.</p>
+                    <div style='margin: 40px 0;'>
+                        <a href='{_configuration["AppSettings:BaseUrl"]}/login' style='{GetButtonStyle(PrimaryColor)}'>Đăng nhập ngay</a>
+                    </div>
+                </div>";
+
+            await SendEmailAsync(toEmail, subject, GetPremiumTemplate("Trạng thái tài khoản", content));
+        }
+
+        public async Task<bool> SendRefundRequestInstructionAsync(string toEmail, string userName, string className, DateTime classStartDateTime, string? reason = null)
+        {
+            var subject = "Lớp học bị hủy & Hướng dẫn hoàn tiền";
+
+            var content = $@"
+                <div>
+                    <h2 style='margin-top: 10px;'>Lớp học đã bị hủy</h2>
+                    <p style='color: {TextLight};'>Chào {userName}, rất tiếc lớp học dưới đây không thể diễn ra theo kế hoạch:</p>
+                    
+                    <div style='background: #FFFAE6; padding: 25px; border-radius: 12px; margin: 30px 0; border: 1px solid #FFC400;'>
+                        <div style='font-size: 20px; font-weight: 800; color: {TextDark}; margin-bottom: 5px;'>{className}</div>
+                        <div style='color: {TextLight}; font-weight: 500;'>📅 {classStartDateTime:dd/MM/yyyy HH:mm}</div>
+                        {(reason != null ? $"<div style='margin-top: 15px; padding-top: 15px; border-top: 1px dashed #E6B200; color: {TextDark}; font-weight: 500;'><strong>Lý do:</strong> {reason}</div>" : "")}
+                    </div>
+
+                    <div style='margin-top: 30px;'>
+                        <h3 style='color: {PrimaryColor}; font-size: 18px; margin-bottom: 15px;'>Hướng dẫn hoàn tiền:</h3>
+                        <ol style='color: {TextDark}; padding-left: 20px; line-height: 1.8; font-weight: 600;'>
+                            <li>Đăng nhập vào Website Flearn.</li>
+                            <li>Vào mục <strong>""Lớp học của tôi""</strong>.</li>
+                            <li>Chọn lớp trên và nhấn nút <strong>""Yêu cầu hoàn tiền""</strong>.</li>
+                        </ol>
+                    </div>
+                </div>";
+
+            return await SendEmailAsync(toEmail, subject, GetPremiumTemplate("Hoàn tiền", content));
+        }
+
+        public async Task<bool> SendPayoutRequestApprovedAsync(string toEmail, string teacherName, decimal amount, string bankName, string accountNumber, string? transactionRef = null, string? adminNote = null)
+        {
+            var subject = "💰 Tiền đã về tài khoản";
+
+            var content = $@"
+                <div style='text-align: center;'>
+                    <h2 style='color: {SuccessColor}; margin-top: 20px;'>Giao dịch thành công</h2>
+                    <p style='color: {TextLight}; margin-bottom: 30px;'>Yêu cầu rút tiền của <strong>{teacherName}</strong> đã hoàn tất.</p>
+
+                    <div style='background-color: #FFFFFF; border: 2px solid #F4F5F7; border-radius: 16px; padding: 30px; margin: 20px 0; box-shadow: 0 8px 20px rgba(0,0,0,0.06); text-align: left;'>
+                        <div style='display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #F4F5F7; padding-bottom: 20px; margin-bottom: 20px;'>
+                            <span style='color: {TextLight}; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 12px;'>Số tiền nhận</span>
+                            <span style='color: {SuccessColor}; font-weight: 800; font-size: 32px;'>{amount:N0} đ</span>
+                        </div>
+                        <div style='font-size: 16px; color: {TextDark}; line-height: 1.8;'>
+                            <div style='margin-bottom: 8px;'><strong>Ngân hàng:</strong> {bankName}</div>
+                            <div style='margin-bottom: 8px;'><strong>STK:</strong> {accountNumber}</div>
+                            <div style='color: {TextLight}; font-size: 13px; margin-top: 15px; font-family: monospace;'>Mã GD: {transactionRef ?? "N/A"}</div>
+                        </div>
+                         {(!string.IsNullOrWhiteSpace(adminNote) ? $"<div style='margin-top: 20px; padding: 15px; background: #F4F5F7; border-radius: 8px; font-size: 14px; color: {TextDark}; font-weight: 500;'>💬 <strong>Ghi chú:</strong> {adminNote}</div>" : "")}
+                    </div>
+                    <p style='color: {TextLight}; font-size: 13px; margin-top: 25px;'>Vui lòng kiểm tra tài khoản ngân hàng của bạn.</p>
+                </div>";
+
+            return await SendEmailAsync(toEmail, subject, GetPremiumTemplate("Thanh toán", content));
+        }
+
+        public async Task<bool> SendPayoutRequestRejectedAsync(string toEmail, string teacherName, decimal amount, string rejectionReason)
+        {
+            var subject = "Yêu cầu rút tiền không thành công";
+            var content = $@"
+                <div style='text-align: center;'>
+                    <h2 style='color: {DangerColor}; margin-top: 20px;'>Giao dịch bị từ chối</h2>
+                    <p style='color: {TextLight};'>Số tiền <strong>{amount:N0} đ</strong> đã được hoàn lại vào ví Flearn.</p>
+                    
+                    <div style='background: #FFF5F5; color: {TextDark}; padding: 20px; border-radius: 12px; margin: 30px auto; display: inline-block; width: 100%; box-sizing: border-box; text-align: left; border: 1px solid #FFBDAD;'>
+                        <div style='color: {DangerColor}; font-weight: 700; font-size: 12px; text-transform: uppercase; margin-bottom: 8px;'>Lý do từ chối</div>
+                        <div style='font-weight: 600; font-size: 16px;'>{rejectionReason}</div>
+                    </div>
+                    <p style='color: {TextLight}; font-size: 14px;'>Vui lòng kiểm tra lại thông tin và thử lại.</p>
+                </div>";
+            return await SendEmailAsync(toEmail, subject, GetPremiumTemplate("Thanh toán", content));
+        }
+
+        public async Task<bool> SendRefundRequestConfirmationAsync(string toEmail, string userName, string className, string refundRequestId)
+        {
+            var subject = "Đã tiếp nhận yêu cầu hoàn tiền";
+            var content = $@"
+                <div style='text-align: center;'>
+                    <h2 style='margin-top: 20px;'>Yêu cầu đã được gửi</h2>
+                    <p style='color: {TextLight};'>Chúng tôi đang xử lý yêu cầu hoàn tiền cho lớp <strong>{className}</strong>.</p>
+                    
+                    <div style='background: #F4F5F7; padding: 25px; border-radius: 12px; margin: 35px auto; display: inline-block; border: 2px solid #EBECF0;'>
+                        <span style='display: block; font-size: 12px; color: {TextLight}; text-transform: uppercase; letter-spacing: 1px; font-weight: 800; margin-bottom: 10px;'>Mã tham chiếu</span>
+                        <span style='display: block; font-size: 28px; color: {TextDark}; font-weight: 800; font-family: monospace;'>{refundRequestId}</span>
+                    </div>
+                    
+                    <p style='color: {TextLight}; font-size: 14px;'>Thời gian xử lý: <strong>3-5 ngày làm việc</strong>.</p>
+                </div>";
+            return await SendEmailAsync(toEmail, subject, GetPremiumTemplate("Hoàn tiền", content));
+        }
+
+        public async Task<bool> SendRefundRequestApprovedAsync(string toEmail, string userName, string className, decimal refundAmount, string? proofImageUrl = null, string? adminNote = null)
+        {
+            var subject = "Hoàn tiền thành công";
+
+            var content = $@"
+                <div style='text-align: center;'>
+                    <h2 style='color: {SuccessColor}; margin-top: 20px;'>Yêu cầu được chấp nhận</h2>
+                    <p style='color: {TextLight};'>Chúng tôi đã hoàn tiền cho lớp <strong>{className}</strong>.</p>
+                    
+                    <div style='text-align: center; margin: 40px 0;'>
+                        <div style='display: inline-block; padding: 20px 50px; border-radius: 60px; background-color: #E3FCEF; color: {SuccessColor}; font-weight: 800; font-size: 36px; box-shadow: 0 4px 15px rgba(54, 179, 126, 0.15);'>
+                            +{refundAmount:N0} đ
+                        </div>
+                    </div>
+
+                    {(!string.IsNullOrWhiteSpace(adminNote) ? $"<p style='background:#F4F5F7; padding:15px; border-radius:8px; color:{TextDark}; font-size:15px; margin: 20px 0;'>💬 <strong>Ghi chú:</strong> {adminNote}</p>" : "")}
+                    
+                    {(proofImageUrl != null ? $"<div style='margin-top: 30px;'><a href='{proofImageUrl}' style='color: {PrimaryColor}; font-weight: 700; text-decoration: none; border-bottom: 2px solid {PrimaryColor}; padding-bottom: 4px;'>📎 Xem biên lai chuyển khoản</a></div>" : "")}
+                    
+                    <p style='color: {TextLight}; font-size: 13px; text-align: center; margin-top: 30px;'>Tiền sẽ về tài khoản trong 1-3 ngày làm việc.</p>
+                </div>";
+            return await SendEmailAsync(toEmail, subject, GetPremiumTemplate("Hoàn tiền", content));
+        }
+
+        public async Task<bool> SendRefundRequestRejectedAsync(string toEmail, string userName, string className, string rejectionReason)
+        {
+            var subject = "Từ chối hoàn tiền";
+            var content = $@"
+                <div style='text-align: center;'>
+                    <h2 style='color: {DangerColor}; margin-top: 20px;'>Yêu cầu bị từ chối</h2>
+                    <p style='color: {TextLight}; margin-bottom: 30px;'>Yêu cầu hoàn tiền cho lớp <strong>{className}</strong> không đủ điều kiện.</p>
+                    
+                    <div style='background-color: #FFF5F5; padding: 25px; border-radius: 12px; margin: 0 auto; text-align: left; border: 1px solid #FFBDAD; width: 100%; box-sizing: border-box;'>
+                        <div style='color: {DangerColor}; font-weight: 700; text-transform: uppercase; font-size: 12px; margin-bottom: 8px;'>Lý do</div>
+                        <div style='color: {TextDark}; font-weight: 600; font-size: 16px;'>{rejectionReason}</div>
+                    </div>
+                    <p style='color: {TextLight}; font-size: 14px; margin-top: 30px;'>Vui lòng liên hệ bộ phận hỗ trợ nếu bạn cần giải thích thêm.</p>
+                </div>";
+            return await SendEmailAsync(toEmail, subject, GetPremiumTemplate("Hoàn tiền", content));
+        }
+
+        // --- HELPERS ---
+
+        private async Task<bool> SendOtpEmailBase(string toEmail, string userName, string otpCode, string title, bool isWarning = false)
+        {
+            var subject = $"{title} - Mã xác thực";
+            var color = isWarning ? DangerColor : PrimaryColor;
+
+            var content = $@"
+                <div style='text-align: center;'>
+                    <h2 style='margin-top: 20px;'>{title}</h2>
+                    <p style='color: {TextLight}; font-size: 16px;'>Xin chào {userName}, mã xác thực của bạn là:</p>
+                    
+                    <div style='margin: 40px 0;'>
+                        <span style='font-family: monospace; font-size: 42px; font-weight: 800; color: {color}; letter-spacing: 8px; background: #FFFFFF; padding: 25px 50px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 2px solid {color}; display: inline-block;'>
+                            {otpCode}
+                        </span>
+                    </div>
+                    <p style='color: {TextLight}; font-size: 14px;'>Mã có hiệu lực trong 5 phút. Tuyệt đối không chia sẻ với ai.</p>
+                </div>";
+
+            return await SendEmailAsync(toEmail, subject, GetPremiumTemplate(title, content));
         }
 
         private async Task<bool> SendEmailAsync(string toEmail, string subject, string body)
@@ -349,7 +368,6 @@ namespace BLL.Services.Auth
                 };
 
                 mailMessage.To.Add(toEmail);
-
                 await smtpClient.SendMailAsync(mailMessage);
                 return true;
             }
@@ -360,647 +378,111 @@ namespace BLL.Services.Auth
             }
         }
 
-        public async Task<bool> SendTeacherApplicationSubmittedAsync(string toEmail, string userName)
+        /// <summary>
+        /// MASTER TEMPLATE
+        /// </summary>
+        /// <summary>
+        /// MASTER TEMPLATE
+        /// </summary>
+        private string GetPremiumTemplate(string preheader, string innerHtml)
         {
-            try
-            {
-                var subject = "📝 Đơn ứng tuyển giáo viên đã được gửi - Flearn";
-                var body = $@"
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                    <meta charset='UTF-8'>
-                    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-                    <title>Đơn ứng tuyển đã được gửi</title>
-                    </head>
-                    <body style='margin:0; padding:0; font-family: Arial, sans-serif; background: linear-gradient(135deg, #28a7450%, #20c997100%);'>
-                    <div style='max-width:600px; margin:0 auto; background-color: #ffffff;'>
-                    <!-- Header -->
-                    <div style='background: linear-gradient(135deg, #28a7450%, #20c997100%); padding:40px20px; text-align: center;'>
-                    <h1 style='color: white; margin:0; font-size:28px; font-weight:700;'>🎓 Flearn</h1>
-                    <p style='color: rgba(255,255,255,0.9); margin:10px000; font-size:16px;'>Ứng tuyển giáo viên</p>
-                    </div>
-                    
-                    <!-- Content -->
-                    <div style='padding:40px30px;'>
-                    <div style='text-align: center; margin-bottom:30px;'>
-                    <div style='background: linear-gradient(135deg, #28a7450%, #20c997100%); width:80px; height:80px; border-radius:50%; margin:0 auto20px; display: flex; align-items: center; justify-content: center;'>
-                    <span style='font-size:36px; color: white;'>📝</span>
-                    </div>
-                    <h2 style='color: #2c3e50; margin:0; font-size:24px; font-weight:600;'>Xin chào {userName}!</h2>
-                    </div>
-                    
-                    <div style='background-color: #f0fff4; padding:25px; border-radius:12px; margin:25px0; border-left:4px solid #28a745;'>
-                    <p style='font-size:16px; line-height:1.6; color: #333; margin:0015px0;'>
-                    Cảm ơn bạn đã gửi đơn ứng tuyển làm giáo viên tại <strong>Flearn</strong>!
-                    </p>
-                    <p style='font-size:16px; line-height:1.6; color: #333; margin:0;'>
-                    Đơn ứng tuyển của bạn đã được tiếp nhận và đang trong quá trình xem xét.
-                    </p>
-                    </div>
-                    
-                    <div style='background: linear-gradient(135deg, #28a7450%, #20c997100%); padding:25px; border-radius:12px; text-align: center; margin:30px0;'>
-                    <h3 style='color: white; margin:0015px0; font-size:20px;'>✅ Đơn đã được gửi thành công!</h3>
-                    <p style='color: rgba(255,255,255,0.9); margin:0; font-size:16px;'>Chúng tôi sẽ phản hồi trong vòng 3-5 ngày làm việc</p>
-                    </div>
-                    
-                    <div style='background-color: #fff3cd; border:1px solid #ffeaa7; padding:20px; border-radius:8px; margin:25px0;'>
-                    <p style='margin:0; color: #856404; font-size:14px; text-align: center;'>
-                    💡 <strong>Lưu ý:</strong> Bạn có thể theo dõi trạng thái đơn ứng tuyển trong tài khoản của mình
-                    </p>
-                    </div>
-                    </div>
-                    
-                    <!-- Footer -->
-                    <div style='background-color: #f8f9fa; padding:30px; text-align: center; border-top:1px solid #e9ecef;'>
-                    <p style='color: #6c757d; margin:0010px0; font-size:14px;'>
-                    Cần hỗ trợ? Liên hệ với chúng tôi tại 
-                    <a href='mailto:support@flearn.com' style='color: #28a745; text-decoration: none;'>support@flearn.com</a>
-                    </p>
-                    <p style='color: #6c757d; margin:0; font-size:12px;'>
-                    ©2025 Flearn - Nền tảng học ngôn ngữ thông minh
-                    </p>
-                    </div>
-                    </div>
-                    </body>
-                    </html>";
+            var year = DateTime.Now.Year;
+            var appUrl = _configuration["AppSettings:BaseUrl"];
+            var logoUrl = "https://res.cloudinary.com/dzo85c2kz/image/upload/v1764168994/logooo2_zanl1e.png";
 
-                return await SendEmailAsync(toEmail, subject, body);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending teacher application submitted email to {Email}", toEmail);
-                return false;
-            }
-        }
+        
+            var uniqueId = Guid.NewGuid().ToString();
+            var sentTime = TimeHelper.GetVietnamTime().ToString("dd/MM/yyyy HH:mm:ss");
 
-        public async Task<bool> SendTeacherApplicationApprovedAsync(string toEmail, string userName)
-        {
-            try
-            {
-                var subject = "🎉 Chúc mừng! Đơn ứng tuyển giáo viên đã được duyệt - Flearn";
-                var body = $@"
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                    <meta charset='UTF-8'>
-                    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-                    <title>Đơn ứng tuyển được duyệt</title>
-                    </head>
-                    <body style='margin:0; padding:0; font-family: Arial, sans-serif; background: linear-gradient(135deg, #ffc1070%, #ff8800100%);'>
-                    <div style='max-width:600px; margin:0 auto; background-color: #ffffff;'>
-                    <!-- Header -->
-                    <div style='background: linear-gradient(135deg, #ffc1070%, #ff8800100%); padding:40px20px; text-align: center;'>
-                    <h1 style='color: white; margin:0; font-size:28px; font-weight:700;'>🎓 Flearn</h1>
-                    <p style='color: rgba(255,255,255,0.9); margin:10px000; font-size:16px;'>Chào mừng giáo viên mới!</p>
+            return $@"
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset='UTF-8'>
+                <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+                <title>Flearn Notification</title>
+                <link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap' rel='stylesheet'>
+                <style>
+                    body {{ margin: 0; padding: 0; background-color: {BgBody}; font-family: 'Inter', Helvetica, Arial, sans-serif; color: {TextDark}; -webkit-font-smoothing: antialiased; }}
+                    h1, h2, h3 {{ font-family: 'Inter', sans-serif; color: {TextDark}; font-weight: 800; letter-spacing: -0.8px; margin: 0; }}
+                    h2 {{ font-size: 32px; line-height: 1.2; margin-bottom: 12px; }}
+                    p {{ margin: 0 0 15px; line-height: 1.6; }}
+                    .lead-text {{ font-size: 18px; color: {TextLight}; font-weight: 500; }}
+                    .wrapper {{ width: 100%; table-layout: fixed; background-color: {BgBody}; padding: 40px 0; }}
+                    .container {{ max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.06); }}
+                    .header {{ padding: 30px 20px 10px; text-align: center; }}
+                    .content {{ padding: 10px 50px 50px; }}
+                    .footer {{ background-color: #FAFBFC; padding: 30px; text-align: center; font-size: 13px; color: {TextLight}; border-top: 1px solid #F0F2F5; }}
+                    .footer a {{ color: {TextLight}; text-decoration: none; font-weight: 600; }}
+                    .footer a:hover {{ color: {PrimaryColor}; }}
+                    @media only screen and (max-width: 640px) {{
+                        .wrapper {{ padding: 15px 10px; }}
+                        .container {{ width: 100% !important; border-radius: 16px; }}
+                        .header {{ padding: 25px 15px 0px; }}
+                        .content {{ padding: 15px 25px 40px; }}
+                        h2 {{ font-size: 24px !important; margin-bottom: 8px; }}
+                        .logo-img {{ width: 180px !important; height: auto !important; }}
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class='wrapper'>
+                    <div style='display:none;font-size:1px;color:{BgBody};line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;'>
+                        {preheader}
                     </div>
-                    
-                    <!-- Content -->
-                    <div style='padding:40px30px;'>
-                    <div style='text-align: center; margin-bottom:30px;'>
-                    <div style='background: linear-gradient(135deg, #ffc1070%, #ff8800100%); width:80px; height:80px; border-radius:50%; margin:0 auto20px; display: flex; align-items: center; justify-content: center;'>
-                    <span style='font-size:36px; color: white;'>🎉</span>
-                    </div>
-                    <h2 style='color: #2c3e50; margin:0; font-size:24px; font-weight:600;'>Chúc mừng {userName}!</h2>
-                    </div>
-                    
-                    <div style='background-color: #fff8e1; padding:25px; border-radius:12px; margin:25px0; border-left:4px solid #ffc107;'>
-                    <p style='font-size:16px; line-height:1.6; color: #333; margin:0015px0;'>
-                    Đơn ứng tuyển làm giáo viên của bạn đã được <strong>phê duyệt</strong>!
-                    </p>
-                    <p style='font-size:16px; line-height:1.6; color: #333; margin:0;'>
-                    Chào mừng bạn gia nhập đội ngũ giáo viên Flearn. Bạn giờ đây có thể tạo và quản lý các khóa học của mình.
-                    </p>
-                    </div>
-                    
-                    <div style='background: linear-gradient(135deg, #ffc1070%, #ff8800100%); padding:25px; border-radius:12px; text-align: center; margin:30px0;'>
-                    <h3 style='color: white; margin:0015px0; font-size:20px;'>🌟 Bạn giờ đây là giáo viên Flearn!</h3>
-                    <p style='color: rgba(255,255,255,0.9); margin:0; font-size:16px;'>Hãy bắt đầu tạo khóa học đầu tiên của bạn</p>
-                    </div>
-                    
-                    <div style='text-align: center; margin:30px0;'>
-                    <a href='{_configuration["AppSettings:BaseUrl"]}/teacher/dashboard' style='display: inline-block; background: linear-gradient(135deg, #ffc1070%, #ff8800100%); color: white; padding:15px35px; text-decoration: none; border-radius:50px; font-weight:600; font-size:16px; box-shadow:04px15px rgba(255,193,7,0.4);'>
-                    🚀 Bắt đầu giảng dạy
-                    </a>
-                    </div>
-                    </div>
-                    
-                    <!-- Footer -->
-                    <div style='background-color: #f8f9fa; padding:30px; text-align: center; border-top:1px solid #e9ecef;'>
-                    <p style='color: #6c757d; margin:0010px0; font-size:14px;'>
-                    Cần hỗ trợ? Liên hệ với chúng tôi tại 
-                    <a href='mailto:support@flearn.com' style='color: #ffc107; text-decoration: none;'>support@flearn.com</a>
-                    </p>
-                    <p style='color: #6c757d; margin:0; font-size:12px;'>
-                    ©2025 Flearn - Nền tảng học ngôn ngữ thông minh
-                    </p>
-                    </div>
-                    </div>
-                    </body>
-                    </html>";
 
-                return await SendEmailAsync(toEmail, subject, body);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending teacher application approved email to {Email}", toEmail);
-                return false;
-            }
-        }
+                    <div class='container'>
+                        <div class='header'>
+                            <a href='{appUrl}'>
+                                <img src='{logoUrl}' alt='Flearn' class='logo-img' 
+                                     width='240' 
+                                     style='display: block; margin: 0 auto; width: 240px; height: auto; border: 0;' />
+                            </a>
+                        </div>
 
-        public async Task<bool> SendTeacherApplicationRejectedAsync(string toEmail, string userName, string reason)
-        {
-            try
-            {
-                var subject = "📋 Thông báo về đơn ứng tuyển giáo viên - Flearn";
-                var body = $@"
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset='UTF-8'>
-                        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-                        <title>Thông báo đơn ứng tuyển</title>
-                    </head>
-                    <body style='margin:0; padding:0; font-family: Arial, sans-serif; background: linear-gradient(135deg, #6c757d0%, #495057100%);'>
-                        <div style='max-width:600px; margin:0 auto; background-color: #ffffff;'>
-                            <!-- Header -->
-                            <div style='background: linear-gradient(135deg, #6c757d0%, #495057100%); padding:40px20px; text-align: center;'>
-                                <h1 style='color: white; margin:0; font-size:28px; font-weight:700;'>🎓 Flearn</h1>
-                                <p style='color: rgba(255,255,255,0.9); margin:10px000; font-size:16px;'>Thông báo đơn ứng tuyển</p>
-                            </div>
+                        <div class='content'>
+                            {innerHtml}
+                        </div>
+
+                        <div class='footer'>
+                            <p style='margin-bottom: 15px; font-weight: 500;'>&copy; {year} Flearn. Nền tảng học nói đa ngôn ngữ.</p>
+                            <p style='margin-bottom: 0;'>
+                                <a href='{appUrl}'>Trang chủ</a> • 
+                                <a href='#'>Hỗ trợ</a>
+                            </p>
                             
-                            <!-- Content -->
-                            <div style='padding:40px30px;'>
-                                <div style='text-align: center; margin-bottom:30px;'>
-                                    <div style='background: linear-gradient(135deg, #6c757d0%, #495057100%); width:80px; height:80px; border-radius:50%; margin:0 auto20px; display: flex; align-items: center; justify-content: center;'>
-                                        <span style='font-size:36px; color: white;'>📋</span>
-                                    </div>
-                                    <h2 style='color: #2c3e50; margin:0; font-size:24px; font-weight:600;'>Xin chào {userName}!</h2>
-                                </div>
-                                
-                                <div style='background-color: #f8f9fa; padding:25px; border-radius:12px; margin:25px0; border-left:4px solid #6c757d;'>
-                                    <p style='font-size:16px; line-height:1.6; color: #333; margin:0015px0;'>
-                                        Cảm ơn bạn đã quan tâm và gửi đơn ứng tuyển làm giáo viên tại Flearn.
-                                    </p>
-                                    <p style='font-size:16px; line-height:1.6; color: #333; margin:0;'>
-                                        Sau khi xem xét kỹ lưỡng, chúng tôi rất tiếc phải thông báo rằng đơn ứng tuyển của bạn chưa được chấp nhận lần này.
-                                    </p>
-                                </div>
-                                
-                                <div style='background-color: #f8d7da; padding:20px; border-radius:8px; margin:25px0; border-left:4px solid #dc3545;'>
-                                    <p style='margin:0010px0; color: #721c24; font-weight: bold; font-size:14px;'>Lý do:</p>
-                                    <p style='margin:0; color: #721c24; font-size:14px;'>{reason}</p>
-                                </div>
-                                
-                                <div style='background-color: #d1ecf1; border:1px solid #b3d7df; padding:20px; border-radius:8px; margin:25px0;'>
-                                    <p style='margin:0; color: #0c5460; font-size:14px; text-align: center;'>
-                                        💡 <strong>Gợi ý:</strong> Bạn có thể cải thiện hồ sơ và ứng tuyển lại sau 30 ngày
-                                    </p>
-                                </div>
+                            <div style='display:none; max-height:0px; overflow:hidden; mso-hide:all;'>
+                                ID: {uniqueId} | Sent: {sentTime}
                             </div>
-                            
-                            <!-- Footer -->
-                            <div style='background-color: #f8f9fa; padding:30px; text-align: center; border-top:1px solid #e9ecef;'>
-                                <p style='color: #6c757d; margin:0010px0; font-size:14px;'>
-                                    Cần hỗ trợ? Liên hệ với chúng tôi tại 
-                                    <a href='mailto:support@flearn.com' style='color: #6c757d; text-decoration: none;'>support@flearn.com</a>
-                                </p>
-                                <p style='color: #6c757d; margin:0; font-size:12px;'>
-                                    ©2025 Flearn - Nền tảng học ngôn ngữ thông minh
-                                </p>
+                            <div style='opacity: 0; font-size: 1px; color: #FAFBFC;'>
+                                {Guid.NewGuid()} - Flearn Notification System
                             </div>
                         </div>
-                    </body>
-                    </html>";
-
-                return await SendEmailAsync(toEmail, subject, body);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending teacher application rejected email to {Email}", toEmail);
-                return false;
-            }
+                    </div>
+                </div>
+            </body>
+            </html>";
         }
-
-        // ================== REFUND REQUEST EMAILS ==================
-        public async Task<bool> SendRefundRequestInstructionAsync(
-            string toEmail,
-            string userName,
-            string className,
-            DateTime classStartDateTime,
-            string? reason = null)
+        private string GetButtonStyle(string bgColor = PrimaryColor)
         {
-            try
-            {
-                var subject = "📋 Hướng dẫn yêu cầu hoàn tiền - Flearn";
-                var reasonSection = !string.IsNullOrEmpty(reason)
-                    ? $"<p style='font-size: 16px; line-height: 1.6; color: #856404; margin: 15px 0 0 0;'><strong>Lý do:</strong> {reason}</p>"
-                    : "";
+            var background = bgColor == PrimaryColor
+                ? $"background: linear-gradient(135deg, {PrimaryColor} 0%, {SecondaryColor} 100%);"
+                : $"background-color: {bgColor};";
 
-                var body = $@"
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset='UTF-8'>
-                        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-                        <title>Hướng dẫn yêu cầu hoàn tiền</title>
-                    </head>
-                    <body style='margin:0; padding:0; font-family: Arial, sans-serif; background: linear-gradient(135deg, #667eea0%, #764ba2100%);'>
-                        <div style='max-width:600px; margin:0 auto; background-color: #ffffff;'>
-                            <!-- Header -->
-                            <div style='background: linear-gradient(135deg, #667eea0%, #764ba2100%); padding:40px20px; text-align: center;'>
-                                <h1 style='color: white; margin:0; font-size:28px; font-weight:700;'>🎓 Flearn</h1>
-                                <p style='color: rgba(255,255,255,0.9); margin:10px000; font-size:16px;'>Hướng dẫn yêu cầu hoàn tiền</p>
-                            </div>
-                            
-                            <!-- Content -->
-                            <div style='padding:40px30px;'>
-                                <div style='text-align: center; margin-bottom:30px;'>
-                                    <h2 style='color: #2c3e50; margin:0; font-size:24px; font-weight:600;'>Xin chào {userName}!</h2>
-                                    <p style='color: #6c757d; margin:0; font-size:14px;'>Thông báo về lớp học của bạn</p>
-                                </div
-                            
-                                <div style='background-color: #fff3cd; padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #ffc107;'>
-                                    <h3 style='color: #856404; margin: 0 0 15px 0; font-size: 18px;'>⚠️ Thông báo về lớp học</h3>
-                                    <p style='font-size: 16px; line-height: 1.6; color: #856404; margin: 0;'>
-                                        Lớp học <strong>{className}</strong> dự kiến diễn ra vào <strong>{classStartDateTime:dd/MM/yyyy HH:mm}</strong> đã bị hủy.
-                                    </p>
-                                    {reasonSection}
-                                </div>
-                                
-                                <div style='background-color: #e7f3ff; padding: 30px; border-radius: 12px; margin: 30px 0;'>
-                                    <h3 style='color: #004085; margin: 0 0 20px 0; font-size: 20px; text-align: center;'>📋 Hướng dẫn yêu cầu hoàn tiền</h3>
-                                
-                                    <div style='margin-bottom: 20px;'>
-                                        <div style='background-color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
-                                            <h4 style='color: #667eea; margin: 0 0 10px 0; font-size: 16px;'>
-                                                <span style='display: inline-block; width: 30px; height: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 50%; text-align: center; line-height: 30px; margin-right: 10px;'>1</span>
-                                                Đăng nhập vào tài khoản
-                                            </h4>
-                                            <p style='margin: 0 0 0 40px; color: #555; font-size: 14px;'>Truy cập vào phần ""Lớp học của tôi""</p>
-                                        </div>
-                                
-                                        <div style='background-color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
-                                            <h4 style='color: #667eea; margin: 0 0 10px 0; font-size: 16px;'>
-                                                <span style='display: inline-block; width: 30px; height: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 50%; text-align: center; line-height: 30px; margin-right: 10px;'>2</span>
-                                                Chọn ""Gửi đơn yêu cầu hoàn tiền""
-                                            </h4>
-                                            <p style='margin: 0 0 0 40px; color: #555; font-size: 14px;'>Tìm lớp học: <strong>{className}</strong></p>
-                                        </div>
-                                
-                                        <div style='background-color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
-                                            <h4 style='color: #667eea; margin: 0 0 10px 0; font-size: 16px;'>
-                                                <span style='display: inline-block; width: 30px; height: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 50%; text-align: center; line-height: 30px; margin-right: 10px;'>3</span>
-                                                Chọn loại yêu cầu hoàn tiền
-                                            </h4>
-                                            <p style='margin: 0 0 0 40px; color: #555; font-size: 14px;'>Ví dụ: ""Lớp học bị hủy"", ""Lý do cá nhân"", ""Khác""...</p>
-                                        </div>
-                                
-                                        <div style='background-color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
-                                            <h4 style='color: #667eea; margin: 0 0 10px 0; font-size: 16px;'>
-                                                <span style='display: inline-block; width: 30px; height: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 50%; text-align: center; line-height: 30px; margin-right: 10px;'>4</span>
-                                                Nhập thông tin ngân hàng
-                                            </h4>
-                                            <ul style='margin: 5px 0 0 40px; color: #555; font-size: 14px; padding-left: 20px;'>
-                                                <li>Tên ngân hàng</li>
-                                                <li>Số tài khoản</li>
-                                                <li>Tên chủ tài khoản</li>
-                                            </ul>
-                                        </div>
-                                
-                                        <div style='background-color: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
-                                            <h4 style='color: #667eea; margin: 0 0 10px 0; font-size: 16px;'>
-                                                <span style='display: inline-block; width: 30px; height: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 50%; text-align: center; line-height: 30px; margin-right: 10px;'>5</span>
-                                                Gửi đơn
-                                            </h4>
-                                            <p style='margin: 0 0 0 40px; color: #555; font-size: 14px;'>Kiểm tra lại thông tin và nhấn ""Gửi yêu cầu"" để hoàn tất.</p>
-                                        </div>
-                                    </div>
-                                
-                                    <div style='text-align:center; margin-top:20px;'>
-                                        <a href='{_configuration["AppSettings:BaseUrl"]}' style='display:inline-block; background: linear-gradient(135deg, #667eea0%, #764ba2100%); color:#fff; padding:12px24px; text-decoration:none; border-radius:8px; font-weight:600;'>Đăng nhập Flearn</a>
-                                    </div>
-                                </div>
-                                
-                                <div style='background-color: #f8f9fa; padding:30px; text-align: center; border-top:1px solid #e9ecef;'>
-                                    <p style='color: #6c757d; margin:0010px0; font-size:14px;'>
-                                        Cần hỗ trợ? Liên hệ với chúng tôi tại 
-                                        <a href='mailto:support@flearn.com' style='color: #667eea; text-decoration: none;'>support@flearn.com</a>
-                                    </p>
-                                    <p style='color: #6c757d; margin:0; font-size:12px;'>
-                                        ©2025 Flearn - Nền tảng học ngôn ngữ thông minh
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </body>
-                    </html>";
-
-                return await SendEmailAsync(toEmail, subject, body);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending refund instruction email to {Email}", toEmail);
-                return false;
-            }
-        }
-
-        public async Task<bool> SendRefundRequestConfirmationAsync(
-            string toEmail,
-            string userName,
-            string className,
-            string refundRequestId)
-        {
-            try
-            {
-                var subject = "✅ Xác nhận đã nhận yêu cầu hoàn tiền - Flearn";
-                var body = $@"
-<!DOCTYPE html>
-<html>
-<head>
- <meta charset='UTF-8'>
- <meta name='viewport' content='width=device-width, initial-scale=1.0'>
- <title>Xác nhận yêu cầu hoàn tiền</title>
-</head>
-<body style='margin:0;padding:0;font-family:Arial,sans-serif;background:#f0f2f5;'>
- <div style='max-width:600px;margin:0 auto;background:#ffffff;'>
- <div style='background:linear-gradient(135deg,#28a7450%,#20c997100%);padding:40px20px;text-align:center;'>
- <h1 style='color:#fff;margin:0;font-size:28px;font-weight:700;'>Flearn</h1>
- <p style='color:rgba(255,255,255,0.9);margin:10px000;font-size:16px;'>Xác nhận yêu cầu hoàn tiền</p>
- </div>
- <div style='padding:40px30px;'>
- <h2 style='color:#2c3e50;margin:0010px0;font-size:22px;font-weight:600;'>Xin chào {userName},</h2>
- <p style='color:#333;line-height:1.6;'>Chúng tôi đã nhận được yêu cầu hoàn tiền cho lớp học <strong>{className}</strong>.</p>
- <p style='color:#333;line-height:1.6;'>Mã yêu cầu của bạn là: <strong>{refundRequestId}</strong>. Vui lòng lưu lại để tiện tra cứu.</p>
- <div style='background:#f8f9fa;border:1px solid #e9ecef;border-radius:8px;padding:16px;margin-top:16px;'>
- <p style='margin:0;color:#6c757d;font-size:14px;'>Thời gian xử lý dự kiến:3-5 ngày làm việc.</p>
- </div>
- </div>
- <div style='background:#f8f9fa;padding:30px;text-align:center;border-top:1px solid #e9ecef;'>
- <p style='color:#6c757d;margin:0010px0;font-size:14px;'>
- Cần hỗ trợ? Liên hệ <a href='mailto:support@flearn.com' style='color:#20c997;text-decoration:none;'>support@flearn.com</a>
- </p>
- <p style='color:#6c757d;margin:0;font-size:12px;'>©2025 Flearn</p>
- </div>
- </div>
-</body>
-</html>";
-
-                return await SendEmailAsync(toEmail, subject, body);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending refund confirmation email to {Email}", toEmail);
-                return false;
-            }
-        }
-
-        // Renamed: this method previously had incorrect name/signature. Now matches IEmailService.SendPayoutRequestApprovedAsync
-        public async Task<bool> SendPayoutRequestApprovedAsync(
-            string toEmail,
-            string teacherName,
-            decimal amount,
-            string bankName,
-            string accountNumber,
-            string? transactionRef = null,
-            string? adminNote = null)
-        {
-            try
-            {
-                var subject = "✅ Yêu cầu rút tiền đã được duyệt - Flearn";
-
-                var transactionSection = !string.IsNullOrWhiteSpace(transactionRef)
-                    ? $"<p style='margin:10px0;color:#333;line-height:1.6;'><strong>Mã giao dịch:</strong> <span style='color:#28a745;font-family:monospace;'>{transactionRef}</span></p>"
-                    : string.Empty;
-
-                var noteSection = !string.IsNullOrWhiteSpace(adminNote)
-                    ? $"<div style='background:#e7f3ff;border-left:4px solid #007bff;padding:16px;border-radius:8px;margin:20px0;'><p style='margin:0;color:#004085;font-size:14px;'><strong>Ghi chú từ Admin:</strong> {adminNote}</p></div>"
-                    : string.Empty;
-
-                var body = $@"
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset='UTF-8'>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>Rút tiền được duyệt</title>
-</head>
-<body style='margin:0;padding:0;font-family:Arial,sans-serif;background:linear-gradient(135deg,#28a7450%,#20c997100%);'>
-    <div style='max-width:600px;margin:0 auto;background:#ffffff;'>
-        <div style='background:linear-gradient(135deg,#28a7450%,#20c997100%);padding:40px20px;text-align:center;'>
-            <h1 style='color:#fff;margin:0;font-size:28px;font-weight:700;'>💰 Flearn</h1>
-      <p style='color:rgba(255,255,255,0.95);margin:10px000;font-size:16px;'>Yêu cầu rút tiền đã được duyệt</p>
-    </div>
-        <div style='padding:40px30px;'>
-     <div style='text-align:center;margin-bottom:30px;'>
-       <div style='background:linear-gradient(135deg,#28a7450%,#20c997100%);width:80px;height:80px;border-radius:50%;margin:0 auto20px;display:flex;align-items:center;justify-content:center;'>
-     <span style='font-size:40px;'>✅</span>
-            </div>
-       <h2 style='color:#2c3e50;margin:0;font-size:24px;font-weight:600;'>Chúc mừng {teacherName}!</h2>
-     </div>
-            <div style='background:#d4edda;border:1px solid #c3e6cb;padding:25px;border-radius:12px;margin:25px0;>
-  <p style='margin:0010px0;color:#155724;font-size:16px;line-height:1.6;'>
-              Yêu cầu rút tiền của bạn đã được <strong>duyệt thành công</strong>.
-         </p>
-       <p style='margin:0;color:#155724;font-size:16px;line-height:1.6;'>
-Tiền sẽ được chuyển vào tài khoản ngân hàng của bạn trong vòng <strong>1-3 ngày làm việc</strong>.
-   </p>
-            </div>
-            <div style='background:#f8f9fa;padding:25px;border-radius:12px;margin:25px0;border:1px solid #dee2e6;'>
-        <h3 style='margin:0015px0;color:#495057;font-size:18px;'>📋 Thông tin giao dịch</h3>
-    <div style='border-top:1px solid #dee2e6;padding-top:15px;'>
-            <p style='margin:10px0;color:#333;line-height:1.6;'><strong>Số tiền:</strong> <span style='color:#28a745;font-size:20px;font-weight:bold;'>{amount:N0} VNĐ</span></p>
-       <p style='margin:10px0;color:#333;line-height:1.6;'><strong>Ngân hàng:</strong> {bankName}</p>
-            <p style='margin:10px0;color:#333;line-height:1.6;'><strong>Số tài khoản:</strong> {accountNumber}</p>
-     {transactionSection}
-     <p style='margin:10px00;color:#6c757d;font-size:14px;'><strong>Thời gian duyệt:</strong> {TimeHelper.GetVietnamTime():dd/MM/yyyy HH:mm}</p>
-      </div>
-            </div>
-   {noteSection}
-   <div style='background:#fff3cd;border:1px solid #ffeeba;padding:20px;border-radius:8px;margin:25px0;'>
-      <p style='margin:0010px0;color:#856404;font-weight:bold;font-size:14px;'>💡 Lưu ý quan trọng:</p>
-   <ul style='margin:0;padding-left:20px;color:#856404;font-size:14px;line-height:1.6;'>
-      <li>Vui lòng kiểm tra tài khoản ngân hàng trong vòng 1-3 ngày làm việc</li>
- <li>Nếu quá thời gian trên chưa nhận được tiền, vui lòng liên hệ support</li>
-         <li>Lưu lại email này để tra cứu giao dịch</li>
-  </ul>
-            </div>
-   </div>
-        <div style='background:#f8f9fa;padding:30px;text-align:center;border-top:1px solid #e9ecef;'>
-      <p style='color:#6c757d;margin:0010px0;font-size:14px;'>
-       Cần hỗ trợ? Liên hệ 
-        <a href='mailto:support@flearn.com' style='color:#28a745;text-decoration:none;'>support@flearn.com</a>
-  </p>
-   <p style='color:#6c757d;margin:0;font-size:12px;'>
-           ©2025 Flearn - Nền tảng học ngôn ngữ thông minh
-            </p>
-        </div>
-    </div>
-</body>
-</html>";
-
-                return await SendEmailAsync(toEmail, subject, body);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending payout approved email to {Email}", toEmail);
-                return false;
-            }
-        }
-
-        public async Task<bool> SendPayoutRequestRejectedAsync(
-   string toEmail,
-    string teacherName,
-         decimal amount,
-            string rejectionReason)
-        {
-            try
-            {
-                var subject = "❌ Yêu cầu rút tiền bị từ chối - Flearn";
-
-                var body = $@"
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset='UTF-8'>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>Rút tiền bị từ chối</title>
-</head>
-<body style='margin:0;padding:0;font-family:Arial,sans-serif;background:linear-gradient(135deg,#dc35450%,#c82333100%);'>
-    <div style='max-width:600px;margin:0 auto;background:#ffffff;padding:30px;border-radius:8px;'>
-    <h2 style='color:#2c3e50;'>Xin chào {teacherName}!</h2>
-    <p style='color:#333;'>Rất tiếc, yêu cầu rút tiền của bạn đã bị <strong>từ chối</strong>.</p>
-    <p style='color:#333;'><strong>Số tiền hoàn:</strong> <span style='color:#dc3545;font-weight:bold;'>{amount:N0} VNĐ</span></p>
-    
-    <div style='background:#fff3cd;padding:15px;border-radius:8px;margin:15px0;border-left:4px solid #ffc107;'>
-       <p style='margin:0;color:#856404;'><strong>Lý do:</strong> {rejectionReason}</p>
-    </div>
-    
-    <div style='background:#d1ecf1;border:1px solid #bee5eb;padding:20px;border-radius:8px;margin:25px0;'>
-      <p style='margin:0010px0;color:#0c5460;font-weight:bold;font-size:14px;'>💰 Thông tin ví:</p>
-      <p style='margin:0;color:#0c5460;font-size:14px;line-height:1.6;'>
-        Số tiền <strong>{amount:N0} VNĐ</strong> đã được cộng trở lại vào số dư khả dụng của bạn. 
-     Bạn có thể tạo yêu cầu rút tiền mới sau khi khắc phục các vấn đề.
-     </p>
-         </div>
-         <div style='background:#e7f3ff;border:1px solid #b8daff;padding:20px;border-radius:8px;margin:25px0;'>
-    <p style='margin:0010px0;color:#004085;font-weight:bold;font-size:14px;'>📌 Hành động tiếp theo:</p>
-         <ul style='margin:0;padding-left:20px;color:#004085;font-size:14px;line-height:1.6;'>
-             <li>Kiểm tra và cập nhật thông tin tài khoản ngân hàng nếu cần</li>
-     <li>Đảm bảo đáp ứng các điều kiện rút tiền</li>
-         <li>Liên hệ support nếu cần hỗ trợ thêm</li>
-     <li>Có thể tạo yêu cầu rút tiền mới sau khi khắc phục</li>
-        </ul>
-            </div>
-        <div style='background:#f8f9fa;padding:30px;text-align:center;border-top:1px solid #e9ecef;'>
-  <p style='color:#6c757d;margin:0010px0;font-size:14px;'>
-  Cần hỗ trợ? Liên hệ 
-        <a href='mailto:support@flearn.com' style='color:#dc3545;text-decoration:none;'>support@flearn.com</a>
- </p>
-   <p style='color:#6c757d;margin:0;font-size:12px;'>
-        ©2025 Flearn - Nền tảng học ngôn ngữ thông minh
-     </p>
-        </div>
-    </div>
-</body>
-</html>";
-
-                return await SendEmailAsync(toEmail, subject, body);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending payout rejected email to {Email}", toEmail);
-                return false;
-            }
-        }
-
-
-        public async Task<bool> SendRefundRequestApprovedAsync(
-            string toEmail,
-            string userName,
-            string className,
-            decimal refundAmount,
-            string? proofImageUrl = null,
-            string? adminNote = null)
-        {
-            try
-            {
-                var subject = "✅ Yêu cầu hoàn tiền đã được chấp nhận - Flearn";
-
-                var proofSection = !string.IsNullOrWhiteSpace(proofImageUrl)
-                    ? $"<p style='margin:10px0;'><strong>Chứng từ:</strong> <a href='{proofImageUrl}' target='_blank'>Xem</a></p>"
-                    : string.Empty;
-
-                var noteSection = !string.IsNullOrWhiteSpace(adminNote)
-                    ? $"<div style='background:#e7f3ff;border-left:4px solid #007bff;padding:16px;border-radius:8px;margin:20px0;'><p style='margin:0;color:#004085;font-size:14px;'><strong>Ghi chú từ Admin:</strong> {adminNote}</p></div>"
-                    : string.Empty;
-
-                var body = $@"
-<!DOCTYPE html>
-<html>
-<head>
- <meta charset='UTF-8'>
- <meta name='viewport' content='width=device-width, initial-scale=1.0'>
- <title>Hoàn tiền được chấp nhận</title>
-</head>
-<body style='margin:0;padding:0;font-family:Arial,sans-serif;background:#f0f2f5;'>
- <div style='max-width:600px;margin:0 auto;background:#ffffff;padding:30px;border-radius:8px;'>
- <h2 style='color:#2c3e50;'>Xin chào {userName},</h2>
- <p style='color:#333;'>Yêu cầu hoàn tiền cho lớp <strong>{className}</strong> đã được <strong>chấp nhận</strong>.</p>
- <p style='color:#333;'><strong>Số tiền hoàn:</strong> <span style='color:#28a745;font-weight:bold;'>{refundAmount:N0} VNĐ</span></p>
- {proofSection}
- {noteSection}
- <p style='color:#6c757d;'>Số tiền sẽ được hoàn vào tài khoản đã đăng ký trong vòng 3-5 ngày làm việc.</p>
- </div>
-</body>
-</html>";
-
-                return await SendEmailAsync(toEmail, subject, body);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending refund approved email to {Email}", toEmail);
-                return false;
-            }
-        }
-
-
-        public async Task<bool> SendRefundRequestRejectedAsync(
-            string toEmail,
-            string userName,
-            string className,
-            string rejectionReason)
-        {
-            try
-            {
-                var subject = "❌ Yêu cầu hoàn tiền bị từ chối - Flearn";
-                var body = $@"
-<!DOCTYPE html>
-<html>
-<head>
- <meta charset='UTF-8'>
- <meta name='viewport' content='width=device-width, initial-scale=1.0'>
- <title>Hoàn tiền bị từ chối</title>
-</head>
-<body style='margin:0;padding:0;font-family:Arial,sans-serif;background:#fff3f3;'>
- <div style='max-width:600px;margin:0 auto;background:#ffffff;padding:30px;border-radius:8px;'>
- <h2 style='color:#2c3e50;'>Xin chào {userName},</h2>
- <p style='color:#333;'>Rất tiếc, yêu cầu hoàn tiền cho lớp <strong>{className}</strong> đã bị <strong>từ chối</strong>.</p>
- <div style='background:#fff3cd;padding:15px;border-radius:8px;margin:15px0;border-left:4px solid #ffc107;'>
- <p style='margin:0;color:#856404;'><strong>Lý do:</strong> {rejectionReason}</p>
- </div>
- <p style='color:#6c757d;'>Nếu bạn cần hỗ trợ thêm, vui lòng liên hệ support.</p>
- </div>
-</body>
-</html>";
-
-                return await SendEmailAsync(toEmail, subject, body);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending refund rejected email to {Email}", toEmail);
-                return false;
-            }
+            return $@"
+                display: inline-block; 
+                {background}
+                color: #ffffff; 
+                padding: 18px 40px; 
+                border-radius: 14px; 
+                text-decoration: none; 
+                font-weight: 700; 
+                font-size: 16px; 
+                letter-spacing: 0.5px;
+                box-shadow: 0 8px 20px rgba(0, 82, 204, 0.2);
+                border: none;
+                text-align: center;
+                transition: all 0.2s ease;";
         }
     }
 }
