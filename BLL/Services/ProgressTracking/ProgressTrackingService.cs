@@ -179,6 +179,7 @@ namespace BLL.Services.ProgressTracking
                     ExerciseSubmissionId = es.ExerciseSubmissionId,
                     SubmittedAt = es.SubmittedAt.ToString("dd-MM-yyyy HH:mm"),
                     Status = es.Status.ToString(),
+                    PassScore = es.Exercise.PassScore,
                     FinalScore = es.FinalScore,
                     IsPassed = es.IsPassed,
                     AudioUrl = es.AudioUrl,
@@ -186,6 +187,8 @@ namespace BLL.Services.ProgressTracking
                     AIFeedback = es.AIFeedback,
                     AIScore = es.AIScore,
                     TeacherScore = es.TeacherScore,
+                    AIPercent = es.AIPercentage,
+                    TeacherPercent = es.TeacherPercentage ?? 0
                 }).ToList();
 
                 return PagedResponse<List<ExerciseSubmissionHistoryResponse>>.Success(
@@ -563,7 +566,7 @@ namespace BLL.Services.ProgressTracking
                 };
 
                 await _unitOfWork.ExerciseSubmissions.CreateAsync(submission);
-
+                await _unitOfWork.SaveChangesAsync();
                 /*
                  * Nếu là lần đầu nộp bài thì hệ thống sẽ giao cho chính giáo viên tạo ra khóa học chấm
                  * Đồng thời người giáo viên đó sẽ nhận được một khoản tiền sau khi chấm xong (dù Passed hay Failed).
@@ -626,8 +629,7 @@ namespace BLL.Services.ProgressTracking
                 };
 
                 // Tự động chấm điểm ngầm
-                //BackgroundJob.Enqueue<IExerciseGradingService>(x => x.ProcessAIGradingAsync(assessmentRequest));
-                _backgroundJobClient.Enqueue(() => _exerciseGradingService.ProcessAIGradingAsync(assessmentRequest));
+                _backgroundJobClient.Schedule(() => _exerciseGradingService.ProcessAIGradingAsync(assessmentRequest), TimeSpan.FromSeconds(5));
                 //await _exerciseGradingService.ProcessAIGradingAsync(assessmentRequest);
 
                 var response = new ExerciseSubmissionResponse

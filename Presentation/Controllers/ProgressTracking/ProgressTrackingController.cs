@@ -1,7 +1,6 @@
 ﻿using BLL.IServices.Assessment;
 using BLL.IServices.ProgressTracking;
 using BLL.Services.Assessment;
-using CloudinaryDotNet.Actions;
 using Common.DTO.ApiResponse;
 using Common.DTO.Language;
 using Common.DTO.ProgressTracking.Request;
@@ -91,11 +90,10 @@ namespace Presentation.Controllers.ProgressTracking
             return StatusCode(result.Code, result);
         }
         [HttpGet("azure/transcribe/speech-to-text")]
-        public async Task<IActionResult> TranscribeAudioToText(string audioUrl, string referenceText, [AllowedLang]string langCode)
+        public async Task<IActionResult> TranscribeAudioToText(string audioUrl, [AllowedLang] string langCode)
         {
-            var result = await _pronunciationService.AssessPronunciationAsync(audioUrl, referenceText, langCode);
-            var response = _pronunciationService.ConvertToAssessmentResult(result, referenceText, langCode);
-            return Ok(response);
+            var result = await AssessmentService.TranscribeSpeechByAzureAsync(audioUrl, langCode);
+            return Ok(result);
         }
         [HttpGet("gemini/transcribe/speech-to-text")]
         public async Task<IActionResult> TranscribeSpeechToText(string audioUrl)
