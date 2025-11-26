@@ -1,11 +1,4 @@
-﻿using Common.DTO.ExerciseGrading.Response;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Common.DTO.Pronunciation
+﻿namespace Common.DTO.Pronunciation
 {
     public class PronunciationAssessmentResult
     {
@@ -13,6 +6,7 @@ namespace Common.DTO.Pronunciation
         public float FluencyScore { get; set; }
         public float CompletenessScore { get; set; }
         public float PronunciationScore { get; set; }
+        public string RecognizedText { get; set; } = string.Empty;
         public List<PhonemeAssessment> PhonemeAssessments { get; set; } = new();
     }
     public class PhonemeAssessment

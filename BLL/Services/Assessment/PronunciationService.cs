@@ -12,9 +12,11 @@ namespace BLL.Services.Assessment
     public class PronunciationService : IPronunciationService
     {
         private readonly IConfiguration _configuration;
-        public PronunciationService(IConfiguration configuration)
+        private readonly IHttpClientFactory _http;
+        public PronunciationService(IConfiguration configuration, IHttpClientFactory http)
         {
             _configuration = configuration;
+            _http = http;
         }
         public async Task<Common.DTO.Pronunciation.PronunciationAssessmentResult> AssessPronunciationAsync(string audioUrl, string referenceText, string languageCode = "en")
         {
@@ -34,8 +36,8 @@ namespace BLL.Services.Assessment
                     Granularity.Phoneme,
                     enableMiscue: true);
 
-                using var http = new HttpClient();
-                var audioBytes = await http.GetByteArrayAsync(audioUrl);
+                var httpClient = _http.CreateClient();
+                var audioBytes = await httpClient.GetByteArrayAsync(audioUrl);
 
                 var tempFilePath = Path.GetTempFileName() + ".wav";
                 await File.WriteAllBytesAsync(tempFilePath, audioBytes);
@@ -96,6 +98,7 @@ namespace BLL.Services.Assessment
                 Overall = (int)overallScore,
                 Feedback = JsonSerializer.Serialize(phonemeHighlights),
                 Transcript = referenceText,
+                RecognizedText = azureResult.RecognizedText,
                 IsSuccess = true,
                 ErrorMessage = null
             };
@@ -111,6 +114,8 @@ namespace BLL.Services.Assessment
                     return null;
                 }
 
+                string actualSpokenText = result.Text;
+
                 var jsonText = result.Properties.GetProperty(PropertyId.SpeechServiceResponse_JsonResult);
                 using var jsonDoc = JsonDocument.Parse(jsonText);
 
@@ -123,6 +128,16 @@ namespace BLL.Services.Assessment
 
                 var firstNBest = nBestElement[0];
 
+                if (string.IsNullOrWhiteSpace(actualSpokenText))
+                {
+                    if (firstNBest.TryGetProperty("Display", out var displayElem))
+                        actualSpokenText = displayElem.GetString();
+                    else if (firstNBest.TryGetProperty("Lexical", out var lexicalElem))
+                        actualSpokenText = lexicalElem.GetString();
+                    else if (firstNBest.TryGetProperty("ITN", out var itnElem))
+                        actualSpokenText = itnElem.GetString();
+                }
+
                 if (!firstNBest.TryGetProperty("PronunciationAssessment", out var pronunciationAssessment))
                 {
                     Console.WriteLine("**[FAILED]**PronunciationAssessment property not found in NBest");
@@ -134,7 +149,8 @@ namespace BLL.Services.Assessment
                     AccuracyScore = pronunciationAssessment.GetProperty("AccuracyScore").GetSingle(),
                     FluencyScore = pronunciationAssessment.GetProperty("FluencyScore").GetSingle(),
                     CompletenessScore = pronunciationAssessment.GetProperty("CompletenessScore").GetSingle(),
-                    PronunciationScore = pronunciationAssessment.GetProperty("PronScore").GetSingle()
+                    PronunciationScore = pronunciationAssessment.GetProperty("PronScore").GetSingle(),
+                    RecognizedText = actualSpokenText ?? string.Empty
                 };
 
                 if (firstNBest.TryGetProperty("Words", out var wordsElement))
@@ -143,6 +159,8 @@ namespace BLL.Services.Assessment
                 }
 
                 Console.WriteLine($"**[OK]**Parsed Successfully - Acc: {assessmentResult.AccuracyScore}, Flu: {assessmentResult.FluencyScore}, Comp: {assessmentResult.CompletenessScore}, Pron: {assessmentResult.PronunciationScore}");
+
+                assessmentResult.RecognizedText = actualSpokenText ?? jsonDoc.RootElement.GetProperty("DisplayText").GetString();
 
                 return assessmentResult;
             }

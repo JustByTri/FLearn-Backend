@@ -11,6 +11,7 @@ namespace Common.DTO.ExerciseGrading.Response
         public int Overall { get; set; }
         public string Feedback { get; set; } = "";
         public string Transcript { get; set; } = "";
+        public string RecognizedText { get; set; } = "";
         public bool IsSuccess { get; set; } = true;
         public string? ErrorMessage { get; set; }
         public override string ToString()

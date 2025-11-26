@@ -13,5 +13,8 @@ namespace BLL.IServices.ProgressTracking
         Task<PagedResponse<List<ExerciseGradingAssignmentResponse>>> GetTeacherAssignmentsAsync(Guid userId, GradingAssignmentFilterRequest filter);
         Task<BaseResponse<bool>> AssignExerciseToTeacherAsync(Guid exerciseSubmissionId, Guid userId, Guid teacherId);
         Task<BaseResponse<bool>> CheckAndReassignExpiredAssignmentsAsync();
+        Task<PagedResponse<List<ExerciseGradingAssignmentResponse>>> GetManagerAssignmentsAsync(Guid userId, GradingAssignmentFilterRequest filter);
+        Task<BaseResponse<GradingFilterOptionsResponse>> GetGradingFilterOptionsAsync(Guid userId);
+        Task<PagedResponse<List<EligibleTeacherResponse>>> GetEligibleTeachersForReassignmentAsync(EligibleTeacherFilterRequest filter);
     }
 }

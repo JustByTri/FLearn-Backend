@@ -41,14 +41,16 @@ namespace BLL.Services.Enrollment
                     if (!user.IsEmailConfirmed)
                         return BaseResponse<EnrollmentResponse>.Fail(new object(), "Email not confirmed", 403);
 
-                    var course = await _unitOfWork.Courses.GetByIdAsync(request.CourseId);
+                    var course = await _unitOfWork.Courses.Query()
+                                    .Include(c => c.Teacher)
+                                    .FirstOrDefaultAsync(c => c.CourseID == request.CourseId);
                     if (course == null)
                         return BaseResponse<EnrollmentResponse>.Fail(new object(), "Course not found", 404);
 
-                    var activeLearner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId && l.LanguageId == course.LanguageId);
-
-                    if (activeLearner == null)
-                        return BaseResponse<EnrollmentResponse>.Fail(new object(), "Please complete the entrance test for this language first", 400);
+                    if (course.Teacher != null && course.Teacher.UserId == userId)
+                    {
+                        return BaseResponse<EnrollmentResponse>.Fail(new object(), "You cannot enroll in your own course.", 400);
+                    }
 
                     if (course.Status != CourseStatus.Published)
                         return BaseResponse<EnrollmentResponse>.Fail(new object(), "This course is not yet published and cannot be enrolled.", 400);
@@ -58,44 +60,69 @@ namespace BLL.Services.Enrollment
                         return BaseResponse<EnrollmentResponse>.Fail(new object(), "This enrollment API is only available for paid courses", 403);
                     }
 
-                    if (course.CourseType == CourseType.Paid)
-                    {
-                        bool hasPurchased = await _unitOfWork.Courses.HasUserPurchasedCourseAsync(userId, request.CourseId);
-                        if (!hasPurchased)
-                            return BaseResponse<EnrollmentResponse>.Fail(new object(), "Course not purchased", 403);
-                    }
+                    var activeLearner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId && l.LanguageId == course.LanguageId);
+                    if (activeLearner == null) return BaseResponse<EnrollmentResponse>.Fail(new object(), "Language profile not found", 400);
+
+                    var validPurchase = await _unitOfWork.Purchases.Query()
+                         .OrderByDescending(p => p.CreatedAt)
+                         .FirstOrDefaultAsync(p => p.UserId == userId &&
+                                              p.CourseId == request.CourseId &&
+                                              p.Status == PurchaseStatus.Completed);
+
+                    if (validPurchase == null)
+                        return BaseResponse<EnrollmentResponse>.Fail(new object(), "Valid purchase not found", 403);
 
                     var existingEnrollment = await _unitOfWork.Enrollments.FindAsync(e => e.CourseId == request.CourseId && e.LearnerId == activeLearner.LearnerLanguageId);
 
+                    DAL.Models.Enrollment enrollmentToReturn;
+
                     if (existingEnrollment != null)
-                        return BaseResponse<EnrollmentResponse>.Fail(new object(), "You are already enrolled in this course.", 400);
-
-                    var enrollment = new DAL.Models.Enrollment
                     {
-                        EnrollmentID = Guid.NewGuid(),
-                        CourseId = request.CourseId,
-                        LearnerId = activeLearner.LearnerLanguageId,
-                        TotalUnits = course.NumUnits,
-                        TotalLessons = course.NumLessons,
-                        EnrolledAt = TimeHelper.GetVietnamTime()
-                    };
-
-                    await _unitOfWork.Enrollments.CreateAsync(enrollment);
-
-                    Purchase? purchase = null;
-                    if (course.CourseType == CourseType.Paid)
-                    {
-                        purchase = await _unitOfWork.Purchases.Query()
-                            .FirstOrDefaultAsync(p => p.UserId == userId &&
-                                                    p.CourseId == course.CourseID &&
-                                                    p.Status == PurchaseStatus.Completed);
-
-                        if (purchase != null)
+                        if (existingEnrollment.Status == DAL.Type.EnrollmentStatus.Active)
                         {
-                            purchase.EnrollmentId = enrollment.EnrollmentID;
-                            await _unitOfWork.Purchases.UpdateAsync(purchase);
+                            return BaseResponse<EnrollmentResponse>.Fail(new object(), "You are already enrolled.", 400);
+                        }
+
+                        if (existingEnrollment.Status == DAL.Type.EnrollmentStatus.Expired ||
+                            existingEnrollment.Status == DAL.Type.EnrollmentStatus.Cancelled)
+                        {
+                            existingEnrollment.Status = DAL.Type.EnrollmentStatus.Active;
+                            existingEnrollment.EnrolledAt = TimeHelper.GetVietnamTime();
+                            existingEnrollment.LastAccessedAt = TimeHelper.GetVietnamTime();
+
+                            await _unitOfWork.Enrollments.UpdateAsync(existingEnrollment);
+                            enrollmentToReturn = existingEnrollment;
+
+                            course.LearnerCount++;
+                        }
+                        else
+                        {
+                            enrollmentToReturn = existingEnrollment;
                         }
                     }
+                    else
+                    {
+                        var newEnrollment = new DAL.Models.Enrollment
+                        {
+                            EnrollmentID = Guid.NewGuid(),
+                            CourseId = request.CourseId,
+                            LearnerId = activeLearner.LearnerLanguageId,
+                            TotalUnits = course.NumUnits,
+                            TotalLessons = course.NumLessons,
+                            Status = DAL.Type.EnrollmentStatus.Active,
+                            EnrolledAt = TimeHelper.GetVietnamTime(),
+                            ProgressPercent = 0
+                        };
+                        await _unitOfWork.Enrollments.CreateAsync(newEnrollment);
+                        enrollmentToReturn = newEnrollment;
+
+                        course.LearnerCount++;
+                    }
+
+                    validPurchase.EnrollmentId = enrollmentToReturn.EnrollmentID;
+                    await _unitOfWork.Purchases.UpdateAsync(validPurchase);
+
+                    await _unitOfWork.Courses.UpdateAsync(course);
 
                     await _unitOfWork.SaveChangesAsync();
                     await _unitOfWork.CommitTransactionAsync();
@@ -104,16 +131,16 @@ namespace BLL.Services.Enrollment
 
                     var enrollmentResponse = new EnrollmentResponse
                     {
-                        EnrollmentId = enrollment.EnrollmentID,
+                        EnrollmentId = enrollmentToReturn.EnrollmentID,
                         CourseId = course.CourseID,
                         CourseType = course.CourseType.ToString(),
                         AccessUntil = accessResponse?.Data?.ExpiresAt,
                         EligibleForRefundUntil = accessResponse?.Data?.RefundEligibleUntil,
                         CourseTitle = course.Title,
-                        PricePaid = purchase?.FinalAmount ?? 0,
-                        Status = enrollment.Status.ToString(),
-                        ProgressPercent = enrollment.ProgressPercent,
-                        EnrollmentDate = enrollment.EnrolledAt.ToString("dd-MM-yyyy HH:mm"),
+                        PricePaid = validPurchase?.FinalAmount ?? 0,
+                        Status = enrollmentToReturn.Status.ToString(),
+                        ProgressPercent = enrollmentToReturn.ProgressPercent,
+                        EnrollmentDate = enrollmentToReturn.EnrolledAt.ToString("dd-MM-yyyy HH:mm"),
                     };
 
                     return BaseResponse<EnrollmentResponse>.Success(enrollmentResponse, "Enrolled successfully.");
@@ -139,27 +166,49 @@ namespace BLL.Services.Enrollment
                 if (!user.IsEmailConfirmed)
                     return BaseResponse<EnrollmentResponse>.Fail(new object(), "Email not confirmed", 403);
 
-                var course = await _unitOfWork.Courses.GetByIdAsync(request.CourseId);
+                var course = await _unitOfWork.Courses.Query()
+                            .Include(c => c.Teacher)
+                            .FirstOrDefaultAsync(c => c.CourseID == request.CourseId);
+
                 if (course == null)
                     return BaseResponse<EnrollmentResponse>.Fail(new object(), "Course not found", 404);
 
-                var activeLearner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId && l.LanguageId == course.LanguageId);
-
-                if (activeLearner == null)
-                    return BaseResponse<EnrollmentResponse>.Fail(new object(), "Please complete the entrance test for this language first", 400);
+                if (course.Teacher != null && course.Teacher.UserId == userId)
+                {
+                    return BaseResponse<EnrollmentResponse>.Fail(new object(), "You cannot enroll in your own course.", 400);
+                }
 
                 if (course.Status != CourseStatus.Published)
                     return BaseResponse<EnrollmentResponse>.Fail(new object(), "This course is not yet published and cannot be enrolled.", 400);
 
                 if (course.CourseType != CourseType.Free)
-                {
-                    return BaseResponse<EnrollmentResponse>.Fail(new object(), "Cannot enroll in paid course through free enrollment", 400);
-                }
+                    return BaseResponse<EnrollmentResponse>.Fail(new object(), "Not a free course", 400);
+
+                var activeLearner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == userId && l.LanguageId == course.LanguageId);
+                if (activeLearner == null) return BaseResponse<EnrollmentResponse>.Fail(new object(), "Entrance test required", 400);
 
                 var existingEnrollment = await _unitOfWork.Enrollments.FindAsync(e => e.CourseId == request.CourseId && e.LearnerId == activeLearner.LearnerLanguageId);
 
                 if (existingEnrollment != null)
-                    return BaseResponse<EnrollmentResponse>.Fail(new object(), "You are already enrolled in this course.", 400);
+                {
+                    if (existingEnrollment.Status == DAL.Type.EnrollmentStatus.Cancelled)
+                    {
+                        existingEnrollment.Status = DAL.Type.EnrollmentStatus.Active;
+                        existingEnrollment.EnrolledAt = TimeHelper.GetVietnamTime();
+                        await _unitOfWork.Enrollments.UpdateAsync(existingEnrollment);
+
+                        course.LearnerCount++;
+                        await _unitOfWork.Courses.UpdateAsync(course);
+                        await _unitOfWork.SaveChangesAsync();
+
+                        return BaseResponse<EnrollmentResponse>.Success(new EnrollmentResponse
+                        {
+                            EnrollmentId = existingEnrollment.EnrollmentID,
+                            Status = "Active",
+                        }, "Re-enrolled successfully");
+                    }
+                    return BaseResponse<EnrollmentResponse>.Fail(new object(), "Already enrolled", 400);
+                }
 
                 var enrollment = new DAL.Models.Enrollment
                 {
@@ -168,10 +217,15 @@ namespace BLL.Services.Enrollment
                     LearnerId = activeLearner.LearnerLanguageId,
                     TotalUnits = course.NumUnits,
                     TotalLessons = course.NumLessons,
-                    EnrolledAt = TimeHelper.GetVietnamTime()
+                    EnrolledAt = TimeHelper.GetVietnamTime(),
+                    Status = DAL.Type.EnrollmentStatus.Active
                 };
 
                 await _unitOfWork.Enrollments.CreateAsync(enrollment);
+
+                course.LearnerCount++;
+                await _unitOfWork.Courses.UpdateAsync(course);
+
                 await _unitOfWork.SaveChangesAsync();
 
                 var enrollmentResponse = new EnrollmentResponse

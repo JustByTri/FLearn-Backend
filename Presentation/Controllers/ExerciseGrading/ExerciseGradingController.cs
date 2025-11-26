@@ -17,14 +17,56 @@ namespace Presentation.Controllers.ExerciseGrading
         {
             _exerciseGradingService = exerciseGradingService;
         }
-        [HttpPost("teacher-grade/{exerciseSubmissionId}")]
+        /// <summary>
+        /// Get the Course and Exercise list to display the Dropdown Filter.
+        /// The API automatically recognizes the Role to return the appropriate data (Teacher only sees the Course he teaches, Manager sees everything).
+        /// </summary>
+        [Authorize]
+        [HttpGet("filters")]
+        public async Task<IActionResult> GetFilters()
+        {
+            var userIdClaim = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized("User ID not found in token.");
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+                return BadRequest("Invalid user ID format in token.");
+
+            var result = await _exerciseGradingService.GetGradingFilterOptionsAsync(userId);
+            return StatusCode(result.Code, result);
+        }
+        /// <summary>
+        /// [TEACHER ONLY] Get the list of assignments assigned to the currently logged in teacher.
+        /// </summary>
+        [HttpGet("teacher/assignments")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<ActionResult<BaseResponse<List<ExerciseGradingAssignmentResponse>>>> GetTeacherAssignments(
+            [FromQuery] GradingAssignmentFilterRequest filter)
+        {
+            var userIdClaim = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized("User ID not found in token.");
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+                return BadRequest("Invalid user ID format in token.");
+
+            var result = await _exerciseGradingService.GetTeacherAssignmentsAsync(userId, filter);
+            return StatusCode(result.Code, result);
+        }
+        /// <summary>
+        /// Teacher grades an exercise submission.
+        /// </summary>
+        /// <param name="exerciseSubmissionId">ID of the submission being graded.</param>
+        /// <param name="request">Score and feedback data.</param>
+        /// <returns>Grading result response.</returns>
+        [HttpPost("teacher/submissions/{exerciseSubmissionId}/grade")]
         [Authorize(Roles = "Teacher")]
         public async Task<ActionResult<BaseResponse<bool>>> ProcessTeacherGrading(Guid exerciseSubmissionId,
             [FromBody] TeacherGradingRequest request)
         {
             var userIdClaim = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userIdClaim))
-                return Unauthorized("Teacher ID not found in token.");
+                return Unauthorized("User ID not found in token.");
 
             if (!Guid.TryParse(userIdClaim, out Guid userId))
                 return BadRequest("Invalid user ID format in token.");
@@ -38,10 +80,35 @@ namespace Presentation.Controllers.ExerciseGrading
             return StatusCode(result.Code, result);
         }
         /// <summary>
+        /// [MANAGER ONLY] Get the list of exercises for the entire system.
+        /// Used to filter out Expired exercises or find exercises by specific Teacher.
+        /// </summary>
+        [HttpGet("manager/assignments")]
+        [Authorize(Roles = "Manager")]
+        public async Task<IActionResult> GetManagerAssignments([FromQuery] GradingAssignmentFilterRequest filter)
+        {
+            var userIdClaim = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized("User ID not found in token.");
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+                return BadRequest("Invalid user ID format in token.");
+
+            var result = await _exerciseGradingService.GetManagerAssignmentsAsync(userId, filter);
+            return StatusCode(result.Code, result);
+        }
+        [HttpGet("manager/eligible-teachers")]
+        [Authorize(Roles = "Manager")]
+        public async Task<IActionResult> GetEligibleTeachers([FromQuery] EligibleTeacherFilterRequest filter)
+        {
+            var result = await _exerciseGradingService.GetEligibleTeachersForReassignmentAsync(filter);
+            return StatusCode(result.Code, result);
+        }
+        /// <summary>
         /// Assign exercise to teacher (Manager only)
         /// </summary>
-        [HttpPost("assign-exercise")]
-        [Authorize(Roles = "Manager,Admin")]
+        [HttpPost("manager/assignments")]
+        [Authorize(Roles = "Manager")]
         [ProducesResponseType(typeof(BaseResponse<bool>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(BaseResponse<object>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(BaseResponse<object>), StatusCodes.Status403Forbidden)]
@@ -52,16 +119,10 @@ namespace Presentation.Controllers.ExerciseGrading
             {
                 var userIdClaim = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (string.IsNullOrEmpty(userIdClaim))
-                    return Unauthorized("Teacher ID not found in token.");
+                    return Unauthorized("User ID not found in token.");
 
                 if (!Guid.TryParse(userIdClaim, out Guid userId))
                     return BadRequest("Invalid user ID format in token.");
-
-                if (request.ExerciseSubmissionId == Guid.Empty)
-                    return BadRequest(BaseResponse<object>.Fail(null, "ExerciseSubmissionId is required", 400));
-
-                if (request.TeacherId == Guid.Empty)
-                    return BadRequest(BaseResponse<object>.Fail(null, "TeacherId is required", 400));
 
                 var result = await _exerciseGradingService.AssignExerciseToTeacherAsync(
                     request.ExerciseSubmissionId,
@@ -72,28 +133,13 @@ namespace Presentation.Controllers.ExerciseGrading
             }
             catch (Exception ex)
             {
-                return StatusCode(500, BaseResponse<object>.Error("An error occurred while assigning exercise to teacher"));
+                return StatusCode(500, BaseResponse<object>.Error($"An error occurred while assigning exercise to teacher: {ex.Message}"));
             }
         }
         [HttpGet("status/{exerciseSubmissionId}")]
         public async Task<ActionResult<BaseResponse<ExerciseGradingStatusResponse>>> GetGradingStatus(Guid exerciseSubmissionId)
         {
             var result = await _exerciseGradingService.GetGradingStatusAsync(exerciseSubmissionId);
-            return StatusCode(result.Code, result);
-        }
-        [HttpGet("teacher-assignments")]
-        [Authorize(Roles = "Teacher")]
-        public async Task<ActionResult<BaseResponse<List<ExerciseGradingAssignmentResponse>>>> GetTeacherAssignments(
-            [FromQuery] GradingAssignmentFilterRequest filter)
-        {
-            var userIdClaim = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userIdClaim))
-                return Unauthorized("Teacher ID not found in token.");
-
-            if (!Guid.TryParse(userIdClaim, out Guid userId))
-                return BadRequest("Invalid user ID format in token.");
-
-            var result = await _exerciseGradingService.GetTeacherAssignmentsAsync(userId, filter);
             return StatusCode(result.Code, result);
         }
     }
