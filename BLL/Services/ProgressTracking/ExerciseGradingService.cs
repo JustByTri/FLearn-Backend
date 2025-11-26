@@ -512,9 +512,6 @@ namespace BLL.Services.ProgressTracking
         [AutomaticRetry(Attempts = 5, OnAttemptsExceeded = AttemptsExceededAction.Fail)]
         public async Task<BaseResponse<bool>> ProcessAIGradingAsync(AssessmentRequest request)
         {
-            Random rnd = new Random();
-            await Task.Delay(rnd.Next(1000, 3000));
-
             var submission = await _unitOfWork.ExerciseSubmissions.Query()
                 .Include(es => es.Exercise)
                 .Include(es => es.Learner)
@@ -522,7 +519,7 @@ namespace BLL.Services.ProgressTracking
                 .FirstOrDefaultAsync(es => es.ExerciseSubmissionId == request.ExerciseSubmissionId);
 
             if (submission == null)
-                return BaseResponse<bool>.Fail(false, "Exercise submission not found", 404);
+                throw new Exception($"[Hangfire Retry] Submission {request.ExerciseSubmissionId} not found yet. Waiting for DB commit.");
 
             if (submission.Status != ExerciseSubmissionStatus.PendingAIReview)
                 return BaseResponse<bool>.Fail(false, "Submission is not pending AI review", 400);

@@ -17,20 +17,22 @@ namespace BLL.Services.Assessment
 {
     public class AssessmentService : IAssessmentService
     {
-        private readonly IConfiguration _configuration;
+        private static IConfiguration _configuration;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IPronunciationService _pronunciationService;
         private const string MULTILINGUAL_SCORING_SYSTEM_PROMPT = @"You are an expert speaking examiner for English, Japanese and Chinese.
                                                                     Always return EXACTLY valid JSON with the schema described.
                                                                     Do NOT output anything outside that JSON.
+                                                                    IMPORTANT: Do NOT include a 'transcript' field in the JSON output.
+                                                                    You are grading the student's input provided in the prompt, not transcribing it.
+
                                                                     Language codes: ""en"", ""ja"", ""zh"".
 
                                                                     Scoring fields (0-100 integers):
                                                                     pronunciation, fluency, coherence, accuracy, intonation, grammar, vocabulary
-                                                                    Also: cefr_level (A1..C2), overall (0-100), feedback (string), transcript (string).
+                                                                    Also: cefr_level (A1..C2), overall (0-100), feedback (string).
 
-                                                                    Follow CEFR speaking descriptors. Use JLPT mapping for japanese and HSK mapping for chinese.
-                                                                    If transcript is empty or too short, set low scores and mention in feedback.";
+                                                                    Follow CEFR speaking descriptors. Use JLPT mapping for japanese and HSK mapping for chinese.";
         public AssessmentService(IConfiguration configuration, IUnitOfWork unitOfWork, IPronunciationService pronunciationService)
         {
             _configuration = configuration;
@@ -112,6 +114,8 @@ namespace BLL.Services.Assessment
                     _ => GenerateEnglishPrompt(exercise, studentTranscript)
                 };
 
+                AssessmentResult assessmentResult = new AssessmentResult();
+
                 try
                 {
                     string deploymentName = _configuration["AzureOpenAISettings:ChatDeployment"];
@@ -144,17 +148,14 @@ namespace BLL.Services.Assessment
 
                     Console.WriteLine($"[Azure Response]: {chatCompletion.Content[0].Text}");
 
-                    var assessmentResult = ParseAIResponseToAssessmentResult(chatCompletion.Content[0].Text, req.LanguageCode);
-
-                    assessmentResult.Overall = Math.Clamp(assessmentResult.Overall, 0, 100);
-                    return assessmentResult;
+                    assessmentResult = ParseAIResponseToAssessmentResult(chatCompletion.Content[0].Text, req.LanguageCode);
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"[Azure AI ERROR]: {ex.Message}. Switching to Gemini...");
                     try
                     {
-                        return await EvaluateSpeakingByGeminiAsync(textInstruction, imageUrls, req.LanguageCode);
+                        assessmentResult = await EvaluateSpeakingByGeminiAsync(textInstruction, imageUrls, req.LanguageCode);
                     }
                     catch (Exception geminiEx)
                     {
@@ -162,6 +163,12 @@ namespace BLL.Services.Assessment
                         return CreateFallbackResult("Hệ thống AI đang bận. Điểm số được ghi nhận cho nỗ lực.", req.LanguageCode);
                     }
                 }
+
+                assessmentResult.Overall = Math.Clamp(assessmentResult.Overall, 0, 100);
+                assessmentResult.RecognizedText = studentTranscript.Content;
+                assessmentResult.Transcript = null;
+
+                return assessmentResult;
             }
             catch (Exception ex)
             {
@@ -233,9 +240,6 @@ namespace BLL.Services.Assessment
 
                 if (jsonObject.TryGetProperty("feedback", out var feedback))
                     result.Feedback = feedback.GetString() ?? "";
-
-                if (jsonObject.TryGetProperty("transcript", out var transcript))
-                    result.Transcript = transcript.GetString() ?? "";
 
                 SetLanguageSpecificLevels(result, languageCode);
 
@@ -438,7 +442,7 @@ namespace BLL.Services.Assessment
 
             return new CommonResponse { IsSuccess = false, Content = "All Gemini API keys failed." };
         }
-        private async Task<CommonResponse> TranscribeSpeechByAzureAsync(string audioUrl, string languageCode)
+        public static async Task<CommonResponse> TranscribeSpeechByAzureAsync(string audioUrl, string languageCode)
         {
             if (string.IsNullOrWhiteSpace(audioUrl))
                 return new CommonResponse { IsSuccess = false, Content = "Invalid audio URL." };
@@ -476,6 +480,9 @@ namespace BLL.Services.Assessment
                     var config = SpeechConfig.FromSubscription(speechKey, speechRegion);
                     config.SpeechRecognitionLanguage = MapToAzureLanguage(languageCode);
 
+                    config.SetProperty(PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs, "5000");
+                    config.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, "2000");
+
                     int retryCount = 3;
                     for (int attempt = 1; attempt <= retryCount; attempt++)
                     {
@@ -486,31 +493,49 @@ namespace BLL.Services.Assessment
                             using var audioConfig = AudioConfig.FromWavFileInput(tempPath);
                             using var recognizer = new SpeechRecognizer(config, audioConfig);
 
-                            var result = await recognizer.RecognizeOnceAsync();
+                            var fullTranscript = new StringBuilder();
+                            var stopRecognition = new TaskCompletionSource<int>();
 
-                            switch (result.Reason)
+                            recognizer.Recognized += (s, e) =>
                             {
-                                case ResultReason.RecognizedSpeech:
-                                    Console.WriteLine($"[Azure Speech] Transcript: {result.Text}");
-                                    return new CommonResponse
-                                    {
-                                        IsSuccess = true,
-                                        Content = result.Text.Trim()
-                                    };
+                                if (e.Result.Reason == ResultReason.RecognizedSpeech)
+                                {
+                                    fullTranscript.Append(e.Result.Text + " ");
+                                    Console.WriteLine($"[Azure Segment]: {e.Result.Text}");
+                                }
+                            };
 
-                                case ResultReason.NoMatch:
-                                    Console.WriteLine("[Azure Speech] No speech could be recognized.");
-                                    if (attempt == retryCount)
-                                        return new CommonResponse { IsSuccess = false, Content = "No speech recognized." };
-                                    break;
 
-                                case ResultReason.Canceled:
-                                    var cancellation = CancellationDetails.FromResult(result);
-                                    Console.WriteLine($"[Azure Speech] Canceled: {cancellation.Reason}; ErrorDetails: {cancellation.ErrorDetails}");
-                                    if (attempt == retryCount)
-                                        return new CommonResponse { IsSuccess = false, Content = $"Speech recognition canceled: {cancellation.ErrorDetails}" };
-                                    break;
+                            recognizer.Canceled += (s, e) =>
+                            {
+                                Console.WriteLine($"[Azure Canceled] Reason: {e.Reason}");
+                                if (e.Reason == CancellationReason.Error)
+                                {
+                                    Console.WriteLine($"ErrorDetails: {e.ErrorDetails}");
+                                }
+                                stopRecognition.TrySetResult(0);
+                            };
+
+                            recognizer.SessionStopped += (s, e) =>
+                            {
+                                Console.WriteLine("[Azure SessionStopped]");
+                                stopRecognition.TrySetResult(0);
+                            };
+
+                            await recognizer.StartContinuousRecognitionAsync();
+
+                            Task.WaitAny(new[] { stopRecognition.Task }, TimeSpan.FromSeconds(180));
+
+                            await recognizer.StopContinuousRecognitionAsync();
+
+                            var finalResult = fullTranscript.ToString().Trim();
+
+                            if (string.IsNullOrWhiteSpace(finalResult))
+                            {
+                                return new CommonResponse { IsSuccess = false, Content = "No speech recognized (Empty)." };
                             }
+
+                            return new CommonResponse { IsSuccess = true, Content = finalResult };
                         }
                         catch (Exception ex)
                         {
@@ -813,9 +838,9 @@ namespace BLL.Services.Assessment
             basePrompt.AppendLine($"Target Language: English (en)");
             basePrompt.AppendLine($"Exercise Type: {exercise.Type.ToString()}");
             basePrompt.AppendLine($"Exercise Title: {exercise.Title}");
-            if (!string.IsNullOrEmpty(exercise.Content))
+            if (!string.IsNullOrEmpty(exercise.Prompt))
             {
-                basePrompt.AppendLine($"Exercise Instruction: {exercise.Content}");
+                basePrompt.AppendLine($"Exercise Instruction: {exercise.Prompt}");
             }
 
             if (exercise.Type == SpeakingExerciseType.PictureDescription ||
@@ -825,8 +850,8 @@ namespace BLL.Services.Assessment
             }
 
             basePrompt.AppendLine();
-            basePrompt.AppendLine("### STUDENT INPUT");
-            basePrompt.AppendLine($"Transcript: {(studentTranscript.IsSuccess ? studentTranscript.Content : "No transcript available (Audio unclear)")}");
+            basePrompt.AppendLine("### STUDENT INPUT (This is what the student said)");
+            basePrompt.AppendLine($"Actual Speech Text: {(studentTranscript.IsSuccess ? studentTranscript.Content : "Audio unclear")}");
             basePrompt.AppendLine();
 
             basePrompt.AppendLine("### INSTRUCTIONS");
@@ -869,7 +894,6 @@ namespace BLL.Services.Assessment
                                   ""cefr_level"": ""A1"",
                                   ""overall"": 0-100,
                                   ""feedback"": ""Specific feedback citing examples from their speech and the image..."",
-                                  ""transcript"": ""Corrected transcript if needed""
                                 }");
 
             return basePrompt.ToString();
@@ -881,9 +905,9 @@ namespace BLL.Services.Assessment
             basePrompt.AppendLine($"言語: 日本語 (Japanese)");
             basePrompt.AppendLine($"課題タイプ: {exercise.Type.ToString()}");
             basePrompt.AppendLine($"課題タイトル: {exercise.Title}");
-            if (!string.IsNullOrEmpty(exercise.Content))
+            if (!string.IsNullOrEmpty(exercise.Prompt))
             {
-                basePrompt.AppendLine($"課題内容: {exercise.Content}");
+                basePrompt.AppendLine($"課題内容: {exercise.Prompt}");
             }
 
             if (exercise.Type == SpeakingExerciseType.PictureDescription ||
@@ -893,8 +917,8 @@ namespace BLL.Services.Assessment
             }
 
             basePrompt.AppendLine();
-            basePrompt.AppendLine("### 学生の回答 (Student Input)");
-            basePrompt.AppendLine($"書き起こし: {(studentTranscript.IsSuccess ? studentTranscript.Content : "音声認識不可")}");
+            basePrompt.AppendLine("### 学生の発話内容");
+            basePrompt.AppendLine($"音声認識結果: {(studentTranscript.IsSuccess ? studentTranscript.Content : "音声認識不可")}");
             basePrompt.AppendLine();
 
             basePrompt.AppendLine("### 採点指示 (Instructions)");
@@ -937,7 +961,6 @@ namespace BLL.Services.Assessment
                                       ""cefr_level"": ""A1"",
                                       ""overall"": 0-100,
                                       ""feedback"": ""画像の内容や学生の発話内容に基づいた具体的なフィードバック..."",
-                                      ""transcript"": ""修正が必要な場合の書き起こし""
                                     }");
 
             return basePrompt.ToString();
@@ -947,11 +970,11 @@ namespace BLL.Services.Assessment
             var basePrompt = new StringBuilder();
             basePrompt.AppendLine("### 背景信息 (Context)");
             basePrompt.AppendLine($"目标语言: 中文 (Chinese)");
-            basePrompt.AppendLine($"练习类型: {exercise.Type}");
+            basePrompt.AppendLine($"练习类型: {exercise.Type.ToString()}");
             basePrompt.AppendLine($"练习标题: {exercise.Title}");
-            if (!string.IsNullOrEmpty(exercise.Content))
+            if (!string.IsNullOrEmpty(exercise.Prompt))
             {
-                basePrompt.AppendLine($"练习说明: {exercise.Content}");
+                basePrompt.AppendLine($"练习说明: {exercise.Prompt}");
             }
 
             if (exercise.Type == SpeakingExerciseType.PictureDescription ||
@@ -1005,12 +1028,11 @@ namespace BLL.Services.Assessment
                                       ""cefr_level"": ""A1"",
                                       ""overall"": 0-100,
                                       ""feedback"": ""针对图片内容和学生表现的具体反馈..."",
-                                      ""transcript"": ""如有需要可修正转录文本""
                                     }");
 
             return basePrompt.ToString();
         }
-        private string MapToAzureLanguage(string shortCode)
+        private static string MapToAzureLanguage(string shortCode)
         {
             return shortCode?.ToLower() switch
             {
