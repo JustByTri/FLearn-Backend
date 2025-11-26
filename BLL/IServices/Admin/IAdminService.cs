@@ -41,7 +41,7 @@ namespace BLL.IServices.Admin
         Task<AdminProgramLevelDto> UpdateLevelAsync(Guid levelId, LevelUpdateDto dto);
         Task SoftDeleteLevelAsync(Guid levelId);
         Task<WalletDto> GetAdminWalletAsync(Guid adminId);
-
+        Task<bool> BanUserAsync(Guid adminUserId, Guid targetUserId, string reason);
 
 
     }

@@ -88,7 +88,7 @@ namespace BLL.Services.Admin
             var recentUsers = await _unitOfWork.Users.GetRecentUsersAsync(5);
             var totalCourses = await _unitOfWork.Courses.GetAllAsync();
             var refundResquest = await _unitOfWork.RefundRequests.GetPendingCountAsync();
-            var totalTeachers = await _unitOfWork.Users.GetUsersCountByRoleAsync( "Teacher");
+            var totalTeachers = await _unitOfWork.Users.GetUsersCountByRoleAsync("Teacher");
 
             return new AdminDashboardDto
             {
@@ -96,8 +96,8 @@ namespace BLL.Services.Admin
                 TotalStaff = totalStaff,
                 ActiveUsers = activeUsers,
                 TotalCourses = totalCourses.Count(),
-             PendingRequest = refundResquest,
-             TotalTeachers = totalTeachers,
+                PendingRequest = refundResquest,
+                TotalTeachers = totalTeachers,
                 RecentUsers = recentUsers.Select(user => new UserListDto
                 {
                     UserID = user.UserID,
@@ -625,7 +625,7 @@ namespace BLL.Services.Admin
 
                 Name = wallet.Name,
 
-                
+
                 OwnerType = wallet.OwnerType.ToString(),
 
                 TotalBalance = wallet.TotalBalance,
@@ -638,9 +638,66 @@ namespace BLL.Services.Admin
                 UpdatedAt = wallet.UpdatedAt
             };
         }
+
+        // Đảm bảo bạn đã inject IEmailService vào Constructor
+        // private readonly IEmailService _emailService;
+
+        public async Task<bool> BanUserAsync(Guid adminUserId, Guid targetUserId, string reason)
+        {
+            // ... (Code kiểm tra quyền Admin và lấy user như câu trả lời trước) ...
+            var targetUser = await _unitOfWork.Users.GetByIdAsync(targetUserId);
+            var userWallet = await _unitOfWork.Wallets.GetByIdAsync(targetUserId);
+            var refreshTokens = await _unitOfWork.RefreshTokens.GetByUserIdAsync(targetUserId);
+
+            if (targetUser == null) throw new KeyNotFoundException("User not found");
+
+            // Toggle trạng thái
+            bool isBanning = targetUser.Status; // Nếu đang true -> hành động này sẽ biến thành false (Ban)
+            targetUser.Status = !targetUser.Status;
+            targetUser.UpdatedAt = TimeHelper.GetVietnamTime();
+
+            // Khóa/Mở ví
+            if (userWallet != null)
+            {
+                userWallet.Status = targetUser.Status;
+                _unitOfWork.Wallets.Update(userWallet);
+            }
+
+            // Xử lý Token nếu là Ban
+            if (isBanning) // Hành động Ban
+            {
+                if (refreshTokens != null && refreshTokens.Any())
+                {
+                    _unitOfWork.RefreshTokens.RemoveRange(refreshTokens);
+                }
+            }
+
+            // --- TRIGGER EMAIL SERVICE ---
+            try
+            {
+                if (isBanning) // Nếu vừa thực hiện Ban
+                {
+                    await _emailService.SendBanNotificationAsync(targetUser.Email, targetUser.FullName ?? targetUser.UserName, reason);
+                }
+                else // Nếu vừa thực hiện Unban (Mở khóa)
+                {
+                    await _emailService.SendUnbanNotificationAsync(targetUser.Email, targetUser.FullName ?? targetUser.UserName);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log lỗi gửi mail nhưng không throw exception để tránh rollback việc Ban user
+                _logger.LogError($"Đã Ban user {targetUserId} nhưng gửi mail thất bại: {ex.Message}");
+            }
+            // -----------------------------
+
+            _unitOfWork.Users.Update(targetUser);
+            await _unitOfWork.SaveChangesAsync();
+
+            return targetUser.Status;
+        }
     }
 }
-
 
 
 

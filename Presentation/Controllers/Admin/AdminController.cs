@@ -579,7 +579,7 @@ namespace Presentation.Controllers.Admin
         {
             try
             {
-             
+
                 var adminUserId = this.GetUserId();
 
                 var wallet = await _adminService.GetAdminWalletAsync(adminUserId);
@@ -596,10 +596,59 @@ namespace Presentation.Controllers.Admin
                 return StatusCode(500, new { success = false, message = ex.Message });
             }
         }
+        /// <summary>
+        /// Khóa hoặc mở khóa người dùng (Giáo viên hoặc Học viên).
+        /// Gửi email thông báo tự động.
+        /// </summary>
+        [HttpPost("users/ban")]
+        public async Task<IActionResult> BanUser([FromBody] BanUserRequestDto request)
+        {
+            try
+            {
+               
+                var adminIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+                if (adminIdClaim == null || !Guid.TryParse(adminIdClaim.Value, out Guid adminId))
+                {
+                   
+                    return Unauthorized(BaseResponse<object>.Fail(null, "Không xác định được danh tính Admin.", 401));
+                }
 
-        #endregion
+             
+                var newStatus = await _adminService.BanUserAsync(adminId, request.UserId, request.Reason);
 
+              
+                string statusMessage = newStatus ? "Đã mở khóa (Unban) thành công" : "Đã khóa (Ban) thành công";
 
+                var responseData = new
+                {
+                    UserId = request.UserId,
+                    IsActive = newStatus,
+                    Action = newStatus ? "Unban" : "Ban"
+                };
+
+             
+                return Ok(BaseResponse<object>.Success(responseData, $"{statusMessage}. Email thông báo đã được gửi."));
+            }
+            catch (KeyNotFoundException ex)
+            {
+               
+                return NotFound(BaseResponse<object>.Fail(null, ex.Message, 404));
+            }
+            catch (InvalidOperationException ex)
+            {
+                
+                return BadRequest(BaseResponse<object>.Fail(null, ex.Message, 400));
+            }
+            catch (Exception ex)
+            {
+            
+                return StatusCode(500, BaseResponse<object>.Error(ex.Message));
+            }
+        }
     }
 }
+
+    #endregion
+
+
 
