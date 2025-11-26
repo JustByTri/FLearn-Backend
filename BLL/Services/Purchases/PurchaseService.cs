@@ -233,6 +233,7 @@ namespace BLL.Services.Purchases
                     if (!isApproved)
                     {
                         refundRequest.Status = RefundRequestStatus.Rejected;
+
                         await _unitOfWork.SaveChangesAsync();
                         await _unitOfWork.CommitTransactionAsync();
 
@@ -276,6 +277,7 @@ namespace BLL.Services.Purchases
                     if (enrollment != null)
                     {
                         enrollment.Status = DAL.Type.EnrollmentStatus.Cancelled;
+                        await _unitOfWork.Enrollments.UpdateAsync(enrollment);
                     }
 
                     // Logic trừ tiền Admin Wallet (Revert tiền)
@@ -677,10 +679,16 @@ namespace BLL.Services.Purchases
                         return BaseResponse<PurchaseCourseResponse>.Fail(new object(), "Access denied", 403);
                     }
 
-                    var course = await _unitOfWork.Courses.GetByIdAsync(request.CourseId);
+                    var course = await _unitOfWork.Courses.Query()
+                                    .Include(c => c.Teacher)
+                                    .FirstOrDefaultAsync(c => c.CourseID == request.CourseId);
+
                     if (course == null || course.Status != CourseStatus.Published)
+                        return BaseResponse<PurchaseCourseResponse>.Fail(new object(), "Course unavailable", 400);
+
+                    if (course.Teacher != null && course.Teacher.UserId == userId)
                     {
-                        return BaseResponse<PurchaseCourseResponse>.Fail(new object(), "Course does not exist or is not available", 400);
+                        return BaseResponse<PurchaseCourseResponse>.Fail(new object(), "You cannot purchase your own course.", 400);
                     }
 
                     if (course.CourseType != CourseType.Paid)
@@ -691,7 +699,6 @@ namespace BLL.Services.Purchases
                     if (allPurchases.Any())
                     {
                         var latestPurchase = allPurchases.OrderByDescending(p => p.CreatedAt).First();
-
                         var now = TimeHelper.GetVietnamTime();
 
                         var isExpired = latestPurchase.ExpiresAt.HasValue &&
@@ -1165,7 +1172,7 @@ namespace BLL.Services.Purchases
                         {
                             HasAccess = false,
                             AccessStatus = "EXPIRED",
-                            ExpiresAt = latestPurchase.ExpiresAt?.ToString("dd-MM-yyyy"),
+                            ExpiresAt = latestPurchase.ExpiresAt?.ToString("dd-MM-yyyy hh:MM"),
                             DaysRemaining = 0,
                             PurchaseId = latestPurchase.PurchasesId
                         };
@@ -1204,7 +1211,7 @@ namespace BLL.Services.Purchases
                     {
                         HasAccess = false,
                         AccessStatus = "EXPIRED",
-                        ExpiresAt = latestPurchase.ExpiresAt.Value.ToString("dd-MM-yyyy"),
+                        ExpiresAt = latestPurchase.ExpiresAt.Value.ToString("dd-MM-yyyy hh:MM"),
                         DaysRemaining = 0,
                         PurchaseId = latestPurchase.PurchasesId
                     };
@@ -1227,10 +1234,10 @@ namespace BLL.Services.Purchases
                 {
                     HasAccess = true,
                     AccessStatus = isRefundEligible ? "ACTIVE_WITH_REFUND_ELIGIBLE" : "ACTIVE",
-                    ExpiresAt = latestPurchase.ExpiresAt?.ToString("dd-MM-yyyy"),
+                    ExpiresAt = latestPurchase.ExpiresAt?.ToString("dd-MM-yyyy hh:MM"),
                     DaysRemaining = daysRemaining,
                     PurchaseId = latestPurchase.PurchasesId,
-                    RefundEligibleUntil = latestPurchase.EligibleForRefundUntil?.ToString("dd-MM-yyyy")
+                    RefundEligibleUntil = latestPurchase.EligibleForRefundUntil?.ToString("dd-MM-yyyy hh:MM")
                 };
             }
             catch (Exception ex)

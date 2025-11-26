@@ -20,16 +20,18 @@ namespace BLL.Services.ProgressTracking
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IExerciseGradingService _exerciseGradingService;
+        private readonly IBackgroundJobClient _backgroundJobClient;
         private readonly ICloudinaryService _cloudinaryService;
         private readonly IGamificationService _gamificationService;
         private const double DefaultAIPercentage = 30;
         private const double DefaultTeacherPercentage = 70;
-        public ProgressTrackingService(IUnitOfWork unitOfWork, IExerciseGradingService exerciseGradingService, ICloudinaryService cloudinaryService, IGamificationService gamificationService)
+        public ProgressTrackingService(IUnitOfWork unitOfWork, IExerciseGradingService exerciseGradingService, ICloudinaryService cloudinaryService, IGamificationService gamificationService, IBackgroundJobClient backgroundJobClient)
         {
             _unitOfWork = unitOfWork;
             _exerciseGradingService = exerciseGradingService;
             _cloudinaryService = cloudinaryService;
             _gamificationService = gamificationService;
+            _backgroundJobClient = backgroundJobClient;
         }
         public async Task<PagedResponse<List<ExerciseSubmissionDetailResponse>>> GetMySubmissionsAsync(Guid userId, Guid courseId, Guid lessonId, string? status, int pageNumber = 1, int pageSize = 10)
         {
@@ -624,7 +626,8 @@ namespace BLL.Services.ProgressTracking
                 };
 
                 // Tự động chấm điểm ngầm
-                BackgroundJob.Enqueue<IExerciseGradingService>(x => x.ProcessAIGradingAsync(assessmentRequest));
+                //BackgroundJob.Enqueue<IExerciseGradingService>(x => x.ProcessAIGradingAsync(assessmentRequest));
+                _backgroundJobClient.Enqueue(() => _exerciseGradingService.ProcessAIGradingAsync(assessmentRequest));
                 //await _exerciseGradingService.ProcessAIGradingAsync(assessmentRequest);
 
                 var response = new ExerciseSubmissionResponse
@@ -1037,7 +1040,7 @@ namespace BLL.Services.ProgressTracking
                              es.SubmittedAt >= today).CountAsync();
 
             //Nếu số lượng bài nộp lớn hơn hoặc bằng 5 thì người học không thể nộp được nữa và phải chờ đến ngày mai.
-            if (todaysSubmissions >= 5)
+            if (todaysSubmissions >= 100)
                 return false;
 
             return true;

@@ -1,7 +1,6 @@
 ﻿using Azure;
 using Azure.AI.OpenAI;
 using BLL.IServices.Assessment;
-using BLL.Services.AI;
 using Common.DTO.Assessment.Response;
 using Common.DTO.ExerciseGrading.Request;
 using Common.DTO.ExerciseGrading.Response;
@@ -19,7 +18,6 @@ namespace BLL.Services.Assessment
     public class AssessmentService : IAssessmentService
     {
         private readonly IConfiguration _configuration;
-        private readonly ITranscriptionService _transcriptionService;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IPronunciationService _pronunciationService;
         private const string MULTILINGUAL_SCORING_SYSTEM_PROMPT = @"You are an expert speaking examiner for English, Japanese and Chinese.
@@ -33,9 +31,8 @@ namespace BLL.Services.Assessment
 
                                                                     Follow CEFR speaking descriptors. Use JLPT mapping for japanese and HSK mapping for chinese.
                                                                     If transcript is empty or too short, set low scores and mention in feedback.";
-        public AssessmentService(ITranscriptionService transcriptionService, IConfiguration configuration, IUnitOfWork unitOfWork, IPronunciationService pronunciationService)
+        public AssessmentService(IConfiguration configuration, IUnitOfWork unitOfWork, IPronunciationService pronunciationService)
         {
-            _transcriptionService = transcriptionService;
             _configuration = configuration;
             _unitOfWork = unitOfWork;
             _pronunciationService = pronunciationService;
@@ -94,9 +91,18 @@ namespace BLL.Services.Assessment
                 if (exercise.Type == SpeakingExerciseType.RepeatAfterMe && !string.IsNullOrEmpty(exercise.MediaUrl))
                 {
                     var result = await _pronunciationService.AssessPronunciationAsync(submission.AudioUrl, exercise.Content, req.LanguageCode);
-                    return result != null
-                        ? _pronunciationService.ConvertToAssessmentResult(result, exercise.Content, req.LanguageCode)
-                        : CreateFallbackResult("Không thể nhận diện giọng nói rõ ràng hoặc âm thanh quá ồn. Hệ thống chấm điểm mặc định cho nỗ lực nộp bài.", req.LanguageCode);
+
+                    var pronunciationResult = new AssessmentResult();
+                    if (result != null)
+                    {
+                        pronunciationResult = _pronunciationService.ConvertToAssessmentResult(result, exercise.Content, req.LanguageCode);
+                    }
+                    else
+                    {
+                        pronunciationResult = CreateFallbackResult("Không thể nhận diện giọng nói rõ ràng hoặc âm thanh quá ồn. Hệ thống chấm điểm mặc định cho nỗ lực nộp bài.", req.LanguageCode);
+                    }
+
+                    return pronunciationResult;
                 }
 
                 string textInstruction = req.LanguageCode switch

@@ -6,6 +6,8 @@
         public Guid ExerciseSubmissionId { get; set; }
         public Guid LearnerId { get; set; }
         public string LearnerName { get; set; } = string.Empty;
+        public Guid? AssignedTeacherId { get; set; }
+        public string? AssignedTeacherName { get; set; }
         public Guid ExerciseId { get; set; }
         public string ExerciseTitle { get; set; } = string.Empty;
         public string ExerciseType { get; set; } = string.Empty;
