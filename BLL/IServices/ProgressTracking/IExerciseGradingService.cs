@@ -8,6 +8,7 @@ namespace BLL.IServices.ProgressTracking
     public interface IExerciseGradingService
     {
         Task<BaseResponse<bool>> ProcessAIGradingAsync(AssessmentRequest request);
+        Task<BaseResponse<bool>> RetryAIGradingAsync(Guid exerciseSubmissionId);
         Task<BaseResponse<bool>> ProcessTeacherGradingAsync(Guid exerciseSubmissionId, Guid userId, double score, string feedback);
         Task<BaseResponse<ExerciseGradingStatusResponse>> GetGradingStatusAsync(Guid exerciseSubmissionId);
         Task<PagedResponse<List<ExerciseGradingAssignmentResponse>>> GetTeacherAssignmentsAsync(Guid userId, GradingAssignmentFilterRequest filter);
