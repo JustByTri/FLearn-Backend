@@ -10,6 +10,7 @@
         public string? AssignedTeacherName { get; set; }
         public Guid ExerciseId { get; set; }
         public string ExerciseTitle { get; set; } = string.Empty;
+        public double PassScore { get; set; }
         public string ExerciseType { get; set; } = string.Empty;
         public Guid? LessonId { get; set; }
         public string LessonTitle { get; set; } = string.Empty;
@@ -18,6 +19,9 @@
         public string AudioUrl { get; set; } = string.Empty;
         public double AIScore { get; set; }
         public string AIFeedback { get; set; } = string.Empty;
+        public double TeacherScore { get; set; }
+        public string TeacherFeedback { get; set; } = string.Empty;
+        public double? FinalScore { get; set; }
         public string Status { get; set; } = string.Empty;
         public string GradingStatus { get; set; } = string.Empty;
         public string EarningStatus { get; set; } = string.Empty;
@@ -28,7 +32,5 @@
         public string? CompletedAt { get; set; }
         public bool IsOverdue { get; set; }
         public int HoursRemaining { get; set; }
-        public double? FinalScore { get; set; }
-        public string? Feedback { get; set; }
     }
 }

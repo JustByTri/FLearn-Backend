@@ -1049,11 +1049,13 @@ namespace BLL.Services.ProgressTracking
                 AssignedTeacherName = a.Teacher?.FullName ?? a.Teacher?.User?.FullName,
                 AIScore = a.ExerciseSubmission.AIScore,
                 AIFeedback = a.ExerciseSubmission.AIFeedback,
+                TeacherScore = a.ExerciseSubmission.TeacherScore,
+                TeacherFeedback = a.ExerciseSubmission.TeacherFeedback,
                 EarningStatus = a.EarningAllocation?.Status.ToString() ?? "N/A",
                 EarningAmount = a.EarningAllocation?.ExerciseGradingAmount ?? 0,
                 CompletedAt = a.CompletedAt?.ToString("dd-MM-yyyy HH:mm"),
                 StartedAt = a.StartedAt?.ToString("dd-MM-yyyy HH:mm"),
-                Feedback = a.Feedback,
+                PassScore = a.ExerciseSubmission.Exercise.PassScore,
                 GradingStatus = a.ExerciseSubmission.Status.ToString(),
                 ExerciseTitle = a.ExerciseSubmission.Exercise.Title,
                 CourseName = a.ExerciseSubmission.Exercise.Lesson?.CourseUnit?.Course?.Title ?? "Unknown",
@@ -1064,8 +1066,7 @@ namespace BLL.Services.ProgressTracking
                 HoursRemaining = (a.Status == GradingStatus.Assigned)
                     ? (a.DeadlineAt > now ? (int)(a.DeadlineAt - now).TotalHours : 0)
                     : 0,
-
-                FinalScore = a.FinalScore
+                FinalScore = a.ExerciseSubmission.FinalScore,
             }).ToList();
 
             return PagedResponse<List<ExerciseGradingAssignmentResponse>>.Success(data, filter.Page, filter.PageSize, totalCount);
