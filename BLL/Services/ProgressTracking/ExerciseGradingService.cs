@@ -119,7 +119,12 @@ namespace BLL.Services.ProgressTracking
                 if (submission.Exercise?.Lesson?.CourseUnit == null)
                     return BaseResponse<bool>.Fail(false, "Course information not found", 404);
 
-                // 3. Validate Purchase (Giữ nguyên logic của bạn)
+                var courseLanguageId = submission.Exercise.Lesson.CourseUnit.Course.LanguageId;
+                if (manager.LanguageId != courseLanguageId)
+                {
+                    return BaseResponse<bool>.Fail(false, "Access denied. You cannot manage assignments for this language.", 403);
+                }
+
                 var courseId = submission.Exercise.Lesson.CourseUnit.CourseID;
                 var learnerUserId = submission.Learner.UserId;
 
@@ -344,6 +349,8 @@ namespace BLL.Services.ProgressTracking
 
             var query = BuildBaseAssignmentQuery();
 
+            query = query.Where(a => a.ExerciseSubmission.Exercise.Lesson.CourseUnit.Course.LanguageId == manager.LanguageId);
+
             if (filter.AssignedTeacherId.HasValue)
             {
                 query = query.Where(a => a.AssignedTeacherId == filter.AssignedTeacherId.Value);
@@ -382,6 +389,7 @@ namespace BLL.Services.ProgressTracking
             if (manager != null)
             {
                 isManager = true;
+                query = query.Where(a => a.ExerciseSubmission.Exercise.Lesson.CourseUnit.Course.LanguageId == manager.LanguageId);
             }
 
             if (!isManager)
