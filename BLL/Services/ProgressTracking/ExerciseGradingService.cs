@@ -1,7 +1,6 @@
 ﻿using BLL.IServices.Assessment;
 using BLL.IServices.ProgressTracking;
 using BLL.IServices.Wallets;
-using BLL.Services.Wallets;
 using Common.DTO.ApiResponse;
 using Common.DTO.ExerciseGrading.Request;
 using Common.DTO.ExerciseGrading.Response;
@@ -19,12 +18,12 @@ namespace BLL.Services.ProgressTracking
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IAssessmentService _assessmentService;
-        private readonly IWalletService _walletService;
-        public ExerciseGradingService(IUnitOfWork unitOfWork, IAssessmentService assessmentService, WalletService walletService)
+        private readonly IBackgroundJobClient _backgroundJobClient;
+        public ExerciseGradingService(IUnitOfWork unitOfWork, IAssessmentService assessmentService, IBackgroundJobClient backgroundJobClient)
         {
             _unitOfWork = unitOfWork;
             _assessmentService = assessmentService;
-            _walletService = walletService;
+            _backgroundJobClient = backgroundJobClient;
         }
         public async Task<BaseResponse<bool>> CheckAndReassignExpiredAssignmentsAsync()
         {
@@ -115,6 +114,9 @@ namespace BLL.Services.ProgressTracking
 
                 if (submission == null)
                     return BaseResponse<bool>.Fail(false, "Exercise submission not found", 404);
+
+                if (submission.Status != ExerciseSubmissionStatus.PendingTeacherReview)
+                    return BaseResponse<bool>.Fail(false, "Submission is not pending teacher review", 400);
 
                 if (submission.Exercise?.Lesson?.CourseUnit == null)
                     return BaseResponse<bool>.Fail(false, "Course information not found", 404);
@@ -648,6 +650,67 @@ namespace BLL.Services.ProgressTracking
                 return BaseResponse<bool>.Error($"AI grading failed: {ex.Message}");
             }
         }
+        public async Task<BaseResponse<bool>> RetryAIGradingAsync(Guid exerciseSubmissionId)
+        {
+            try
+            {
+                var submission = await _unitOfWork.ExerciseSubmissions.Query()
+                    .Include(es => es.Exercise)
+                        .ThenInclude(e => e.Lesson)
+                            .ThenInclude(l => l.CourseUnit)
+                                .ThenInclude(cu => cu.Course)
+                                    .ThenInclude(c => c.Language)
+                    .FirstOrDefaultAsync(es => es.ExerciseSubmissionId == exerciseSubmissionId);
+
+                if (submission == null)
+                    return BaseResponse<bool>.Fail(false, "Exercise submission not found", 404);
+
+                bool hasValidScore = submission.AIScore > 0;
+
+                if (hasValidScore)
+                {
+                    return BaseResponse<bool>.Fail(false,
+                        $"Submission seems valid (Score: {submission.AIScore}). Manual retry is not allowed for successful submissions.",
+                        400);
+                }
+
+                // 3. Reset trạng thái để chuẩn bị chấm lại
+                // Phải đưa về PendingAIReview thì hàm ProcessAIGradingAsync mới chịu xử lý
+                submission.Status = ExerciseSubmissionStatus.PendingAIReview;
+                submission.AIFeedback = "Manually triggered retry. Waiting for AI...";
+                submission.AIScore = 0; // Reset điểm về 0
+                // Giữ nguyên AudioUrl
+
+                await _unitOfWork.ExerciseSubmissions.UpdateAsync(submission);
+                await _unitOfWork.SaveChangesAsync();
+
+                // 4. Chuẩn bị Request
+                var course = submission.Exercise.Lesson.CourseUnit.Course;
+                string languageCode = course?.Language?.LanguageCode ?? "en";
+
+                // Xác định lại GradingType dựa trên tỷ trọng điểm đã lưu
+                string gradingType = (submission.TeacherPercentage > 0)
+                    ? GradingType.AIAndTeacher.ToString()
+                    : GradingType.AIOnly.ToString();
+
+                var assessmentRequest = new AssessmentRequest
+                {
+                    ExerciseSubmissionId = submission.ExerciseSubmissionId,
+                    AudioUrl = submission.AudioUrl,
+                    LanguageCode = languageCode,
+                    GradingType = gradingType
+                };
+
+                // 5. Đẩy vào Background Job (Hangfire) để chạy ngay lập tức
+                _backgroundJobClient.Schedule(() => ProcessAIGradingAsync(assessmentRequest), TimeSpan.FromSeconds(5));
+
+                return BaseResponse<bool>.Success(true, "AI grading retry triggered successfully.");
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<bool>.Error($"Error triggering retry: {ex.Message}");
+            }
+        }
         public async Task<BaseResponse<bool>> ProcessTeacherGradingAsync(Guid exerciseSubmissionId, Guid userId, double score, string feedback)
         {
             return await _unitOfWork.ExecuteInTransactionAsync(async () =>
@@ -999,14 +1062,17 @@ namespace BLL.Services.ProgressTracking
         private IQueryable<ExerciseGradingAssignment> BuildBaseAssignmentQuery()
         {
             return _unitOfWork.ExerciseGradingAssignments.Query()
-                .Include(a => a.ExerciseSubmission)
-                    .ThenInclude(es => es.Exercise)
-                        .ThenInclude(e => e.Lesson)
-                            .ThenInclude(l => l.CourseUnit)
-                                .ThenInclude(cu => cu.Course)
-                .Include(a => a.ExerciseSubmission.Learner.User)
-                .Include(a => a.Teacher.User)
-                .Include(a => a.EarningAllocation);
+                            .Include(a => a.ExerciseSubmission)
+                                .ThenInclude(es => es.Exercise)
+                                    .ThenInclude(e => e.Lesson)
+                                        .ThenInclude(l => l.CourseUnit)
+                                            .ThenInclude(cu => cu.Course)
+                            .Include(a => a.ExerciseSubmission)
+                                .ThenInclude(es => es.ExerciseGradingAssignments)
+                                    .ThenInclude(ega => ega.Teacher)
+                            .Include(a => a.ExerciseSubmission.Learner.User)
+                            .Include(a => a.Teacher.User)
+                            .Include(a => a.EarningAllocation);
         }
         private IQueryable<ExerciseGradingAssignment> ApplyCommonFilters(IQueryable<ExerciseGradingAssignment> query, GradingAssignmentFilterRequest filter)
         {
@@ -1033,40 +1099,58 @@ namespace BLL.Services.ProgressTracking
                 .ToListAsync();
 
             var now = TimeHelper.GetVietnamTime();
-            var data = assignments.Select(a => new ExerciseGradingAssignmentResponse
+            var data = assignments.Select(a =>
             {
-                AssignmentId = a.GradingAssignmentId,
-                ExerciseSubmissionId = a.ExerciseSubmissionId,
-                LearnerId = a?.ExerciseSubmission?.LearnerId ?? Guid.Empty,
-                LearnerName = a?.ExerciseSubmission?.Learner?.User?.FullName ?? a?.ExerciseSubmission?.Learner?.User?.UserName ?? string.Empty,
-                AudioUrl = a.ExerciseSubmission.AudioUrl,
-                ExerciseId = a.ExerciseSubmission.ExerciseId,
-                ExerciseType = a.ExerciseSubmission.Exercise.Type.ToString(),
-                LessonId = a.ExerciseSubmission.Exercise.LessonID,
-                LessonTitle = a.ExerciseSubmission.Exercise.Lesson?.Title ?? "Unknown",
-                CourseId = a.ExerciseSubmission.Exercise.Lesson?.CourseUnit?.CourseID,
-                AssignedTeacherId = a.AssignedTeacherId,
-                AssignedTeacherName = a.Teacher?.FullName ?? a.Teacher?.User?.FullName,
-                AIScore = a.ExerciseSubmission.AIScore,
-                AIFeedback = a.ExerciseSubmission.AIFeedback,
-                TeacherScore = a.ExerciseSubmission.TeacherScore,
-                TeacherFeedback = a.ExerciseSubmission.TeacherFeedback,
-                EarningStatus = a.EarningAllocation?.Status.ToString() ?? "N/A",
-                EarningAmount = a.EarningAllocation?.ExerciseGradingAmount ?? 0,
-                CompletedAt = a.CompletedAt?.ToString("dd-MM-yyyy HH:mm"),
-                StartedAt = a.StartedAt?.ToString("dd-MM-yyyy HH:mm"),
-                PassScore = a.ExerciseSubmission.Exercise.PassScore,
-                GradingStatus = a.ExerciseSubmission.Status.ToString(),
-                ExerciseTitle = a.ExerciseSubmission.Exercise.Title,
-                CourseName = a.ExerciseSubmission.Exercise.Lesson?.CourseUnit?.Course?.Title ?? "Unknown",
-                Status = a.Status.ToString(),
-                AssignedAt = a.AssignedAt.ToString("dd-MM-yyyy HH:mm"),
-                Deadline = a.DeadlineAt.ToString("dd-MM-yyyy HH:mm"),
-                IsOverdue = a.DeadlineAt < now && a.Status == GradingStatus.Expired,
-                HoursRemaining = (a.Status == GradingStatus.Assigned)
-                    ? (a.DeadlineAt > now ? (int)(a.DeadlineAt - now).TotalHours : 0)
-                    : 0,
-                FinalScore = a.ExerciseSubmission.FinalScore,
+                var nextAssignment = a.ExerciseSubmission.ExerciseGradingAssignments
+                            .Where(x => x.GradingAssignmentId != a.GradingAssignmentId &&
+                                        x.CreatedAt > a.CreatedAt)
+                            .OrderByDescending(x => x.CreatedAt)
+                            .FirstOrDefault();
+
+                bool isReassigned = (a.Status == GradingStatus.Expired || a.Status == GradingStatus.Cancelled)
+                                            && nextAssignment != null;
+
+                return new ExerciseGradingAssignmentResponse
+                {
+                    AssignmentId = a.GradingAssignmentId,
+                    ExerciseSubmissionId = a.ExerciseSubmissionId,
+                    LearnerId = a?.ExerciseSubmission?.LearnerId ?? Guid.Empty,
+                    LearnerName = a?.ExerciseSubmission?.Learner?.User?.FullName ?? a?.ExerciseSubmission?.Learner?.User?.UserName ?? string.Empty,
+                    AudioUrl = a.ExerciseSubmission.AudioUrl,
+                    ExerciseId = a.ExerciseSubmission.ExerciseId,
+                    ExerciseType = a.ExerciseSubmission.Exercise.Type.ToString(),
+                    LessonId = a.ExerciseSubmission.Exercise.LessonID,
+                    LessonTitle = a.ExerciseSubmission.Exercise.Lesson?.Title ?? "Unknown",
+                    CourseId = a.ExerciseSubmission.Exercise.Lesson?.CourseUnit?.CourseID,
+                    AssignedTeacherId = a.AssignedTeacherId,
+                    AssignedTeacherName = a.Teacher?.FullName ?? a.Teacher?.User?.FullName,
+                    AIScore = a.ExerciseSubmission.AIScore,
+                    AIFeedback = a.ExerciseSubmission.AIFeedback,
+                    TeacherScore = a.ExerciseSubmission.TeacherScore,
+                    TeacherFeedback = a.ExerciseSubmission.TeacherFeedback,
+                    EarningStatus = a.EarningAllocation?.Status.ToString() ?? "N/A",
+                    EarningAmount = a.EarningAllocation?.ExerciseGradingAmount ?? 0,
+                    CompletedAt = a.CompletedAt?.ToString("dd-MM-yyyy HH:mm"),
+                    StartedAt = a.StartedAt?.ToString("dd-MM-yyyy HH:mm"),
+                    PassScore = a.ExerciseSubmission.Exercise.PassScore,
+                    GradingStatus = a.ExerciseSubmission.Status.ToString(),
+                    ExerciseTitle = a.ExerciseSubmission.Exercise.Title,
+                    CourseName = a.ExerciseSubmission.Exercise.Lesson?.CourseUnit?.Course?.Title ?? "Unknown",
+                    Status = a.Status.ToString(),
+                    AssignedAt = a.AssignedAt.ToString("dd-MM-yyyy HH:mm"),
+                    Deadline = a.DeadlineAt.ToString("dd-MM-yyyy HH:mm"),
+                    IsOverdue = a.DeadlineAt < now && a.Status == GradingStatus.Expired,
+                    HoursRemaining = (a.Status == GradingStatus.Assigned)
+                        ? (a.DeadlineAt > now ? (int)(a.DeadlineAt - now).TotalHours : 0)
+                        : 0,
+                    FinalScore = a.ExerciseSubmission.FinalScore,
+                    IsReassigned = isReassigned,
+                    ReassignedToAssignmentId = isReassigned ? nextAssignment?.GradingAssignmentId : null,
+                    ReassignedToTeacherId = isReassigned ? nextAssignment?.AssignedTeacherId : null,
+                    ReassignedToTeacherAvatar = isReassigned ? (nextAssignment?.Teacher?.Avatar ?? nextAssignment?.Teacher?.User?.Avatar) : null,
+                    ReassignedToTeacherName = isReassigned ? (nextAssignment?.Teacher?.FullName ?? nextAssignment?.Teacher?.User?.UserName) : null,
+                    ReassignedAt = isReassigned ? nextAssignment?.CreatedAt.ToString("dd-MM-yyyy HH:mm") : null
+                };
             }).ToList();
 
             return PagedResponse<List<ExerciseGradingAssignmentResponse>>.Success(data, filter.Page, filter.PageSize, totalCount);

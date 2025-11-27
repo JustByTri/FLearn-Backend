@@ -1,5 +1,4 @@
-﻿using BLL.IServices.Assessment;
-using BLL.IServices.ProgressTracking;
+﻿using BLL.IServices.ProgressTracking;
 using BLL.Services.Assessment;
 using Common.DTO.ApiResponse;
 using Common.DTO.Language;
@@ -16,13 +15,9 @@ namespace Presentation.Controllers.ProgressTracking
     public class ProgressTrackingController : ControllerBase
     {
         private readonly IProgressTrackingService _progressTrackingService;
-        private readonly IPronunciationService _pronunciationService;
-        private readonly IAssessmentService _assessmentService;
-        public ProgressTrackingController(IProgressTrackingService progressTrackingService, IPronunciationService pronunciationService, IAssessmentService assessmentService)
+        public ProgressTrackingController(IProgressTrackingService progressTrackingService)
         {
             _progressTrackingService = progressTrackingService;
-            _pronunciationService = pronunciationService;
-            _assessmentService = assessmentService;
         }
         [Authorize(Roles = "Learner")]
         [HttpPost("start-lesson")]

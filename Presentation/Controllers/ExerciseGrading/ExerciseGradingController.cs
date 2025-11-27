@@ -142,5 +142,13 @@ namespace Presentation.Controllers.ExerciseGrading
             var result = await _exerciseGradingService.GetGradingStatusAsync(exerciseSubmissionId);
             return StatusCode(result.Code, result);
         }
+        [HttpPost("retry-ai-grading/{submissionId:guid}")]
+        [Authorize]
+        public async Task<IActionResult> RetryAIGrading(Guid submissionId)
+        {
+            var result = await _exerciseGradingService.RetryAIGradingAsync(submissionId);
+
+            return StatusCode(result.Code, result);
+        }
     }
 }

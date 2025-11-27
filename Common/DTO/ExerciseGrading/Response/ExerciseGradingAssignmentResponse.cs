@@ -32,5 +32,11 @@
         public string? CompletedAt { get; set; }
         public bool IsOverdue { get; set; }
         public int HoursRemaining { get; set; }
+        public bool IsReassigned { get; set; }
+        public Guid? ReassignedToAssignmentId { get; set; }
+        public Guid? ReassignedToTeacherId { get; set; }
+        public string? ReassignedToTeacherName { get; set; }
+        public string? ReassignedToTeacherAvatar { get; set; }
+        public string? ReassignedAt { get; set; }
     }
 }
