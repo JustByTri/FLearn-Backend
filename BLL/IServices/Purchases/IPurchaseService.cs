@@ -25,5 +25,7 @@ namespace BLL.IServices.Purchases
         Task<PagedResponse<List<SubscriptionPurchaseResponse>>> GetSubscriptionPurchasesAsync(Guid userId, PurchasePagingRequest request);
         Task<BaseResponse<CoursePurchaseResponse>> GetCoursePurchaseDetailAsync(Guid userId, Guid purchaseId);
         Task<BaseResponse<SubscriptionPurchaseResponse>> GetSubscriptionPurchaseDetailAsync(Guid userId, Guid purchaseId);
+        Task<PagedResponse<List<RefundRequestResponse>>> GetStudentRefundRequestsByLanguageAsync(Guid userId, RefundRequestFilterRequest request);
+        Task<BaseResponse<RefundRequestResponse>> GetRefundRequestDetailByIdAsync(Guid userId, Guid refundRequestId);
     }
 }

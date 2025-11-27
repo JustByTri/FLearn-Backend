@@ -154,6 +154,7 @@ namespace BLL.Services.Purchases
                         RefundRequestID = Guid.NewGuid(),
                         PurchaseId = request.PurchaseId,
                         StudentID = userId,
+                        RequestType = RefundRequestType.Other,
                         Reason = request.Reason,
                         BankAccountNumber = request.BankAccountNumber,
                         BankName = request.BankName,
@@ -861,7 +862,7 @@ namespace BLL.Services.Purchases
                     PaidAt = purchaseEntity.PaidAt?.ToString("dd-MM-yyyy HH:mm"),
                     StartsAt = purchaseEntity.StartsAt?.ToString("dd-MM-yyyy HH:mm"),
                     ExpiresAt = purchaseEntity.ExpiresAt?.ToString("dd-MM-yyyy HH:mm"),
-                    EligibleForRefundUntil = purchaseEntity.EligibleForRefundUntil?.ToString("dd-MM-yyyy"),
+                    EligibleForRefundUntil = purchaseEntity.EligibleForRefundUntil?.ToString("dd-MM-yyyy HH:mm"),
                     DaysRemaining = purchaseEntity.ExpiresAt.HasValue ? (int)(purchaseEntity.ExpiresAt.Value - now).TotalDays : -1,
                     IsRefundEligible = purchaseEntity.EligibleForRefundUntil.HasValue && now <= purchaseEntity.EligibleForRefundUntil.Value,
                     IsActive = purchaseEntity.Status == PurchaseStatus.Completed &&
@@ -988,6 +989,166 @@ namespace BLL.Services.Purchases
                 return BaseResponse<SubscriptionPurchaseResponse>.Error("System error while retrieving purchase detail");
             }
         }
+        public async Task<PagedResponse<List<RefundRequestResponse>>> GetStudentRefundRequestsByLanguageAsync(Guid userId, RefundRequestFilterRequest request)
+        {
+            try
+            {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null || !user.IsEmailConfirmed || !user.Status)
+                {
+                    return PagedResponse<List<RefundRequestResponse>>.Fail(new object(), "Access denied", 403);
+                }
+
+                if (user.ActiveLanguageId == null)
+                {
+                    return PagedResponse<List<RefundRequestResponse>>.Fail(new object(), "User has no active language set", 400);
+                }
+
+                var query = _unitOfWork.RefundRequests.Query()
+                    .Include(r => r.Purchase)
+                        .ThenInclude(p => p.Course)
+                    .Include(r => r.ProcessedByAdmin)
+                    .Where(r => r.StudentID == userId);
+
+                query = query.Where(r => r.Purchase != null
+                                      && r.Purchase.Course != null
+                                      && r.Purchase.Course.LanguageId == user.ActiveLanguageId.Value);
+
+                if (!string.IsNullOrEmpty(request.SearchTerm))
+                {
+                    var term = request.SearchTerm.ToLower().Trim();
+                    query = query.Where(r =>
+                        (r.Purchase != null && r.Purchase.Course != null && r.Purchase.Course.Title.ToLower().Contains(term)) ||
+                        r.RefundRequestID.ToString().Contains(term)
+                    );
+                }
+
+                if (!string.IsNullOrEmpty(request.Status) && Enum.TryParse<RefundRequestStatus>(request.Status, true, out var statusEnum))
+                {
+                    query = query.Where(r => r.Status == statusEnum);
+                }
+
+                if (request.FromDate.HasValue)
+                {
+                    query = query.Where(r => r.RequestedAt >= request.FromDate.Value);
+                }
+
+                if (request.ToDate.HasValue)
+                {
+                    var toDate = request.ToDate.Value.Date.AddDays(1).AddTicks(-1);
+                    query = query.Where(r => r.RequestedAt <= toDate);
+                }
+
+                var totalItems = await query.CountAsync();
+
+                var items = await query
+                    .OrderByDescending(r => r.RequestedAt)
+                    .Skip((request.Page - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .Select(r => new RefundRequestResponse
+                    {
+                        RefundRequestId = r.RefundRequestID,
+                        PurchaseId = r.PurchaseId ?? Guid.Empty,
+                        StudentId = r.StudentID,
+                        StudentName = user.FullName ?? user.UserName,
+                        StudentEmail = user.Email,
+                        StudentAvatar = user.Avatar,
+                        CourseName = r.Purchase != null && r.Purchase.Course != null
+                                     ? r.Purchase.Course.Title
+                                     : "Unknown Course",
+                        RefundAmount = r.RefundAmount,
+                        OriginalAmount = r.Purchase != null ? r.Purchase.FinalAmount : 0,
+                        RequestType = r.RequestType.ToString(),
+                        Reason = r.Reason ?? "Unknown",
+                        BankName = r.BankName ?? "Unknown",
+                        BankAccountNumber = r.BankAccountNumber ?? "Unknown",
+                        BankAccountHolderName = r.BankAccountHolderName ?? "Unknown",
+                        ProofImageUrl = r.ProofImageUrl ?? "Unknown",
+                        Status = r.Status.ToString(),
+                        RequestedAt = r.RequestedAt.ToString("dd-MM-yyyy HH:mm"),
+                        ProcessedAt = r.ProcessedAt.HasValue ? r.ProcessedAt.Value.ToString("dd-MM-yyyy HH:mm") : null,
+                        AdminNote = r.AdminNote,
+                        ProcessedByAdminName = r.ProcessedByAdmin != null ? r.ProcessedByAdmin.UserName : null
+                    })
+                    .ToListAsync();
+
+                return PagedResponse<List<RefundRequestResponse>>.Success(
+                    items,
+                    request.Page,
+                    request.PageSize,
+                    totalItems,
+                    "My refund requests retrieved successfully"
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting refund requests for student {UserId}", userId);
+                return PagedResponse<List<RefundRequestResponse>>.Error("System error while retrieving refund requests");
+            }
+        }
+        public async Task<BaseResponse<RefundRequestResponse>> GetRefundRequestDetailByIdAsync(Guid userId, Guid refundRequestId)
+        {
+            try
+            {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null || !user.IsEmailConfirmed || !user.Status)
+                {
+                    return BaseResponse<RefundRequestResponse>.Fail(new object(), "Access denied", 403);
+                }
+
+                var refundRequest = await _unitOfWork.RefundRequests.Query()
+                    .Include(r => r.Purchase)
+                        .ThenInclude(p => p.Course)
+                    .Include(r => r.ProcessedByAdmin)
+                    .FirstOrDefaultAsync(r => r.RefundRequestID == refundRequestId);
+
+                if (refundRequest == null)
+                {
+                    return BaseResponse<RefundRequestResponse>.Fail(new object(), "Refund request not found", 404);
+                }
+
+                if (refundRequest.StudentID != userId)
+                {
+                    return BaseResponse<RefundRequestResponse>.Fail(new object(), "Refund request not found", 404);
+                }
+
+                var response = new RefundRequestResponse
+                {
+                    RefundRequestId = refundRequest.RefundRequestID,
+                    PurchaseId = refundRequest.PurchaseId ?? Guid.Empty,
+                    StudentId = refundRequest.StudentID,
+                    StudentName = user.FullName ?? user.UserName,
+                    StudentEmail = user.Email,
+                    StudentAvatar = user.Avatar,
+
+                    CourseName = refundRequest.Purchase != null && refundRequest.Purchase.Course != null
+                                 ? refundRequest.Purchase.Course.Title
+                                 : "Unknown Course",
+
+                    RefundAmount = refundRequest.RefundAmount,
+                    OriginalAmount = refundRequest.Purchase != null ? refundRequest.Purchase.FinalAmount : 0,
+
+                    RequestType = refundRequest.RequestType.ToString(),
+                    Reason = refundRequest.Reason ?? "Unknown",
+                    BankName = refundRequest.BankName ?? "Unknown",
+                    BankAccountNumber = refundRequest.BankAccountNumber ?? "Unknown",
+                    BankAccountHolderName = refundRequest.BankAccountHolderName ?? "Unknown",
+                    ProofImageUrl = refundRequest.ProofImageUrl ?? "Unknown",
+                    Status = refundRequest.Status.ToString(),
+                    RequestedAt = refundRequest.RequestedAt.ToString("dd-MM-yyyy HH:mm"),
+                    ProcessedAt = refundRequest.ProcessedAt?.ToString("dd-MM-yyyy HH:mm"),
+                    AdminNote = refundRequest.AdminNote,
+                    ProcessedByAdminName = refundRequest.ProcessedByAdmin != null ? refundRequest.ProcessedByAdmin.UserName : null
+                };
+
+                return BaseResponse<RefundRequestResponse>.Success(response, "Refund request details retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting refund detail by id {RefundRequestId} for user {UserId}", refundRequestId, userId);
+                return BaseResponse<RefundRequestResponse>.Error("System error while retrieving refund details");
+            }
+        }
         #region Private Methods
         private async Task<PagedResponse<List<SubscriptionPurchaseResponse>>> GetSubscriptionPurchasesInternalAsync(Guid userId, int page, int pageSize, PurchaseStatus? status = null, bool? activeOnly = null)
         {
@@ -1034,17 +1195,10 @@ namespace BLL.Services.Purchases
 
             return PagedResponse<List<SubscriptionPurchaseResponse>>.Success(purchases, page, pageSize, totalCount, "Subscription purchases retrieved successfully");
         }
-        private async Task<PagedResponse<List<CoursePurchaseResponse>>> GetCoursePurchasesByLanguageInternalAsync(
-           Guid userId,
-           Guid languageId,
-           int page,
-           int pageSize,
-           PurchaseStatus? status = null,
-           bool? activeOnly = null)
+        private async Task<PagedResponse<List<CoursePurchaseResponse>>> GetCoursePurchasesByLanguageInternalAsync(Guid userId, Guid languageId, int page, int pageSize, PurchaseStatus? status = null, bool? activeOnly = null)
         {
             var now = TimeHelper.GetVietnamTime();
 
-            // Base query
             var query = _unitOfWork.Purchases.Query()
                 .Include(p => p.Course)
                     .ThenInclude(c => c.Language)
@@ -1068,14 +1222,12 @@ namespace BLL.Services.Purchases
 
             var totalCount = await query.CountAsync();
 
-            // Materialize first to avoid EF Core translation issues
             var purchasesList = await query
                 .OrderByDescending(p => p.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
-            // Project in memory
             var purchases = purchasesList.Select(p => new CoursePurchaseResponse
             {
                 PurchaseId = p.PurchasesId,
@@ -1095,7 +1247,7 @@ namespace BLL.Services.Purchases
                 PaidAt = p.PaidAt?.ToString("dd-MM-yyyy HH:mm"),
                 StartsAt = p.StartsAt?.ToString("dd-MM-yyyy HH:mm"),
                 ExpiresAt = p.ExpiresAt?.ToString("dd-MM-yyyy HH:mm"),
-                EligibleForRefundUntil = p.EligibleForRefundUntil?.ToString("dd-MM-yyyy"),
+                EligibleForRefundUntil = p.EligibleForRefundUntil?.ToString("dd-MM-yyyy HH:mm"),
                 DaysRemaining = p.ExpiresAt.HasValue ? (int)(p.ExpiresAt.Value - now).TotalDays : -1,
                 IsRefundEligible = p.EligibleForRefundUntil.HasValue && now <= p.EligibleForRefundUntil.Value,
                 IsActive = p.Status == PurchaseStatus.Completed && (!p.ExpiresAt.HasValue || p.ExpiresAt.Value > now),
@@ -1248,5 +1400,4 @@ namespace BLL.Services.Purchases
         }
         #endregion
     }
-
 }

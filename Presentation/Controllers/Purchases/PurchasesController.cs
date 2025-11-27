@@ -84,6 +84,28 @@ namespace Presentation.Controllers.Purchases
             var result = await _purchaseService.CreateRefundRequestAsync(userId, request);
             return StatusCode(result.Code, result);
         }
+        [HttpGet("refunds/me")]
+        [Authorize(Roles = "Learner")]
+        public async Task<IActionResult> GetMyRefundRequestsByLanguage([FromQuery] RefundRequestFilterRequest request)
+        {
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
+
+            var result = await _purchaseService.GetStudentRefundRequestsByLanguageAsync(userId, request);
+
+            return StatusCode(result.Code, result);
+        }
+        [HttpGet("refunds/{refundRequestId:guid}")]
+        [Authorize(Roles = "Learner")]
+        public async Task<IActionResult> GetRefundRequestDetail(Guid refundRequestId)
+        {
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
+
+            var result = await _purchaseService.GetRefundRequestDetailByIdAsync(userId, refundRequestId);
+
+            return StatusCode(result.Code, result);
+        }
         [Authorize(Roles = "Admin")]
         [HttpPost("purchases/refunds/process")]
         public async Task<IActionResult> ProcessRefundRequest([FromBody] ProcessRefundRequest request)
