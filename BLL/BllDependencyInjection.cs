@@ -10,6 +10,7 @@ using BLL.IServices.Course;
 using BLL.IServices.CourseTemplate;
 using BLL.IServices.CourseUnit;
 using BLL.IServices.Coversation;
+using BLL.IServices.Dashboard;
 using BLL.IServices.Enrollment;
 using BLL.IServices.Exercise;
 using BLL.IServices.Gamification;
@@ -35,6 +36,7 @@ using BLL.Services.Certificate;
 using BLL.Services.Course;
 using BLL.Services.CourseTemplate;
 using BLL.Services.CourseUnits;
+using BLL.Services.Dashboard;
 using BLL.Services.Enrollment;
 using BLL.Services.Exercise;
 using BLL.Services.Gamification;
@@ -176,6 +178,7 @@ namespace BLL
             services.AddHostedService<SubscriptionExpiryService>();
             services.AddScoped<IPronunciationService, PronunciationService>();
             services.AddScoped<IGamificationService, GamificationService>();
+            services.AddScoped<IManagerDashboardService, ManagerDashboardService>();
             return services;
         }
     }
