@@ -112,6 +112,9 @@ namespace BLL.Services.ProgressTracking
 
                 var (previousLesson, nextLesson) = await GetNavigationLessons(lesson);
 
+                int passedCount = exercises.Count(e => e.IsPassed == true);
+                int totalCount = lesson.Exercises.Count;
+
                 var response = new LessonProgressDetailResponse
                 {
                     LessonProgressId = lessonProgress?.LessonProgressId ?? Guid.Empty,
@@ -127,6 +130,7 @@ namespace BLL.Services.ProgressTracking
                     TotalExercises = lesson.Exercises.Count,
                     CompletedExercises = exercises.Count(e => e.IsPassed == true),
                     PassedExercises = exercises.Count(e => e.IsPassed == true),
+                    IsAllExercisesPassed = totalCount > 0 && passedCount == totalCount,
                     UnitId = unit.CourseUnitID,
                     UnitTitle = unit.Title,
                     CourseId = course.CourseID,
@@ -208,6 +212,31 @@ namespace BLL.Services.ProgressTracking
                 return BaseResponse<List<LessonProgressSummaryResponse>>.Error($"Error retrieving unit lessons progress: {ex.Message}");
             }
         }
+        public async Task<BaseResponse<List<LessonExerciseProgressResponse>>> GetLessonExercisesWithStatusAsync(Guid userId, Guid lessonId)
+        {
+            try
+            {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null) return BaseResponse<List<LessonExerciseProgressResponse>>.Fail(new object(), "Invalid user", 401);
+
+                var lesson = await _unitOfWork.Lessons.Query()
+                    .Include(l => l.CourseUnit).ThenInclude(u => u.Course)
+                    .FirstOrDefaultAsync(l => l.LessonID == lessonId);
+
+                if (lesson == null) return BaseResponse<List<LessonExerciseProgressResponse>>.Fail(new object(), "Lesson not found", 404);
+
+                var learner = await _unitOfWork.LearnerLanguages.FindAsync(l => l.UserId == user.UserID && l.LanguageId == lesson.CourseUnit.Course.LanguageId);
+                if (learner == null) return BaseResponse<List<LessonExerciseProgressResponse>>.Fail(new object(), "Learner profile not found", 403);
+
+                var exercisesWithStatus = await GetExercisesWithSubmissions(lessonId, learner.LearnerLanguageId);
+
+                return BaseResponse<List<LessonExerciseProgressResponse>>.Success(exercisesWithStatus, "Exercises retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<List<LessonExerciseProgressResponse>>.Error($"Error retrieving exercises: {ex.Message}");
+            }
+        }
         #region
         private async Task<LessonActivityStatusResponse> GetLessonActivityStatus(DAL.Models.Lesson lesson, LessonProgress? lessonProgress, Guid learnerId)
         {
@@ -217,74 +246,113 @@ namespace BLL.Services.ProgressTracking
             var videoLog = activityLogs.FirstOrDefault(l => l.ActivityType == LessonLogType.VideoProgress);
             var documentLog = activityLogs.FirstOrDefault(l => l.ActivityType == LessonLogType.PdfOpened);
 
-            var hasContent = !string.IsNullOrEmpty(lesson.Content);
+            // Xác định các thành phần có trong bài học
+            var hasContent = true; // Theo logic UpdateOverallLessonProgress, Content luôn tính là 1 part
             var hasVideo = !string.IsNullOrEmpty(lesson.VideoUrl);
             var hasDocument = !string.IsNullOrEmpty(lesson.DocumentUrl);
-            var hasExercises = await _unitOfWork.Exercises
-                .Query()
-                .AnyAsync(e => e.LessonID == lesson.LessonID);
 
+            // Lấy danh sách bài tập và tính toán trạng thái
             var exercises = await GetExercisesWithSubmissions(lesson.LessonID, learnerId);
-            var allExercisesPassed = hasExercises && exercises.All(e => e.IsPassed == true);
+            var hasExercises = exercises.Any();
 
-            double progress = 0.0;
+            // Logic tính toán Progress y hệt UpdateOverallLessonProgress
+            double totalProgress = 0.0;
+            int totalParts = 0;
+
+            // 1. Phần Content
+            totalParts++; // Luôn cộng 1 part cho content
+            bool isContentDone = lessonProgress?.IsContentViewed ?? false;
+            if (isContentDone)
+            {
+                totalProgress += 1.0;
+            }
+
+            // 2. Phần Video
+            bool isVideoDone = false;
+            if (hasVideo)
+            {
+                totalParts++;
+                isVideoDone = lessonProgress?.IsVideoWatched ?? false;
+                if (isVideoDone)
+                {
+                    totalProgress += 1.0;
+                }
+            }
+
+            // 3. Phần Document
+            bool isDocumentDone = false;
+            if (hasDocument)
+            {
+                totalParts++;
+                isDocumentDone = lessonProgress?.IsDocumentRead ?? false;
+                if (isDocumentDone)
+                {
+                    totalProgress += 1.0;
+                }
+            }
+
+            bool allExercisesPassed = false;
+            double currentExercisePercent = 0.0;
+
+            if (hasExercises)
+            {
+                totalParts++;
+                int totalEx = exercises.Count;
+                int passedCount = exercises.Count(e => e.IsPassed == true);
+
+                double exerciseRatio = totalEx > 0 ? (double)passedCount / totalEx : 0;
+
+                totalProgress += exerciseRatio;
+                currentExercisePercent = exerciseRatio * 100;
+
+                if (passedCount == totalEx && totalEx > 0)
+                {
+                    allExercisesPassed = true;
+                }
+            }
+            else
+            {
+                allExercisesPassed = true;
+            }
+
+            double finalProgressPercent = totalParts > 0 ? (totalProgress / totalParts) * 100 : 0;
+            finalProgressPercent = Math.Min(finalProgressPercent, 100);
+
             var breakdown = new List<string>();
+            double weightPerPart = totalParts > 0 ? 100.0 / totalParts : 0;
 
-            if (hasContent && (lessonProgress?.IsContentViewed ?? false))
-            {
-                progress += 0.5;
-                breakdown.Add("Content: 50%");
-            }
+            breakdown.Add($"Content: {(isContentDone ? weightPerPart : 0):F0}%/{weightPerPart:F0}%");
 
-            if (hasVideo && (lessonProgress?.IsVideoWatched ?? false))
-            {
-                progress += 0.2;
-                breakdown.Add("Video: 20%");
-            }
+            if (hasVideo)
+                breakdown.Add($"Video: {(isVideoDone ? weightPerPart : 0):F0}%/{weightPerPart:F0}%");
 
-            if (hasDocument && (lessonProgress?.IsDocumentRead ?? false))
-            {
-                progress += 0.2;
-                breakdown.Add("Document: 20%");
-            }
+            if (hasDocument)
+                breakdown.Add($"Document: {(isDocumentDone ? weightPerPart : 0):F0}%/{weightPerPart:F0}%");
 
-            if (hasExercises && allExercisesPassed)
+            if (hasExercises)
             {
-                progress += 0.3;
-                breakdown.Add("Exercises: 30%");
+                double earnedFromEx = (currentExercisePercent / 100.0) * weightPerPart;
+                breakdown.Add($"Exercises: {earnedFromEx:F0}%/{weightPerPart:F0}%");
             }
-            else if (hasExercises && exercises.Any(e => e.IsPassed == true))
-            {
-                var passedCount = exercises.Count(e => e.IsPassed == true);
-                var exerciseProgress = 0.3 * passedCount / exercises.Count;
-                progress += exerciseProgress;
-                breakdown.Add($"Exercises: {exerciseProgress * 100}%");
-            }
-
-            progress = Math.Min(progress * 100, 100);
 
             var missingRequirements = new List<string>();
-
-            if (hasContent && !(lessonProgress?.IsContentViewed ?? false))
-                missingRequirements.Add("View lesson content");
-
-            if (hasExercises && !allExercisesPassed)
-                missingRequirements.Add("Complete all exercises");
+            if (!(lessonProgress?.IsContentViewed ?? false)) missingRequirements.Add("View lesson content");
+            if (hasExercises && !allExercisesPassed) missingRequirements.Add("Complete all exercises");
 
             return new LessonActivityStatusResponse
             {
                 LessonId = lesson.LessonID,
                 LessonTitle = lesson.Title,
 
-                IsContentViewed = lessonProgress?.IsContentViewed ?? false,
-                IsVideoWatched = lessonProgress?.IsVideoWatched ?? false,
-                IsDocumentRead = lessonProgress?.IsDocumentRead ?? false,
+                IsContentViewed = isContentDone,
+                IsVideoWatched = isVideoDone,
+                IsDocumentRead = isDocumentDone,
                 IsPracticeCompleted = allExercisesPassed,
 
                 Content = new ActivityDetail
                 {
                     IsAvailable = hasContent,
-                    IsCompleted = lessonProgress?.IsContentViewed ?? false,
+                    IsCompleted = isContentDone,
                     CompletedAt = contentLog?.CreatedAt.ToString("dd-MM-yyyy HH:mm"),
                     ResourceUrl = lesson.Content,
                     ResourceTitle = "Lesson Content"
@@ -293,7 +361,7 @@ namespace BLL.Services.ProgressTracking
                 Video = new ActivityDetail
                 {
                     IsAvailable = hasVideo,
-                    IsCompleted = lessonProgress?.IsVideoWatched ?? false,
+                    IsCompleted = isVideoDone,
                     CompletedAt = videoLog?.CreatedAt.ToString("dd-MM-yyyy HH:mm"),
                     ResourceUrl = lesson.VideoUrl,
                     ResourceTitle = "Lesson Video"
@@ -302,13 +370,13 @@ namespace BLL.Services.ProgressTracking
                 Document = new ActivityDetail
                 {
                     IsAvailable = hasDocument,
-                    IsCompleted = lessonProgress?.IsDocumentRead ?? false,
+                    IsCompleted = isDocumentDone,
                     CompletedAt = documentLog?.CreatedAt.ToString("dd-MM-yyyy HH:mm"),
                     ResourceUrl = lesson.DocumentUrl,
                     ResourceTitle = "Lesson Document"
                 },
 
-                CalculatedProgress = progress,
+                CalculatedProgress = finalProgressPercent,
                 ProgressBreakdown = string.Join(" + ", breakdown),
                 MeetsCompletionRequirements = missingRequirements.Count == 0,
                 MissingRequirements = missingRequirements
@@ -317,17 +385,18 @@ namespace BLL.Services.ProgressTracking
         private async Task<List<LessonExerciseProgressResponse>> GetExercisesWithSubmissions(Guid lessonId, Guid learnerId)
         {
             var exercises = await _unitOfWork.Exercises
-                .Query()
-                .Where(e => e.LessonID == lessonId)
-                .OrderBy(e => e.Position)
-                .ToListAsync();
+                            .Query()
+                            .Include(e => e.Lesson)
+                                .ThenInclude(l => l.CourseUnit)
+                                    .ThenInclude(u => u.Course)
+                            .Where(e => e.LessonID == lessonId)
+                            .OrderBy(e => e.Position)
+                            .ToListAsync();
 
             var submissions = await _unitOfWork.ExerciseSubmissions.Query()
-                .Include(es => es.Exercise)
-                .Include(es => es.LessonProgress)
-                    .ThenInclude(lp => lp.UnitProgress)
-                .Where(es => es.LearnerId == learnerId && es.Exercise.LessonID == lessonId)
-                .ToListAsync();
+                            .Include(es => es.Exercise)
+                            .Where(es => es.LearnerId == learnerId && es.Exercise.LessonID == lessonId)
+                            .ToListAsync();
 
             var result = new List<LessonExerciseProgressResponse>();
 
@@ -339,27 +408,63 @@ namespace BLL.Services.ProgressTracking
                     .ToList();
 
                 var latestSubmission = exerciseSubmissions.FirstOrDefault();
-                var attemptCount = exerciseSubmissions.Count;
+
+                bool hasPassedAnyTime = exerciseSubmissions.Any(s => s.IsPassed == true);
 
                 result.Add(new LessonExerciseProgressResponse
                 {
-                    ExerciseId = exercise.ExerciseID,
+                    ExerciseID = exercise.ExerciseID,
                     Title = exercise.Title,
-                    Type = exercise.Type.ToString(),
-                    Description = exercise.Content,
+                    Prompt = exercise.Prompt,
+                    Hints = exercise.Hints,
+                    Content = exercise.Content,
+                    ExpectedAnswer = exercise.ExpectedAnswer,
+
+                    MediaUrls = exercise.MediaUrl != null
+                        ? exercise.MediaUrl.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                        : null,
+                    MediaPublicIds = exercise.MediaPublicId != null
+                        ? exercise.MediaPublicId.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                        : null,
+
+                    Position = exercise.Position,
+                    ExerciseType = exercise.Type.ToString(),
+                    Difficulty = exercise.Difficulty.ToString(),
+                    MaxScore = exercise.MaxScore,
                     PassScore = exercise.PassScore,
+                    FeedbackCorrect = exercise.FeedbackCorrect,
+                    FeedbackIncorrect = exercise.FeedbackIncorrect,
+
+                    LessonID = exercise.LessonID,
+                    LessonTitle = exercise.Lesson?.Title,
+                    UnitID = exercise.Lesson?.CourseUnitID,
+                    UnitTitle = exercise.Lesson?.CourseUnit?.Title,
+                    CourseID = exercise.Lesson?.CourseUnit?.CourseID,
+                    CourseTitle = exercise.Lesson?.CourseUnit?.Course?.Title,
+
                     SubmissionId = latestSubmission?.ExerciseSubmissionId,
                     SubmissionStatus = latestSubmission?.Status.ToString() ?? "NotStarted",
                     Score = latestSubmission?.FinalScore ?? latestSubmission?.AIScore,
-                    IsPassed = latestSubmission?.IsPassed,
+                    IsPassed = hasPassedAnyTime,
                     SubmittedAt = latestSubmission?.SubmittedAt.ToString("dd-MM-yyyy HH:mm"),
                     ReviewedAt = latestSubmission?.ReviewedAt?.ToString("dd-MM-yyyy HH:mm"),
                     AIFeedback = latestSubmission?.AIFeedback,
                     TeacherFeedback = latestSubmission?.TeacherFeedback,
-                    Order = exercise.Position,
-                    IsCurrent = result.Count == 0
+
+                    IsCurrent = false
                 });
             }
+
+            var firstNotPassed = result.FirstOrDefault(x => x.IsPassed != true);
+            if (firstNotPassed != null)
+            {
+                firstNotPassed.IsCurrent = true;
+            }
+            else if (result.Count > 0)
+            {
+                result.Last().IsCurrent = true;
+            }
+
             return result;
         }
         private async Task<(DAL.Models.Lesson? previous, DAL.Models.Lesson? next)> GetNavigationLessons(DAL.Models.Lesson currentLesson)
