@@ -59,5 +59,18 @@ namespace Presentation.Controllers.LessonProgress
             var result = await _lessonProgressService.GetLessonActivityStatusAsync(userId, lessonId);
             return StatusCode(result.Code, result);
         }
+        [HttpGet("lessons/{lessonId}/exercises")]
+        public async Task<IActionResult> GetLessonExercisesWithStatus(Guid lessonId)
+        {
+            var userIdClaim = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized("Teacher ID not found in token.");
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+                return BadRequest("Invalid user ID format in token.");
+
+            var result = await _lessonProgressService.GetLessonExercisesWithStatusAsync(userId, lessonId);
+            return StatusCode(result.Code, result);
+        }
     }
 }

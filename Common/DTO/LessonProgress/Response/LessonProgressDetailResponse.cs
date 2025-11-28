@@ -15,6 +15,7 @@
         public int TotalExercises { get; set; }
         public int CompletedExercises { get; set; }
         public int PassedExercises { get; set; }
+        public bool IsAllExercisesPassed { get; set; }
         public Guid UnitId { get; set; }
         public string UnitTitle { get; set; } = null!;
         public Guid CourseId { get; set; }
