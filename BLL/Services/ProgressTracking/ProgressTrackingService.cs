@@ -418,34 +418,94 @@ namespace BLL.Services.ProgressTracking
                             MaxAttempts = 3,
                             CoolDownHours = 24
                         },
-                        @"**Giới hạn nộp bài hàng ngày**
-                            Số lần đã nộp: 3/3
-                            Trạng thái: ĐẠT TỐI ĐA
-                            Thời gian reset: 00:00
-                            Bạn đã hoàn thành tất cả lượt nộp bài cho phép trong ngày hôm nay. Tính năng này giúp tối ưu hóa quá trình học tập.
-                            Hệ thống sẽ tự động reset vào đầu ngày mai.",
+                        @"**Đã đạt giới hạn nộp bài**\n\nSố lần nộp: 3/3\nTrạng thái: ĐẠT TỐI ĐA\nReset: 00:00\n\nBạn đã hoàn thành lượt nộp bài cho ngày hôm nay. Hệ thống sẽ reset vào ngày mai.",
                         429);
                 }
 
-                bool allowTeacherGrading = false;
-                bool hasTeacherGrading = false;
-                bool requiresCheck = exercise.Type is SpeakingExerciseType.StoryTelling or SpeakingExerciseType.Debate;
+                // 1. Lấy lịch sử nộp bài của User cho Exercise này
+                var submissionHistory = await _unitOfWork.ExerciseSubmissions.Query()
+                    .Include(es => es.ExerciseGradingAssignments)
+                    .Where(es => es.LearnerId == learner.LearnerLanguageId && es.ExerciseId == request.ExerciseId)
+                    .ToListAsync();
 
-                if (course.GradingType == GradingType.AIAndTeacher && requiresCheck)
+                bool isAlreadyPassed = submissionHistory.Any(es => es.IsPassed == true);
+
+                // Đếm số lần bài đã được giáo viên chấm (Trạng thái Returned) hoặc đang chờ chấm (Assigned/Expired)
+                // Logic: Đã tốn một slot của giáo viên.
+                int teacherGradedCount = submissionHistory.Count(es =>
+                    es.ExerciseGradingAssignments.Any(ega =>
+                        ega.Status == GradingStatus.Returned ||
+                        ega.Status == GradingStatus.Assigned ||
+                        ega.Status == GradingStatus.Expired));
+
+                // Kiểm tra loại bài tập có yêu cầu giáo viên không (Speaking/Debate)
+                bool isTeacherType = exercise.Type is SpeakingExerciseType.StoryTelling or SpeakingExerciseType.Debate;
+                bool isHybridGradingCourse = course.GradingType == GradingType.AIAndTeacher;
+
+                // Logic xác định các cờ (Flags)
+                bool shouldAssignTeacher = false;
+                bool shouldPayTeacher = false;
+                string teacherFeedbackMsg = string.Empty;
+                string aiFeedbackMsg = @"Bài nộp của bạn đang được AI xem xét và đánh giá. Kết quả sẽ được cập nhật khi quá trình hoàn tất.";
+
+                // Chỉ xét logic giáo viên nếu: Khóa học trả phí, loại bài Speaking/Debate, và config là Hybrid
+                if (course.Price > 0 && isTeacherType && isHybridGradingCourse)
                 {
-                    // Nếu khóa học là Free (Price == 0), TUYỆT ĐỐI KHÔNG cho giáo viên chấm
-                    // Dù Admin có lỡ set nhầm GradingType là AIAndTeacher thì code này sẽ chặn lại.
-                    if (course.Price == 0)
+                    // TH1: Nếu đã Passed trước đó -> AI chấm 100% (Không làm phiền GV nữa)
+                    if (isAlreadyPassed)
                     {
-                        allowTeacherGrading = false;
-                        Console.WriteLine($"[WARN] Course {course.CourseID} is FREE but set to AIAndTeacher. Forcing AI Only.");
+                        shouldAssignTeacher = false;
+                        aiFeedbackMsg = @"Bạn đã hoàn thành bài tập này trước đó. Bài nộp này sẽ được chấm bởi AI để phục vụ mục đích luyện tập.";
                     }
                     else
                     {
-                        // Chỉ chạy logic kiểm tra giáo viên nếu khóa học CÓ TÍNH PHÍ
-                        hasTeacherGrading = await HasTeacherGrading(learner.LearnerLanguageId, request.ExerciseId);
-                        allowTeacherGrading = await AllowTeacherGrading(learner.LearnerLanguageId, request.ExerciseId);
+                        // Chưa Passed. Kiểm tra số lần GV đã chấm.
+                        // Business Rule: Chỉ cho phép tối đa 2 lần GV chấm (Lần đầu + 1 lần Re-submit nếu Fail)
+                        if (teacherGradedCount < 2)
+                        {
+                            shouldAssignTeacher = true;
+
+                            if (teacherGradedCount == 0)
+                            {
+                                // TH: Lần đầu tiên nộp -> Trả tiền
+                                shouldPayTeacher = true;
+                                teacherFeedbackMsg = "Bài nộp của bạn đang chờ giáo viên xem xét và đánh giá.";
+                            }
+                            else
+                            {
+                                // TH2: Lần thứ 2 (Re-submit do lần 1 Failed) -> KHÔNG trả tiền
+                                shouldPayTeacher = false;
+                                teacherFeedbackMsg = "Bài nộp lại đang chờ giáo viên xem xét cải thiện điểm số (Lượt chấm bổ sung).";
+                            }
+                        }
+                        else
+                        {
+                            // TH3: Đã Failed cả 2 lần GV chấm -> AI chấm 100%
+                            shouldAssignTeacher = false;
+                            aiFeedbackMsg = @"Bạn đã sử dụng hết lượt chấm của giáo viên (tối đa 2 lần). Bài nộp này sẽ được chấm hoàn toàn bởi AI.";
+                        }
                     }
+                }
+                else
+                {
+                    // Free course hoặc các loại bài tập khác (Repeat/Picture) -> AI Only
+                    shouldAssignTeacher = false;
+                }
+                /*
+                 * Thiết lập tỷ trọng điểm
+                 */
+                double aiPercentage = 100;
+                double teacherPercentage = 0;
+
+                if (shouldAssignTeacher)
+                {
+                    aiPercentage = DefaultAIPercentage;     // 30
+                    teacherPercentage = DefaultTeacherPercentage; // 70
+                }
+                else
+                {
+                    aiPercentage = 100;
+                    teacherPercentage = 0;
                 }
                 /*
                  * Tải âm thanh trong bài nộp của người học lên cloudinary
@@ -456,98 +516,18 @@ namespace BLL.Services.ProgressTracking
                 if (request.Audio is { Length: > 0 })
                 {
                     var uploadResult = await _cloudinaryService.UploadAudioAsync(request.Audio);
-
                     if (uploadResult?.Url is null)
                     {
-                        return BaseResponse<ExerciseSubmissionResponse>.Fail(
-                            new object(),
-                            "Upload audio failed",
-                            404
-                        );
+                        return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Upload audio failed", 404);
                     }
-
                     audioUrl = uploadResult.Url;
                     publicId = uploadResult.PublicId;
                 }
                 else
                 {
-                    return BaseResponse<ExerciseSubmissionResponse>.Fail(
-                        new object(),
-                        "Audio file is required",
-                        400
-                    );
+                    return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Audio file is required", 400);
                 }
 
-                // Determine grading type and allocate funds
-                bool isTeacherRequired = (exercise.Type == SpeakingExerciseType.StoryTelling ||
-                         exercise.Type == SpeakingExerciseType.Debate) &&
-                         course.GradingType == GradingType.AIAndTeacher &&
-                         allowTeacherGrading;
-
-                double aiPercentage = 100;
-                double teacherPercentage = 0;
-                decimal exerciseGradingAmount = 0;
-                bool canAssignToTeacher = isTeacherRequired;
-
-                if (allowTeacherGrading == false)
-                {
-                    isTeacherRequired = false;
-                    canAssignToTeacher = false;
-                    aiPercentage = 100;
-                    teacherPercentage = 0;
-                }
-
-                if (isTeacherRequired == true && hasTeacherGrading == false)
-                {
-                    if (purchase != null)
-                    {
-                        //Tất cả bài tập cần giáo viên chấm của khóa học này.
-                        var teacherGradingExercises = await _unitOfWork.Exercises.Query()
-                        .CountAsync(e => e.Lesson != null &&
-                                       e.Lesson.CourseUnit != null &&
-                                       e.Lesson.CourseUnit.CourseID == course.CourseID &&
-                                       (e.Type == SpeakingExerciseType.StoryTelling ||
-                                        e.Type == SpeakingExerciseType.Debate));
-
-                        if (teacherGradingExercises > 0)
-                        {
-                            /* 
-                             * Số tiền cho hệ thống là 10% số tiền của khóa học 
-                             * Còn lại 90% là tiền tạo khóa học và tiền chấm bài tập.
-                             */
-                            decimal amountForDistribution = purchase.FinalAmount * 0.9m;
-
-                            /* 
-                             * Số tiền 35% của 90% là tiền chấm bài 
-                             * sẽ được chia đều cho tất cả bài tập cần giáo viên chấm
-                             */
-                            decimal gradingFeeAmount = amountForDistribution * 0.35m;
-                            exerciseGradingAmount = gradingFeeAmount / teacherGradingExercises;
-
-                            /*
-                             * Nếu khóa học là loại cần cả giáo viên và AI chấm
-                             * Thuộc loại bài tập cần giáo viên chấm (Kể chuyện và Tranh luận)
-                             * Bài nộp của người học cho chính bài tập đó chưa được một giáo viên nào chấm
-                             * Thì % AI chấm là 30% và % Giáo viên chấm là 70%.
-                             */
-                            aiPercentage = DefaultAIPercentage;
-                            teacherPercentage = DefaultTeacherPercentage;
-                        }
-                    }
-                }
-                /*
-                 * Nếu khóa học thuộc loại chỉ cần AI chấm
-                 * Thuộc loại bài tập (Lặp lại theo mẫu/ Mô tả tranh)
-                 * Thì % AI chấm sẽ là 100%
-                 */
-                if (exercise.Type == SpeakingExerciseType.RepeatAfterMe ||
-                    exercise.Type == SpeakingExerciseType.PictureDescription ||
-                    course.GradingType == GradingType.AIOnly)
-                {
-                    aiPercentage = 100;
-                    teacherPercentage = 0;
-                    isTeacherRequired = false;
-                }
 
                 var submission = new ExerciseSubmission
                 {
@@ -559,20 +539,21 @@ namespace BLL.Services.ProgressTracking
                     AudioPublicId = publicId,
                     AIPercentage = aiPercentage,
                     TeacherPercentage = teacherPercentage,
-                    AIFeedback = @"Bài nộp của bạn đang được AI xem xét và đánh giá. Kết quả sẽ được cập nhật khi quá trình hoàn tất.",
-                    TeacherFeedback = isTeacherRequired ? "Bài nộp của bạn đang chờ giáo viên xem xét và đánh giá." : string.Empty,
+                    AIFeedback = aiFeedbackMsg,
+                    TeacherFeedback = teacherFeedbackMsg,
                     Status = ExerciseSubmissionStatus.PendingAIReview,
                     SubmittedAt = TimeHelper.GetVietnamTime(),
                 };
 
                 await _unitOfWork.ExerciseSubmissions.CreateAsync(submission);
                 await _unitOfWork.SaveChangesAsync();
+
                 /*
-                 * Nếu là lần đầu nộp bài thì hệ thống sẽ giao cho chính giáo viên tạo ra khóa học chấm
-                 * Đồng thời người giáo viên đó sẽ nhận được một khoản tiền sau khi chấm xong (dù Passed hay Failed).
+                 * Xử lý Giao bài cho Giáo viên & Tính tiền
                  */
-                if (canAssignToTeacher && course?.TeacherId != null && exerciseGradingAmount > 0)
+                if (shouldAssignTeacher && course?.TeacherId != null)
                 {
+                    // Tạo Assignment
                     var gradingAssignment = new ExerciseGradingAssignment
                     {
                         GradingAssignmentId = Guid.NewGuid(),
@@ -584,10 +565,30 @@ namespace BLL.Services.ProgressTracking
                         DeadlineAt = TimeHelper.GetVietnamTime().AddDays(2),
                         CreatedAt = TimeHelper.GetVietnamTime()
                     };
-
                     await _unitOfWork.ExerciseGradingAssignments.CreateAsync(gradingAssignment);
+                    await _unitOfWork.SaveChangesAsync();
 
-                    if (!hasTeacherGrading && exerciseGradingAmount > 0)
+                    // Tính toán tiền (Chỉ tính nếu cần thiết, để log hoặc dùng lại logic cũ)
+                    decimal exerciseGradingAmount = 0;
+                    if (purchase != null)
+                    {
+                        var teacherGradingExercises = await _unitOfWork.Exercises.Query()
+                            .CountAsync(e => e.Lesson != null &&
+                                           e.Lesson.CourseUnit != null &&
+                                           e.Lesson.CourseUnit.CourseID == course.CourseID &&
+                                           (e.Type == SpeakingExerciseType.StoryTelling ||
+                                            e.Type == SpeakingExerciseType.Debate));
+
+                        if (teacherGradingExercises > 0)
+                        {
+                            decimal amountForDistribution = purchase.FinalAmount * 0.9m;
+                            decimal gradingFeeAmount = amountForDistribution * 0.35m;
+                            exerciseGradingAmount = gradingFeeAmount / teacherGradingExercises;
+                        }
+                    }
+
+                    // CHỈ TẠO TeacherEarningAllocation NẾU shouldPayTeacher = TRUE
+                    if (shouldPayTeacher && exerciseGradingAmount > 0)
                     {
                         var earningAllocation = new TeacherEarningAllocation
                         {
@@ -602,6 +603,7 @@ namespace BLL.Services.ProgressTracking
                         };
 
                         await _unitOfWork.TeacherEarningAllocations.CreateAsync(earningAllocation);
+                        await _unitOfWork.SaveChangesAsync();
                     }
                 }
 
@@ -611,7 +613,7 @@ namespace BLL.Services.ProgressTracking
                 lessonProgress.LastUpdated = TimeHelper.GetVietnamTime();
                 await _unitOfWork.SaveChangesAsync();
 
-                var gradingType = isTeacherRequired ? GradingType.AIAndTeacher.ToString() : GradingType.AIOnly.ToString();
+                var gradingType = shouldAssignTeacher ? GradingType.AIAndTeacher.ToString() : GradingType.AIOnly.ToString();
 
                 /*
                  * Tạo 1 yêu cầu để bên exercise grading service đánh giá
@@ -1034,40 +1036,16 @@ namespace BLL.Services.ProgressTracking
         private async Task<bool> CanSubmitExerciseAsync(Guid learnerId, Guid exerciseId)
         {
             var today = TimeHelper.GetVietnamTime().Date;
+            var tomorrow = today.AddDays(1);
 
-            //Đếm số lượng bài tập nộp trong một ngày của một người học cụ thể.
             var todaysSubmissions = await _unitOfWork.ExerciseSubmissions.Query()
                 .Where(es => es.LearnerId == learnerId &&
                              es.ExerciseId == exerciseId &&
-                             es.SubmittedAt >= today).CountAsync();
-
-            //Nếu số lượng bài nộp lớn hơn hoặc bằng 5 thì người học không thể nộp được nữa và phải chờ đến ngày mai.
-            if (todaysSubmissions >= 100)
-                return false;
-
-            return true;
-        }
-        private async Task<bool> HasTeacherGrading(Guid learnerId, Guid exerciseId)
-        {
-            //Kiểm tra bài tập đã có giáo viên chấm hay chưa
-            return await _unitOfWork.ExerciseSubmissions.Query()
-                .AnyAsync(es => es.LearnerId == learnerId &&
-                               es.ExerciseId == exerciseId &&
-                               es.ExerciseGradingAssignments.Any(ega =>
-                                   ega.Status != GradingStatus.Expired));
-        }
-        private async Task<bool> AllowTeacherGrading(Guid learnerId, Guid exerciseId)
-        {
-            // Đếm số bài nộp đã được giao cho giáo viên chấm (chưa hết hạn)
-            var gradedSubmissionsCount = await _unitOfWork.ExerciseSubmissions.Query()
-                .Where(es => es.LearnerId == learnerId &&
-                            es.ExerciseId == exerciseId &&
-                            es.ExerciseGradingAssignments.Any(ega =>
-                                ega.Status != GradingStatus.Expired))
+                             es.SubmittedAt >= today &&
+                             es.SubmittedAt < tomorrow)
                 .CountAsync();
 
-            // Cho phép nếu số bài đã giao chấm < 2 (lần 1 và lần 2)
-            return gradedSubmissionsCount < 2;
+            return todaysSubmissions < 100;
         }
         #endregion
     }

@@ -34,6 +34,7 @@ using BLL.Services.Assessment;
 using BLL.Services.Auth;
 using BLL.Services.Certificate;
 using BLL.Services.Course;
+using BLL.Services.CourseReview;
 using BLL.Services.CourseTemplate;
 using BLL.Services.CourseUnits;
 using BLL.Services.Dashboard;
@@ -179,6 +180,7 @@ namespace BLL
             services.AddScoped<IPronunciationService, PronunciationService>();
             services.AddScoped<IGamificationService, GamificationService>();
             services.AddScoped<IManagerDashboardService, ManagerDashboardService>();
+            services.AddScoped<ICourseReviewService, CourseReviewService>();
             return services;
         }
     }

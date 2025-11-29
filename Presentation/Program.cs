@@ -357,7 +357,7 @@ RecurringJob.AddOrUpdate<IExerciseGradingService>(
     "0 2 */3 * *"
 );
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 app.UseCors("AllowAll");
 app.UseErrorHandlingMiddleware();

@@ -12,7 +12,7 @@ namespace Common.DTO.Paging.Request
         private int _pageSize = DefaultPageSize;
 
         [DefaultValue(DefaultPage)]
-        public int Page
+        public int PageNumber
         {
             get => _page;
             set => _page = value < 1 ? DefaultPage : value;
@@ -29,5 +29,7 @@ namespace Common.DTO.Paging.Request
                 else _pageSize = value;
             }
         }
+        public string? Sort { get; set; }
+        public int? Rating { get; set; }
     }
 }
