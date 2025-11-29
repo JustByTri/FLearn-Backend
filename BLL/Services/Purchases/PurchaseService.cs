@@ -234,7 +234,7 @@ namespace BLL.Services.Purchases
                     if (!isApproved)
                     {
                         refundRequest.Status = RefundRequestStatus.Rejected;
-
+                        await _unitOfWork.RefundRequests.UpdateAsync(refundRequest);
                         await _unitOfWork.SaveChangesAsync();
                         await _unitOfWork.CommitTransactionAsync();
 
@@ -268,10 +268,7 @@ namespace BLL.Services.Purchases
                     // =========================================================
                     refundRequest.Status = RefundRequestStatus.Approved;
                     purchase.Status = PurchaseStatus.Refunded;
-
-                    // 1. Cập nhật Purchase & Enrollment
-                    purchase.Status = PurchaseStatus.Refunded;
-
+                    await _unitOfWork.RefundRequests.UpdateAsync(refundRequest);
                     // Tìm enrollment để hủy
                     var enrollment = await _unitOfWork.Enrollments.FindAsync(e => e.EnrollmentID == purchase.EnrollmentId);
 
