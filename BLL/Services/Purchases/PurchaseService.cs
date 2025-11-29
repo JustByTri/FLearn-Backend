@@ -183,148 +183,145 @@ namespace BLL.Services.Purchases
         }
         public async Task<BaseResponse<object>> ProcessRefundDecisionAsync(Guid userId, Guid refundRequestId, bool isApproved, string note)
         {
-            var strategy = _unitOfWork.CreateExecutionStrategy();
-            return await strategy.ExecuteAsync(async () =>
+            try
             {
-                await _unitOfWork.BeginTransactionAsync();
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null)
+                    return BaseResponse<object>.Fail(new object(), "Access denied.", 401);
 
-                try
+                var userRole = await _unitOfWork.UserRoles.FindAsync(x => x.UserID == userId);
+                if (userRole == null)
                 {
-                    var user = await _unitOfWork.Users.GetByIdAsync(userId);
-                    if (user == null)
-                        return BaseResponse<object>.Fail(new object(), "Access denied.", 401);
+                    return BaseResponse<object>.Fail(new object(), "User role not found.", 404);
+                }
 
-                    var userRole = await _unitOfWork.UserRoles.FindAsync(x => x.UserID == userId);
-                    if (userRole == null)
-                    {
-                        return BaseResponse<object>.Fail(new object(), "User role not found.", 404);
-                    }
+                var role = await _unitOfWork.Roles.GetByIdAsync(userRole.RoleID);
+                if (role == null)
+                {
+                    return BaseResponse<object>.Fail(new object(), "Role not found.", 404);
+                }
 
-                    var role = await _unitOfWork.Roles.GetByIdAsync(userRole.RoleID);
-                    if (role == null)
-                    {
-                        return BaseResponse<object>.Fail(new object(), "Role not found.", 404);
-                    }
+                if (role.Name != "Admin")
+                {
+                    return BaseResponse<object>.Fail(new object(), "Permission denied for this role.", 403);
+                }
 
-                    if (role.Name != "Admin")
-                    {
-                        return BaseResponse<object>.Fail(new object(), "Permission denied for this role.", 403);
-                    }
+                var refundRequest = await _unitOfWork.RefundRequests.Query()
+                    .Include(r => r.Purchase)
+                    .FirstOrDefaultAsync(r => r.RefundRequestID == refundRequestId);
 
-                    var refundRequest = await _unitOfWork.RefundRequests.Query()
-                        .Include(r => r.Purchase)
-                        .FirstOrDefaultAsync(r => r.RefundRequestID == refundRequestId);
+                if (refundRequest == null)
+                    return BaseResponse<object>.Fail("Refund request not found");
 
-                    if (refundRequest == null)
-                        return BaseResponse<object>.Fail("Refund request not found");
+                if (refundRequest.Status != RefundRequestStatus.Pending)
+                    return BaseResponse<object>.Fail("Request is not in pending status");
 
-                    if (refundRequest.Status != RefundRequestStatus.Pending)
-                        return BaseResponse<object>.Fail("Request is not in pending status");
+                var purchase = refundRequest.Purchase;
+                if (purchase == null) return BaseResponse<object>.Fail("Purchase info missing");
 
-                    var purchase = refundRequest.Purchase;
-                    if (purchase == null) return BaseResponse<object>.Fail("Purchase info missing");
+                refundRequest.ProcessedByAdminID = userId;
+                refundRequest.ProcessedAt = TimeHelper.GetVietnamTime();
+                refundRequest.AdminNote = note;
 
-                    refundRequest.ProcessedByAdminID = userId;
-                    refundRequest.ProcessedAt = TimeHelper.GetVietnamTime();
-                    refundRequest.AdminNote = note;
-
-                    // =========================================================
-                    // TRƯỜNG HỢP 1: TỪ CHỐI HOÀN TIỀN (REJECT)
-                    // =========================================================
-                    if (!isApproved)
-                    {
-                        refundRequest.Status = RefundRequestStatus.Rejected;
-                        await _unitOfWork.RefundRequests.UpdateAsync(refundRequest);
-                        await _unitOfWork.SaveChangesAsync();
-                        await _unitOfWork.CommitTransactionAsync();
-
-                        // Kiểm tra xem thời hạn 3 ngày đã qua chưa?
-                        // Dựa vào PaidAt hoặc CreatedAt (theo logic PayOSPaymentService của bạn)
-                        var paymentTime = purchase.PaidAt ?? purchase.CreatedAt;
-                        var refundDeadline = paymentTime.AddDays(3);
-                        var now = TimeHelper.GetVietnamTime();
-
-                        if (now > refundDeadline)
-                        {
-                            // Nếu đã quá hạn 3 ngày, nghĩa là Job tự động cũ đã chạy và bị SKIP.
-                            // Ta cần chạy lại nó ngay bây giờ.
-                            _logger.LogInformation($"Refund rejected after 3 days. Retriggering transfer for Purchase {purchase.PurchasesId}");
-
-                            // Gọi Job chuyển tiền (hàm này đã được bạn sửa để check trạng thái Pending/Approved ở bước trước)
-                            _backgroundJobClient.Enqueue<IWalletService>(ws => ws.ProcessCourseCreationFeeTransferAsync(purchase.PurchasesId));
-                        }
-                        else
-                        {
-                            // Nếu chưa quá 3 ngày, không cần làm gì cả. 
-                            // Job tự động gốc vẫn đang nằm trong hàng đợi (Scheduled) và sẽ chạy trong tương lai.
-                            _logger.LogInformation($"Refund rejected within 3 days. Original scheduled job will handle transfer for Purchase {purchase.PurchasesId}");
-                        }
-
-                        return BaseResponse<object>.Success("Refund request rejected. Wallet transfer logic handled.");
-                    }
-
-                    // =========================================================
-                    // TRƯỜNG HỢP 2: CHẤP NHẬN HOÀN TIỀN (APPROVED)
-                    // =========================================================
-                    refundRequest.Status = RefundRequestStatus.Approved;
-                    purchase.Status = PurchaseStatus.Refunded;
+                // =========================================================
+                // TRƯỜNG HỢP 1: TỪ CHỐI HOÀN TIỀN (REJECT)
+                // =========================================================
+                if (!isApproved)
+                {
+                    refundRequest.Status = RefundRequestStatus.Rejected;
                     await _unitOfWork.RefundRequests.UpdateAsync(refundRequest);
-                    // Tìm enrollment để hủy
-                    var enrollment = await _unitOfWork.Enrollments.FindAsync(e => e.EnrollmentID == purchase.EnrollmentId);
-
-                    if (enrollment != null)
-                    {
-                        enrollment.Status = DAL.Type.EnrollmentStatus.Cancelled;
-                        await _unitOfWork.Enrollments.UpdateAsync(enrollment);
-                    }
-
-                    // Logic trừ tiền Admin Wallet (Revert tiền)
-                    var adminWallet = await _unitOfWork.Wallets.FindAsync(w => w.OwnerType == OwnerType.Admin && w.Currency == CurrencyType.VND);
-
-                    if (adminWallet != null)
-                    {
-                        decimal systemShare = purchase.FinalAmount * SYSTEM_FEE_PERCENTAGE;
-                        decimal teacherShare = purchase.FinalAmount * TEACHER_FEE_PERCENTAGE;
-
-                        // Kiểm tra số dư trước khi trừ (Optional nhưng recommend)
-                        if (adminWallet.AvailableBalance < systemShare || adminWallet.HoldBalance < teacherShare)
-                        {
-                            throw new Exception("System wallet does not have enough balance to refund (Critical Error)");
-                        }
-
-                        adminWallet.AvailableBalance -= systemShare; // Trả lại phí hệ thống
-                        adminWallet.HoldBalance -= teacherShare;     // Trả lại phần giữ của GV
-                        adminWallet.TotalBalance -= purchase.FinalAmount;
-                        adminWallet.UpdatedAt = TimeHelper.GetVietnamTime();
-
-                        // Tạo Transaction log cho Admin Wallet
-                        var walletTrans = new WalletTransaction
-                        {
-                            WalletTransactionId = Guid.NewGuid(),
-                            WalletId = adminWallet.WalletId,
-                            TransactionType = TransactionType.Payout,
-                            Amount = -purchase.FinalAmount,
-                            ReferenceId = refundRequest.RefundRequestID,
-                            ReferenceType = ReferenceType.Refund,
-                            Description = $"Refund for purchase {purchase.PurchasesId}",
-                            Status = TransactionStatus.Succeeded,
-                            CreatedAt = TimeHelper.GetVietnamTime()
-                        };
-                        await _unitOfWork.WalletTransactions.CreateAsync(walletTrans);
-                    }
-
                     await _unitOfWork.SaveChangesAsync();
-                    await _unitOfWork.CommitTransactionAsync();
 
-                    return BaseResponse<object>.Success("Refund approved successfully.");
+                    // Kiểm tra xem thời hạn 3 ngày đã qua chưa?
+                    // Dựa vào PaidAt hoặc CreatedAt (theo logic PayOSPaymentService của bạn)
+                    var paymentTime = purchase.PaidAt ?? purchase.CreatedAt;
+                    var refundDeadline = paymentTime.AddDays(3);
+                    var now = TimeHelper.GetVietnamTime();
+
+                    if (now > refundDeadline)
+                    {
+                        // Nếu đã quá hạn 3 ngày, nghĩa là Job tự động cũ đã chạy và bị SKIP.
+                        // Ta cần chạy lại nó ngay bây giờ.
+                        _logger.LogInformation($"Refund rejected after 3 days. Retriggering transfer for Purchase {purchase.PurchasesId}");
+
+                        // Gọi Job chuyển tiền (hàm này đã được bạn sửa để check trạng thái Pending/Approved ở bước trước)
+                        _backgroundJobClient.Enqueue<IWalletService>(ws => ws.ProcessCourseCreationFeeTransferAsync(purchase.PurchasesId));
+                    }
+                    else
+                    {
+                        // Nếu chưa quá 3 ngày, không cần làm gì cả. 
+                        // Job tự động gốc vẫn đang nằm trong hàng đợi (Scheduled) và sẽ chạy trong tương lai.
+                        _logger.LogInformation($"Refund rejected within 3 days. Original scheduled job will handle transfer for Purchase {purchase.PurchasesId}");
+                    }
+
+                    return BaseResponse<object>.Success("Refund request rejected. Wallet transfer logic handled.");
                 }
-                catch (Exception ex)
+
+                // =========================================================
+                // TRƯỜNG HỢP 2: CHẤP NHẬN HOÀN TIỀN (APPROVED)
+                // =========================================================
+                refundRequest.Status = RefundRequestStatus.Approved;
+                purchase.Status = PurchaseStatus.Refunded;
+
+                await _unitOfWork.Purchases.UpdateAsync(purchase);
+                await _unitOfWork.RefundRequests.UpdateAsync(refundRequest);
+
+                await _unitOfWork.SaveChangesAsync();
+                // Tìm enrollment để hủy
+                var enrollment = await _unitOfWork.Enrollments.FindAsync(e => e.EnrollmentID == purchase.EnrollmentId);
+
+                if (enrollment != null)
                 {
-                    await _unitOfWork.RollbackTransactionAsync();
-                    _logger.LogError(ex, "Error processing refund decision");
-                    return BaseResponse<object>.Error("System error processing refund");
+                    enrollment.Status = DAL.Type.EnrollmentStatus.Cancelled;
+                    await _unitOfWork.Enrollments.UpdateAsync(enrollment);
+                    await _unitOfWork.SaveChangesAsync();
                 }
-            });
+
+                // Logic trừ tiền Admin Wallet (Revert tiền)
+                var adminWallet = await _unitOfWork.Wallets.FindAsync(w => w.OwnerType == OwnerType.Admin && w.Currency == CurrencyType.VND);
+
+                if (adminWallet != null)
+                {
+                    decimal systemShare = purchase.FinalAmount * SYSTEM_FEE_PERCENTAGE;
+                    decimal teacherShare = purchase.FinalAmount * TEACHER_FEE_PERCENTAGE;
+
+                    // Kiểm tra số dư trước khi trừ (Optional nhưng recommend)
+                    if (adminWallet.AvailableBalance < systemShare || adminWallet.HoldBalance < teacherShare)
+                    {
+                        throw new Exception("System wallet does not have enough balance to refund (Critical Error)");
+                    }
+
+                    adminWallet.AvailableBalance -= systemShare; // Trả lại phí hệ thống
+                    adminWallet.HoldBalance -= teacherShare;     // Trả lại phần giữ của GV
+                    adminWallet.TotalBalance -= purchase.FinalAmount;
+                    adminWallet.UpdatedAt = TimeHelper.GetVietnamTime();
+
+                    // Tạo Transaction log cho Admin Wallet
+                    var walletTrans = new WalletTransaction
+                    {
+                        WalletTransactionId = Guid.NewGuid(),
+                        WalletId = adminWallet.WalletId,
+                        TransactionType = TransactionType.Payout,
+                        Amount = -purchase.FinalAmount,
+                        ReferenceId = refundRequest.RefundRequestID,
+                        ReferenceType = ReferenceType.Refund,
+                        Description = $"Refund for purchase {purchase.PurchasesId}",
+                        Status = TransactionStatus.Succeeded,
+                        CreatedAt = TimeHelper.GetVietnamTime()
+                    };
+                    await _unitOfWork.WalletTransactions.CreateAsync(walletTrans);
+                    await _unitOfWork.SaveChangesAsync();
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+
+                return BaseResponse<object>.Success("Refund approved successfully.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing refund decision");
+                return BaseResponse<object>.Error("System error processing refund");
+            }
         }
         public async Task<PagedResponse<List<RefundRequestResponse>>> GetRefundRequestsAsync(Guid userId, RefundRequestFilterRequest request)
         {
@@ -1302,6 +1299,7 @@ namespace BLL.Services.Purchases
                         if (enrollment != null && enrollment.Status != DAL.Type.EnrollmentStatus.Cancelled)
                         {
                             enrollment.Status = DAL.Type.EnrollmentStatus.Cancelled;
+                            await _unitOfWork.Enrollments.UpdateAsync(enrollment);
                             await _unitOfWork.SaveChangesAsync();
                         }
                         return new CourseAccessResponse
@@ -1315,6 +1313,7 @@ namespace BLL.Services.Purchases
                         if (enrollment != null && enrollment.Status != DAL.Type.EnrollmentStatus.Expired)
                         {
                             enrollment.Status = DAL.Type.EnrollmentStatus.Expired;
+                            await _unitOfWork.Enrollments.UpdateAsync(enrollment);
                             await _unitOfWork.SaveChangesAsync();
                         }
                         return new CourseAccessResponse
@@ -1327,7 +1326,6 @@ namespace BLL.Services.Purchases
                         };
 
                     case PurchaseStatus.Failed:
-                        await _unitOfWork.CommitTransactionAsync();
                         return new CourseAccessResponse
                         {
                             HasAccess = false,
@@ -1336,7 +1334,6 @@ namespace BLL.Services.Purchases
                         };
 
                     case PurchaseStatus.Pending:
-                        await _unitOfWork.CommitTransactionAsync();
                         return new CourseAccessResponse
                         {
                             HasAccess = false,
@@ -1354,6 +1351,12 @@ namespace BLL.Services.Purchases
                         enrollment.Status = DAL.Type.EnrollmentStatus.Expired;
                     }
 
+                    await _unitOfWork.Purchases.UpdateAsync(latestPurchase);
+                    if (enrollment != null)
+                    {
+                        await _unitOfWork.Enrollments.UpdateAsync(enrollment);
+                    }
+
                     await _unitOfWork.SaveChangesAsync();
 
                     return new CourseAccessResponse
@@ -1369,6 +1372,7 @@ namespace BLL.Services.Purchases
                 if (enrollment != null && enrollment.Status != DAL.Type.EnrollmentStatus.Active)
                 {
                     enrollment.Status = DAL.Type.EnrollmentStatus.Active;
+                    await _unitOfWork.Enrollments.UpdateAsync(enrollment);
                     await _unitOfWork.SaveChangesAsync();
                 }
 
