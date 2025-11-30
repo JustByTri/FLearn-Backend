@@ -5,6 +5,7 @@ using DAL.Helpers;
 using DAL.Models;
 using DAL.UnitOfWork;
 using Google.Apis.Auth;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -28,12 +29,56 @@ namespace BLL.Services.Auth
             _emailService = emailService;
             _googleAuthSettings = googleAuthSettings.Value;
         }
+        public async Task<AuthResponseDto> LoginLearnerAsync(LoginRequestDto loginRequest)
+        {
+            var user = await GetUserByEmailOrUsernameWithRolesAsync(loginRequest.UsernameOrEmail);
 
+            if (user == null)
+            {
+                throw new HttpResponseException(StatusCodes.Status401Unauthorized,
+                    "Tài khoản hoặc mật khẩu của bạn không đúng");
+            }
+
+            ValidateUserCredentials(user, loginRequest.Password);
+
+            var isLearner = user.UserRoles != null && user.UserRoles.Any(ur => ur.Role.Name == "Learner");
+
+            if (!isLearner)
+            {
+                throw new HttpResponseException(StatusCodes.Status401Unauthorized,
+                    "Tài khoản này không phải là học viên. Vui lòng đăng nhập ở cổng quản trị.");
+            }
+
+            return await ProcessLoginAsync(user, loginRequest.RememberMe);
+        }
+        public async Task<AuthResponseDto> LoginSystemUserAsync(LoginRequestDto loginRequest)
+        {
+            var user = await GetUserByEmailOrUsernameWithRolesAsync(loginRequest.UsernameOrEmail);
+
+            if (user == null)
+            {
+                throw new HttpResponseException(StatusCodes.Status401Unauthorized,
+                    "Tài khoản hoặc mật khẩu của bạn không đúng");
+            }
+
+            ValidateUserCredentials(user, loginRequest.Password);
+
+            var allowedRoles = new[] { "Admin", "Manager", "Teacher" };
+            var hasSystemRole = user.UserRoles != null && user.UserRoles.Any(ur => allowedRoles.Contains(ur.Role.Name));
+
+            if (!hasSystemRole)
+            {
+                throw new HttpResponseException(StatusCodes.Status403Forbidden,
+                    "Bạn không có quyền truy cập vào hệ thống quản trị.");
+            }
+
+            return await ProcessLoginAsync(user, loginRequest.RememberMe);
+        }
         public async Task<AuthResponseDto> LoginAsync(LoginRequestDto loginRequest)
         {
             var user = await GetUserByEmailOrUsernameAsync(loginRequest.UsernameOrEmail);
 
-            if (user == null )
+            if (user == null)
                 throw new UnauthorizedAccessException("Tài khoản của bạn không tồn tại");
             if (!user.Status)
                 throw new UnauthorizedAccessException("Tài khoản của bạn không khả dụng, liên hệ với quản trị viên");
@@ -268,11 +313,6 @@ namespace BLL.Services.Auth
                 } : null
             };
         }
-        private DateTime ConvertToVietnamTime(DateTime utcTime)
-        {
-            TimeZoneInfo vietnamZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
-            return TimeZoneInfo.ConvertTimeFromUtc(utcTime, vietnamZone);
-        }
         public async Task<bool> LogoutAsync(string refreshToken)
         {
             return await _unitOfWork.RefreshTokens.RevokeTokenAsync(refreshToken);
@@ -313,20 +353,17 @@ namespace BLL.Services.Auth
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var claims = new List<Claim>
-    {
-        new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
-        new Claim(ClaimTypes.Name, user.UserName),
-        new Claim(ClaimTypes.Email, user.Email),
-
-        new Claim("user_id", user.UserID.ToString()),
-        new Claim("username", user.UserName),
-        new Claim("email", user.Email),
-        new Claim("avatar", user.Avatar ?? ""),
-        new Claim("fullname" , user.FullName ?? ""),
-
-
-        new Claim("created_at", user.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"))
-    };
+                {
+                    new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
+                    new Claim(ClaimTypes.Name, user.UserName),
+                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim("user_id", user.UserID.ToString()),
+                    new Claim("username", user.UserName),
+                    new Claim("email", user.Email),
+                    new Claim("avatar", user.Avatar ?? ""),
+                    new Claim("fullname" , user.FullName ?? ""),
+                    new Claim("created_at", user.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"))
+                };
 
             if (user.UserRoles != null)
             {
@@ -677,12 +714,84 @@ namespace BLL.Services.Auth
                 throw new InvalidOperationException("Đã xảy ra lỗi trong quá trình xác thực người dùng.", ex);
             }
         }
-        #endregion
+        private async Task<User?> GetUserByEmailOrUsernameWithRolesAsync(string emailOrUsername)
+        {
+            var user = await _unitOfWork.Users.Query()
+                .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.Email == emailOrUsername || u.UserName == emailOrUsername);
 
+            return user;
+        }
+        private void ValidateUserCredentials(User user, string password)
+        {
+            if (user == null)
+            {
+                throw new HttpResponseException(StatusCodes.Status401Unauthorized,
+                    "Tài khoản hoặc mật khẩu của bạn không đúng");
+            }
+
+            if (!VerifyPassword(password, user.PasswordHash, user.PasswordSalt))
+            {
+                throw new HttpResponseException(StatusCodes.Status401Unauthorized,
+                    "Tài khoản hoặc mật khẩu của bạn không đúng");
+            }
+
+            if (!user.Status)
+            {
+                throw new HttpResponseException(StatusCodes.Status403Forbidden,
+                    "Tài khoản của bạn đã bị khóa.");
+            }
+
+            if (!user.IsEmailConfirmed)
+            {
+                throw new HttpResponseException(StatusCodes.Status403Forbidden,
+                    "Vui lòng xác minh email trước khi đăng nhập.");
+            }
+        }
+        private async Task<AuthResponseDto> ProcessLoginAsync(User user, bool rememberMe)
+        {
+            var refreshTokenExpirationDays = rememberMe ? 30 : _jwtSettings.RefreshTokenExpirationDays;
+            var (accessToken, refreshToken) = await GenerateTokensAsync(user, refreshTokenExpirationDays);
+
+            Language? activeLanguage = null;
+            if (user.ActiveLanguageId.HasValue)
+            {
+                activeLanguage = await _unitOfWork.Languages.GetByIdAsync(user.ActiveLanguageId.Value);
+            }
+
+            return new AuthResponseDto
+            {
+                AccessToken = accessToken.Token,
+                RefreshToken = refreshToken.Token,
+                AccessTokenExpires = accessToken.ExpiresAt,
+                RefreshTokenExpires = refreshToken.ExpiresAt,
+                User = MapToUserInfoDto(user),
+                Roles = user.UserRoles?.Select(ur => ur.Role.Name).ToList() ?? new List<string>(),
+                ActiveLanguage = activeLanguage != null ? new
+                {
+                    languageId = activeLanguage.LanguageID,
+                    languageName = activeLanguage.LanguageName,
+                    languageCode = activeLanguage.LanguageCode
+                } : null
+            };
+        }
+        #endregion
         private class TokenInfo
         {
             public string Token { get; set; }
             public DateTime ExpiresAt { get; set; }
         }
+        public class HttpResponseException : Exception
+        {
+            public int Status { get; }
+
+            public HttpResponseException(int status, string message)
+                : base(message)
+            {
+                Status = status;
+            }
+        }
+
     }
 }

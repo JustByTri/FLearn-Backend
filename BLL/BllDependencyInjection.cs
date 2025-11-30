@@ -3,6 +3,7 @@ using BLL.HostedServices; // added
 using BLL.IServices.Admin;
 using BLL.IServices.AI;
 using BLL.IServices.Application;
+using BLL.IServices.AppReview;
 using BLL.IServices.Assessment;
 using BLL.IServices.Auth;
 using BLL.IServices.Certificate;
@@ -31,6 +32,7 @@ using BLL.Services;
 using BLL.Services.Admin;
 using BLL.Services.AI;
 using BLL.Services.Application;
+using BLL.Services.AppReview;
 using BLL.Services.Assessment;
 using BLL.Services.Auth;
 using BLL.Services.Certificate;
@@ -185,6 +187,7 @@ namespace BLL
             services.AddScoped<ICourseReviewService, CourseReviewService>();
             services.AddScoped<ITeacherReviewService, TeacherReviewService>();
             services.AddScoped<IAIContentModerationService, AIContentModerationService>();
+            services.AddScoped<IAppReviewService, AppReviewService>();
             return services;
         }
     }

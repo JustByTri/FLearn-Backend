@@ -4,7 +4,6 @@ using Common.DTO.Auth;
 using DAL.UnitOfWork;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 
@@ -23,7 +22,32 @@ namespace Presentation.Controllers.Auth
             _cloudinaryService = cloudinaryService;
             _unitOfWork = unitOfWork;
         }
+        /// <summary>
+        /// Đăng nhập dành cho Học viên (Learner)
+        /// POST: api/auth/login/learner
+        /// </summary>
+        [HttpPost("login/learner")]
+        [AllowAnonymous]
+        public async Task<IActionResult> LoginLearner([FromBody] LoginRequestDto request)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
+            var result = await _authService.LoginLearnerAsync(request);
+            return Ok(result);
+        }
+        /// <summary>
+        /// Đăng nhập dành cho Quản trị viên/Giáo viên (Admin, Manager, Teacher)
+        /// POST: api/auth/login/system
+        /// </summary>
+        [HttpPost("login/system")]
+        [AllowAnonymous]
+        public async Task<IActionResult> LoginSystemUser([FromBody] LoginRequestDto request)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var result = await _authService.LoginSystemUserAsync(request);
+            return Ok(result);
+        }
 
         [HttpPost("register")]
         [AllowAnonymous]
@@ -176,7 +200,7 @@ namespace Presentation.Controllers.Auth
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-               
+
                 var user = await _unitOfWork.Users.GetUserWithRolesAsync(Guid.Parse(userId));
                 if (user == null)
                     return NotFound(new { success = false, message = "User not found" });
@@ -247,7 +271,7 @@ namespace Presentation.Controllers.Auth
 
         public class UpdateProfileFormDto
         {
-            
+
             public string FullName { get; set; }
 
             [Required]

@@ -4,6 +4,8 @@ namespace BLL.IServices.Auth
 {
     public interface IAuthService
     {
+        Task<AuthResponseDto> LoginLearnerAsync(LoginRequestDto loginRequest);
+        Task<AuthResponseDto> LoginSystemUserAsync(LoginRequestDto loginRequest);
         Task<AuthResponseDto> LoginAsync(LoginRequestDto loginRequest);
         Task<AuthResponseDto> RegisterAsync(TempRegistrationDto registerRequest);
         Task<AuthResponseDto> RefreshTokenAsync(string refreshToken);
