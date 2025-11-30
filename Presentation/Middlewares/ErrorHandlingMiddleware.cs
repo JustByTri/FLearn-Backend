@@ -1,4 +1,6 @@
-﻿namespace Presentation.Middlewares
+﻿using static BLL.Services.Auth.AuthService;
+
+namespace Presentation.Middlewares
 {
     public class ErrorHandlingMiddleware
     {
@@ -32,8 +34,15 @@
             {
                 _logger.LogError(ex, "Unhandled exception caught in middleware.");
 
-                await WriteJsonResponse(context, StatusCodes.Status500InternalServerError,
-                    "An unexpected error occurred. Please try again later.");
+                if (ex is HttpResponseException httpEx)
+                {
+                    await WriteJsonResponse(context, httpEx.Status, httpEx.Message);
+                }
+                else
+                {
+                    await WriteJsonResponse(context, StatusCodes.Status500InternalServerError,
+                        "An unexpected error occurred. Please try again later.");
+                }
             }
         }
 
