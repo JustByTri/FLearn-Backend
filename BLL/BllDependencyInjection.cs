@@ -23,6 +23,7 @@ using BLL.IServices.Redis;
 using BLL.IServices.Refund;
 using BLL.IServices.Subscription;
 using BLL.IServices.Teacher;
+using BLL.IServices.TeacherReview;
 using BLL.IServices.Topic;
 using BLL.IServices.Upload;
 using BLL.IServices.Wallets;
@@ -50,6 +51,7 @@ using BLL.Services.Redis;
 using BLL.Services.Refund;
 using BLL.Services.Subscription;
 using BLL.Services.Teacher;
+using BLL.Services.TeacherReview;
 using BLL.Services.Topic;
 using BLL.Services.Upload;
 using BLL.Services.Wallets;
@@ -181,6 +183,8 @@ namespace BLL
             services.AddScoped<IGamificationService, GamificationService>();
             services.AddScoped<IManagerDashboardService, ManagerDashboardService>();
             services.AddScoped<ICourseReviewService, CourseReviewService>();
+            services.AddScoped<ITeacherReviewService, TeacherReviewService>();
+            services.AddScoped<IAIContentModerationService, AIContentModerationService>();
             return services;
         }
     }
