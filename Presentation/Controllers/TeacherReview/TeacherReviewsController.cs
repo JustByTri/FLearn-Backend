@@ -1,34 +1,34 @@
 ﻿using BLL.IServices.AI;
-using BLL.IServices.Course;
-using Common.DTO.CourseReview.Request;
+using BLL.IServices.TeacherReview;
 using Common.DTO.Paging.Request;
+using Common.DTO.TeacherReview.Request;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Presentation.Helpers;
 
-namespace Presentation.Controllers.CourseReview
+namespace Presentation.Controllers.TeacherReview
 {
-    [Route("api/course-reviews")]
+    [Route("api/teacher-reviews")]
     [ApiController]
-    public class CourseReviewController : ControllerBase
+    public class TeacherReviewsController : ControllerBase
     {
-        private readonly ICourseReviewService _courseReviewService;
+        private readonly ITeacherReviewService _teacherReviewService;
         private readonly IAIContentModerationService _moderationService;
-        public CourseReviewController(ICourseReviewService courseReviewService, IAIContentModerationService moderationService)
+        public TeacherReviewsController(ITeacherReviewService teacherReviewService, IAIContentModerationService moderationService)
         {
-            _courseReviewService = courseReviewService;
+            _teacherReviewService = teacherReviewService;
             _moderationService = moderationService;
         }
-        [HttpGet("courses/{courseId:guid}")]
+        [HttpGet("teachers/{teacherId}")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetReviewsByCourseId(Guid courseId, [FromQuery] PaginationParams @params)
+        public async Task<IActionResult> GetReviewsByTeacherId(Guid teacherId, [FromQuery] PaginationParams paginationParams)
         {
-            var result = await _courseReviewService.GetCourseReviewsByCourseIdAsync(courseId, @params);
-            return StatusCode(result.Code, result);
+            var response = await _teacherReviewService.GetTeacherReviewsByTeacherIdAsync(teacherId, paginationParams);
+            return StatusCode(response.Code, response);
         }
-        [HttpPost("courses/{courseId:guid}")]
+        [HttpPost("teachers/{teacherId}")]
         [Authorize]
-        public async Task<IActionResult> CreateReview(Guid courseId, [FromBody] CourseReviewRequest request)
+        public async Task<IActionResult> CreateReview(Guid teacherId, [FromBody] TeacherReviewRequest request)
         {
             if (!this.TryGetUserId(out var userId, out var error))
                 return error!;
@@ -42,12 +42,12 @@ namespace Presentation.Controllers.CourseReview
                 return BadRequest(new { message = "Đánh giá của bạn có chứa nội dung không phù hợp, vi phạm tiêu chuẩn cộng đồng của chúng tôi (Bạo lực, Lời nói kích động thù địch, Phản động chính trị, v.v.) và đã bị từ chối." });
             }
 
-            var result = await _courseReviewService.CreateCourseReviewAsync(userId, courseId, request);
-            return StatusCode(result.Code, result);
+            var response = await _teacherReviewService.CreateTeacherReviewAsync(userId, teacherId, request);
+            return StatusCode(response.Code, response);
         }
-        [HttpPut("courses/{courseId:guid}")]
+        [HttpPut("teachers/{teacherId}")]
         [Authorize]
-        public async Task<IActionResult> UpdateReview(Guid courseId, [FromBody] CourseReviewRequest request)
+        public async Task<IActionResult> UpdateReview(Guid teacherId, [FromBody] TeacherReviewRequest request)
         {
             if (!this.TryGetUserId(out var userId, out var error))
                 return error!;
@@ -61,21 +61,18 @@ namespace Presentation.Controllers.CourseReview
                 return BadRequest(new { message = "Đánh giá của bạn có chứa nội dung không phù hợp, vi phạm tiêu chuẩn cộng đồng của chúng tôi (Bạo lực, Lời nói kích động thù địch, Phản động chính trị, v.v.) và đã bị từ chối." });
             }
 
-            var result = await _courseReviewService.UpdateCourseReviewAsync(userId, courseId, request);
-            return StatusCode(result.Code, result);
+            var response = await _teacherReviewService.UpdateTeacherReviewAsync(userId, teacherId, request);
+            return StatusCode(response.Code, response);
         }
-        [HttpDelete("{reviewId:guid}")]
+        [HttpDelete("{id}")]
         [Authorize]
-        public async Task<IActionResult> DeleteReview(Guid reviewId)
+        public async Task<IActionResult> DeleteReview(Guid id)
         {
             if (!this.TryGetUserId(out var userId, out var error))
                 return error!;
 
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            var result = await _courseReviewService.DeleteCourseReviewAsync(userId, reviewId);
-            return StatusCode(result.Code, result);
+            var response = await _teacherReviewService.DeleteTeacherReviewAsync(userId, id);
+            return StatusCode(response.Code, response);
         }
     }
 }
