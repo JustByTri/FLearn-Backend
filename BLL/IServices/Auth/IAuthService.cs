@@ -21,7 +21,8 @@ namespace BLL.IServices.Auth
 
         Task<AuthResponseDto> LoginGoogleAsync(string idToken);
 
-
+        Task<bool> UpdateFcmTokenAsync(Guid userId, string fcmToken);
+        Task<bool> RemoveFcmTokenAsync(Guid userId);
     }
 
 

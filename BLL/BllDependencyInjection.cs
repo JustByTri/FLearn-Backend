@@ -188,6 +188,7 @@ namespace BLL
             services.AddScoped<ITeacherReviewService, TeacherReviewService>();
             services.AddScoped<IAIContentModerationService, AIContentModerationService>();
             services.AddScoped<IAppReviewService, AppReviewService>();
+            services.AddSingleton<BLL.Services.FirebaseService.FirebaseNotificationService>();
             return services;
         }
     }

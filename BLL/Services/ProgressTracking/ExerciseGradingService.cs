@@ -1,6 +1,7 @@
 ﻿using BLL.IServices.Assessment;
 using BLL.IServices.ProgressTracking;
 using BLL.IServices.Wallets;
+using BLL.Services.FirebaseService;
 using Common.DTO.ApiResponse;
 using Common.DTO.ExerciseGrading.Request;
 using Common.DTO.ExerciseGrading.Response;
@@ -19,11 +20,13 @@ namespace BLL.Services.ProgressTracking
         private readonly IUnitOfWork _unitOfWork;
         private readonly IAssessmentService _assessmentService;
         private readonly IBackgroundJobClient _backgroundJobClient;
-        public ExerciseGradingService(IUnitOfWork unitOfWork, IAssessmentService assessmentService, IBackgroundJobClient backgroundJobClient)
+        private readonly FirebaseNotificationService _notificationService;
+        public ExerciseGradingService(IUnitOfWork unitOfWork, IAssessmentService assessmentService, IBackgroundJobClient backgroundJobClient, FirebaseNotificationService notificationService)
         {
             _unitOfWork = unitOfWork;
             _assessmentService = assessmentService;
             _backgroundJobClient = backgroundJobClient;
+            _notificationService = notificationService;
         }
         public async Task<BaseResponse<bool>> CheckAndReassignExpiredAssignmentsAsync()
         {
@@ -638,6 +641,44 @@ namespace BLL.Services.ProgressTracking
                 await _unitOfWork.ExerciseSubmissions.UpdateAsync(submission);
                 await _unitOfWork.SaveChangesAsync();
 
+                try
+                {
+                    var studentToken = await _unitOfWork.Users.Query()
+                            .AsNoTracking()
+                            .Where(u => u.LearnerLanguages.Any(ll => ll.LearnerLanguageId == submission.LearnerId))
+                            .Select(u => u.FcmToken)
+                            .FirstOrDefaultAsync();
+
+                    if (string.IsNullOrEmpty(studentToken))
+                    {
+                        Console.WriteLine($"Cannot send notification: No FCM Token found for Learner {submission.LearnerId}");
+                    }
+                    else
+                    {
+                        string title = "AI đã chấm xong!";
+                        string body = $"Bạn nhận được: {Math.Round(submission.AIScore, 1)}/100\nBài tập: {submission.Exercise.Title}\nNhấn để xem chi tiết nhận xét.";
+
+                        if (submission.Status == ExerciseSubmissionStatus.PendingTeacherReview)
+                            body += " Đã chuyển tiếp cho giáo viên.";
+                        else if (submission.IsPassed == true)
+                            body += " Chúc mừng bạn đã ĐẠT! 🎉";
+                        else
+                            body += " Bạn chưa đạt, hãy thử lại nhé!";
+
+                        var data = new Dictionary<string, string>()
+                        {
+                            { "type", "exercise_result" },
+                            { "submissionId", submission.ExerciseSubmissionId.ToString() }
+                        };
+
+                        await _notificationService.SendNotificationAsync(studentToken, title, body, data);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Notification Error] {ex.Message}");
+                }
+
                 return BaseResponse<bool>.Success(true, "AI grading completed successfully");
             }
             catch (Exception ex)
@@ -713,147 +754,173 @@ namespace BLL.Services.ProgressTracking
         }
         public async Task<BaseResponse<bool>> ProcessTeacherGradingAsync(Guid exerciseSubmissionId, Guid userId, double score, string feedback)
         {
-            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            var user = await _unitOfWork.Users.GetByIdAsync(userId);
+            if (user == null)
+                return BaseResponse<bool>.Fail(new object(), "Access denied. Invalid authentication.", 401);
+
+            if (score < 0 || score > 100)
+                return BaseResponse<bool>.Fail(false, "Score must be between 0 and 100", 400);
+
+            var teacher = await _unitOfWork.TeacherProfiles.FindAsync(t => t.UserId == userId);
+            if (teacher == null)
+                return BaseResponse<bool>.Fail(new object(), "Access denied", 403);
+
+            var submission = await _unitOfWork.ExerciseSubmissions
+                            .Query()
+                            .Include(es => es.Exercise)
+                                .ThenInclude(e => e.Lesson)
+                                    .ThenInclude(l => l.CourseUnit)
+                            .Include(es => es.Learner)
+                                .ThenInclude(l => l.User)
+                            .Include(es => es.ExerciseGradingAssignments)
+                                .ThenInclude(eg => eg.EarningAllocation)
+                            .FirstOrDefaultAsync(es => es.ExerciseSubmissionId == exerciseSubmissionId);
+
+            if (submission == null)
+                return BaseResponse<bool>.Fail(false, "Exercise submission not found", 404);
+
+            var assignment = submission.ExerciseGradingAssignments
+                .FirstOrDefault(a => a.AssignedTeacherId == teacher.TeacherId &&
+                                   a.Status == GradingStatus.Assigned);
+
+            if (assignment == null)
+                return BaseResponse<bool>.Fail(false, "You are not assigned to grade this submission", 403);
+
+            if (submission.Status != ExerciseSubmissionStatus.PendingTeacherReview &&
+                submission.Status != ExerciseSubmissionStatus.AIGraded)
+                return BaseResponse<bool>.Fail(false, "Submission is not ready for teacher grading", 400);
+
+            var isResubmission = await IsResubmissionAfterTeacherFail(submission.LearnerId, submission.ExerciseId);
+            var isFirstTeacherGrading = !isResubmission;
+
+            submission.TeacherScore = score;
+            submission.TeacherFeedback = feedback;
+
+            double? finalScore = (submission.AIScore * submission.AIPercentage / 100) +
+               (submission.TeacherScore * (submission.TeacherPercentage ?? 0) / 100);
+
+            submission.IsPassed = finalScore >= submission.Exercise.PassScore;
+
+            if (submission.IsPassed == true)
             {
-                var user = await _unitOfWork.Users.GetByIdAsync(userId);
-                if (user == null)
-                    return BaseResponse<bool>.Fail(new object(), "Access denied. Invalid authentication.", 401);
+                submission.Status = ExerciseSubmissionStatus.Passed;
+            }
+            else
+            {
+                submission.Status = ExerciseSubmissionStatus.Failed;
+            }
 
-                if (score < 0 || score > 100)
-                    return BaseResponse<bool>.Fail(false, "Score must be between 0 and 100", 400);
+            submission.FinalScore = finalScore;
+            submission.ReviewedAt = TimeHelper.GetVietnamTime();
 
-                var teacher = await _unitOfWork.TeacherProfiles.FindAsync(t => t.UserId == userId);
-                if (teacher == null)
-                    return BaseResponse<bool>.Fail(new object(), "Access denied", 403);
+            assignment.Status = GradingStatus.Returned;
+            assignment.CompletedAt = TimeHelper.GetVietnamTime();
+            assignment.FinalScore = score;
+            assignment.Feedback = feedback;
 
-                var submission = await _unitOfWork.ExerciseSubmissions
-                                .Query()
-                                .Include(es => es.Exercise)
-                                    .ThenInclude(e => e.Lesson)
-                                        .ThenInclude(l => l.CourseUnit)
-                                .Include(es => es.Learner)
-                                    .ThenInclude(l => l.User)
-                                .Include(es => es.ExerciseGradingAssignments)
-                                    .ThenInclude(eg => eg.EarningAllocation)
-                                .FirstOrDefaultAsync(es => es.ExerciseSubmissionId == exerciseSubmissionId);
+            await _unitOfWork.ExerciseSubmissions.UpdateAsync(submission);
+            await _unitOfWork.ExerciseGradingAssignments.UpdateAsync(assignment);
 
-                if (submission == null)
-                    return BaseResponse<bool>.Fail(false, "Exercise submission not found", 404);
+            var allocation = assignment.EarningAllocation;
 
-                var assignment = submission.ExerciseGradingAssignments
-                    .FirstOrDefault(a => a.AssignedTeacherId == teacher.TeacherId &&
-                                       a.Status == GradingStatus.Assigned);
+            if (allocation != null && isFirstTeacherGrading)
+            {
+                var learnerId = submission.Learner.UserId;
+                var courseId = submission.Exercise.Lesson.CourseUnit.CourseID;
 
-                if (assignment == null)
-                    return BaseResponse<bool>.Fail(false, "You are not assigned to grade this submission", 403);
+                var purchase = await _unitOfWork.Purchases.Query()
+                .FirstOrDefaultAsync(p => p.UserId == learnerId && p.CourseId == courseId);
 
-                if (submission.Status != ExerciseSubmissionStatus.PendingTeacherReview &&
-                    submission.Status != ExerciseSubmissionStatus.AIGraded)
-                    return BaseResponse<bool>.Fail(false, "Submission is not ready for teacher grading", 400);
-
-                var isResubmission = await IsResubmissionAfterTeacherFail(submission.LearnerId, submission.ExerciseId);
-                var isFirstTeacherGrading = !isResubmission;
-
-                submission.TeacherScore = score;
-                submission.TeacherFeedback = feedback;
-
-                double? finalScore = (submission.AIScore * submission.AIPercentage / 100) +
-                   (submission.TeacherScore * (submission.TeacherPercentage ?? 0) / 100);
-
-                submission.IsPassed = finalScore >= submission.Exercise.PassScore;
-
-                if (submission.IsPassed == true)
+                bool isRefundSafe = true;
+                if (purchase != null)
                 {
-                    submission.Status = ExerciseSubmissionStatus.Passed;
+                    // Nếu Purchase đã Refunded hoặc Failed -> Không trả tiền
+                    if (purchase.Status == PurchaseStatus.Refunded ||
+                        purchase.Status == PurchaseStatus.Failed ||
+                        purchase.Status == PurchaseStatus.Cancelled)
+                    {
+                        isRefundSafe = false;
+                    }
+                    else
+                    {
+                        // Nếu có yêu cầu Refund đang Pending -> Cũng tạm thời KHÔNG trả tiền
+                        var pendingRefund = await _unitOfWork.RefundRequests.Query()
+                            .AnyAsync(r => r.PurchaseId == purchase.PurchasesId &&
+                                          (r.Status == RefundRequestStatus.Pending ||
+                                           r.Status == RefundRequestStatus.Approved));
+
+                        if (pendingRefund) isRefundSafe = false;
+                    }
                 }
                 else
                 {
-                    submission.Status = ExerciseSubmissionStatus.Failed;
+                    // Không tìm thấy purchase (lỗi data) -> Không trả tiền cho chắc
+                    isRefundSafe = false;
                 }
 
-                submission.FinalScore = finalScore;
-                submission.ReviewedAt = TimeHelper.GetVietnamTime();
-
-                assignment.Status = GradingStatus.Returned;
-                assignment.CompletedAt = TimeHelper.GetVietnamTime();
-                assignment.FinalScore = score;
-                assignment.Feedback = feedback;
-
-                await _unitOfWork.ExerciseSubmissions.UpdateAsync(submission);
-                await _unitOfWork.ExerciseGradingAssignments.UpdateAsync(assignment);
-
-                var allocation = assignment.EarningAllocation;
-
-                if (allocation != null && isFirstTeacherGrading)
+                if (isRefundSafe)
                 {
-                    var learnerId = submission.Learner.UserId;
-                    var courseId = submission.Exercise.Lesson.CourseUnit.CourseID;
+                    // KHỚP LOGIC: Chỉ Approved khi an toàn
+                    allocation.Status = EarningStatus.Approved;
+                    allocation.ApprovedAt = TimeHelper.GetVietnamTime();
+                    allocation.UpdatedAt = TimeHelper.GetVietnamTime();
 
-                    var purchase = await _unitOfWork.Purchases.Query()
-                    .FirstOrDefaultAsync(p => p.UserId == learnerId && p.CourseId == courseId);
-
-                    bool isRefundSafe = true;
-                    if (purchase != null)
-                    {
-                        // Nếu Purchase đã Refunded hoặc Failed -> Không trả tiền
-                        if (purchase.Status == PurchaseStatus.Refunded ||
-                            purchase.Status == PurchaseStatus.Failed ||
-                            purchase.Status == PurchaseStatus.Cancelled)
-                        {
-                            isRefundSafe = false;
-                        }
-                        else
-                        {
-                            // Nếu có yêu cầu Refund đang Pending -> Cũng tạm thời KHÔNG trả tiền
-                            var pendingRefund = await _unitOfWork.RefundRequests.Query()
-                                .AnyAsync(r => r.PurchaseId == purchase.PurchasesId &&
-                                              (r.Status == RefundRequestStatus.Pending ||
-                                               r.Status == RefundRequestStatus.Approved));
-
-                            if (pendingRefund) isRefundSafe = false;
-                        }
-                    }
-                    else
-                    {
-                        // Không tìm thấy purchase (lỗi data) -> Không trả tiền cho chắc
-                        isRefundSafe = false;
-                    }
-
-                    if (isRefundSafe)
-                    {
-                        // KHỚP LOGIC: Chỉ Approved khi an toàn
-                        allocation.Status = EarningStatus.Approved;
-                        allocation.ApprovedAt = TimeHelper.GetVietnamTime();
-                        allocation.UpdatedAt = TimeHelper.GetVietnamTime();
-
-                        // Lưu ý: Việc gọi Job chuyển tiền sẽ thực hiện SAU KHI save changes thành công
-                    }
-                    else
-                    {
-                        // Nếu đang Refund, ta set trạng thái là Cancelled (hoặc Rejected)
-                        // Giáo viên đã chấm nhưng do User refund nên Allocation này bị hủy.
-                        // (Tuỳ policy bên bạn có trả tiền cho GV hay ko trong case này, 
-                        // nhưng để an toàn tài chính thì thường là không hoặc xử lý thủ công).
-                        allocation.Status = EarningStatus.Rejected;
-                        allocation.UpdatedAt = TimeHelper.GetVietnamTime();
-
-                        Console.WriteLine($"[INFO] Allocation {allocation.AllocationId} cancelled due to Refund/Invalid Purchase status.");
-                    }
-
-                    await _unitOfWork.TeacherEarningAllocations.UpdateAsync(allocation);
+                    // Lưu ý: Việc gọi Job chuyển tiền sẽ thực hiện SAU KHI save changes thành công
                 }
-
-                await _unitOfWork.SaveChangesAsync();
-
-                if (allocation != null && allocation.Status == EarningStatus.Approved)
+                else
                 {
-                    BackgroundJob.Enqueue<IWalletService>(ws => ws.TransferExerciseGradingFeeToTeacherAsync(allocation.AllocationId));
+                    // Nếu đang Refund, ta set trạng thái là Cancelled (hoặc Rejected)
+                    // Giáo viên đã chấm nhưng do User refund nên Allocation này bị hủy.
+                    // (Tuỳ policy bên bạn có trả tiền cho GV hay ko trong case này, 
+                    // nhưng để an toàn tài chính thì thường là không hoặc xử lý thủ công).
+                    allocation.Status = EarningStatus.Rejected;
+                    allocation.UpdatedAt = TimeHelper.GetVietnamTime();
+
+                    Console.WriteLine($"[INFO] Allocation {allocation.AllocationId} cancelled due to Refund/Invalid Purchase status.");
                 }
 
-                await UpdateLessonProgressAfterGrading(submission);
+                await _unitOfWork.TeacherEarningAllocations.UpdateAsync(allocation);
+            }
 
-                return BaseResponse<bool>.Success(true, "Teacher grading completed successfully");
-            });
+            await _unitOfWork.SaveChangesAsync();
+
+            if (allocation != null && allocation.Status == EarningStatus.Approved)
+            {
+                BackgroundJob.Enqueue<IWalletService>(ws => ws.TransferExerciseGradingFeeToTeacherAsync(allocation.AllocationId));
+            }
+
+            await UpdateLessonProgressAfterGrading(submission);
+
+            try
+            {
+                var studentToken = await _unitOfWork.Users.Query()
+                       .AsNoTracking()
+                       .Where(u => u.LearnerLanguages.Any(ll => ll.LearnerLanguageId == submission.LearnerId))
+                       .Select(u => u.FcmToken)
+                       .FirstOrDefaultAsync();
+
+                if (string.IsNullOrEmpty(studentToken))
+                {
+                    Console.WriteLine($"Cannot send notification: No FCM Token found for Learner {submission.LearnerId}");
+                }
+                else
+                {
+                    string title = "Giáo viên đã chấm bài";
+                    string body = $"Bạn nhận được {score}/100 cho bài: {submission.Exercise.Title}\nXem ngay nhận xét chi tiết.";
+
+                    var data = new Dictionary<string, string>()
+                        {
+                            { "type", "exercise_result" },
+                            { "submissionId", submission.ExerciseSubmissionId.ToString() }
+                        };
+                    await _notificationService.SendNotificationAsync(studentToken, title, body, data);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Notification Error] {ex.Message}");
+            }
+            return BaseResponse<bool>.Success(true, "Teacher grading completed successfully");
         }
         #region
         private async Task UpdateLessonProgressAfterGrading(ExerciseSubmission submission)

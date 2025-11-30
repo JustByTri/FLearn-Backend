@@ -37,6 +37,7 @@ namespace DAL.Models
         public int DailyConversationLimit { get; set; } = 2;
         public int ConversationsUsedToday { get; set; } = 0;
         public DateTime LastConversationResetDate { get; set; } = TimeHelper.GetVietnamTime();
+        public string? FcmToken { get; set; }
         public virtual Wallet? Wallet { get; set; }
         public virtual TeacherProfile? TeacherProfile { get; set; }
         public virtual ManagerLanguage? ManagerLanguage { get; set; }

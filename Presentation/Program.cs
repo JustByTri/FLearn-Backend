@@ -5,6 +5,8 @@ using BLL.Hubs;
 using BLL.IServices.ProgressTracking;
 using BLL.Settings;
 using Common.Authorization;
+using FirebaseAdmin;
+using Google.Apis.Auth.OAuth2;
 using Hangfire;
 using Hangfire.MySql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -55,6 +57,28 @@ builder.Services.Configure<FormOptions>(options =>
     options.MultipartHeadersLengthLimit = int.MaxValue;
     options.MemoryBufferThreshold = int.MaxValue;
 });
+
+var firebasePath = Path.Combine(Directory.GetCurrentDirectory(), "firebase-admin-sdk.json");
+
+try
+{
+    if (File.Exists(firebasePath))
+    {
+        FirebaseApp.Create(new AppOptions()
+        {
+            Credential = GoogleCredential.FromFile(firebasePath)
+        });
+        Console.WriteLine("[Firebase] Initialized successfully.");
+    }
+    else
+    {
+        Console.WriteLine($"[Firebase] File not found at: {firebasePath}");
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"[Firebase] Initialization failed: {ex.Message}");
+}
 
 
 builder.Services.Configure<KestrelServerOptions>(options =>
@@ -357,7 +381,7 @@ RecurringJob.AddOrUpdate<IExerciseGradingService>(
     "0 2 */3 * *"
 );
 
-//app.UseHttpsRedirection();
+app.UseHttpsRedirection();
 
 app.UseCors("AllowAll");
 app.UseErrorHandlingMiddleware();
