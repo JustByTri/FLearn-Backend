@@ -427,6 +427,43 @@ namespace Presentation.Controllers.Auth
                 return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi đổi mật khẩu. Vui lòng thử lại!" });
             }
         }
+        /// <summary>
+        /// Cập nhật FCM Token cho user hiện tại (Gọi khi Login thành công hoặc mở App)
+        /// </summary>
+        [Authorize]
+        [HttpPut("fcm-token")]
+        public async Task<IActionResult> UpdateFcmToken([FromBody] UpdateFcmTokenDto request)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                await _authService.UpdateFcmTokenAsync(userId, request.FcmToken);
+                return Ok(new { success = true, message = "Token updated" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Xóa FCM Token (Gọi TRƯỚC KHI Logout)
+        /// </summary>
+        [Authorize]
+        [HttpDelete("fcm-token")]
+        public async Task<IActionResult> RemoveFcmToken()
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                await _authService.RemoveFcmTokenAsync(userId);
+                return Ok(new { success = true, message = "Token removed" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
     }
 }
 

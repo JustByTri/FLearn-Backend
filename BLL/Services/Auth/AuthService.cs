@@ -318,6 +318,32 @@ namespace BLL.Services.Auth
             return await _unitOfWork.RefreshTokens.RevokeTokenAsync(refreshToken);
         }
 
+        public async Task<bool> UpdateFcmTokenAsync(Guid userId, string fcmToken)
+        {
+            var user = await _unitOfWork.Users.GetByIdAsync(userId);
+            if (user == null) return false;
+
+            user.FcmToken = fcmToken;
+            user.UpdatedAt = TimeHelper.GetVietnamTime();
+
+            await _unitOfWork.Users.UpdateAsync(user);
+            await _unitOfWork.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> RemoveFcmTokenAsync(Guid userId)
+        {
+            var user = await _unitOfWork.Users.GetByIdAsync(userId);
+            if (user == null) return false;
+
+            user.FcmToken = null;
+            user.UpdatedAt = TimeHelper.GetVietnamTime();
+
+            await _unitOfWork.Users.UpdateAsync(user);
+            await _unitOfWork.SaveChangesAsync();
+            return true;
+        }
+
         #region Private Methods
 
         private async Task<User> GetUserByEmailOrUsernameAsync(string emailOrUsername)
