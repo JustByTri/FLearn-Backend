@@ -26,6 +26,11 @@ namespace BLL.Services.Teacher
             _firebaseNotificationService = firebaseNotificationService;
         }
 
+        /// <summary>
+        /// Hủy lớp học với logic kiểm tra 3 ngày
+        /// - Nếu > 3 ngày: Hủy trực tiếp
+        /// - Nếu ≤ 3 ngày: Throw exception yêu cầu dùng RequestCancelClassAsync
+        /// </summary>
         public async Task<bool> CancelClassAsync(Guid teacherId, Guid classId, string reason)
         {
             try
@@ -33,81 +38,186 @@ namespace BLL.Services.Teacher
                 var teacherClass = await _unitOfWork.TeacherClasses.GetByIdAsync(classId);
 
                 if (teacherClass == null)
-                {
                     throw new KeyNotFoundException("Lớp học không tồn tại");
-                }
 
                 if (teacherClass.TeacherID != teacherId)
-                {
                     throw new UnauthorizedAccessException("Bạn không có quyền thao tác với lớp học này");
-                }
 
-                // Only allow cancellation for certain statuses
+                // Chỉ cho phép hủy lớp chưa hoàn thành
                 if (teacherClass.Status == ClassStatus.Completed_Paid ||
                     teacherClass.Status == ClassStatus.Completed_PendingPayout)
-                {
                     throw new InvalidOperationException("Không thể hủy lớp học đã hoàn thành");
-                }
 
-                // Check if class has started
-                if (teacherClass.StartDateTime <= DateTime.UtcNow)
-                {
+                // Kiểm tra lớp đã bắt đầu chưa
+                var now = DateTime.UtcNow;
+                if (teacherClass.StartDateTime <= now)
                     throw new InvalidOperationException("Không thể hủy lớp học đã bắt đầu");
-                }
 
-                // Get enrollments to handle refunds
-                var enrollments = await _unitOfWork.ClassEnrollments.GetEnrollmentsByClassAsync(classId);
-                var paidEnrollments = enrollments.Where(e => e.Status == EnrollmentStatus.Paid).ToList();
+                // ============================================
+                // KIỂM TRA QUY TẮC 3 NGÀY (72 GIỜ)
+                // ============================================
+                var hoursUntilStart = (teacherClass.StartDateTime - now).TotalHours;
 
-                // If there are paid enrollments, need to process refunds and send notifications
-                if (paidEnrollments.Any())
+                if (hoursUntilStart <= 72) // 3 ngày = 72 giờ
                 {
-                    foreach (var enrollment in paidEnrollments)
-                    {
-                        enrollment.Status = EnrollmentStatus.Refunded;
-                        enrollment.UpdatedAt = DateTime.UtcNow;
-                        await _unitOfWork.ClassEnrollments.UpdateAsync(enrollment);
-
-                        // Gửi thông báo hủy lớp cho học viên
-                        if (enrollment.Student != null && !string.IsNullOrEmpty(enrollment.Student.FcmToken))
-                        {
-                            try
-                            {
-                                await _firebaseNotificationService.SendClassCancellationNotificationAsync(
-                                    enrollment.Student.FcmToken,
-                                    teacherClass.Title ?? "Lớp học",
-                                    reason
-                                );
-                                _logger.LogInformation($"[FCM] Sent cancellation notification to student {enrollment.StudentID}");
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogError(ex, $"[FCM] Failed to send cancellation notification to student {enrollment.StudentID}");
-                            }
-                        }
-                    }
-
-                    _logger.LogInformation("🔄 Refunded {Count} enrollments for cancelled class {ClassId}",
-                        paidEnrollments.Count, classId);
+                    throw new InvalidOperationException(
+                        $"Không thể hủy lớp trong vòng 3 ngày trước khi bắt đầu. " +
+                        $"Vui lòng gửi yêu cầu hủy lớp để Manager xem xét bằng cách sử dụng chức năng 'Yêu cầu hủy lớp'."
+                    );
                 }
 
-                // Update class status
-                teacherClass.Status = ClassStatus.Cancelled;
-                teacherClass.UpdatedAt = DateTime.UtcNow;
+                // Nếu > 3 ngày → Cho phép hủy trực tiếp
+                await ExecuteCancellationAsync(classId, reason);
 
-                await _unitOfWork.TeacherClasses.UpdateAsync(teacherClass);
-                await _unitOfWork.SaveChangesAsync();
-
-                _logger.LogInformation("❌ Class {ClassId} cancelled by teacher {TeacherId}. Reason: {Reason}",
-                    classId, teacherId, reason);
+                _logger.LogInformation("✅ Teacher {TeacherId} cancelled class {ClassId} (>3 days before start)",
+                    teacherId, classId);
 
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error cancelling class {ClassId} by teacher {TeacherId}", classId, teacherId);
+                _logger.LogError(ex, "❌ Error cancelling class {ClassId}", classId);
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Giáo viên gửi yêu cầu hủy lớp (dành cho lớp < 3 ngày)
+        /// Returns: ID của yêu cầu hủy lớp đã tạo
+        /// </summary>
+        public async Task<Guid> RequestCancelClassAsync(Guid teacherId, Guid classId, string reason)
+        {
+            try
+            {
+                var teacherClass = await _unitOfWork.TeacherClasses.GetByIdAsync(classId);
+
+                if (teacherClass == null)
+                    throw new KeyNotFoundException("Lớp học không tồn tại");
+
+                if (teacherClass.TeacherID != teacherId)
+                    throw new UnauthorizedAccessException("Bạn không có quyền thao tác với lớp học này");
+
+                var now = DateTime.UtcNow;
+                if (teacherClass.StartDateTime <= now)
+                    throw new InvalidOperationException("Không thể hủy lớp học đã bắt đầu");
+
+                // Kiểm tra xem đã có yêu cầu pending chưa
+                var hasPendingRequest = await _unitOfWork.ClassCancellationRequests.HasPendingRequestAsync(classId);
+                if (hasPendingRequest)
+                    throw new InvalidOperationException("Đã có yêu cầu hủy lớp đang chờ xử lý");
+
+                // Tạo yêu cầu hủy lớp
+                var request = new ClassCancellationRequest
+                {
+                    CancellationRequestId = Guid.NewGuid(),
+                    ClassId = classId,
+                    TeacherId = teacherId,
+                    Reason = reason,
+                    Status = CancellationRequestStatus.Pending,
+                    RequestedAt = now
+                };
+
+                await _unitOfWork.ClassCancellationRequests.CreateAsync(request);
+                await _unitOfWork.SaveChangesAsync();
+
+                // TODO: Gửi thông báo cho Manager
+                _logger.LogInformation("📋 Teacher {TeacherId} requested to cancel class {ClassId} (reason: {Reason})",
+                    teacherId, classId, reason);
+
+                return request.CancellationRequestId;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error creating cancellation request for class {ClassId}", classId);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Helper method: Thực hiện hủy lớp và tạo RefundRequest
+        /// Method này được dùng bởi:
+        /// 1. CancelClassAsync() - khi hủy trực tiếp (> 3 ngày)
+        /// 2. ClassAdminService.ApproveCancellationRequestAsync() - khi Manager duyệt
+        /// </summary>
+        private async Task ExecuteCancellationAsync(Guid classId, string reason)
+        {
+            var teacherClass = await _unitOfWork.TeacherClasses.GetByIdAsync(classId);
+            if (teacherClass == null) return;
+
+            var enrollments = await _unitOfWork.ClassEnrollments.GetEnrollmentsByClassAsync(classId);
+            var paidEnrollments = enrollments.Where(e => e.Status == EnrollmentStatus.Paid).ToList();
+
+            // Tạo RefundRequest cho từng học viên
+            if (paidEnrollments.Any())
+            {
+                foreach (var enrollment in paidEnrollments)
+                {
+                    var refundRequest = new RefundRequest
+                    {
+                        RefundRequestID = Guid.NewGuid(),
+                        EnrollmentID = enrollment.EnrollmentID,
+                        ClassID = classId,
+                        StudentID = enrollment.StudentID,
+                        RequestType = RefundRequestType.ClassCancelled_TeacherUnavailable,
+                        Reason = reason ?? "Teacher cancelled the class",
+                        RefundAmount = enrollment.AmountPaid,
+                        Status = RefundRequestStatus.Pending,
+
+                        // Để trống - học viên sẽ cập nhật sau
+                        BankName = string.Empty,
+                        BankAccountNumber = string.Empty,
+                        BankAccountHolderName = string.Empty,
+
+                        RequestedAt = DateTime.UtcNow,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    await _unitOfWork.RefundRequests.CreateAsync(refundRequest);
+
+                    // Cập nhật trạng thái enrollment
+                    enrollment.Status = EnrollmentStatus.PendingRefund;
+                    enrollment.UpdatedAt = DateTime.UtcNow;
+                    await _unitOfWork.ClassEnrollments.UpdateAsync(enrollment);
+
+                    // Gửi thông báo FCM cho học viên
+                    if (enrollment.Student != null && !string.IsNullOrEmpty(enrollment.Student.FcmToken))
+                    {
+                        try
+                        {
+                            await _firebaseNotificationService.SendNotificationAsync(
+                                enrollment.Student.FcmToken,
+                                "Lớp học đã bị hủy ❌",
+                                $"Lớp '{teacherClass.Title}' đã bị hủy. Vui lòng cập nhật thông tin ngân hàng để nhận hoàn tiền.",
+                                new Dictionary<string, string>
+                                {
+                            { "type", "class_cancelled_refund_required" },
+                            { "refundRequestId", refundRequest.RefundRequestID.ToString() },
+                            { "classId", classId.ToString() },
+                            { "className", teacherClass.Title ?? "Lớp học" }
+                                }
+                            );
+
+                            _logger.LogInformation("[FCM] ✅ Sent refund notification to student {StudentId}", enrollment.StudentID);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "[FCM] ❌ Failed to send notification to student {StudentId}", enrollment.StudentID);
+                        }
+                    }
+                }
+
+                _logger.LogInformation("🔄 Created {Count} refund requests for cancelled class {ClassId}",
+                    paidEnrollments.Count, classId);
+            }
+
+            // Cập nhật trạng thái lớp
+            teacherClass.Status = ClassStatus.Cancelled;
+            teacherClass.UpdatedAt = DateTime.UtcNow;
+            await _unitOfWork.TeacherClasses.UpdateAsync(teacherClass);
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("✅ Class {ClassId} cancelled successfully", classId);
         }
 
         public async Task<TeacherClassDto> CreateClassAsync(Guid teacherId, CreateClassDto createClassDto)

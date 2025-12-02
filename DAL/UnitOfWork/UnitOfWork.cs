@@ -17,6 +17,7 @@ namespace DAL.UnitOfWork
             Achievements = new AchievementRepository(_context);
             ApplicationCertTypes = new ApplicationCertTypeRepository(_context);
             CertificateTypes = new CertificateTypeRepository(_context);
+            ClassCancellationRequests = new ClassCancellationRequestRepository(_context);
             ClassDisputes = new ClassDisputeRepository(_context);
             ClassEnrollments = new ClassEnrollmentRepository(_context);
             ConversationMessages = new ConversationMessageRepository(_context);
@@ -74,6 +75,7 @@ namespace DAL.UnitOfWork
         public IAchievementRepository Achievements { get; private set; }
         public IApplicationCertTypeRepository ApplicationCertTypes { get; private set; }
         public ICertificateTypeRepository CertificateTypes { get; private set; }
+        public IClassCancellationRequestRepository ClassCancellationRequests { get; private set; }
         public IClassDisputeRepository ClassDisputes { get; private set; }
         public IClassEnrollmentRepository ClassEnrollments { get; private set; }
         public IConversationMessageRepository ConversationMessages { get; private set; }

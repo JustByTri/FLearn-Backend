@@ -28,13 +28,28 @@ namespace DAL.Models
         public virtual ICollection<RefundRequest>? RefundRequests { get; set; }
     }
 
+    /// <summary>
+    /// Trạng thái đăng ký lớp học
+    /// </summary>
     public enum EnrollmentStatus
     {
+        /// <summary>Chờ thanh toán</summary>
         Pending = 0,
+
+        /// <summary>Đã thanh toán thành công</summary>
         Paid = 1,
+
+        /// <summary>Đã hoàn tiền</summary>
         Refunded = 2,
+
+        /// <summary>Đã hủy</summary>
         Cancelled = 3,
-        Completed = 4
+
+        /// <summary>Đã hoàn thành</summary>
+        Completed = 4,
+
+        /// <summary>Đang chờ hoàn tiền (lớp bị hủy, chờ học viên cập nhật thông tin ngân hàng)</summary>
+        PendingRefund = 5
     }
 }
 

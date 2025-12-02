@@ -201,6 +201,79 @@ namespace Presentation.Controllers
             var response = await _refundRequestService.GetMyRefundRequestsAsync(learnerId);
             return StatusCode(response.Code, response);
         }
+        [HttpPut("class-refund/{refundRequestId:guid}/bank-info")]
+        [Authorize(Roles = "Learner")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(typeof(object), 400)]
+        [ProducesResponseType(typeof(object), 401)]
+        [ProducesResponseType(typeof(object), 404)]
+        public async Task<IActionResult> UpdateBankInfoForClassRefund(
+            Guid refundRequestId,
+            [FromBody] UpdateBankInfoDto dto)
+        {
+            try
+            {
+                if (!this.TryGetUserId(out var userId, out var error))
+                    return error!;
+
+                var result = await _refundRequestService.UpdateBankInfoForClassRefundAsync(
+                    userId,
+                    refundRequestId,
+                    dto);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Cập nhật thông tin ngân hàng thành công. Admin sẽ xử lý trong vòng 3-5 ngày làm việc.",
+                    data = result
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { success = false, message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating bank info for refund request");
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống" });
+            }
+        }
+
+        /// <summary>
+        /// [Học viên] Lấy danh sách đơn hoàn tiền của tôi
+        /// Bao gồm cả đơn hoàn tiền cho TeacherClass và Course
+        /// </summary>
+        [HttpGet("my-refund-requests")]
+        [Authorize(Roles = "Learner")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(typeof(object), 401)]
+        public async Task<IActionResult> GetMyAllRefundRequests()
+        {
+            try
+            {
+                if (!this.TryGetUserId(out var userId, out var error))
+                    return error!;
+
+                // Lấy tất cả refund requests (cả Class và Course)
+                var result = await _refundRequestService.GetMyRefundRequestsAsync(userId);
+
+                return StatusCode(result.Code, result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting my refund requests");
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống" });
+            }
+        }
     }
 }
+
     

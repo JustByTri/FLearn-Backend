@@ -42,5 +42,11 @@ namespace BLL.IServices.Refund
         [Obsolete("Sử dụng ProcessRefundRequestAsync để xử lý và gửi email tự động")]
         Task SendRefundEmailAsync(RefundEmailDto dto);
         Task<BaseResponse<IEnumerable<RefundRequestDto>>> GetMyRefundRequestsAsync(Guid learnerId);
+
+        /// <summary>
+        /// Học viên cập nhật thông tin ngân hàng cho đơn hoàn tiền lớp học
+        /// (Sau khi lớp bị hủy, học viên cần điền thông tin để nhận tiền)
+        /// </summary>
+        Task<RefundRequestDto> UpdateBankInfoForClassRefundAsync(Guid userId, Guid refundRequestId, UpdateBankInfoDto dto);
     }
 }

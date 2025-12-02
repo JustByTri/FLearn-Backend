@@ -293,10 +293,10 @@ namespace BLL.Services.Refund
             {
                 RefundRequestID = request.RefundRequestID,
 
-            
+
                 EnrollmentID = request.EnrollmentID ?? Guid.Empty,
                 ClassID = request.ClassID ?? Guid.Empty,
-           
+
 
                 StudentID = request.StudentID,
                 StudentName = studentName ?? request.Student?.UserName ?? "N/A",
@@ -312,7 +312,7 @@ namespace BLL.Services.Refund
                 RefundAmount = request.RefundAmount,
                 RequestedAt = request.RequestedAt,
 
-              
+
                 ProcessedAt = request.ProcessedAt,
 
                 AdminNote = request.AdminNote,
@@ -321,10 +321,10 @@ namespace BLL.Services.Refund
         }
         public async Task<BaseResponse<IEnumerable<RefundRequestDto>>> GetMyRefundRequestsAsync(Guid learnerId)
         {
-         
+
             var requests = await _unitOfWork.RefundRequests.GetByLearnerIdAsync(learnerId);
 
-           
+
             var myRequests = requests.Where(r => r.EnrollmentID != null);
 
             var requestsDto = myRequests.Select(r => MapToDto(
@@ -333,6 +333,44 @@ namespace BLL.Services.Refund
             )).ToList();
 
             return BaseResponse<IEnumerable<RefundRequestDto>>.Success(requestsDto, "Thành công", 200);
+        }
+
+        /// <summary>
+        /// Học viên cập nhật thông tin ngân hàng cho đơn hoàn tiền lớp học
+        /// </summary>
+        public async Task<RefundRequestDto> UpdateBankInfoForClassRefundAsync(
+            Guid userId,
+            Guid refundRequestId,
+            UpdateBankInfoDto dto)
+        {
+            _logger.LogInformation("Student {UserId} is updating bank info for refund request {RefundRequestId}",
+                userId, refundRequestId);
+
+            var refundRequest = await _unitOfWork.RefundRequests.GetByIdWithDetailsAsync(refundRequestId);
+
+            if (refundRequest == null)
+                throw new KeyNotFoundException("Không tìm thấy đơn hoàn tiền");
+
+            if (refundRequest.StudentID != userId)
+                throw new UnauthorizedAccessException("Bạn không có quyền cập nhật đơn này");
+
+            if (refundRequest.Status != RefundRequestStatus.Pending)
+                throw new InvalidOperationException("Chỉ có thể cập nhật đơn đang chờ xử lý");
+
+            // Cập nhật thông tin ngân hàng
+            refundRequest.BankName = dto.BankName;
+            refundRequest.BankAccountNumber = dto.BankAccountNumber;
+            refundRequest.BankAccountHolderName = dto.BankAccountHolderName;
+            refundRequest.UpdatedAt = DateTime.UtcNow;
+
+            await _unitOfWork.RefundRequests.UpdateAsync(refundRequest);
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("✅ Updated bank info for refund request {RefundRequestId}", refundRequestId);
+
+            // TODO: Gửi email thông báo admin về đơn mới cần xử lý
+
+            return MapToDto(refundRequest, refundRequest.Student?.UserName, refundRequest.TeacherClass?.Title);
         }
     }
 }
