@@ -20,7 +20,11 @@ namespace BLL.Services.Wallets
         }
         public async Task TransferToAdminWalletAsync(Guid purchaseId)
         {
-            var purchase = await _unitOfWork.Purchases.GetByIdAsync(purchaseId);
+            var purchase = await _unitOfWork.Purchases.Query()
+                .OrderBy(p => p.CreatedAt)
+                .Include(p => p.Course)
+                .FirstOrDefaultAsync(p => p.PurchasesId == purchaseId);
+
             if (purchase == null) return;
 
             var adminWallet = await GetOrCreateAdminWalletAsync();
