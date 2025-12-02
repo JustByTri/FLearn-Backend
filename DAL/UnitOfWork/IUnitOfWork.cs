@@ -8,6 +8,7 @@ namespace DAL.UnitOfWork
         IAchievementRepository Achievements { get; }
         IApplicationCertTypeRepository ApplicationCertTypes { get; }
         ICertificateTypeRepository CertificateTypes { get; }
+        IClassCancellationRequestRepository ClassCancellationRequests { get; }
         IClassDisputeRepository ClassDisputes { get; }
         IClassEnrollmentRepository ClassEnrollments { get; }
         IConversationMessageRepository ConversationMessages { get; }

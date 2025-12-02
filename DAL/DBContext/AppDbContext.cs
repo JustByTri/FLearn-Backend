@@ -10,6 +10,7 @@ namespace DAL.DBContext
         public DbSet<Achievement> Achievements { get; set; }
         public DbSet<ApplicationCertType> ApplicationCertTypes { get; set; }
         public DbSet<CertificateType> CertificateTypes { get; set; }
+        public DbSet<ClassCancellationRequest> ClassCancellationRequests { get; set; }
         public DbSet<ClassDispute> ClassDisputes { get; set; }
         public DbSet<ClassEnrollment> ClassEnrollments { get; set; }
         public DbSet<ConversationMessage> ConversationMessages { get; set; }
@@ -92,7 +93,7 @@ namespace DAL.DBContext
                     }
                 }
             }
-            //DbSeeder.SeedData(modelBuilder);
+            DbSeeder.SeedData(modelBuilder);
         }
     }
 }

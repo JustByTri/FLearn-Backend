@@ -4,6 +4,7 @@ using Common.DTO.Teacher;
 using DAL.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Presentation.Helpers;
 using System.Security.Claims;
 
 namespace Presentation.Controllers.Teacher
@@ -14,10 +15,12 @@ namespace Presentation.Controllers.Teacher
     public class TeacherClassController : ControllerBase
     {
         private readonly ITeacherClassService _teacherClassService;
+        private readonly ILogger<TeacherClassController> _logger;
 
-        public TeacherClassController(ITeacherClassService teacherClassService)
+        public TeacherClassController(ITeacherClassService teacherClassService,ILogger<TeacherClassController> logger)
         {
             _teacherClassService = teacherClassService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -223,5 +226,118 @@ namespace Presentation.Controllers.Teacher
                 return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi lấy danh sách assignment" });
             }
         }
+        /// <summary>
+        /// [Teacher] Hủy lớp học
+        /// - Nếu > 3 ngày trước khi bắt đầu: Hủy trực tiếp
+        /// - Nếu ≤ 3 ngày: Throw error yêu cầu dùng endpoint /request-cancel
+        /// </summary>
+        /// <param name="classId">ID lớp học cần hủy</param>
+        /// <param name="dto">Lý do hủy lớp</param>
+        [HttpDelete("{classId:guid}")]
+        [Authorize(Roles = "Teacher")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(typeof(object), 400)]
+        [ProducesResponseType(typeof(object), 404)]
+        public async Task<IActionResult> CancelClass(
+            Guid classId,
+            [FromBody] CancelClassRequestDto dto)
+        {
+            try
+            {
+                if (!this.TryGetUserId(out var teacherId, out var error))
+                    return error!;
+
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+
+                var result = await _teacherClassService.CancelClassAsync(
+                    teacherId,
+                    classId,
+                    dto.Reason);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Lớp học đã được hủy thành công. Hệ thống sẽ tự động tạo đơn hoàn tiền cho học viên."
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { success = false, message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Có thể là lỗi "không thể hủy trong vòng 3 ngày"
+                return BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message,
+                    hint = "Vui lòng sử dụng chức năng 'Yêu cầu hủy lớp' thay vì hủy trực tiếp."
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error cancelling class {ClassId}", classId);
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống" });
+            }
+        }
+
+        /// <summary>
+        /// [Teacher] Gửi yêu cầu hủy lớp (cho trường hợp < 3 ngày trước khi bắt đầu)
+        /// </summary>
+        /// <param name="classId">ID lớp học</param>
+        /// <param name="dto">Lý do yêu cầu hủy</param>
+        [HttpPost("{classId:guid}/request-cancel")]
+        [Authorize(Roles = "Teacher")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(typeof(object), 400)]
+        [ProducesResponseType(typeof(object), 404)]
+        public async Task<IActionResult> RequestCancelClass(
+            Guid classId,
+            [FromBody] CancelClassRequestDto dto)
+        {
+            try
+            {
+                if (!this.TryGetUserId(out var teacherId, out var error))
+                    return error!;
+
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+
+                var requestId = await _teacherClassService.RequestCancelClassAsync(
+                    teacherId,
+                    classId,
+                    dto.Reason);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Yêu cầu hủy lớp đã được gửi. Manager sẽ xem xét trong thời gian sớm nhất.",
+                    requestId = requestId
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { success = false, message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error requesting class cancellation for {ClassId}", classId);
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống" });
+            }
+        }
     }
 }
+
