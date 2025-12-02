@@ -28,6 +28,7 @@ using BLL.IServices.TeacherReview;
 using BLL.IServices.Topic;
 using BLL.IServices.Upload;
 using BLL.IServices.Wallets;
+using BLL.IServices.WalletTransactions;
 using BLL.Services;
 using BLL.Services.Admin;
 using BLL.Services.AI;
@@ -57,6 +58,7 @@ using BLL.Services.TeacherReview;
 using BLL.Services.Topic;
 using BLL.Services.Upload;
 using BLL.Services.Wallets;
+using BLL.Services.WalletTransactions;
 using BLL.Settings;
 using Common.Authorization;
 using DAL;
@@ -189,6 +191,7 @@ namespace BLL
             services.AddScoped<IAIContentModerationService, AIContentModerationService>();
             services.AddScoped<IAppReviewService, AppReviewService>();
             services.AddSingleton<BLL.Services.FirebaseService.FirebaseNotificationService>();
+            services.AddScoped<IWalletTransactionService, WalletTransactionService>();
             return services;
         }
     }
