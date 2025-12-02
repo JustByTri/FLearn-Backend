@@ -1,4 +1,4 @@
-﻿using BLL.Services.FirebaseService;
+﻿using BLL.IServices.FirebaseService;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Presentation.Controllers
@@ -7,9 +7,9 @@ namespace Presentation.Controllers
     [ApiController]
     public class TestNotificationController : ControllerBase
     {
-        private readonly FirebaseNotificationService _notificationService;
+        private readonly IFirebaseNotificationService _notificationService;
 
-        public TestNotificationController(FirebaseNotificationService notificationService)
+        public TestNotificationController(IFirebaseNotificationService notificationService)
         {
             _notificationService = notificationService;
         }

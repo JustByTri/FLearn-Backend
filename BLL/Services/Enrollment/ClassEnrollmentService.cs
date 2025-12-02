@@ -1,5 +1,6 @@
 ﻿using BLL.IServices.Enrollment;
 using BLL.IServices.Payment;
+using BLL.IServices.FirebaseService;
 using Common.DTO.Learner;
 using Common.DTO.Payment;
 using DAL.Models;
@@ -16,15 +17,18 @@ namespace BLL.Services.Enrollment
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<ClassEnrollmentService> _logger;
         private readonly IPayOSService _payOSService;
+        private readonly IFirebaseNotificationService _firebaseNotificationService;
 
         public ClassEnrollmentService(
             IUnitOfWork unitOfWork,
             ILogger<ClassEnrollmentService> logger,
-            IPayOSService payOSService)
+            IPayOSService payOSService,
+            IFirebaseNotificationService firebaseNotificationService)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;
             _payOSService = payOSService;
+            _firebaseNotificationService = firebaseNotificationService;
         }
 
         /// <summary>
@@ -133,6 +137,25 @@ namespace BLL.Services.Enrollment
                 _logger.LogInformation(
                     "Enrollment confirmed for student {StudentId} in class {ClassId}. TransactionId: {TransactionId}",
                     studentId, classId, transactionId);
+
+                // Gửi thông báo đăng ký thành công
+                var student = await _unitOfWork.Users.GetByIdAsync(studentId);
+                if (student != null && !string.IsNullOrEmpty(student.FcmToken))
+                {
+                    try
+                    {
+                        await _firebaseNotificationService.SendClassRegistrationSuccessNotificationAsync(
+                            student.FcmToken,
+                            teacherClass.Title ?? "Lớp học",
+                            teacherClass.StartDateTime
+                        );
+                        _logger.LogInformation($"[FCM] Sent enrollment success notification to student {studentId}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, $"[FCM] Failed to send enrollment success notification to student {studentId}");
+                    }
+                }
 
                 return true;
             }

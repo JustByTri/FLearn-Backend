@@ -1,4 +1,5 @@
 ﻿using BLL.IServices.Teacher;
+using BLL.IServices.FirebaseService;
 using Common.DTO.Learner;
 using Common.DTO.Teacher;
 using DAL.Models;
@@ -13,11 +14,16 @@ namespace BLL.Services.Teacher
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<TeacherClassService> _logger;
+        private readonly IFirebaseNotificationService _firebaseNotificationService;
 
-        public TeacherClassService(IUnitOfWork unitOfWork, ILogger<TeacherClassService> logger)
+        public TeacherClassService(
+            IUnitOfWork unitOfWork, 
+            ILogger<TeacherClassService> logger,
+            IFirebaseNotificationService firebaseNotificationService)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;
+            _firebaseNotificationService = firebaseNotificationService;
         }
 
         public async Task<bool> CancelClassAsync(Guid teacherId, Guid classId, string reason)
@@ -53,7 +59,7 @@ namespace BLL.Services.Teacher
                 var enrollments = await _unitOfWork.ClassEnrollments.GetEnrollmentsByClassAsync(classId);
                 var paidEnrollments = enrollments.Where(e => e.Status == EnrollmentStatus.Paid).ToList();
 
-                // If there are paid enrollments, need to process refunds
+                // If there are paid enrollments, need to process refunds and send notifications
                 if (paidEnrollments.Any())
                 {
                     foreach (var enrollment in paidEnrollments)
@@ -61,6 +67,24 @@ namespace BLL.Services.Teacher
                         enrollment.Status = EnrollmentStatus.Refunded;
                         enrollment.UpdatedAt = DateTime.UtcNow;
                         await _unitOfWork.ClassEnrollments.UpdateAsync(enrollment);
+
+                        // Gửi thông báo hủy lớp cho học viên
+                        if (enrollment.Student != null && !string.IsNullOrEmpty(enrollment.Student.FcmToken))
+                        {
+                            try
+                            {
+                                await _firebaseNotificationService.SendClassCancellationNotificationAsync(
+                                    enrollment.Student.FcmToken,
+                                    teacherClass.Title ?? "Lớp học",
+                                    reason
+                                );
+                                _logger.LogInformation($"[FCM] Sent cancellation notification to student {enrollment.StudentID}");
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, $"[FCM] Failed to send cancellation notification to student {enrollment.StudentID}");
+                            }
+                        }
                     }
 
                     _logger.LogInformation("🔄 Refunded {Count} enrollments for cancelled class {ClassId}",

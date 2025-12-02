@@ -14,6 +14,7 @@ using BLL.IServices.Coversation;
 using BLL.IServices.Dashboard;
 using BLL.IServices.Enrollment;
 using BLL.IServices.Exercise;
+using BLL.IServices.FirebaseService;
 using BLL.IServices.Gamification;
 using BLL.IServices.Language;
 using BLL.IServices.Lesson;
@@ -44,6 +45,7 @@ using BLL.Services.CourseUnits;
 using BLL.Services.Dashboard;
 using BLL.Services.Enrollment;
 using BLL.Services.Exercise;
+using BLL.Services.FirebaseService;
 using BLL.Services.Gamification;
 using BLL.Services.Languages;
 using BLL.Services.Lesson;
@@ -190,7 +192,11 @@ namespace BLL
             services.AddScoped<ITeacherReviewService, TeacherReviewService>();
             services.AddScoped<IAIContentModerationService, AIContentModerationService>();
             services.AddScoped<IAppReviewService, AppReviewService>();
-            services.AddSingleton<BLL.Services.FirebaseService.FirebaseNotificationService>();
+            
+          
+            services.AddScoped<IFirebaseNotificationService, FirebaseNotificationService>();
+            services.AddHostedService<ClassNotificationBackgroundService>();
+            
             services.AddScoped<IWalletTransactionService, WalletTransactionService>();
             return services;
         }
