@@ -2,11 +2,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BLL.Background
 {
@@ -23,6 +18,10 @@ namespace BLL.Background
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            await Task.Yield();
+
+            await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
+
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
@@ -44,7 +43,7 @@ namespace BLL.Background
                             _logger.LogInformation($"Đã dọn dẹp {expiredList.Count} bản ghi đăng ký tạm thời hết hạn");
                         }
 
-                     
+
                         try
                         {
                             var expiredOtps = await unitOfWork.RegistrationOtps.GetAllAsync();

@@ -4,11 +4,6 @@ using DAL.UnitOfWork;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BLL.Background
 {
@@ -28,7 +23,11 @@ namespace BLL.Background
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("🔄 Class Enrollment Check Service started");
+            await Task.Yield();
+
+            await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+
+            _logger.LogInformation("[LOGGER] Class Enrollment Check Service started");
 
             while (!stoppingToken.IsCancellationRequested)
             {
