@@ -48,6 +48,12 @@ namespace BLL.IServices.Refund
         Task<RefundRequestDto> UpdateBankInfoForClassRefundAsync(Guid userId, Guid refundRequestId, UpdateBankInfoDto dto);
 
         /// <summary>
+        /// [ADMIN] Yêu cầu học viên cập nhật lại thông tin ngân hàng (không reject đơn)
+        /// Gửi email + FCM notification cho học viên
+        /// </summary>
+        Task RequestBankInfoUpdateAsync(Guid refundRequestId, Guid adminId, string note);
+
+        /// <summary>
         /// [ADMIN] Xem TẤT CẢ đơn hoàn tiền (cả Class và Course) - Endpoint thống nhất
         /// </summary>
         Task<BaseResponse<IEnumerable<UnifiedRefundRequestDto>>> GetAllRefundRequestsAsync(

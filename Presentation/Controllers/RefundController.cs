@@ -157,6 +157,54 @@ namespace Presentation.Controllers
             }
         }
 
+        /// <summary>
+        /// [Admin] Yêu cầu học viên cập nhật lại thông tin ngân hàng
+        /// Không reject đơn, chỉ gửi thông báo để học viên sửa STK
+        /// </summary>
+        [HttpPost("admin/{refundRequestId:guid}/request-bank-update")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(typeof(object), 400)]
+        [ProducesResponseType(typeof(object), 404)]
+        public async Task<IActionResult> RequestBankInfoUpdate(
+            Guid refundRequestId,
+            [FromBody] RequestBankUpdateDto dto)
+        {
+            try
+            {
+                if (!this.TryGetUserId(out var adminId, out var error))
+                    return error!;
+
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+
+                await _refundRequestService.RequestBankInfoUpdateAsync(
+                    refundRequestId,
+                    adminId,
+                    dto.Note
+                );
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Đã gửi yêu cầu cập nhật STK cho học viên. Email và thông báo đã được gửi."
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error requesting bank update for RefundRequest {Id}", refundRequestId);
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống" });
+            }
+        }
+
         // ================== LEARNER (HỌC VIÊN) ACTIONS ==================
 
         /// <summary>
