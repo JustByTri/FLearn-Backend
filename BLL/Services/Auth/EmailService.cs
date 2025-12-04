@@ -45,9 +45,7 @@ namespace BLL.Services.Auth
                         Cảm ơn bạn đã chọn <strong>Flearn</strong>. Chúng tôi đã sẵn sàng cùng bạn chinh phục những mục tiêu ngôn ngữ mới.
                     </p>
                     <div style='margin: 40px 0;'>
-                        <a href='{_configuration["AppSettings:BaseUrl"]}' style='{GetButtonStyle()}'>
-                            Bắt đầu hành trình
-                        </a>
+                        <a href='{_configuration["AppSettings:BaseUrl"]}' style='{GetButtonStyle()}'>Bắt đầu hành trình</a>
                     </div>
                 </div>";
 
@@ -199,20 +197,58 @@ namespace BLL.Services.Auth
                 <div>
                     <h2 style='margin-top: 10px;'>Lớp học đã bị hủy</h2>
                     <p style='color: {TextLight};'>Chào {userName}, rất tiếc lớp học dưới đây không thể diễn ra theo kế hoạch:</p>
-                    
+        
                     <div style='background: #FFFAE6; padding: 25px; border-radius: 12px; margin: 30px 0; border: 1px solid #FFC400;'>
                         <div style='font-size: 20px; font-weight: 800; color: {TextDark}; margin-bottom: 5px;'>{className}</div>
                         <div style='color: {TextLight}; font-weight: 500;'>📅 {classStartDateTime:dd/MM/yyyy HH:mm}</div>
                         {(reason != null ? $"<div style='margin-top: 15px; padding-top: 15px; border-top: 1px dashed #E6B200; color: {TextDark}; font-weight: 500;'><strong>Lý do:</strong> {reason}</div>" : "")}
                     </div>
 
+                    <div style='background: #E3FCEF; padding: 25px; border-radius: 12px; margin: 30px 0; border-left: 4px solid {SuccessColor};'>
+                        <div style='color: {SuccessColor}; font-weight: 700; font-size: 14px; margin-bottom: 15px; text-transform: uppercase;'>
+                            ✅ Đơn hoàn tiền đã được tạo sẵn
+                        </div>
+                        <div style='color: {TextDark}; font-weight: 500; line-height: 1.8;'>
+                            Hệ thống đã tự động tạo đơn hoàn tiền cho bạn.<br/>
+                            Bạn chỉ cần điền thông tin ngân hàng và gửi đơn.
+                        </div>
+                    </div>
+
                     <div style='margin-top: 30px;'>
-                        <h3 style='color: {PrimaryColor}; font-size: 18px; margin-bottom: 15px;'>Hướng dẫn hoàn tiền:</h3>
-                        <ol style='color: {TextDark}; padding-left: 20px; line-height: 1.8; font-weight: 600;'>
-                            <li>Đăng nhập vào Website Flearn.</li>
-                            <li>Vào mục <strong>""Lớp học của tôi""</strong>.</li>
-                            <li>Chọn lớp trên và nhấn nút <strong>""Yêu cầu hoàn tiền""</strong>.</li>
+                        <h3 style='color: {PrimaryColor}; font-size: 18px; margin-bottom: 15px;'>🔄 Hướng dẫn hoàn tiền (3 bước):</h3>
+                        <ol style='color: {TextDark}; padding-left: 20px; line-height: 2.2; font-weight: 500;'>
+                            <li>
+                                <strong>Đăng nhập vào App Flearn</strong><br/>
+                                <span style='color: {TextLight}; font-size: 14px;'>Vào <strong>Hồ sơ</strong> → Chọn <strong>""Gửi đơn""</strong></span>
+                            </li>
+                            <li>
+                                <strong>Bạn sẽ thấy đơn hoàn tiền đã được tạo sẵn</strong><br/>
+                                <span style='color: {TextLight}; font-size: 14px;'>Nhấn vào đơn → Điền đầy đủ thông tin ngân hàng:</span>
+                                <ul style='color: {TextLight}; font-size: 14px; margin-top: 8px;'>
+                                    <li>Tên ngân hàng</li>
+                                    <li>Số tài khoản</li>
+                                    <li>Tên chủ tài khoản</li>
+                                </ul>
+                            </li>
+                            <li>
+                                <strong>Nhấn nút ""Gửi đơn""</strong><br/>
+                                <span style='color: {TextLight}; font-size: 14px;'>Hệ thống sẽ xử lý trong vòng 3-5 ngày làm việc</span>
+                            </li>
                         </ol>
+                    </div>
+
+                    <div style='margin: 40px 0; text-align: center;'>
+                        <a href='{_configuration["AppSettings:BaseUrl"]}/refunds' 
+                           style='{GetButtonStyle()}'>
+                            Mở App để điền thông tin
+                        </a>
+                    </div>
+
+                    <div style='background: #F4F5F7; padding: 20px; border-radius: 8px; margin-top: 30px;'>
+                        <div style='color: {TextDark}; font-weight: 600; margin-bottom: 10px;'>⚠️ Lưu ý quan trọng:</div>
+                        <p style='color: {TextLight}; font-size: 14px; line-height: 1.8; margin: 0;'>
+                            Điền đúng thông tin để hệ thống có thể xử lý cho bạn nhanh nhất có thể.
+                        </p>
                     </div>
                 </div>";
 
@@ -320,6 +356,61 @@ namespace BLL.Services.Auth
                     <p style='color: {TextLight}; font-size: 14px; margin-top: 30px;'>Vui lòng liên hệ bộ phận hỗ trợ nếu bạn cần giải thích thêm.</p>
                 </div>";
             return await SendEmailAsync(toEmail, subject, GetPremiumTemplate("Hoàn tiền", content));
+        }
+
+        public async Task<bool> SendBankInfoUpdateRequestAsync(
+            string toEmail,
+            string userName,
+            string className,
+            string adminNote)
+        {
+            var subject = "Cần cập nhật thông tin ngân hàng 🏦";
+
+            var content = $@"
+                <div style='text-align: center;'>
+                    <h2 style='color: {WarningColor}; margin-top: 20px;'>Yêu cầu cập nhật STK ⚠️</h2>
+                    <p style='color: {TextLight}; margin-bottom: 30px;'>
+                        Chào {userName}, đơn hoàn tiền cho lớp <strong>{className}</strong> 
+                        cần cập nhật thông tin ngân hàng.
+                    </p>
+                    
+                    <div style='background: #FFF3CD; padding: 25px; border-radius: 12px; margin: 30px 0; border: 1px solid #FFE69C;'>
+                        <div style='color: {WarningColor}; font-weight: 700; font-size: 14px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;'>
+                            📝 Ghi chú từ hệ thống:
+                        </div>
+                        <div style='color: {TextDark}; font-weight: 600; font-size: 16px; line-height: 1.6;'>
+                            {adminNote}
+                        </div>
+                    </div>
+
+                    <div style='background: #DEEBFF; padding: 20px; border-radius: 8px; margin: 30px 0; text-align: left;'>
+                        <div style='color: {PrimaryColor}; font-weight: 700; font-size: 13px; margin-bottom: 10px;'>
+                            🔄 Hướng dẫn sửa thông tin:
+                        </div>
+                        <ol style='color: {TextDark}; font-size: 14px; line-height: 2; margin: 0; padding-left: 20px; font-weight: 500;'>
+                            <li>Đăng nhập vào App Flearn</li>
+                            <li>Vào <strong>Hồ sơ</strong> → Chọn <strong>""Gửi đơn""</strong></li>
+                            <li>Tìm đơn này → Nhấn <strong>""Sửa thông tin""</strong></li>
+                            <li>Cập nhật lại STK → Nhấn <strong>""Gửi lại""</strong></li>
+                        </ol>
+                    </div>
+                    
+                    <div style='margin: 40px 0;'>
+                        <a href='{_configuration["AppSettings:BaseUrl"]}/refunds' 
+                           style='{GetButtonStyle(WarningColor)}'>
+                            Mở App để sửa thông tin
+                        </a>
+                    </div>
+                    
+                    <p style='color: {SuccessColor}; font-size: 15px; font-weight: 600; margin-top: 30px;'>
+                        ✅ Đơn của bạn vẫn đang được xử lý, không bị từ chối
+                    </p>
+                    <p style='color: {TextLight}; font-size: 13px; margin-top: 10px;'>
+                        Điền đúng thông tin để hệ thống có thể xử lý cho bạn nhanh nhất có thể
+                    </p>
+                </div>";
+
+            return await SendEmailAsync(toEmail, subject, GetPremiumTemplate("Cập nhật STK", content));
         }
 
         // --- HELPERS ---

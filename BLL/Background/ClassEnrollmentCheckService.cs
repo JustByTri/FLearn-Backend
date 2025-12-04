@@ -140,7 +140,7 @@ namespace BLL.Background
             {
                 try
                 {
-                    // Tạo RefundRequest
+                    // Tạo RefundRequest với trạng thái DRAFT (chưa điền STK)
                     var refundRequest = new RefundRequest
                     {
                         RefundRequestID = Guid.NewGuid(),
@@ -150,7 +150,7 @@ namespace BLL.Background
                         RequestType = RefundRequestType.ClassCancelled_InsufficientStudents,
                         Reason = $"Class cancelled due to insufficient students ({teacherClass.CurrentEnrollments}/{MIN_STUDENTS})",
                         RefundAmount = enrollment.AmountPaid,
-                        Status = RefundRequestStatus.Pending,
+                        Status = RefundRequestStatus.Draft, // ✨ DRAFT: Chưa điền STK
 
                         // Để trống - học viên cần cập nhật sau
                         BankName = string.Empty,

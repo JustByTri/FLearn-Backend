@@ -67,12 +67,13 @@ namespace DAL.Models
 
     public enum RefundRequestStatus
     {
-        Pending = 0,
-        UnderReview = 1,
-        Approved = 2,
-        Rejected = 3,
-        Completed = 4,
-        Cancelled = 5
+        Draft = 0,          // ✨ MỚI: Chưa điền STK
+        Pending = 1,        // Đã điền STK, chờ admin xử lý
+        UnderReview = 2,    // Admin đang review
+        Approved = 3,       // Đã duyệt
+        Rejected = 4,       // Từ chối
+        Completed = 5,      // Đã hoàn tiền
+        Cancelled = 6       // Đã hủy
     }
 }
 
