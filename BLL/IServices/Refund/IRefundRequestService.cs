@@ -1,11 +1,9 @@
-﻿using Common.DTO.ApiResponse;
+﻿using BLL.IServices.Auth;
+using BLL.IServices.Refund;
+using Common.DTO.ApiResponse;
 using Common.DTO.Refund;
 using DAL.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 
 namespace BLL.IServices.Refund
 {
@@ -48,5 +46,14 @@ namespace BLL.IServices.Refund
         /// (Sau khi lớp bị hủy, học viên cần điền thông tin để nhận tiền)
         /// </summary>
         Task<RefundRequestDto> UpdateBankInfoForClassRefundAsync(Guid userId, Guid refundRequestId, UpdateBankInfoDto dto);
+
+        /// <summary>
+        /// [ADMIN] Xem TẤT CẢ đơn hoàn tiền (cả Class và Course) - Endpoint thống nhất
+        /// </summary>
+        Task<BaseResponse<IEnumerable<UnifiedRefundRequestDto>>> GetAllRefundRequestsAsync(
+            RefundRequestStatus? status = null, 
+            RefundRequestType? type = null,
+            int page = 1,
+            int pageSize = 20);
     }
 }

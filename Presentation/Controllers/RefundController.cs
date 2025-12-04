@@ -28,6 +28,35 @@ namespace Presentation.Controllers
         // ================== ADMIN ACTIONS ==================
 
         /// <summary>
+        /// [Admin] Xem TẤT CẢ đơn hoàn tiền (bao gồm cả Class và Course)
+        /// Đây là endpoint thống nhất, thay thế cho hai endpoint riêng lẻ
+        /// </summary>
+        /// <param name="status">Lọc theo trạng thái (Pending, Approved, Rejected, ...)</param>
+        /// <param name="type">Lọc theo loại đơn (ClassCancelled, StudentPersonalReason, ...)</param>
+        /// <param name="page">Số trang (mặc định 1)</param>
+        /// <param name="pageSize">Số lượng đơn mỗi trang (mặc định 20)</param>
+        [HttpGet("admin/all")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(BaseResponse<IEnumerable<UnifiedRefundRequestDto>>), 200)]
+        public async Task<IActionResult> GetAllRefundRequests(
+            [FromQuery] RefundRequestStatus? status,
+            [FromQuery] RefundRequestType? type,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
+        {
+            try
+            {
+                var result = await _refundRequestService.GetAllRefundRequestsAsync(status, type, page, pageSize);
+                return StatusCode(result.Code, result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy tất cả đơn hoàn tiền");
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống." });
+            }
+        }
+
+        /// <summary>
         /// [Admin] Bước 1: Gửi email thông báo học viên cần làm đơn hoàn tiền
         /// </summary>
         [HttpPost("admin/notify-student")]
@@ -52,6 +81,7 @@ namespace Presentation.Controllers
 
         /// <summary>
         /// [Admin] Bước 3: Xem tất cả các đơn hoàn tiền (có thể lọc theo trạng thái)
+        /// [DEPRECATED] Sử dụng GET /admin/all thay thế để xem cả Class và Course
         /// </summary>
         [HttpGet("admin/list")]
         [Authorize(Roles = "Admin")]
@@ -169,22 +199,6 @@ namespace Presentation.Controllers
             }
         }
 
-        // ================== DEPRECATED ==================
-
-        /// <summary>
-        /// [DEPRECATED] Sử dụng POST /admin/process thay thế
-        /// </summary>
-        [HttpPost("admin/send-email")]
-        [Authorize(Roles = "Admin")]
-        [Obsolete("Sử dụng POST /admin/process để xử lý và gửi email tự động")]
-        public async Task<IActionResult> SendEmailToStudent([FromBody] RefundEmailDto dto)
-        {
-            return BadRequest(new
-            {
-                success = false,
-                message = "API này đã ngừng sử dụng. Vui lòng sử dụng POST /api/refund/admin/process để xử lý đơn và gửi email tự động."
-            });
-        }
         /// <summary>
         /// (Learner) Lấy lịch sử các đơn yêu cầu hoàn tiền đã gửi.
         /// </summary>
@@ -273,7 +287,22 @@ namespace Presentation.Controllers
                 return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống" });
             }
         }
+
+        // ================== DEPRECATED ==================
+
+        /// <summary>
+        /// [DEPRECATED] Sử dụng POST /admin/process thay thế
+        /// </summary>
+        [HttpPost("admin/send-email")]
+        [Authorize(Roles = "Admin")]
+        [Obsolete("Sử dụng POST /admin/process để xử lý và gửi email tự động")]
+        public async Task<IActionResult> SendEmailToStudent([FromBody] RefundEmailDto dto)
+        {
+            return BadRequest(new
+            {
+                success = false,
+                message = "API này đã ngừng sử dụng. Vui lòng sử dụng POST /api/refund/admin/process để xử lý đơn và gửi email tự động."
+            });
+        }
     }
 }
-
-    

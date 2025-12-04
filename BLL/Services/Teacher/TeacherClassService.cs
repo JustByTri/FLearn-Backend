@@ -1,5 +1,6 @@
 ﻿using BLL.IServices.Teacher;
 using BLL.IServices.FirebaseService;
+using BLL.IServices.Auth;
 using Common.DTO.Learner;
 using Common.DTO.Teacher;
 using DAL.Models;
@@ -15,15 +16,18 @@ namespace BLL.Services.Teacher
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<TeacherClassService> _logger;
         private readonly IFirebaseNotificationService _firebaseNotificationService;
+        private readonly IEmailService _emailService;
 
         public TeacherClassService(
             IUnitOfWork unitOfWork, 
             ILogger<TeacherClassService> logger,
-            IFirebaseNotificationService firebaseNotificationService)
+            IFirebaseNotificationService firebaseNotificationService,
+            IEmailService emailService)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;
             _firebaseNotificationService = firebaseNotificationService;
+            _emailService = emailService;
         }
 
 
@@ -55,22 +59,22 @@ namespace BLL.Services.Teacher
                     throw new InvalidOperationException("Không thể hủy lớp học đã bắt đầu");
 
                 // ============================================
-                // KIỂM TRA QUY TẮC 3 NGÀY (72 GIỜ)
+                // KIỂM TRA QUY TẮC 7 NGÀY (168 GIỜ)
                 // ============================================
                 var hoursUntilStart = (teacherClass.StartDateTime - now).TotalHours;
 
-                if (hoursUntilStart <= 72) // 3 ngày = 72 giờ
+                if (hoursUntilStart <= 168) // 7 ngày = 168 giờ
                 {
                     throw new InvalidOperationException(
-                        $"Không thể hủy lớp trong vòng 3 ngày trước khi bắt đầu. " +
+                        $"Không thể hủy lớp trong vòng 7 ngày trước khi bắt đầu. " +
                         $"Vui lòng gửi yêu cầu hủy lớp để Manager xem xét bằng cách sử dụng chức năng 'Yêu cầu hủy lớp'."
                     );
                 }
 
-                // Nếu > 3 ngày → Cho phép hủy trực tiếp
+                // Nếu > 7 ngày → Cho phép hủy trực tiếp
                 await ExecuteCancellationAsync(classId, reason);
 
-                _logger.LogInformation("✅ Teacher {TeacherId} cancelled class {ClassId} (>3 days before start)",
+                _logger.LogInformation("✅ Teacher {TeacherId} cancelled class {ClassId} (>7 days before start)",
                     teacherId, classId);
 
                 return true;
@@ -137,7 +141,7 @@ namespace BLL.Services.Teacher
         /// <summary>
         /// Helper method: Thực hiện hủy lớp và tạo RefundRequest
         /// Method này được dùng bởi:
-        /// 1. CancelClassAsync() - khi hủy trực tiếp (> 3 ngày)
+        /// 1. CancelClassAsync() - khi hủy trực tiếp (> 7 ngày)
         /// 2. ClassAdminService.ApproveCancellationRequestAsync() - khi Manager duyệt
         /// </summary>
         private async Task ExecuteCancellationAsync(Guid classId, string reason)
@@ -204,6 +208,27 @@ namespace BLL.Services.Teacher
                         catch (Exception ex)
                         {
                             _logger.LogError(ex, "[FCM] ❌ Failed to send notification to student {StudentId}", enrollment.StudentID);
+                        }
+                    }
+
+                    // 📧 GỬI EMAIL CHO HỌC VIÊN
+                    if (enrollment.Student != null && !string.IsNullOrEmpty(enrollment.Student.Email))
+                    {
+                        try
+                        {
+                            await _emailService.SendRefundRequestInstructionAsync(
+                                enrollment.Student.Email,
+                                enrollment.Student.UserName,
+                                teacherClass.Title ?? "Lớp học",
+                                teacherClass.StartDateTime,
+                                reason
+                            );
+
+                            _logger.LogInformation("[EMAIL] ✅ Sent refund email to {Email}", enrollment.Student.Email);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "[EMAIL] ❌ Failed to send email to {Email}", enrollment.Student.Email);
                         }
                     }
                 }

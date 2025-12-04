@@ -1,9 +1,11 @@
 ﻿using BLL.IServices.Enrollment;
 using BLL.IServices.Payment;
+using Common.DTO.Learner;
 using Common.DTO.Payment;
 using DAL.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Presentation.Helpers;
 using System.Security.Claims;
 
 namespace Presentation.Controllers.Learner
@@ -15,13 +17,16 @@ namespace Presentation.Controllers.Learner
     {
         private readonly IClassEnrollmentService _enrollmentService;
         private readonly IPayOSService _payOSService;
+        private readonly ILogger<ClassEnrollmentController> _logger;
 
         public ClassEnrollmentController(
             IClassEnrollmentService enrollmentService,
-            IPayOSService payOSService)
+            IPayOSService payOSService,
+            ILogger<ClassEnrollmentController> logger)
         {
             _enrollmentService = enrollmentService;
             _payOSService = payOSService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -142,6 +147,7 @@ namespace Presentation.Controllers.Learner
 
             return Ok(new { success = true, data = enrollment });
         }
+        
         /// <summary>
         /// Lấy danh sách lớp học theo ngôn ngữ
         /// </summary>
@@ -174,6 +180,7 @@ namespace Presentation.Controllers.Learner
                 return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi lấy danh sách lớp học" });
             }
         }
+        
         /// <summary>
         /// Lấy danh sách lớp học mà sinh viên đã đăng ký
         /// </summary>
@@ -219,6 +226,57 @@ namespace Presentation.Controllers.Learner
             catch (Exception ex)
             {
                 return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi lấy danh sách lớp học đã đăng ký" });
+            }
+        }
+
+        /// <summary>
+        /// [Học viên] Hủy đăng ký lớp học (trong vòng 3 ngày)
+        /// Tự động tạo RefundRequest và yêu cầu học viên cập nhật thông tin ngân hàng
+        /// </summary>
+        /// <param name="enrollmentId">ID của enrollment cần hủy</param>
+        /// <param name="dto">Lý do hủy (optional)</param>
+        [HttpDelete("enrollments/{enrollmentId:guid}")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(typeof(object), 400)]
+        [ProducesResponseType(typeof(object), 401)]
+        [ProducesResponseType(typeof(object), 404)]
+        public async Task<IActionResult> CancelEnrollment(
+            Guid enrollmentId,
+            [FromBody] CancelEnrollmentRequestDto dto)
+        {
+            try
+            {
+                if (!this.TryGetUserId(out var studentId, out var error))
+                    return error!;
+
+                var result = await _enrollmentService.CancelEnrollmentAsync(
+                    studentId,
+                    enrollmentId,
+                    dto?.Reason);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Hủy đăng ký thành công. Vui lòng cập nhật thông tin ngân hàng để nhận hoàn tiền.",
+                    hint = "Bạn có thể cập nhật thông tin ngân hàng trong mục 'Đơn hoàn tiền của tôi'."
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { success = false, message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error cancelling enrollment {EnrollmentId}", enrollmentId);
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống" });
             }
         }
     }
