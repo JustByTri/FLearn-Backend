@@ -9,6 +9,7 @@ using Common.DTO.Upload;
 using DAL.Helpers;
 using DAL.Type;
 using DAL.UnitOfWork;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace BLL.Services.Exercise
@@ -22,6 +23,8 @@ namespace BLL.Services.Exercise
             _unit = unit;
             _cloudinary = cloudinary;
         }
+        private bool IsImage(IFormFile file) => file.ContentType.ToLower().StartsWith("image/");
+        private bool IsAudio(IFormFile file) => file.ContentType.ToLower().StartsWith("audio/") || file.ContentType == "video/webm";
         public async Task<BaseResponse<ExerciseResponse>> CreateExerciseAsync(Guid userId, Guid lessonId, ExerciseRequest request)
         {
             try
@@ -50,6 +53,54 @@ namespace BLL.Services.Exercise
                 if (selectedCourse.Status != CourseStatus.Draft && selectedCourse.Status != CourseStatus.Rejected)
                     return BaseResponse<ExerciseResponse>.Fail(new object(), "Only Draft or Rejected courses can be modified.", 400);
 
+                var files = request.MediaFiles ?? new List<IFormFile>();
+                if (request.Type == SpeakingExerciseType.RepeatAfterMe)
+                {
+                    if (files.Count != 1)
+                        return BaseResponse<ExerciseResponse>.Fail(new { MediaFiles = "Count" }, "Repeat After Me exercise requires exactly one audio file.", 400);
+
+                    if (!IsAudio(files[0]))
+                        return BaseResponse<ExerciseResponse>.Fail(new { MediaFiles = "Format" }, "Repeat After Me exercise only allows audio file.", 400);
+                }
+                else if (request.Type == SpeakingExerciseType.PictureDescription || request.Type == SpeakingExerciseType.StoryTelling)
+                {
+                    if (files.Count == 0)
+                        return BaseResponse<ExerciseResponse>.Fail(new { MediaFiles = "Count" }, "This exercise type requires at least one image.", 400);
+
+                    if (files.Any(f => !IsImage(f)))
+                        return BaseResponse<ExerciseResponse>.Fail(new { MediaFiles = "Format" }, "This exercise type only allows image files.", 400);
+                }
+                else if (request.Type == SpeakingExerciseType.Debate)
+                {
+                    if (files.Any() && files.Any(f => !IsImage(f)))
+                        return BaseResponse<ExerciseResponse>.Fail(new { MediaFiles = "Format" }, "Debate exercise only allows image files.", 400);
+                }
+                else
+                {
+                    if (files.Any(f => !IsImage(f) && !IsAudio(f)))
+                        return BaseResponse<ExerciseResponse>.Fail(new { MediaFiles = "Format" }, "Invalid file format.", 400);
+                }
+
+                var mediaUrls = new List<string>();
+                var mediaPublicIds = new List<string>();
+
+                foreach (var mediaFile in files)
+                {
+                    if (mediaFile.Length == 0) continue;
+
+                    UploadResultDto uploadResult;
+                    if (IsImage(mediaFile))
+                        uploadResult = await _cloudinary.UploadImageAsync(mediaFile, "exercises/images");
+                    else
+                        uploadResult = await _cloudinary.UploadAudioAsync(mediaFile, "exercises/audio");
+
+                    if (uploadResult != null && !string.IsNullOrEmpty(uploadResult.Url))
+                    {
+                        mediaUrls.Add(uploadResult.Url);
+                        mediaPublicIds.Add(uploadResult.PublicId);
+                    }
+                }
+
                 int maxExercises = selectedCourse.Template?.ExercisesPerLesson ?? 12;
 
                 var existingExercises = await _unit.Exercises.FindAllAsync(ex => ex.LessonID == selectedLesson.LessonID);
@@ -58,54 +109,6 @@ namespace BLL.Services.Exercise
 
                 if (request.PassScore > request.MaxScore)
                     return BaseResponse<ExerciseResponse>.Fail(new object(), "Pass score cannot exceed max score.", 400);
-
-                var mediaUrls = new List<string>();
-                var mediaPublicIds = new List<string>();
-
-
-                if (request.MediaFiles != null && request.MediaFiles.Any())
-                {
-                    foreach (var mediaFile in request.MediaFiles)
-                    {
-                        if (mediaFile.Length == 0)
-                            continue;
-
-                        var contentType = mediaFile.ContentType.ToLower();
-                        bool isImage = contentType.StartsWith("image/");
-                        bool isAudio = contentType.StartsWith("audio/") || contentType == "video/webm";
-
-                        if (!isImage && !isAudio)
-                        {
-                            foreach (var publicId in mediaPublicIds)
-                            {
-                                await _cloudinary.DeleteFileAsync(publicId);
-                            }
-
-                            return BaseResponse<ExerciseResponse>.Fail(
-                                new { MediaFiles = "Invalid file format." },
-                                "Only image, audio, or webm files are allowed.",
-                                400
-                            );
-                        }
-
-                        UploadResultDto uploadResult;
-
-                        if (isImage)
-                        {
-                            uploadResult = await _cloudinary.UploadImageAsync(mediaFile, "exercises/images");
-                        }
-                        else
-                        {
-                            uploadResult = await _cloudinary.UploadAudioAsync(mediaFile, "exercises/audio");
-                        }
-
-                        if (uploadResult != null && !string.IsNullOrEmpty(uploadResult.Url))
-                        {
-                            mediaUrls.Add(uploadResult.Url);
-                            mediaPublicIds.Add(uploadResult.PublicId);
-                        }
-                    }
-                }
 
                 int nextPosition = (existingExercises != null && existingExercises.Any()) ? existingExercises.Max(e => e.Position) + 1 : 1;
 
@@ -411,118 +414,162 @@ namespace BLL.Services.Exercise
         {
             try
             {
+                // 1. Validate permissions and existence (Giữ nguyên như cũ)
                 var teacher = await _unit.TeacherProfiles.FindAsync(x => x.UserId == userId);
-                if (teacher == null)
-                    return BaseResponse<ExerciseResponse>.Fail("Teacher does not exist.");
+                if (teacher == null) return BaseResponse<ExerciseResponse>.Fail("Teacher does not exist.");
 
                 var selectedLesson = await _unit.Lessons.Query()
-                    .Include(l => l.CourseUnit)
-                        .ThenInclude(u => u.Course)
+                    .Include(l => l.CourseUnit).ThenInclude(u => u.Course)
                     .Include(l => l.Exercises)
                     .FirstOrDefaultAsync(l => l.LessonID == lessonId);
 
-                if (selectedLesson == null)
-                {
-                    return BaseResponse<ExerciseResponse>.Fail(
-                        new { Lesson = "Lesson not found." },
-                        "Lesson does not exist.",
-                        404
-                    );
-                }
+                if (selectedLesson == null) return BaseResponse<ExerciseResponse>.Fail(new object(), "Lesson not found.", 404);
 
                 var selectedUnit = selectedLesson.CourseUnit;
                 if (selectedUnit == null)
-                {
-                    return BaseResponse<ExerciseResponse>.Fail(
-                        new { Unit = "Unit not found for this lesson." },
-                        "Invalid lesson reference.",
-                        404
-                    );
-                }
+                    return BaseResponse<ExerciseResponse>.Fail(new object(), "Unit not found.", 404);
 
-                var selectedCourse = selectedUnit.Course;
-                if (selectedCourse == null)
-                {
-                    return BaseResponse<ExerciseResponse>.Fail(
-                        new { Course = "Course not found for this unit." },
-                        "Invalid course reference.",
-                        404
-                    );
-                }
+                var selectedCourse = selectedLesson.CourseUnit?.Course;
+                if (selectedCourse == null) return BaseResponse<ExerciseResponse>.Fail(new object(), "Course not found.", 404);
 
                 if (selectedCourse.TeacherId != teacher.TeacherId)
-                {
-                    return BaseResponse<ExerciseResponse>.Fail(null,
-                        "You do not have permission to create an exercise for this lesson because you are not the owner of this course.",
-                        403
-                    );
-                }
+                    return BaseResponse<ExerciseResponse>.Fail(null, "Permission denied.", 403);
 
                 if (selectedCourse.Status != CourseStatus.Draft && selectedCourse.Status != CourseStatus.Rejected)
-                {
-                    return BaseResponse<ExerciseResponse>.Fail(
-                        new { CourseStatus = "Invalid course status." },
-                        "Only Draft or Rejected courses can be modified.",
-                        400
-                    );
-                }
+                    return BaseResponse<ExerciseResponse>.Fail(new object(), "Only Draft or Rejected courses can be modified.", 400);
 
                 var selectedExercise = selectedLesson.Exercises.FirstOrDefault(e => e.ExerciseID == exerciseId);
-                if (selectedExercise == null)
-                    return BaseResponse<ExerciseResponse>.Fail(
-                        new { ExerciseId = "Exercise not found." },
-                        "Exercise does not exist.",
-                        404
-                    );
+                if (selectedExercise == null) return BaseResponse<ExerciseResponse>.Fail(new object(), "Exercise not found.", 404);
 
-                string? newMediaUrl = null;
-                string? newMediaPublicId = null;
+                // --- 2. XÁC ĐỊNH TRẠNG THÁI ---
+                var effectiveType = request.Type ?? selectedExercise.Type; // Type sẽ áp dụng
+                var files = request.MediaFiles;
+                bool hasNewMedia = files != null && files.Any();
 
-                try
+                // Helper check URL cũ xem là Audio hay Image (Dựa trên folder Cloudinary đã quy ước lúc Create)
+                bool IsUrlImage(string url) => url.Contains("/exercises/images/") || url.Contains("/image/upload/");
+                bool IsUrlAudio(string url) => url.Contains("/exercises/audio/") || url.Contains("/video/upload/"); // Audio trên cloudinary thường gộp vào video resource
+
+                // --- 3. LOGIC CHECK TƯƠNG THÍCH KHI ĐỔI TYPE MÀ KHÔNG UPLOAD FILE MỚI ---
+                // Nếu user đổi Type VÀ KHÔNG upload file mới -> Phải check file cũ có hợp lệ với Type mới không
+                if (request.Type.HasValue && request.Type != selectedExercise.Type && !hasNewMedia)
                 {
-                    if (request.MediaFile != null)
+                    var currentUrls = !string.IsNullOrEmpty(selectedExercise.MediaUrl)
+                        ? selectedExercise.MediaUrl.Split(';', StringSplitOptions.RemoveEmptyEntries)
+                        : Array.Empty<string>();
+
+                    switch (effectiveType)
                     {
-                        var contentType = request.MediaFile.ContentType.ToLower();
+                        case SpeakingExerciseType.RepeatAfterMe:
+                            // Yêu cầu: Phải có đúng 1 file và phải là Audio
+                            if (currentUrls.Length != 1 || !IsUrlAudio(currentUrls[0]))
+                            {
+                                return BaseResponse<ExerciseResponse>.Fail(
+                                    new { MediaFiles = "Required" },
+                                    "Changing to 'Repeat After Me' requires exactly 1 Audio file. The existing media is incompatible. Please upload a new audio file.",
+                                    400);
+                            }
+                            break;
 
-                        bool isImage = contentType.StartsWith("image/");
-                        bool isAudio = contentType.StartsWith("audio/") || contentType == "video/webm";
+                        case SpeakingExerciseType.PictureDescription:
+                        case SpeakingExerciseType.StoryTelling:
+                            // Yêu cầu: Phải có ít nhất 1 file và tất cả phải là Image
+                            if (currentUrls.Length == 0)
+                            {
+                                return BaseResponse<ExerciseResponse>.Fail(
+                                    new { MediaFiles = "Required" },
+                                    "This exercise type requires at least one image. Please upload an image.",
+                                    400);
+                            }
+                            if (currentUrls.Any(u => !IsUrlImage(u)))
+                            {
+                                return BaseResponse<ExerciseResponse>.Fail(
+                                    new { MediaFiles = "Invalid" },
+                                    "This exercise type only supports Images. Existing media contains Audio. Please upload new images.",
+                                    400);
+                            }
+                            break;
 
-                        if (!isImage && !isAudio)
-                        {
-                            return BaseResponse<ExerciseResponse>.Fail(
-                                new { MediaFile = "Invalid file format." },
-                                "Only image or audio files (mp3, wav, webm) are allowed.",
-                                400
-                            );
-                        }
-
-                        // Delete old file if exists
-                        if (!string.IsNullOrEmpty(selectedExercise.MediaPublicId))
-                            await _cloudinary.DeleteFileAsync(selectedExercise.MediaPublicId);
-
-                        UploadResultDto uploaded;
-
-                        if (isImage)
-                        {
-                            uploaded = await _cloudinary.UploadImageAsync(request.MediaFile, "exercises/images");
-                        }
-                        else
-                        {
-                            uploaded = await _cloudinary.UploadAudioAsync(request.MediaFile, "exercises/audio");
-                        }
-
-                        newMediaUrl = uploaded.Url;
-                        newMediaPublicId = uploaded.PublicId;
+                        case SpeakingExerciseType.Debate:
+                            // Yêu cầu: Nếu có file thì phải là Image (Audio là sai)
+                            if (currentUrls.Any(u => IsUrlAudio(u)))
+                            {
+                                return BaseResponse<ExerciseResponse>.Fail(
+                                    new { MediaFiles = "Invalid" },
+                                    "Debate exercises cannot contain Audio. Please upload images to replace or clear the media.",
+                                    400);
+                            }
+                            break;
                     }
                 }
-                catch (Exception ex)
-                {
-                    if (!string.IsNullOrEmpty(newMediaPublicId))
-                        await _cloudinary.DeleteFileAsync(newMediaPublicId);
 
-                    return BaseResponse<ExerciseResponse>.Error($"Upload media failed: {ex.Message}", 500);
+                // --- 4. VALIDATE FILE MỚI (NẾU CÓ UPLOAD) ---
+                if (hasNewMedia)
+                {
+                    if (effectiveType == SpeakingExerciseType.RepeatAfterMe)
+                    {
+                        if (files!.Count != 1) return BaseResponse<ExerciseResponse>.Fail(new { MediaFiles = "Count" }, "Repeat After Me requires exactly one audio file.", 400);
+                        if (!IsAudio(files[0])) return BaseResponse<ExerciseResponse>.Fail(new { MediaFiles = "Format" }, "Repeat After Me only allows audio file.", 400);
+                    }
+                    else if (effectiveType == SpeakingExerciseType.PictureDescription || effectiveType == SpeakingExerciseType.StoryTelling)
+                    {
+                        if (files!.Any(f => !IsImage(f))) return BaseResponse<ExerciseResponse>.Fail(new { MediaFiles = "Format" }, "This type only allows image files.", 400);
+                    }
+                    else if (effectiveType == SpeakingExerciseType.Debate)
+                    {
+                        if (files!.Any(f => !IsImage(f))) return BaseResponse<ExerciseResponse>.Fail(new { MediaFiles = "Format" }, "Debate only allows image files.", 400);
+                    }
                 }
 
+                // --- 5. TIẾN HÀNH UPLOAD VÀ CẬP NHẬT ---
+                List<string> newMediaUrls = new List<string>();
+                List<string> newMediaPublicIds = new List<string>();
+
+                if (hasNewMedia)
+                {
+                    try
+                    {
+                        foreach (var mediaFile in files!)
+                        {
+                            if (mediaFile.Length == 0) continue;
+                            UploadResultDto uploadResult;
+
+                            // Upload Image or Audio based on check
+                            if (IsImage(mediaFile))
+                                uploadResult = await _cloudinary.UploadImageAsync(mediaFile, "exercises/images");
+                            else
+                                uploadResult = await _cloudinary.UploadAudioAsync(mediaFile, "exercises/audio");
+
+                            if (uploadResult != null && !string.IsNullOrEmpty(uploadResult.Url))
+                            {
+                                newMediaUrls.Add(uploadResult.Url);
+                                newMediaPublicIds.Add(uploadResult.PublicId);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Rollback: Xóa file mới up nếu lỗi
+                        foreach (var pid in newMediaPublicIds) await _cloudinary.DeleteFileAsync(pid);
+                        return BaseResponse<ExerciseResponse>.Error($"Upload failed: {ex.Message}", 500);
+                    }
+
+                    // Xóa file CŨ trên Cloudinary (Clean up)
+                    if (!string.IsNullOrEmpty(selectedExercise.MediaPublicId))
+                    {
+                        var oldIds = selectedExercise.MediaPublicId.Split(';', StringSplitOptions.RemoveEmptyEntries);
+                        foreach (var oldId in oldIds)
+                        {
+                            if (oldId != "null!") await _cloudinary.DeleteFileAsync(oldId);
+                        }
+                    }
+
+                    // Gán file MỚI
+                    selectedExercise.MediaUrl = string.Join(";", newMediaUrls);
+                    selectedExercise.MediaPublicId = string.Join(";", newMediaPublicIds);
+                }
+
+                // Cập nhật các trường thông tin khác
                 selectedExercise.Title = !string.IsNullOrWhiteSpace(request.Title) ? request.Title.Trim() : selectedExercise.Title;
                 selectedExercise.Prompt = !string.IsNullOrWhiteSpace(request.Prompt) ? request.Prompt.Trim() : selectedExercise.Prompt;
                 selectedExercise.Hints = !string.IsNullOrWhiteSpace(request.Hints) ? request.Hints.Trim() : selectedExercise.Hints;
@@ -531,25 +578,18 @@ namespace BLL.Services.Exercise
                 selectedExercise.FeedbackCorrect = !string.IsNullOrWhiteSpace(request.FeedbackCorrect) ? request.FeedbackCorrect.Trim() : selectedExercise.FeedbackCorrect;
                 selectedExercise.FeedbackIncorrect = !string.IsNullOrWhiteSpace(request.FeedbackIncorrect) ? request.FeedbackIncorrect.Trim() : selectedExercise.FeedbackIncorrect;
 
-                selectedExercise.Type = request.Type ?? selectedExercise.Type;
+                selectedExercise.Type = effectiveType;
                 selectedExercise.Difficulty = request.Difficulty ?? selectedExercise.Difficulty;
                 selectedExercise.MaxScore = request.MaxScore ?? selectedExercise.MaxScore;
                 selectedExercise.PassScore = request.PassScore ?? selectedExercise.PassScore;
-
-                if (newMediaUrl != null)
-                {
-                    selectedExercise.MediaUrl = newMediaUrl;
-                    selectedExercise.MediaPublicId = newMediaPublicId;
-                }
-
                 selectedExercise.UpdatedAt = TimeHelper.GetVietnamTime();
 
                 var updated = await _unit.Exercises.UpdateAsync(selectedExercise);
-                if (updated <= 0)
-                    return BaseResponse<ExerciseResponse>.Fail("Failed to update exercise.");
+                if (updated <= 0) return BaseResponse<ExerciseResponse>.Fail("Failed to update exercise in DB.");
 
                 await _unit.SaveChangesAsync();
 
+                // Response mapping
                 var response = new ExerciseResponse
                 {
                     ExerciseID = selectedExercise.ExerciseID,
@@ -557,8 +597,8 @@ namespace BLL.Services.Exercise
                     Prompt = selectedExercise.Prompt,
                     Hints = selectedExercise.Hints,
                     Content = selectedExercise.Content,
-                    MediaUrls = selectedExercise.MediaUrl != null ? selectedExercise.MediaUrl.Split(';') : null,
-                    MediaPublicIds = selectedExercise.MediaPublicId != null ? selectedExercise.MediaPublicId.Split(';') : null,
+                    MediaUrls = selectedExercise.MediaUrl?.Split(';'),
+                    MediaPublicIds = selectedExercise.MediaPublicId?.Split(';'),
                     ExpectedAnswer = selectedExercise.ExpectedAnswer,
                     Position = selectedExercise.Position,
                     ExerciseType = selectedExercise.Type.ToString(),
@@ -586,3 +626,5 @@ namespace BLL.Services.Exercise
         }
     }
 }
+
+
