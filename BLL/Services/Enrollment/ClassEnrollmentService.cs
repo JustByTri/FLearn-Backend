@@ -280,6 +280,124 @@ namespace BLL.Services.Enrollment
             }
         }
 
+        /// <summary>
+        /// Học viên tự hủy đăng ký lớp (trong vòng 3 ngày trước khi lớp bắt đầu)
+        /// </summary>
+        public async Task<bool> CancelEnrollmentAsync(Guid studentId, Guid enrollmentId, string? reason = null)
+        {
+            try
+            {
+                // 1. Lấy thông tin enrollment
+                var enrollment = await _unitOfWork.ClassEnrollments.GetByIdAsync(enrollmentId);
+                
+                if (enrollment == null)
+                    throw new KeyNotFoundException("Enrollment not found");
+
+                if (enrollment.StudentID != studentId)
+                    throw new UnauthorizedAccessException("You don't have permission to cancel this enrollment");
+
+                // 2. Kiểm tra trạng thái enrollment
+                if (enrollment.Status != EnrollmentStatus.Paid)
+                    throw new InvalidOperationException($"Cannot cancel enrollment with status: {enrollment.Status}");
+
+                // 3. Lấy thông tin lớp học
+                var teacherClass = await _unitOfWork.TeacherClasses.GetByIdAsync(enrollment.ClassID);
+                if (teacherClass == null)
+                    throw new KeyNotFoundException("Class not found");
+
+                var now = DateTime.UtcNow;
+
+                // ============================================
+                // KIỂM TRA QUY TẮC 3 NGÀY TRƯỚC KHI LỚP BẮT ĐẦU (72 GIỜ)
+                // ============================================
+                var hoursUntilClassStart = (teacherClass.StartDateTime - now).TotalHours;
+
+                if (hoursUntilClassStart <= 72) // 3 ngày = 72 giờ
+                {
+                    throw new InvalidOperationException(
+                        $"Không thể hủy đăng ký trong vòng 3 ngày trước khi lớp bắt đầu. " +
+                        $"Lớp sẽ bắt đầu sau {(int)(hoursUntilClassStart / 24)} ngày."
+                    );
+                }
+
+                // 4. Kiểm tra lớp đã bắt đầu chưa (double-check)
+                if (teacherClass.StartDateTime <= now)
+                {
+                    throw new InvalidOperationException("Cannot cancel enrollment for a class that has already started");
+                }
+
+                // 5. Tạo RefundRequest
+                var refundRequest = new DAL.Models.RefundRequest
+                {
+                    RefundRequestID = Guid.NewGuid(),
+                    EnrollmentID = enrollment.EnrollmentID,
+                    ClassID = enrollment.ClassID,
+                    StudentID = studentId,
+                    RequestType = DAL.Models.RefundRequestType.StudentPersonalReason,
+                    Reason = reason ?? "Student cancelled enrollment more than 3 days before class starts",
+                    RefundAmount = enrollment.AmountPaid,
+                    Status = DAL.Models.RefundRequestStatus.Pending,
+                    
+                    // Để trống - học viên cần cập nhật sau
+                    BankName = string.Empty,
+                    BankAccountNumber = string.Empty,
+                    BankAccountHolderName = string.Empty,
+                    
+                    RequestedAt = now,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+
+                await _unitOfWork.RefundRequests.CreateAsync(refundRequest);
+
+                // 6. Cập nhật trạng thái enrollment
+                enrollment.Status = EnrollmentStatus.PendingRefund;
+                enrollment.UpdatedAt = now;
+                await _unitOfWork.ClassEnrollments.UpdateAsync(enrollment);
+
+                await _unitOfWork.SaveChangesAsync();
+
+                _logger.LogInformation(
+                    "✅ Student {StudentId} cancelled enrollment {EnrollmentId} (>3 days before class starts). RefundRequest {RefundRequestId} created.",
+                    studentId, enrollmentId, refundRequest.RefundRequestID);
+
+                // 7. Gửi thông báo FCM
+                var student = await _unitOfWork.Users.GetByIdAsync(studentId);
+                if (student != null && !string.IsNullOrEmpty(student.FcmToken))
+                {
+                    try
+                    {
+                        await _firebaseNotificationService.SendNotificationAsync(
+                            student.FcmToken,
+                            "Hủy đăng ký thành công ✅",
+                            $"Bạn đã hủy đăng ký lớp '{teacherClass.Title}'. Vui lòng cập nhật thông tin ngân hàng để nhận hoàn tiền.",
+                            new Dictionary<string, string>
+                            {
+                                { "type", "enrollment_cancelled_refund_required" },
+                                { "refundRequestId", refundRequest.RefundRequestID.ToString() },
+                                { "enrollmentId", enrollmentId.ToString() },
+                                { "className", teacherClass.Title ?? "Lớp học" }
+                            }
+                        );
+
+                        _logger.LogInformation("[FCM] ✅ Sent cancellation notification to student {StudentId}", studentId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "[FCM] ❌ Failed to send notification to student {StudentId}", studentId);
+                    }
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error cancelling enrollment {EnrollmentId} for student {StudentId}",
+                    enrollmentId, studentId);
+                throw;
+            }
+        }
+
         private bool CanStudentJoinClass(ClassEnrollment enrollment)
         {
             if (enrollment.Status != EnrollmentStatus.Paid || enrollment.Class == null)

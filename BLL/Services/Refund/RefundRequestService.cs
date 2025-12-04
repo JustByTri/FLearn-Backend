@@ -284,44 +284,8 @@ namespace BLL.Services.Refund
             _logger.LogWarning("SendRefundEmailAsync is deprecated. Use ProcessRefundRequestAsync instead.");
         }
 
-        /// <summary>
-        /// Hàm helper để map Model sang DTO
-        /// </summary>
-        private RefundRequestDto MapToDto(RefundRequest request, string? studentName = null, string? className = null)
-        {
-            return new RefundRequestDto
-            {
-                RefundRequestID = request.RefundRequestID,
-
-
-                EnrollmentID = request.EnrollmentID ?? Guid.Empty,
-                ClassID = request.ClassID ?? Guid.Empty,
-
-
-                StudentID = request.StudentID,
-                StudentName = studentName ?? request.Student?.UserName ?? "N/A",
-
-                ClassName = className ?? request.TeacherClass?.Title ?? "N/A",
-
-                RequestType = request.RequestType,
-                Reason = request.Reason,
-                BankName = request.BankName,
-                BankAccountNumber = request.BankAccountNumber,
-                BankAccountHolderName = request.BankAccountHolderName,
-                Status = request.Status,
-                RefundAmount = request.RefundAmount,
-                RequestedAt = request.RequestedAt,
-
-
-                ProcessedAt = request.ProcessedAt,
-
-                AdminNote = request.AdminNote,
-                ProofImageUrl = request.ProofImageUrl
-            };
-        }
         public async Task<BaseResponse<IEnumerable<RefundRequestDto>>> GetMyRefundRequestsAsync(Guid learnerId)
         {
-
             var requests = await _unitOfWork.RefundRequests.GetByLearnerIdAsync(learnerId);
 
 
@@ -371,6 +335,182 @@ namespace BLL.Services.Refund
             // TODO: Gửi email thông báo admin về đơn mới cần xử lý
 
             return MapToDto(refundRequest, refundRequest.Student?.UserName, refundRequest.TeacherClass?.Title);
+        }
+
+        /// <summary>
+        /// [ADMIN] Xem TẤT CẢ đơn hoàn tiền (cả Class và Course) - Endpoint thống nhất
+        /// </summary>
+        public async Task<BaseResponse<IEnumerable<UnifiedRefundRequestDto>>> GetAllRefundRequestsAsync(
+            RefundRequestStatus? status = null,
+            RefundRequestType? type = null,
+            int page = 1,
+            int pageSize = 20)
+        {
+            try
+            {
+                _logger.LogInformation("Admin đang xem tất cả đơn hoàn tiền. Status={Status}, Type={Type}", status, type);
+
+                // Lấy tất cả đơn hoàn tiền từ DB
+                var allRefundRequests = await _unitOfWork.RefundRequests.GetAllAsync();
+
+                // Lọc theo status
+                if (status.HasValue)
+                {
+                    allRefundRequests = allRefundRequests.Where(r => r.Status == status.Value).ToList();
+                }
+
+                // Lọc theo type
+                if (type.HasValue)
+                {
+                    allRefundRequests = allRefundRequests.Where(r => r.RequestType == type.Value).ToList();
+                }
+
+                // Sắp xếp theo thời gian tạo (mới nhất trước)
+                var sortedRequests = allRefundRequests.OrderByDescending(r => r.RequestedAt).ToList();
+
+                // Map sang UnifiedRefundRequestDto
+                var result = new List<UnifiedRefundRequestDto>();
+
+                foreach (var request in sortedRequests)
+                {
+                    var student = await _unitOfWork.Users.GetByIdAsync(request.StudentID);
+                    var processedByAdmin = request.ProcessedByAdminID.HasValue 
+                        ? await _unitOfWork.Users.GetByIdAsync(request.ProcessedByAdminID.Value) 
+                        : null;
+
+                    // Xác định loại đơn: Class hay Course
+                    string category;
+                    string displayTitle;
+                    decimal originalAmount = request.RefundAmount;
+
+                    if (request.ClassID.HasValue && request.EnrollmentID.HasValue)
+                    {
+                        // Đơn hoàn tiền LỚP HỌC
+                        category = "Class";
+                        var teacherClass = await _unitOfWork.TeacherClasses.FindAsync(c => c.ClassID == request.ClassID);
+                        displayTitle = teacherClass?.Title ?? "Lớp học không xác định";
+                    }
+                    else if (request.PurchaseId.HasValue)
+                    {
+                        // Đơn hoàn tiền KHOÁ HỌC
+                        category = "Course";
+                        var purchase = await _unitOfWork.Purchases.FindAsync(p => p.PurchasesId == request.PurchaseId);
+                        if (purchase != null)
+                        {
+                            var course = await _unitOfWork.Courses.GetByIdAsync(purchase.CourseId ?? Guid.Empty);
+                            displayTitle = course?.Title ?? "Khoá học không xác định";
+                            originalAmount = purchase.FinalAmount;
+                        }
+                        else
+                        {
+                            displayTitle = "Khoá học không xác định";
+                        }
+                    }
+                    else
+                    {
+                        // Trường hợp không xác định
+                        category = "Unknown";
+                        displayTitle = "Không xác định";
+                    }
+
+                    var dto = new UnifiedRefundRequestDto
+                    {
+                        RefundRequestID = request.RefundRequestID,
+                        RefundCategory = category,
+                        
+                        StudentID = request.StudentID,
+                        StudentName = student?.UserName ?? "N/A",
+                        StudentEmail = student?.Email ?? "N/A",
+                        StudentAvatar = student?.Avatar,
+                        
+                        ClassID = request.ClassID,
+                        ClassName = category == "Class" ? displayTitle : null,
+                        PurchaseId = request.PurchaseId,
+                        CourseName = category == "Course" ? displayTitle : null,
+                        
+                        RequestType = request.RequestType,
+                        Reason = request.Reason,
+                        BankName = request.BankName ?? string.Empty,
+                        BankAccountNumber = request.BankAccountNumber ?? string.Empty,
+                        BankAccountHolderName = request.BankAccountHolderName ?? string.Empty,
+                        Status = request.Status,
+                        AdminNote = request.AdminNote,
+                        RefundAmount = request.RefundAmount,
+                        OriginalAmount = originalAmount,
+                        
+                        RequestedAt = request.RequestedAt,
+                        ProcessedAt = request.ProcessedAt,
+                        
+                        ProofImageUrl = request.ProofImageUrl,
+                        ProcessedByAdminName = processedByAdmin?.UserName,
+                        
+                        // Meta data
+                        DisplayTitle = displayTitle,
+                        StatusText = request.Status.ToString(),
+                        RequestTypeText = request.RequestType.ToString()
+                    };
+                    
+                    result.Add(dto);
+                }
+
+                // Phân trang
+                var pagedResult = result
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                _logger.LogInformation("Tìm thấy {Total} đơn hoàn tiền. Trả về {Count} đơn (trang {Page})", 
+                    result.Count, pagedResult.Count, page);
+
+                return BaseResponse<IEnumerable<UnifiedRefundRequestDto>>.Success(
+                    pagedResult, 
+                    $"Tìm thấy {result.Count} đơn hoàn tiền", 
+                    200);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách tất cả đơn hoàn tiền");
+                return BaseResponse<IEnumerable<UnifiedRefundRequestDto>>.Error(
+                    "Đã xảy ra lỗi khi lấy danh sách đơn hoàn tiền", 
+                    500, 
+                    ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Hàm helper để map Model sang DTO
+        /// </summary>
+        private RefundRequestDto MapToDto(RefundRequest request, string? studentName = null, string? className = null)
+        {
+            return new RefundRequestDto
+            {
+                RefundRequestID = request.RefundRequestID,
+
+
+                EnrollmentID = request.EnrollmentID ?? Guid.Empty,
+                ClassID = request.ClassID ?? Guid.Empty,
+
+
+                StudentID = request.StudentID,
+                StudentName = studentName ?? request.Student?.UserName ?? "N/A",
+
+                ClassName = className ?? request.TeacherClass?.Title ?? "N/A",
+
+                RequestType = request.RequestType,
+                Reason = request.Reason,
+                BankName = request.BankName,
+                BankAccountNumber = request.BankAccountNumber,
+                BankAccountHolderName = request.BankAccountHolderName,
+                Status = request.Status,
+                RefundAmount = request.RefundAmount,
+                RequestedAt = request.RequestedAt,
+
+
+                ProcessedAt = request.ProcessedAt,
+
+                AdminNote = request.AdminNote,
+                ProofImageUrl = request.ProofImageUrl
+            };
         }
     }
 }

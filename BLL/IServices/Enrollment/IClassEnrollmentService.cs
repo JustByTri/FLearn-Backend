@@ -34,7 +34,15 @@ namespace BLL.IServices.Enrollment
         /// Lấy danh sách lớp học mà sinh viên đã đăng ký
         /// </summary>
         Task<(List<EnrolledClassDto> Classes, int TotalCount)> GetStudentEnrolledClassesAsync(Guid studentId, EnrollmentStatus? status = null, int page = 1, int pageSize = 10);
-
+        
+        /// <summary>
+        /// Học viên tự hủy đăng ký lớp (trong vòng 3 ngày trước khi lớp bắt đầu)
+        /// </summary>
+        /// <param name="studentId">ID của học viên</param>
+        /// <param name="enrollmentId">ID của enrollment cần hủy</param>
+        /// <param name="reason">Lý do hủy (optional)</param>
+        /// <returns>True nếu hủy thành công, Exception nếu không đủ điều kiện</returns>
+        Task<bool> CancelEnrollmentAsync(Guid studentId, Guid enrollmentId, string? reason = null);
     }
 
 }

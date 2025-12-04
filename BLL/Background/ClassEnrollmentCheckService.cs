@@ -1,4 +1,5 @@
 ﻿using BLL.IServices.Auth;
+using BLL.IServices.FirebaseService;
 using DAL.Models;
 using DAL.UnitOfWork;
 using Microsoft.Extensions.DependencyInjection;
@@ -51,6 +52,7 @@ namespace BLL.Background
             using var scope = _serviceProvider.CreateScope();
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
             var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+            var firebaseNotificationService = scope.ServiceProvider.GetRequiredService<IFirebaseNotificationService>();
 
             try
             {
@@ -77,8 +79,8 @@ namespace BLL.Background
                             MIN_STUDENTS
                         );
 
-                        // ✅ GỌI PHƯƠNG THỨC ĐÚNG - Hướng dẫn gửi đơn hoàn tiền
-                        await SendRefundInstructionEmailsToStudents(teacherClass, emailService);
+                        // ✅ TẠO RefundRequest TỰ ĐỘNG CHO HỌC VIÊN
+                        await CreateRefundRequestsForInsufficientClass(teacherClass, unitOfWork, firebaseNotificationService, emailService);
 
                         // Cập nhật trạng thái lớp
                         teacherClass.Status = ClassStatus.Cancelled_InsufficientStudents;
@@ -87,7 +89,7 @@ namespace BLL.Background
                         await unitOfWork.SaveChangesAsync();
 
                         _logger.LogInformation(
-                            "❌ Class {ClassId} cancelled, refund instruction emails sent to {Count} students",
+                            "❌ Class {ClassId} cancelled due to insufficient students. RefundRequests created for {Count} students.",
                             teacherClass.ClassID,
                             teacherClass.CurrentEnrollments
                         );
@@ -111,9 +113,14 @@ namespace BLL.Background
             }
         }
 
-        // ✅ GIỮ LẠI PHƯƠNG THỨC NÀY - Đã cập nhật để gửi hướng dẫn
-        private async Task SendRefundInstructionEmailsToStudents(
+        /// <summary>
+        /// Tạo RefundRequest tự động cho học viên khi lớp bị hủy do không đủ người
+        /// (Đồng bộ với logic TeacherClassService.ExecuteCancellationAsync)
+        /// </summary>
+        private async Task CreateRefundRequestsForInsufficientClass(
             TeacherClass teacherClass,
+            IUnitOfWork unitOfWork,
+            IFirebaseNotificationService firebaseNotificationService,
             IEmailService emailService)
         {
             var paidEnrollments = teacherClass.Enrollments
@@ -121,7 +128,7 @@ namespace BLL.Background
                 .ToList();
 
             _logger.LogInformation(
-                "📧 Sending refund instruction emails to {Count} students for class {ClassId}",
+                "🔄 Creating RefundRequests for {Count} students in class {ClassId}",
                 paidEnrollments.Count,
                 teacherClass.ClassID
             );
@@ -133,53 +140,108 @@ namespace BLL.Background
             {
                 try
                 {
-                    // ✅ GỌI PHƯƠNG THỨC ĐÚNG - Hướng dẫn gửi đơn
-                    var success = await emailService.SendRefundRequestInstructionAsync(
-                        enrollment.Student.Email,
-                        enrollment.Student.FullName,
-                        teacherClass.Title,
-                        teacherClass.StartDateTime
-                    );
+                    // Tạo RefundRequest
+                    var refundRequest = new RefundRequest
+                    {
+                        RefundRequestID = Guid.NewGuid(),
+                        EnrollmentID = enrollment.EnrollmentID,
+                        ClassID = teacherClass.ClassID,
+                        StudentID = enrollment.StudentID,
+                        RequestType = RefundRequestType.ClassCancelled_InsufficientStudents,
+                        Reason = $"Class cancelled due to insufficient students ({teacherClass.CurrentEnrollments}/{MIN_STUDENTS})",
+                        RefundAmount = enrollment.AmountPaid,
+                        Status = RefundRequestStatus.Pending,
 
-                    if (success)
+                        // Để trống - học viên cần cập nhật sau
+                        BankName = string.Empty,
+                        BankAccountNumber = string.Empty,
+                        BankAccountHolderName = string.Empty,
+
+                        RequestedAt = DateTime.UtcNow,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    await unitOfWork.RefundRequests.CreateAsync(refundRequest);
+
+                    // Cập nhật trạng thái enrollment
+                    enrollment.Status = EnrollmentStatus.PendingRefund;
+                    enrollment.UpdatedAt = DateTime.UtcNow;
+                    await unitOfWork.ClassEnrollments.UpdateAsync(enrollment);
+
+                    // Gửi FCM notification
+                    if (enrollment.Student != null && !string.IsNullOrEmpty(enrollment.Student.FcmToken))
                     {
-                        successCount++;
-                        _logger.LogInformation(
-                            "✉️ Refund instruction email sent to {Email} for class {ClassId}",
-                            enrollment.Student.Email,
-                            teacherClass.ClassID
-                        );
+                        try
+                        {
+                            await firebaseNotificationService.SendNotificationAsync(
+                                enrollment.Student.FcmToken,
+                                "Lớp học đã bị hủy ❌",
+                                $"Lớp '{teacherClass.Title}' đã bị hủy do không đủ học viên. Vui lòng cập nhật thông tin ngân hàng để nhận hoàn tiền.",
+                                new Dictionary<string, string>
+                                {
+                                    { "type", "class_cancelled_refund_required" },
+                                    { "refundRequestId", refundRequest.RefundRequestID.ToString() },
+                                    { "classId", teacherClass.ClassID.ToString() },
+                                    { "className", teacherClass.Title ?? "Lớp học" },
+                                    { "reason", "insufficient_students" }
+                                }
+                            );
+
+                            _logger.LogInformation("[FCM] ✅ Sent notification to student {StudentId}", enrollment.StudentID);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "[FCM] ❌ Failed to send notification to student {StudentId}", enrollment.StudentID);
+                        }
                     }
-                    else
+
+                    // 📧 GỬI EMAIL CHO HỌC VIÊN
+                    if (enrollment.Student != null && !string.IsNullOrEmpty(enrollment.Student.Email))
                     {
-                        failureCount++;
-                        _logger.LogWarning(
-                            "⚠️ Failed to send refund instruction email to {Email} for class {ClassId}",
-                            enrollment.Student.Email,
-                            teacherClass.ClassID
-                        );
+                        try
+                        {
+                            await emailService.SendRefundRequestInstructionAsync(
+                                enrollment.Student.Email,
+                                enrollment.Student.UserName,
+                                teacherClass.Title ?? "Lớp học",
+                                teacherClass.StartDateTime,
+                                $"Lớp không đủ số lượng học viên tối thiểu ({MIN_STUDENTS} người)"
+                            );
+
+                            _logger.LogInformation("[EMAIL] ✅ Sent refund email to {Email}", enrollment.Student.Email);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "[EMAIL] ❌ Failed to send email to {Email}", enrollment.Student.Email);
+                        }
                     }
+
+                    successCount++;
+                    _logger.LogInformation(
+                        "✅ Created RefundRequest {RefundRequestId} for student {StudentId}",
+                        refundRequest.RefundRequestID,
+                        enrollment.StudentID
+                    );
                 }
                 catch (Exception ex)
                 {
                     failureCount++;
                     _logger.LogError(
                         ex,
-                        "❌ Exception sending refund instruction email to {Email} for class {ClassId}",
-                        enrollment.Student.Email,
+                        "❌ Failed to create RefundRequest for student {StudentId} in class {ClassId}",
+                        enrollment.StudentID,
                         teacherClass.ClassID
                     );
                 }
             }
 
             _logger.LogInformation(
-                "📊 Refund instruction emails summary for class {ClassId}: {Success} sent, {Failure} failed",
+                "📊 RefundRequest creation summary for class {ClassId}: {Success} created, {Failure} failed",
                 teacherClass.ClassID,
                 successCount,
                 failureCount
             );
         }
-
     }
-
 }
