@@ -235,10 +235,10 @@ namespace BLL.Services.Upload
             if (file.Length > maxAudioSize)
                 throw new ArgumentException($"File âm thanh không được vượt quá {maxAudioSize / (1024 * 1024)} MB");
 
-            var allowedExtensions = new[] { ".mp3", ".wav", ".ogg", ".flac", ".aac", ".m4a" };
+            var allowedExtensions = new[] { ".mp3", ".wav", ".ogg", ".flac", ".aac", ".m4a", ".webm" };
             var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
             if (!allowedExtensions.Contains(ext))
-                throw new ArgumentException("Chỉ hỗ trợ file âm thanh: MP3, WAV, OGG, FLAC, AAC, M4A");
+                throw new ArgumentException("Chỉ hỗ trợ file âm thanh: MP3, WAV, OGG, FLAC, AAC, M4A, WEBM");
 
             using var stream = file.OpenReadStream();
 
