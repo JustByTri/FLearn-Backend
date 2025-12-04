@@ -72,7 +72,7 @@ namespace BLL.Services.Exercise
 
                         var contentType = mediaFile.ContentType.ToLower();
                         bool isImage = contentType.StartsWith("image/");
-                        bool isAudio = contentType.StartsWith("audio/");
+                        bool isAudio = contentType.StartsWith("audio/") || contentType == "video/webm";
 
                         if (!isImage && !isAudio)
                         {
@@ -83,7 +83,7 @@ namespace BLL.Services.Exercise
 
                             return BaseResponse<ExerciseResponse>.Fail(
                                 new { MediaFiles = "Invalid file format." },
-                                "Only image or audio files are allowed.",
+                                "Only image, audio, or webm files are allowed.",
                                 400
                             );
                         }
@@ -484,11 +484,14 @@ namespace BLL.Services.Exercise
                     {
                         var contentType = request.MediaFile.ContentType.ToLower();
 
-                        if (!contentType.StartsWith("audio/"))
+                        bool isImage = contentType.StartsWith("image/");
+                        bool isAudio = contentType.StartsWith("audio/") || contentType == "video/webm";
+
+                        if (!isImage && !isAudio)
                         {
                             return BaseResponse<ExerciseResponse>.Fail(
                                 new { MediaFile = "Invalid file format." },
-                                "Only audio is allowed.",
+                                "Only image or audio files (mp3, wav, webm) are allowed.",
                                 400
                             );
                         }
@@ -497,8 +500,17 @@ namespace BLL.Services.Exercise
                         if (!string.IsNullOrEmpty(selectedExercise.MediaPublicId))
                             await _cloudinary.DeleteFileAsync(selectedExercise.MediaPublicId);
 
-                        // Upload new file
-                        var uploaded = await _cloudinary.UploadAudioAsync(request.MediaFile, "exercises/media");
+                        UploadResultDto uploaded;
+
+                        if (isImage)
+                        {
+                            uploaded = await _cloudinary.UploadImageAsync(request.MediaFile, "exercises/images");
+                        }
+                        else
+                        {
+                            uploaded = await _cloudinary.UploadAudioAsync(request.MediaFile, "exercises/audio");
+                        }
+
                         newMediaUrl = uploaded.Url;
                         newMediaPublicId = uploaded.PublicId;
                     }
