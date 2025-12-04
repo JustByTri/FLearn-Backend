@@ -8,5 +8,6 @@
         public string? RefundEligibleUntil { get; set; }
         public string AccessStatus { get; set; } = null!;
         public Guid? PurchaseId { get; set; }
+        public Guid? EnrollmentId { get; set; }
     }
 }

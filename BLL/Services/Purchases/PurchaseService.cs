@@ -1274,7 +1274,12 @@ namespace BLL.Services.Purchases
                     if (existingEnrollment == null)
                         return new CourseAccessResponse { HasAccess = false, AccessStatus = "NOT_ENROLLED" };
                     else
-                        return new CourseAccessResponse { HasAccess = true, AccessStatus = "ENROLLED" };
+                        return new CourseAccessResponse
+                        {
+                            HasAccess = true,
+                            AccessStatus = "ENROLLED",
+                            EnrollmentId = existingEnrollment.EnrollmentID
+                        };
                 }
 
                 var purchase = await _unitOfWork.Purchases
@@ -1306,7 +1311,8 @@ namespace BLL.Services.Purchases
                         {
                             HasAccess = false,
                             AccessStatus = "REFUNDED",
-                            PurchaseId = latestPurchase.PurchasesId
+                            PurchaseId = latestPurchase.PurchasesId,
+                            EnrollmentId = enrollment?.EnrollmentID
                         };
 
                     case PurchaseStatus.Expired:
@@ -1322,7 +1328,8 @@ namespace BLL.Services.Purchases
                             AccessStatus = "EXPIRED",
                             ExpiresAt = latestPurchase.ExpiresAt?.ToString("dd-MM-yyyy hh:MM"),
                             DaysRemaining = 0,
-                            PurchaseId = latestPurchase.PurchasesId
+                            PurchaseId = latestPurchase.PurchasesId,
+                            EnrollmentId = enrollment?.EnrollmentID
                         };
 
                     case PurchaseStatus.Failed:
@@ -1330,7 +1337,8 @@ namespace BLL.Services.Purchases
                         {
                             HasAccess = false,
                             AccessStatus = "PAYMENT_FAILED",
-                            PurchaseId = latestPurchase.PurchasesId
+                            PurchaseId = latestPurchase.PurchasesId,
+                            EnrollmentId = enrollment?.EnrollmentID
                         };
 
                     case PurchaseStatus.Pending:
@@ -1338,7 +1346,8 @@ namespace BLL.Services.Purchases
                         {
                             HasAccess = false,
                             AccessStatus = "PENDING_PAYMENT",
-                            PurchaseId = latestPurchase.PurchasesId
+                            PurchaseId = latestPurchase.PurchasesId,
+                            EnrollmentId = enrollment?.EnrollmentID
                         };
                 }
 
@@ -1365,7 +1374,8 @@ namespace BLL.Services.Purchases
                         AccessStatus = "EXPIRED",
                         ExpiresAt = latestPurchase.ExpiresAt.Value.ToString("dd-MM-yyyy hh:MM"),
                         DaysRemaining = 0,
-                        PurchaseId = latestPurchase.PurchasesId
+                        PurchaseId = latestPurchase.PurchasesId,
+                        EnrollmentId = enrollment?.EnrollmentID
                     };
                 }
 
@@ -1390,7 +1400,8 @@ namespace BLL.Services.Purchases
                     ExpiresAt = latestPurchase.ExpiresAt?.ToString("dd-MM-yyyy hh:MM"),
                     DaysRemaining = daysRemaining,
                     PurchaseId = latestPurchase.PurchasesId,
-                    RefundEligibleUntil = latestPurchase.EligibleForRefundUntil?.ToString("dd-MM-yyyy hh:MM")
+                    RefundEligibleUntil = latestPurchase.EligibleForRefundUntil?.ToString("dd-MM-yyyy hh:MM"),
+                    EnrollmentId = enrollment?.EnrollmentID
                 };
             }
             catch (Exception ex)
