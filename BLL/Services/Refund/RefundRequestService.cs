@@ -245,7 +245,16 @@ namespace BLL.Services.Refund
                 await _unitOfWork.RefundRequests.UpdateAsync(request);
                 await _unitOfWork.SaveChangesAsync();
 
-                // Gửi email thông báo rejected
+                // ✅ GỬI EMAIL/FCM KHI REJECT
+                // Nếu admin báo sai STK → học viên có thể sửa lại
+                bool isBankInfoError = dto.AdminNote.Contains("STK", StringComparison.OrdinalIgnoreCase) ||
+                                       dto.AdminNote.Contains("tài khoản", StringComparison.OrdinalIgnoreCase) ||
+                                       dto.AdminNote.Contains("ngân hàng", StringComparison.OrdinalIgnoreCase);
+
+                string emailTitle = isBankInfoError 
+                    ? "Vui lòng cập nhật lại thông tin ngân hàng" 
+                    : "Từ chối hoàn tiền";
+
                 await _emailService.SendRefundRequestRejectedAsync(
                     student.Email,
                     student.UserName,
@@ -253,7 +262,8 @@ namespace BLL.Services.Refund
                     request.AdminNote
                 );
 
-                _logger.LogInformation("Đã từ chối đơn hoàn tiền {RefundRequestId}", dto.RefundRequestId);
+                _logger.LogInformation("Đã từ chối đơn hoàn tiền {RefundRequestId} (Lý do: {Reason})", 
+                    dto.RefundRequestId, isBankInfoError ? "Sai STK" : "Khác");
             }
 
             return MapToDto(request, student.UserName, teacherClass?.Title);
@@ -301,6 +311,7 @@ namespace BLL.Services.Refund
 
         /// <summary>
         /// Học viên cập nhật thông tin ngân hàng cho đơn hoàn tiền lớp học
+        /// (Chuyển từ Draft → Pending khi điền STK)
         /// </summary>
         public async Task<RefundRequestDto> UpdateBankInfoForClassRefundAsync(
             Guid userId,
@@ -318,8 +329,15 @@ namespace BLL.Services.Refund
             if (refundRequest.StudentID != userId)
                 throw new UnauthorizedAccessException("Bạn không có quyền cập nhật đơn này");
 
-            if (refundRequest.Status != RefundRequestStatus.Pending)
-                throw new InvalidOperationException("Chỉ có thể cập nhật đơn đang chờ xử lý");
+            // ✅ CHO PHÉP CẬP NHẬT KHI:
+            // - Status = Draft (chưa điền STK)
+            // - Status = Rejected và AdminNote chứa "sai STK" (admin yêu cầu sửa)
+            bool canUpdate = refundRequest.Status == RefundRequestStatus.Draft ||
+                             (refundRequest.Status == RefundRequestStatus.Rejected &&
+                              refundRequest.AdminNote?.Contains("STK", StringComparison.OrdinalIgnoreCase) == true);
+
+            if (!canUpdate)
+                throw new InvalidOperationException("Chỉ có thể cập nhật đơn ở trạng thái Draft hoặc khi admin yêu cầu sửa STK");
 
             // Cập nhật thông tin ngân hàng
             refundRequest.BankName = dto.BankName;
@@ -327,14 +345,124 @@ namespace BLL.Services.Refund
             refundRequest.BankAccountHolderName = dto.BankAccountHolderName;
             refundRequest.UpdatedAt = DateTime.UtcNow;
 
+            // ✨ CHUYỂN TỪ DRAFT → PENDING SAU KHI ĐIỀN STK
+            if (refundRequest.Status == RefundRequestStatus.Draft || 
+                refundRequest.Status == RefundRequestStatus.Rejected)
+            {
+                refundRequest.Status = RefundRequestStatus.Pending;
+                refundRequest.AdminNote = null; // Xóa note cũ nếu admin từng reject
+                _logger.LogInformation("✅ RefundRequest {RefundRequestId} moved from {OldStatus} → Pending",
+                    refundRequestId, refundRequest.Status);
+            }
+
             await _unitOfWork.RefundRequests.UpdateAsync(refundRequest);
             await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation("✅ Updated bank info for refund request {RefundRequestId}", refundRequestId);
 
-            // TODO: Gửi email thông báo admin về đơn mới cần xử lý
+            // TODO: Gửi email/FCM thông báo admin về đơn mới cần xử lý
+            if (refundRequest.Student != null && !string.IsNullOrEmpty(refundRequest.Student.Email))
+            {
+                try
+                {
+                    await _emailService.SendRefundRequestConfirmationAsync(
+                        refundRequest.Student.Email,
+                        refundRequest.Student.UserName,
+                        refundRequest.TeacherClass?.Title ?? "Lớp học",
+                        refundRequest.RefundRequestID.ToString()
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send confirmation email");
+                }
+            }
 
             return MapToDto(refundRequest, refundRequest.Student?.UserName, refundRequest.TeacherClass?.Title);
+        }
+
+        /// <summary>
+        /// [ADMIN] Yêu cầu học viên cập nhật lại thông tin ngân hàng
+        /// Không reject đơn, chỉ gửi thông báo
+        /// </summary>
+        public async Task RequestBankInfoUpdateAsync(Guid refundRequestId, Guid adminId, string note)
+        {
+            _logger.LogInformation(
+                "Admin {AdminId} requesting bank info update for RefundRequest {RefundRequestId}",
+                adminId, refundRequestId
+            );
+
+            var request = await _unitOfWork.RefundRequests.GetByIdWithDetailsAsync(refundRequestId);
+
+            if (request == null)
+                throw new KeyNotFoundException("Không tìm thấy đơn hoàn tiền");
+
+            if (request.Status != RefundRequestStatus.Pending && 
+                request.Status != RefundRequestStatus.Draft)
+                throw new InvalidOperationException(
+                    "Chỉ có thể yêu cầu cập nhật cho đơn ở trạng thái Pending hoặc Draft"
+                );
+
+            // ✅ KHÔNG THAY ĐỔI STATUS, CHỈ GHI CHÚ
+            request.AdminNote = $"[Yêu cầu cập nhật STK] {note}";
+            request.UpdatedAt = DateTime.UtcNow;
+
+            await _unitOfWork.RefundRequests.UpdateAsync(request);
+            await _unitOfWork.SaveChangesAsync();
+
+            // 📧 GỬI EMAIL
+            if (request.Student != null && !string.IsNullOrEmpty(request.Student.Email))
+            {
+                try
+                {
+                    await _emailService.SendBankInfoUpdateRequestAsync(
+                        request.Student.Email,
+                        request.Student.UserName,
+                        request.TeacherClass?.Title ?? "Lớp học",
+                        note
+                    );
+
+                    _logger.LogInformation(
+                        "[EMAIL] ✅ Sent bank update request to {Email}",
+                        request.Student.Email
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(
+                        ex,
+                        "[EMAIL] ❌ Failed to send bank update request to {Email}",
+                        request.Student.Email
+                    );
+                }
+            }
+
+            // 📲 GỬI FCM NOTIFICATION
+            if (request.Student != null && !string.IsNullOrEmpty(request.Student.FcmToken))
+            {
+                try
+                {
+                    // TODO: Implement FCM notification
+                    // await _firebaseNotificationService.SendNotificationAsync(...)
+                    _logger.LogInformation(
+                        "[FCM] TODO: Send notification to student {StudentId}",
+                        request.StudentID
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(
+                        ex,
+                        "[FCM] ❌ Failed to send notification to student {StudentId}",
+                        request.StudentID
+                    );
+                }
+            }
+
+            _logger.LogInformation(
+                "✅ Admin {AdminId} successfully requested bank info update for RefundRequest {RefundRequestId}",
+                adminId, refundRequestId
+            );
         }
 
         /// <summary>

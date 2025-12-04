@@ -74,6 +74,15 @@ namespace BLL.IServices.Auth
             string className,
       string rejectionReason);
 
+    /// <summary>
+    /// Admin yêu cầu học viên cập nhật lại thông tin ngân hàng (không reject đơn)
+    /// </summary>
+    Task<bool> SendBankInfoUpdateRequestAsync(
+        string toEmail,
+        string userName,
+        string className,
+        string adminNote);
+
     // ================== PAYOUT REQUEST EMAILS ==================
   
       /// <summary>

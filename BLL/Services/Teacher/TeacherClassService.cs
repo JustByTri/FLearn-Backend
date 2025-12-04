@@ -166,7 +166,7 @@ namespace BLL.Services.Teacher
                         RequestType = RefundRequestType.ClassCancelled_TeacherUnavailable,
                         Reason = reason ?? "Teacher cancelled the class",
                         RefundAmount = enrollment.AmountPaid,
-                        Status = RefundRequestStatus.Pending,
+                        Status = RefundRequestStatus.Draft, // ✨ DRAFT: Chưa điền STK
 
                         // Để trống - học viên sẽ cập nhật sau
                         BankName = string.Empty,
