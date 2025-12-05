@@ -9,15 +9,41 @@ using System.Text.Json;
 
 namespace BLL.Services.Assessment
 {
+    public class BinaryAudioStreamReader : PullAudioInputStreamCallback
+    {
+        private readonly MemoryStream _stream;
+
+        public BinaryAudioStreamReader(byte[] data)
+        {
+            _stream = new MemoryStream(data);
+        }
+
+        public override int Read(byte[] dataBuffer, uint size)
+        {
+            return _stream.Read(dataBuffer, 0, (int)size);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _stream.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+    }
+
     public class PronunciationService : IPronunciationService
     {
         private readonly IConfiguration _configuration;
         private readonly IHttpClientFactory _http;
+
         public PronunciationService(IConfiguration configuration, IHttpClientFactory http)
         {
             _configuration = configuration;
             _http = http;
         }
+
         public async Task<Common.DTO.Pronunciation.PronunciationAssessmentResult> AssessPronunciationAsync(string audioUrl, string referenceText, string languageCode = "en")
         {
             try
@@ -36,24 +62,40 @@ namespace BLL.Services.Assessment
                     Granularity.Phoneme,
                     enableMiscue: true);
 
-                var httpClient = _http.CreateClient();
-                var audioBytes = await httpClient.GetByteArrayAsync(audioUrl);
+                byte[] audioBytes;
+                using (var httpClient = _http.CreateClient())
+                {
+                    httpClient.Timeout = TimeSpan.FromSeconds(30);
+                    audioBytes = await httpClient.GetByteArrayAsync(audioUrl);
+                }
 
-                var tempFilePath = Path.GetTempFileName() + ".wav";
-                await File.WriteAllBytesAsync(tempFilePath, audioBytes);
+                if (audioBytes == null || audioBytes.Length == 0)
+                {
+                    Console.WriteLine("Audio download returned empty bytes.");
+                    return null;
+                }
 
-                using var audioConfig = AudioConfig.FromWavFileInput(tempFilePath);
+                using var audioStreamReader = new BinaryAudioStreamReader(audioBytes);
+                using var audioInputStream = AudioInputStream.CreatePullStream(
+                    audioStreamReader,
+                    AudioStreamFormat.GetDefaultInputFormat());
+
+                using var audioConfig = AudioConfig.FromStreamInput(audioInputStream);
                 using var recognizer = new SpeechRecognizer(speechConfig, audioConfig);
 
                 paConfig.ApplyTo(recognizer);
 
                 var result = await recognizer.RecognizeOnceAsync();
 
-                try { File.Delete(tempFilePath); } catch { }
-
                 if (result.Reason != ResultReason.RecognizedSpeech)
                 {
                     Console.WriteLine($"Recognition failed. Reason: {result.Reason}");
+                    if (result.Reason == ResultReason.Canceled)
+                    {
+                        var cancellation = CancellationDetails.FromResult(result);
+                        Console.WriteLine($"CANCELED: Reason={cancellation.Reason}");
+                        Console.WriteLine($"CANCELED: ErrorDetails={cancellation.ErrorDetails}");
+                    }
                     return null;
                 }
 
@@ -61,11 +103,15 @@ namespace BLL.Services.Assessment
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error: {ex.Message}");
+                Console.WriteLine($"Error in AssessPronunciationAsync: {ex.Message}");
+                return null;
             }
         }
+
         public AssessmentResult ConvertToAssessmentResult(Common.DTO.Pronunciation.PronunciationAssessmentResult azureResult, string referenceText, string languageCode)
         {
+            if (azureResult == null) return new AssessmentResult();
+
             var overallScore =
                 (azureResult.PronunciationScore * 0.25f) +
                 (azureResult.FluencyScore * 0.25f) +
@@ -103,7 +149,8 @@ namespace BLL.Services.Assessment
                 ErrorMessage = null
             };
         }
-        #region
+
+        #region Private Helpers
         private Common.DTO.Pronunciation.PronunciationAssessmentResult ParsePronunciationResult(SpeechRecognitionResult result)
         {
             try
@@ -116,6 +163,7 @@ namespace BLL.Services.Assessment
 
                 string actualSpokenText = result.Text;
 
+                // Lấy JSON result để parse chi tiết NBest
                 var jsonText = result.Properties.GetProperty(PropertyId.SpeechServiceResponse_JsonResult);
                 using var jsonDoc = JsonDocument.Parse(jsonText);
 
@@ -128,6 +176,7 @@ namespace BLL.Services.Assessment
 
                 var firstNBest = nBestElement[0];
 
+                // Fallback lấy text nếu result.Text empty
                 if (string.IsNullOrWhiteSpace(actualSpokenText))
                 {
                     if (firstNBest.TryGetProperty("Display", out var displayElem))
@@ -158,9 +207,7 @@ namespace BLL.Services.Assessment
                     assessmentResult.PhonemeAssessments = ParsePhonemeDetails(firstNBest);
                 }
 
-                Console.WriteLine($"**[OK]**Parsed Successfully - Acc: {assessmentResult.AccuracyScore}, Flu: {assessmentResult.FluencyScore}, Comp: {assessmentResult.CompletenessScore}, Pron: {assessmentResult.PronunciationScore}");
-
-                assessmentResult.RecognizedText = actualSpokenText ?? jsonDoc.RootElement.GetProperty("DisplayText").GetString();
+                Console.WriteLine($"**[OK]**Parsed: Acc:{assessmentResult.AccuracyScore:F1}, Flu:{assessmentResult.FluencyScore:F1}, Pron:{assessmentResult.PronunciationScore:F1}");
 
                 return assessmentResult;
             }
@@ -170,6 +217,7 @@ namespace BLL.Services.Assessment
                 return null;
             }
         }
+
         private List<PhonemeAssessment> ParsePhonemeDetails(JsonElement nBestElement)
         {
             var phonemeAssessments = new List<PhonemeAssessment>();
@@ -204,6 +252,7 @@ namespace BLL.Services.Assessment
 
             return phonemeAssessments;
         }
+
         private string MapLanguage(string languageCode)
         {
             return languageCode switch
@@ -214,20 +263,19 @@ namespace BLL.Services.Assessment
                 _ => "en-US"
             };
         }
+
         private string GetEnLevel(int score) => score >= 90 ? "C2" : score >= 80 ? "C1" : score >= 70 ? "B2" : score >= 60 ? "B1" : score >= 50 ? "A2" : "A1";
         private string GetJlptLevel(int score) => score >= 90 ? "N1" : score >= 80 ? "N2" : score >= 70 ? "N3" : score >= 60 ? "N4" : "N5";
         private string GetHskLevel(int score) => score >= 90 ? "HSK6" : score >= 80 ? "HSK5" : score >= 70 ? "HSK4" : score >= 60 ? "HSK3" : score >= 50 ? "HSK2" : "HSK1";
+
         private List<HighlightedPhoneme> MapPhonemes(IEnumerable<Common.DTO.Pronunciation.PhonemeAssessment> phonemes)
         {
             var list = new List<HighlightedPhoneme>();
-
-            if (phonemes == null)
-                return list;
+            if (phonemes == null) return list;
 
             foreach (var p in phonemes)
             {
                 var accuracy = (int)p.AccuracyScore;
-
                 var color = accuracy switch
                 {
                     >= 90 => "green",
@@ -242,9 +290,9 @@ namespace BLL.Services.Assessment
                     Color = color
                 });
             }
-
             return list;
         }
+
         public class HighlightedPhoneme
         {
             public string Phoneme { get; set; } = string.Empty;

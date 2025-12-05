@@ -56,29 +56,38 @@ namespace BLL.Services.Assessment
                 var exercise = await exerciseTask;
 
                 if (submission == null || exercise == null)
-                    return CreateFallbackResult("Không thể nhận diện giọng nói rõ ràng hoặc âm thanh quá ồn. Hệ thống chấm điểm mặc định cho nỗ lực nộp bài.", req.LanguageCode);
+                    return CreateFallbackResult("Dữ liệu bài tập không tồn tại.", req.LanguageCode);
+
+                if (exercise.Type == SpeakingExerciseType.RepeatAfterMe)
+                {
+                    string referenceText = !string.IsNullOrEmpty(exercise.Content) ? exercise.Content : exercise.Prompt;
+
+                    if (string.IsNullOrEmpty(referenceText))
+                        return CreateFallbackResult("Không tìm thấy văn bản mẫu để chấm điểm.", req.LanguageCode);
+
+                    var result = await _pronunciationService.AssessPronunciationAsync(submission.AudioUrl, referenceText, req.LanguageCode);
+
+                    if (result != null)
+                    {
+                        return _pronunciationService.ConvertToAssessmentResult(result, referenceText, req.LanguageCode);
+                    }
+                    else
+                    {
+                        return CreateFallbackResult("Không thể nhận diện giọng nói hoặc âm thanh quá ồn.", req.LanguageCode);
+                    }
+                }
 
                 var studentTranscript = await TranscribeSpeechByAzureAsync(req.AudioUrl, req.LanguageCode);
 
                 if (!studentTranscript.IsSuccess)
                 {
                     Console.WriteLine($"[Azure Speech Failed]: {studentTranscript.Content}. Switching to Gemini Transcribe...");
-
                     studentTranscript = await TranscribeSpeechByGeminiAsync(req.AudioUrl);
-
-                    if (studentTranscript.IsSuccess)
-                    {
-                        Console.WriteLine($"[Gemini Transcribe Success]: {studentTranscript.Content}");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"[Gemini Transcribe Failed]: {studentTranscript.Content}");
-                    }
                 }
 
                 if (!studentTranscript.IsSuccess)
                 {
-                    return CreateFallbackResult("Không thể nhận diện giọng nói rõ ràng hoặc âm thanh quá ồn (Cả Azure và AI đều không xử lý được).", req.LanguageCode);
+                    return CreateFallbackResult("Không thể nhận diện giọng nói.", req.LanguageCode);
                 }
 
                 List<string> imageUrls = new List<string>();
@@ -88,23 +97,6 @@ namespace BLL.Services.Assessment
                     exercise.Type == SpeakingExerciseType.Debate))
                 {
                     imageUrls = ExtractImageUrls(exercise.MediaUrl).Take(3).ToList();
-                }
-
-                if (exercise.Type == SpeakingExerciseType.RepeatAfterMe && !string.IsNullOrEmpty(exercise.MediaUrl))
-                {
-                    var result = await _pronunciationService.AssessPronunciationAsync(submission.AudioUrl, exercise.Content, req.LanguageCode);
-
-                    var pronunciationResult = new AssessmentResult();
-                    if (result != null)
-                    {
-                        pronunciationResult = _pronunciationService.ConvertToAssessmentResult(result, exercise.Content, req.LanguageCode);
-                    }
-                    else
-                    {
-                        pronunciationResult = CreateFallbackResult("Không thể nhận diện giọng nói rõ ràng hoặc âm thanh quá ồn. Hệ thống chấm điểm mặc định cho nỗ lực nộp bài.", req.LanguageCode);
-                    }
-
-                    return pronunciationResult;
                 }
 
                 string textInstruction = req.LanguageCode switch
@@ -146,8 +138,6 @@ namespace BLL.Services.Assessment
                     if (chatCompletion == null || chatCompletion.Content.Count == 0)
                         throw new Exception("Azure returned empty response.");
 
-                    Console.WriteLine($"[Azure Response]: {chatCompletion.Content[0].Text}");
-
                     assessmentResult = ParseAIResponseToAssessmentResult(chatCompletion.Content[0].Text, req.LanguageCode);
                 }
                 catch (Exception ex)
@@ -173,8 +163,7 @@ namespace BLL.Services.Assessment
             catch (Exception ex)
             {
                 Console.WriteLine($"Error in EvaluateSpeakingAsync: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
-                return CreateFallbackResult("Hệ thống AI đang bận hoặc gặp sự cố gián đoạn. Điểm số được ghi nhận cho nỗ lực hoàn thành bài tập.", req.LanguageCode);
+                return CreateFallbackResult("Hệ thống gặp sự cố gián đoạn.", req.LanguageCode);
             }
         }
         #region

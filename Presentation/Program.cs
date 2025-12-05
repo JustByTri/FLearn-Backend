@@ -48,7 +48,10 @@ builder.Services.AddHangfire(config =>
  }))
 );
 
-builder.Services.AddHangfireServer();
+builder.Services.AddHangfireServer(options =>
+{
+    options.WorkerCount = Environment.ProcessorCount * 5;
+});
 
 builder.Services.Configure<FormOptions>(options =>
 {
