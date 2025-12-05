@@ -29,28 +29,71 @@ namespace BLL.Services.Wallets
 
             var adminWallet = await GetOrCreateAdminWalletAsync();
 
-            decimal teacherShare = purchase.FinalAmount * TEACHER_FEE_PERCENTAGE;
-            decimal systemShare = purchase.FinalAmount * SYSTEM_FEE_PERCENTAGE;
+            // 1. Tính toán các khoản tiền dựa trên tỷ lệ phần trăm
+            decimal systemShare = purchase.FinalAmount * SYSTEM_FEE_PERCENTAGE;      // 10%
+            decimal courseCreationShare = purchase.FinalAmount * COURSE_FEE_PERCENTAGE; // 55%
+            decimal gradingShare = purchase.FinalAmount * GRADING_FEE_PERCENTAGE;    // 35%
 
+            // 2. Cập nhật số dư ví Admin
+            // Tổng tiền vẫn cộng đủ 100%
             adminWallet.TotalBalance += purchase.FinalAmount;
+
+            // Tiền hệ thống vào Available
             adminWallet.AvailableBalance += systemShare;
-            adminWallet.HoldBalance += teacherShare;
+
+            // Tiền Teacher (Tạo khóa + Chấm bài) vào Hold
+            adminWallet.HoldBalance += (courseCreationShare + gradingShare);
+
             adminWallet.UpdatedAt = TimeHelper.GetVietnamTime();
 
-            var adminWalletTransaction = new WalletTransaction
+            // 3. Tạo 3 Transaction riêng biệt để dễ dàng phân biệt
+
+            // Transaction 1: Phí hệ thống (10%) - Status: Succeeded (Tiền vào túi ngay)
+            var systemTransaction = new WalletTransaction
             {
                 WalletTransactionId = Guid.NewGuid(),
                 WalletId = adminWallet.WalletId,
                 TransactionType = TransactionType.Transfer,
-                Amount = purchase.FinalAmount,
+                Amount = systemShare,
                 ReferenceId = purchase.PurchasesId,
-                ReferenceType = ReferenceType.CoursePurchase,
-                Description = $"Revenue from course purchase: {purchase.Course?.Title}",
+                ReferenceType = ReferenceType.CoursePurchase, // Hoặc dùng loại riêng nếu có
+                Description = $"System Fee (10%) - Purchase: {purchase.Course?.Title}",
                 Status = TransactionStatus.Succeeded,
                 CreatedAt = TimeHelper.GetVietnamTime()
             };
 
-            await _unitOfWork.WalletTransactions.CreateAsync(adminWalletTransaction);
+            // Transaction 2: Phí tạo khóa học (55%) - Status: Succeeded (Nhưng nằm trong Hold Balance)
+            var courseCreationTransaction = new WalletTransaction
+            {
+                WalletTransactionId = Guid.NewGuid(),
+                WalletId = adminWallet.WalletId,
+                TransactionType = TransactionType.Transfer,
+                Amount = courseCreationShare,
+                ReferenceId = purchase.PurchasesId,
+                ReferenceType = ReferenceType.CourseCreationFee, // Dễ dàng filter sau này
+                Description = $"Hold: Course Creation Fee (55%) - Purchase: {purchase.Course?.Title}",
+                Status = TransactionStatus.Succeeded,
+                CreatedAt = TimeHelper.GetVietnamTime()
+            };
+
+            // Transaction 3: Phí chấm bài (35%) - Status: Succeeded (Nhưng nằm trong Hold Balance)
+            var gradingTransaction = new WalletTransaction
+            {
+                WalletTransactionId = Guid.NewGuid(),
+                WalletId = adminWallet.WalletId,
+                TransactionType = TransactionType.Transfer,
+                Amount = gradingShare,
+                ReferenceId = purchase.PurchasesId,
+                ReferenceType = ReferenceType.GradingFee, // Dễ dàng filter sau này
+                Description = $"Hold: Grading Fee (35%) - Purchase: {purchase.Course?.Title}",
+                Status = TransactionStatus.Succeeded,
+                CreatedAt = TimeHelper.GetVietnamTime()
+            };
+
+            await _unitOfWork.WalletTransactions.CreateAsync(systemTransaction);
+            await _unitOfWork.WalletTransactions.CreateAsync(courseCreationTransaction);
+            await _unitOfWork.WalletTransactions.CreateAsync(gradingTransaction);
+
             await _unitOfWork.SaveChangesAsync();
         }
         public async Task TransferToTeacherWalletAsync(Guid purchaseId)
