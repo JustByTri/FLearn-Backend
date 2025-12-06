@@ -114,6 +114,25 @@ namespace BLL.Services.Application
                 BackgroundJob.Enqueue(() => _email.SendTeacherApplicationApprovedAsync(existingApp.User.Email, existingApp.User.UserName));
                 BackgroundJob.Enqueue(() => AssignTeacherProgramsAsync(teacherProfile.TeacherId));
 
+                // === GỬI THÔNG BÁO CHO APPLICANT KHI ĐƠN ĐƯỢC DUYỆT ===
+                try
+                {
+                    if (!string.IsNullOrEmpty(existingApp.User.FcmToken))
+                    {
+                        await _firebaseNotificationService.SendApplicationResultToUserAsync(
+                            existingApp.User.FcmToken,
+                            existingApp.Language.LanguageName,
+                            isApproved: true,
+                            reason: null
+                        );
+                        _logger.LogInformation("[FCM] ✅ Sent application approval notification to user {UserId}", existingApp.UserID);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FCM] ❌ Failed to send application approval notification");
+                }
+
                 var response = new ApplicationResponse
                 {
                     ApplicationID = existingApp.ApplicationID,
@@ -710,6 +729,25 @@ namespace BLL.Services.Application
                 BackgroundJob.Enqueue(() =>
                     _email.SendTeacherApplicationRejectedAsync(existingApp.User.Email, existingApp.User.UserName, existingApp.RejectionReason)
                 );
+
+                // === GỬI THÔNG BÁO CHO APPLICANT KHI ĐƠN BỊ TỪ CHỐI ===
+                try
+                {
+                    if (!string.IsNullOrEmpty(existingApp.User.FcmToken))
+                    {
+                        await _firebaseNotificationService.SendApplicationResultToUserAsync(
+                            existingApp.User.FcmToken,
+                            existingApp.Language.LanguageName,
+                            isApproved: false,
+                            reason: request.Reason
+                        );
+                        _logger.LogInformation("[FCM] ✅ Sent application rejection notification to user {UserId}", existingApp.UserID);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FCM] ❌ Failed to send application rejection notification");
+                }
 
                 var response = new ApplicationResponse
                 {

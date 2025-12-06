@@ -1,5 +1,6 @@
 ﻿using BLL.IServices.Admin;
 using BLL.IServices.Auth;
+using BLL.IServices.FirebaseService;
 using Common.DTO.ApiResponse;
 using Common.DTO.PayOut;
 using DAL.Helpers;
@@ -17,12 +18,18 @@ namespace BLL.Services.Admin
         private readonly IUnitOfWork _unit;
         private readonly ILogger<PayoutAdminService> _logger;
         private readonly IEmailService _emailService;
+        private readonly IFirebaseNotificationService _notificationService;
 
-        public PayoutAdminService(IUnitOfWork unit, ILogger<PayoutAdminService> logger, IEmailService emailService)
+        public PayoutAdminService(
+            IUnitOfWork unit, 
+            ILogger<PayoutAdminService> logger, 
+            IEmailService emailService,
+            IFirebaseNotificationService notificationService)
         {
             _unit = unit;
             _logger = logger;
             _emailService = emailService;
+            _notificationService = notificationService;
         }
 
         public async Task<BaseResponse<IEnumerable<PayoutRequestDetailDto>>> GetPendingPayoutRequestsAsync(Guid adminUserId)
@@ -283,10 +290,22 @@ namespace BLL.Services.Admin
                     {
                         _logger.LogWarning("Teacher email not found for payout request {PayoutRequestId}", payoutRequestId);
                     }
+
+                    // === GỬI WEB PUSH NOTIFICATION CHO GIÁO VIÊN ===
+                    if (user != null && !string.IsNullOrEmpty(user.FcmToken))
+                    {
+                        await _notificationService.SendPayoutResultToTeacherAsync(
+                            user.FcmToken,
+                            payoutRequest.Amount,
+                            isApproved: action == "approve",
+                            reason: action == "reject" ? dto.AdminNote : null
+                        );
+                        _logger.LogInformation("[FCM-Web] ✅ Sent payout result notification to teacher {TeacherId}", teacher.TeacherId);
+                    }
                 }
                 catch (Exception emailEx)
                 {
-                    _logger.LogError(emailEx, "Failed to send email notification for payout request {PayoutRequestId}", payoutRequestId);
+                    _logger.LogError(emailEx, "Failed to send email/notification for payout request {PayoutRequestId}", payoutRequestId);
                     // Don't fail the whole operation if email fails
                 }
 

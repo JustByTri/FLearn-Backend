@@ -1,6 +1,7 @@
 ﻿using BLL.IServices.Gamification;
 using BLL.IServices.ProgressTracking;
 using BLL.IServices.Upload;
+using BLL.IServices.FirebaseService;
 using Common.DTO.ApiResponse;
 using Common.DTO.ExerciseGrading.Request;
 using Common.DTO.ExerciseSubmission.Response;
@@ -13,6 +14,7 @@ using DAL.Type;
 using DAL.UnitOfWork;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace BLL.Services.ProgressTracking
 {
@@ -23,15 +25,19 @@ namespace BLL.Services.ProgressTracking
         private readonly IBackgroundJobClient _backgroundJobClient;
         private readonly ICloudinaryService _cloudinaryService;
         private readonly IGamificationService _gamificationService;
+        private readonly IFirebaseNotificationService _notificationService;
+        private readonly ILogger<ProgressTrackingService> _logger;
         private const double DefaultAIPercentage = 30;
         private const double DefaultTeacherPercentage = 70;
-        public ProgressTrackingService(IUnitOfWork unitOfWork, IExerciseGradingService exerciseGradingService, ICloudinaryService cloudinaryService, IGamificationService gamificationService, IBackgroundJobClient backgroundJobClient)
+        public ProgressTrackingService(IUnitOfWork unitOfWork, IExerciseGradingService exerciseGradingService, ICloudinaryService cloudinaryService, IGamificationService gamificationService, IBackgroundJobClient backgroundJobClient, IFirebaseNotificationService notificationService, ILogger<ProgressTrackingService> logger)
         {
             _unitOfWork = unitOfWork;
             _exerciseGradingService = exerciseGradingService;
             _cloudinaryService = cloudinaryService;
             _gamificationService = gamificationService;
             _backgroundJobClient = backgroundJobClient;
+            _notificationService = notificationService;
+            _logger = logger;
         }
         public async Task<PagedResponse<List<ExerciseSubmissionDetailResponse>>> GetMySubmissionsAsync(Guid userId, Guid courseId, Guid lessonId, string? status, int pageNumber = 1, int pageSize = 10)
         {
@@ -632,8 +638,33 @@ namespace BLL.Services.ProgressTracking
 
                 // Tự động chấm điểm ngầm
                 _backgroundJobClient.Enqueue(() => _exerciseGradingService.ProcessAIGradingAsync(assessmentRequest));
-                //_backgroundJobClient.Schedule(() => _exerciseGradingService.ProcessAIGradingAsync(assessmentRequest), TimeSpan.FromSeconds(5));
-                //await _exerciseGradingService.ProcessAIGradingAsync(assessmentRequest);
+
+                // === GỬI THÔNG BÁO CHO GIÁO VIÊN KHI HỌC SINH NỘP BÀI ===
+                if (shouldAssignTeacher && course?.TeacherId != null)
+                {
+                    try
+                    {
+                        var teacherUser = await _unitOfWork.Users.Query()
+                            .AsNoTracking()
+                            .Where(u => u.TeacherProfile != null && u.TeacherProfile.TeacherId == course.TeacherId)
+                            .FirstOrDefaultAsync();
+
+                        if (teacherUser != null && !string.IsNullOrEmpty(teacherUser.FcmToken))
+                        {
+                            await _notificationService.SendNewSubmissionNotificationToTeacherAsync(
+                                teacherUser.FcmToken,
+                                user.FullName ?? user.UserName,
+                                exercise.Title,
+                                course.Title
+                            );
+                            _logger.LogInformation("[FCM-Web] ✅ Sent submission notification to teacher {TeacherId}", course.TeacherId);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "[FCM-Web] ❌ Failed to send submission notification to teacher");
+                    }
+                }
 
                 var response = new ExerciseSubmissionResponse
                 {
