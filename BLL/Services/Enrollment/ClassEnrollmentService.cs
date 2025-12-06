@@ -138,8 +138,11 @@ namespace BLL.Services.Enrollment
                     "Enrollment confirmed for student {StudentId} in class {ClassId}. TransactionId: {TransactionId}",
                     studentId, classId, transactionId);
 
-                // Gửi thông báo đăng ký thành công
+                // Lấy thông tin student và teacher
                 var student = await _unitOfWork.Users.GetByIdAsync(studentId);
+                var teacher = await _unitOfWork.Users.GetByIdAsync(teacherClass.TeacherID);
+
+                // === GỬI THÔNG BÁO CHO STUDENT (Mobile) ===
                 if (student != null && !string.IsNullOrEmpty(student.FcmToken))
                 {
                     try
@@ -149,11 +152,48 @@ namespace BLL.Services.Enrollment
                             teacherClass.Title ?? "Lớp học",
                             teacherClass.StartDateTime
                         );
-                        _logger.LogInformation($"[FCM] Sent enrollment success notification to student {studentId}");
+                        _logger.LogInformation("[FCM] ✅ Sent enrollment success notification to student {StudentId}", studentId);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, $"[FCM] Failed to send enrollment success notification to student {studentId}");
+                        _logger.LogError(ex, "[FCM] ❌ Failed to send notification to student {StudentId}", studentId);
+                    }
+                }
+
+                // === GỬI THÔNG BÁO CHO TEACHER (Web Push) ===
+                if (teacher != null && !string.IsNullOrEmpty(teacher.FcmToken))
+                {
+                    try
+                    {
+                        // Đếm số học viên hiện tại
+                        var currentEnrollments = await _unitOfWork.ClassEnrollments.GetQuery()
+                            .Where(ce => ce.ClassID == classId && ce.Status == EnrollmentStatus.Paid)
+                            .CountAsync();
+
+                        await _firebaseNotificationService.SendNewEnrollmentNotificationToTeacherAsync(
+                            teacher.FcmToken,
+                            student?.FullName ?? student?.UserName ?? "Học viên",
+                            teacherClass.Title ?? "Lớp học",
+                            currentEnrollments,
+                            teacherClass.Capacity
+                        );
+
+                        _logger.LogInformation("[FCM-Web] ✅ Sent new enrollment notification to teacher {TeacherId}", teacherClass.TeacherID);
+
+                        // Nếu lớp đã đủ người, gửi thông báo đặc biệt
+                        if (currentEnrollments >= teacherClass.Capacity)
+                        {
+                            await _firebaseNotificationService.SendClassFullNotificationToTeacherAsync(
+                                teacher.FcmToken,
+                                teacherClass.Title ?? "Lớp học",
+                                currentEnrollments
+                            );
+                            _logger.LogInformation("[FCM-Web] ✅ Sent class full notification to teacher {TeacherId}", teacherClass.TeacherID);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "[FCM-Web] ❌ Failed to send notification to teacher {TeacherId}", teacherClass.TeacherID);
                     }
                 }
 

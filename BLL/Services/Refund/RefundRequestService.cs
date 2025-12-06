@@ -1,10 +1,12 @@
 ﻿using BLL.IServices.Auth;
 using BLL.IServices.Refund;
 using BLL.IServices.Upload;
+using BLL.IServices.FirebaseService;
 using Common.DTO.ApiResponse;
 using Common.DTO.Refund;
 using DAL.Models;
 using DAL.UnitOfWork;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Net;
 
@@ -16,17 +18,20 @@ namespace BLL.Services.Refund
         private readonly ILogger<RefundRequestService> _logger;
         private readonly IEmailService _emailService;
         private readonly ICloudinaryService _cloudinaryService;
+        private readonly IFirebaseNotificationService _firebaseNotificationService;
 
         public RefundRequestService(
             IUnitOfWork unitOfWork,
             ILogger<RefundRequestService> logger,
             IEmailService emailService,
-            ICloudinaryService cloudinaryService)
+            ICloudinaryService cloudinaryService,
+            IFirebaseNotificationService firebaseNotificationService)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;
             _emailService = emailService;
             _cloudinaryService = cloudinaryService;
+            _firebaseNotificationService = firebaseNotificationService;
         }
 
         /// <summary>
@@ -262,6 +267,28 @@ namespace BLL.Services.Refund
                     request.AdminNote
                 );
 
+                // Gửi notification qua FCM
+                if (!string.IsNullOrEmpty(student.FcmToken))
+                {
+                    try
+                    {
+                        await _firebaseNotificationService.SendNotificationAsync(
+                            student.FcmToken,
+                            "Thông báo kết quả hoàn tiền",
+                            request.AdminNote ?? "Đơn hoàn tiền đã được xử lý",
+                            new Dictionary<string, string>
+                            {
+                                { "type", "refund_rejected" },
+                                { "refundRequestId", request.RefundRequestID.ToString() }
+                            }
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "[FCM] Failed to send reject notification");
+                    }
+                }
+
                 _logger.LogInformation("Đã từ chối đơn hoàn tiền {RefundRequestId} (Lý do: {Reason})", 
                     dto.RefundRequestId, isBankInfoError ? "Sai STK" : "Khác");
             }
@@ -331,13 +358,14 @@ namespace BLL.Services.Refund
 
             // ✅ CHO PHÉP CẬP NHẬT KHI:
             // - Status = Draft (chưa điền STK)
-            // - Status = Rejected và AdminNote chứa "sai STK" (admin yêu cầu sửa)
+            // - Status = Pending (admin yêu cầu sửa)
             bool canUpdate = refundRequest.Status == RefundRequestStatus.Draft ||
-                             (refundRequest.Status == RefundRequestStatus.Rejected &&
-                              refundRequest.AdminNote?.Contains("STK", StringComparison.OrdinalIgnoreCase) == true);
+                             refundRequest.Status == RefundRequestStatus.Pending;
 
             if (!canUpdate)
-                throw new InvalidOperationException("Chỉ có thể cập nhật đơn ở trạng thái Draft hoặc khi admin yêu cầu sửa STK");
+                throw new InvalidOperationException("Chỉ có thể cập nhật đơn ở trạng thái Draft hoặc Pending");
+
+            var previousStatus = refundRequest.Status;
 
             // Cập nhật thông tin ngân hàng
             refundRequest.BankName = dto.BankName;
@@ -346,13 +374,12 @@ namespace BLL.Services.Refund
             refundRequest.UpdatedAt = DateTime.UtcNow;
 
             // ✨ CHUYỂN TỪ DRAFT → PENDING SAU KHI ĐIỀN STK
-            if (refundRequest.Status == RefundRequestStatus.Draft || 
-                refundRequest.Status == RefundRequestStatus.Rejected)
+            if (refundRequest.Status == RefundRequestStatus.Draft)
             {
                 refundRequest.Status = RefundRequestStatus.Pending;
-                refundRequest.AdminNote = null; // Xóa note cũ nếu admin từng reject
-                _logger.LogInformation("✅ RefundRequest {RefundRequestId} moved from {OldStatus} → Pending",
-                    refundRequestId, refundRequest.Status);
+                refundRequest.AdminNote = null;
+                _logger.LogInformation("✅ RefundRequest {RefundRequestId} moved from Draft → Pending",
+                    refundRequestId);
             }
 
             await _unitOfWork.RefundRequests.UpdateAsync(refundRequest);
@@ -360,7 +387,7 @@ namespace BLL.Services.Refund
 
             _logger.LogInformation("✅ Updated bank info for refund request {RefundRequestId}", refundRequestId);
 
-            // TODO: Gửi email/FCM thông báo admin về đơn mới cần xử lý
+            // 📧 Gửi email xác nhận cho học viên
             if (refundRequest.Student != null && !string.IsNullOrEmpty(refundRequest.Student.Email))
             {
                 try
@@ -378,7 +405,53 @@ namespace BLL.Services.Refund
                 }
             }
 
+            // 🔔 GỬI THÔNG BÁO CHO ADMIN (chỉ khi chuyển từ Draft → Pending)
+            if (previousStatus == RefundRequestStatus.Draft)
+            {
+                await SendNotificationToAdminsAsync(refundRequest);
+            }
+
             return MapToDto(refundRequest, refundRequest.Student?.UserName, refundRequest.TeacherClass?.Title);
+        }
+
+        /// <summary>
+        /// Helper: Gửi Web Push notification cho Admin(s) khi có đơn hoàn tiền mới
+        /// </summary>
+        private async Task SendNotificationToAdminsAsync(RefundRequest refundRequest)
+        {
+            try
+            {
+                // Lấy danh sách Admin
+                var adminRole = await _unitOfWork.Roles.FindAsync(r => r.Name == "Admin");
+                if (adminRole == null) return;
+
+                var admins = await _unitOfWork.UserRoles.GetQuery()
+                    .Where(ur => ur.RoleID == adminRole.RoleID)
+                    .Select(ur => ur.User)
+                    .ToListAsync();
+
+                var adminTokens = admins
+                    .Where(a => a != null && !string.IsNullOrEmpty(a.FcmToken))
+                    .Select(a => a!.FcmToken!)
+                    .ToList();
+
+                if (adminTokens.Any())
+                {
+                    await _firebaseNotificationService.SendNewRefundRequestToAdminAsync(
+                        adminTokens,
+                        refundRequest.Student?.UserName ?? "Học viên",
+                        refundRequest.TeacherClass?.Title ?? "Lớp học",
+                        refundRequest.RefundAmount
+                    );
+
+                    _logger.LogInformation("[FCM-Web] ✅ Sent new refund request notification to {Count} admin(s)",
+                        adminTokens.Count);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[FCM-Web] ❌ Failed to send notification to admins");
+            }
         }
 
         /// <summary>
