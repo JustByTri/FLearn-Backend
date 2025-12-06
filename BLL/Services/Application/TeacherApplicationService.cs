@@ -1,6 +1,7 @@
 ﻿using BLL.IServices.Application;
 using BLL.IServices.Auth;
 using BLL.IServices.Upload;
+using BLL.IServices.FirebaseService;
 using Common.DTO.ApiResponse;
 using Common.DTO.Application.Request;
 using Common.DTO.Application.Response;
@@ -14,6 +15,7 @@ using DAL.UnitOfWork;
 using Hangfire;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace BLL.Services.Application
 {
@@ -22,11 +24,21 @@ namespace BLL.Services.Application
         private readonly IUnitOfWork _unit;
         private readonly ICloudinaryService _cloudinary;
         private readonly IEmailService _email;
-        public TeacherApplicationService(IUnitOfWork unit, ICloudinaryService cloudinary, IEmailService email)
+        private readonly IFirebaseNotificationService _firebaseNotificationService;
+        private readonly ILogger<TeacherApplicationService> _logger;
+
+        public TeacherApplicationService(
+            IUnitOfWork unit, 
+            ICloudinaryService cloudinary, 
+            IEmailService email,
+            IFirebaseNotificationService firebaseNotificationService,
+            ILogger<TeacherApplicationService> logger)
         {
             _unit = unit;
             _cloudinary = cloudinary;
             _email = email;
+            _firebaseNotificationService = firebaseNotificationService;
+            _logger = logger;
         }
         public async Task<BaseResponse<ApplicationResponse>> ApproveApplicationAsync(Guid userId, Guid applicationId)
         {
@@ -329,8 +341,13 @@ namespace BLL.Services.Application
             };
 
             BackgroundJob.Enqueue(() => ProcessApplicationUploadsAsync(uploadInfo));
-
             BackgroundJob.Enqueue(() => SendApplicationEmailAsync(selectedUser.Email, selectedUser.UserName));
+            
+            // === GỬI THÔNG BÁO CHO MANAGER ===
+            BackgroundJob.Enqueue(() => SendApplicationNotificationToManagersAsync(
+                applicationRequest.FullName, 
+                selectedLang.LanguageName,
+                selectedLang.LanguageID));
 
             return BaseResponse<ApplicationResponse>.Success(
                 new ApplicationResponse
@@ -343,6 +360,49 @@ namespace BLL.Services.Application
                 201
             );
         }
+
+        /// <summary>
+        /// [Background Job] Gửi Web Push notification cho Manager(s) quản lý ngôn ngữ khi có đơn ứng tuyển mới
+        /// </summary>
+        [AutomaticRetry(Attempts = 2)]
+        public async Task SendApplicationNotificationToManagersAsync(string applicantName, string languageName, Guid languageId)
+        {
+            try
+            {
+                // Lấy danh sách Manager quản lý ngôn ngữ này
+                var managers = await _unit.ManagerLanguages.GetQuery()
+                    .Where(m => m.LanguageId == languageId)
+                    .Select(m => m.User)
+                    .ToListAsync();
+
+                var managerTokens = managers
+                    .Where(m => m != null && !string.IsNullOrEmpty(m.FcmToken))
+                    .Select(m => m!.FcmToken!)
+                    .ToList();
+
+                if (managerTokens.Any())
+                {
+                    await _firebaseNotificationService.SendNewTeacherApplicationToAdminAsync(
+                        managerTokens,
+                        applicantName,
+                        languageName
+                    );
+
+                    _logger.LogInformation("[FCM-Web] ✅ Sent teacher application notification to {Count} manager(s)",
+                        managerTokens.Count);
+                }
+                else
+                {
+                    _logger.LogWarning("[FCM-Web] ⚠️ No managers with FCM token found for language {LanguageId}",
+                        languageId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[FCM-Web] ❌ Failed to send teacher application notification to managers");
+            }
+        }
+
         private async Task<string> SaveFileAsync(IFormFile file, string folder)
         {
             var fileName = $"{Guid.NewGuid()}_{file.FileName}";

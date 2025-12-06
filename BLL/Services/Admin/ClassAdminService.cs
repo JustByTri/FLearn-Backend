@@ -1,7 +1,10 @@
 ﻿using BLL.IServices.Admin;
+using BLL.IServices.FirebaseService;
+using BLL.IServices.Auth;
 using Common.DTO.Admin;
 using DAL.Models;
 using DAL.UnitOfWork;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -15,6 +18,21 @@ namespace BLL.Services.Admin
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<ClassAdminService> _logger;
+        private readonly IFirebaseNotificationService _firebaseNotificationService;
+        private readonly IEmailService _emailService;
+
+        public ClassAdminService(
+            IUnitOfWork unitOfWork, 
+            ILogger<ClassAdminService> logger,
+            IFirebaseNotificationService firebaseNotificationService,
+            IEmailService emailService)
+        {
+            _unitOfWork = unitOfWork;
+            _logger = logger;
+            _firebaseNotificationService = firebaseNotificationService;
+            _emailService = emailService;
+        }
+
         /// <summary>
         /// Manager duyệt yêu cầu hủy lớp
         /// </summary>
@@ -42,14 +60,14 @@ namespace BLL.Services.Admin
             await _unitOfWork.ClassCancellationRequests.UpdateAsync(request);
             await _unitOfWork.SaveChangesAsync();
 
-            // Thực hiện hủy lớp bằng cách gọi ExecuteCancellationAsync
-            // NOTE: Cần expose ExecuteCancellationAsync từ TeacherClassService hoặc tạo lại logic ở đây
+            // Thực hiện hủy lớp
             await ExecuteCancellationLogic(request.ClassId, request.Reason);
 
             _logger.LogInformation("✅ Manager {ManagerId} approved cancellation request {RequestId}",
                 managerId, requestId);
 
-            // TODO: Gửi thông báo cho giáo viên về việc yêu cầu được duyệt
+            // === GỬI THÔNG BÁO CHO TEACHER ===
+            await SendCancellationResultToTeacherAsync(request, isApproved: true, note);
 
             return true;
         }
@@ -79,12 +97,46 @@ namespace BLL.Services.Admin
             await _unitOfWork.ClassCancellationRequests.UpdateAsync(request);
             await _unitOfWork.SaveChangesAsync();
 
-            // TODO: Gửi thông báo cho giáo viên về việc yêu cầu bị từ chối
-
             _logger.LogInformation("❌ Manager {ManagerId} rejected cancellation request {RequestId}",
                 managerId, requestId);
 
+            // === GỬI THÔNG BÁO CHO TEACHER ===
+            await SendCancellationResultToTeacherAsync(request, isApproved: false, reason);
+
             return true;
+        }
+
+        /// <summary>
+        /// Helper: Gửi Web Push notification cho Teacher về kết quả duyệt/từ chối
+        /// </summary>
+        private async Task SendCancellationResultToTeacherAsync(
+            ClassCancellationRequest request, 
+            bool isApproved, 
+            string? reason)
+        {
+            try
+            {
+                var teacher = await _unitOfWork.Users.GetByIdAsync(request.TeacherId);
+                if (teacher == null || string.IsNullOrEmpty(teacher.FcmToken))
+                {
+                    _logger.LogWarning("[FCM-Web] ⚠️ Teacher {TeacherId} has no FCM token", request.TeacherId);
+                    return;
+                }
+
+                await _firebaseNotificationService.SendCancellationRequestResultToTeacherAsync(
+                    teacher.FcmToken,
+                    request.TeacherClass?.Title ?? "Lớp học",
+                    isApproved,
+                    reason
+                );
+
+                _logger.LogInformation("[FCM-Web] ✅ Sent cancellation result notification to teacher {TeacherId}",
+                    request.TeacherId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[FCM-Web] ❌ Failed to send notification to teacher");
+            }
         }
 
         /// <summary>
@@ -174,13 +226,8 @@ namespace BLL.Services.Admin
             };
         }
 
-        // ============================================
-        // PRIVATE HELPER METHODS
-        // ============================================
-
         /// <summary>
-        /// Logic hủy lớp (duplicate từ TeacherClassService)
-        /// TODO: Refactor để share logic giữa TeacherClassService và ClassAdminService
+        /// Logic hủy lớp và tạo RefundRequest
         /// </summary>
         private async Task ExecuteCancellationLogic(Guid classId, string reason)
         {
@@ -190,7 +237,6 @@ namespace BLL.Services.Admin
             var enrollments = await _unitOfWork.ClassEnrollments.GetEnrollmentsByClassAsync(classId);
             var paidEnrollments = enrollments.Where(e => e.Status == EnrollmentStatus.Paid).ToList();
 
-            // Tạo RefundRequest cho từng học viên
             if (paidEnrollments.Any())
             {
                 foreach (var enrollment in paidEnrollments)
@@ -204,7 +250,7 @@ namespace BLL.Services.Admin
                         RequestType = RefundRequestType.ClassCancelled_TeacherUnavailable,
                         Reason = reason ?? "Manager approved class cancellation",
                         RefundAmount = enrollment.AmountPaid,
-                        Status = RefundRequestStatus.Pending,
+                        Status = RefundRequestStatus.Draft,
                         BankName = string.Empty,
                         BankAccountNumber = string.Empty,
                         BankAccountHolderName = string.Empty,
@@ -219,25 +265,56 @@ namespace BLL.Services.Admin
                     enrollment.UpdatedAt = DateTime.UtcNow;
                     await _unitOfWork.ClassEnrollments.UpdateAsync(enrollment);
 
-                    // TODO: Gửi FCM notification cho học viên
+                    // Gửi FCM notification cho học viên
+                    if (enrollment.Student != null && !string.IsNullOrEmpty(enrollment.Student.FcmToken))
+                    {
+                        try
+                        {
+                            await _firebaseNotificationService.SendNotificationAsync(
+                                enrollment.Student.FcmToken,
+                                "Lớp học đã bị hủy ❌",
+                                $"Lớp '{teacherClass.Title}' đã bị hủy. Vui lòng cập nhật thông tin ngân hàng để nhận hoàn tiền.",
+                                new Dictionary<string, string>
+                                {
+                                    { "type", "class_cancelled_refund_required" },
+                                    { "refundRequestId", refundRequest.RefundRequestID.ToString() },
+                                    { "classId", classId.ToString() }
+                                }
+                            );
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "[FCM] ❌ Failed to send notification to student {StudentId}", enrollment.StudentID);
+                        }
+                    }
 
-                    _logger.LogInformation("[RefundRequest] Created for student {StudentId}, amount: {Amount}",
-                        enrollment.StudentID, enrollment.AmountPaid);
+                    // Gửi email cho học viên
+                    if (enrollment.Student != null && !string.IsNullOrEmpty(enrollment.Student.Email))
+                    {
+                        try
+                        {
+                            await _emailService.SendRefundRequestInstructionAsync(
+                                enrollment.Student.Email,
+                                enrollment.Student.UserName,
+                                teacherClass.Title ?? "Lớp học",
+                                teacherClass.StartDateTime,
+                                reason
+                            );
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "[EMAIL] ❌ Failed to send email to {Email}", enrollment.Student.Email);
+                        }
+                    }
                 }
             }
 
-            // Cập nhật trạng thái lớp
             teacherClass.Status = ClassStatus.Cancelled;
             teacherClass.UpdatedAt = DateTime.UtcNow;
             await _unitOfWork.TeacherClasses.UpdateAsync(teacherClass);
             await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation("✅ Class {ClassId} cancelled via Manager approval", classId);
-        }
-        public ClassAdminService(IUnitOfWork unitOfWork, ILogger<ClassAdminService> logger)
-        {
-            _unitOfWork = unitOfWork;
-            _logger = logger;
         }
 
         public async Task<List<object>> GetAllDisputesAsync()
@@ -272,10 +349,8 @@ namespace BLL.Services.Admin
             try
             {
                 var dispute = await _unitOfWork.ClassDisputes.GetByIdAsync(disputeId);
-                if (dispute == null)
-                    return false;
+                if (dispute == null) return false;
 
-                // Update dispute status based on resolution
                 dispute.Status = dto.Resolution.ToLower() switch
                 {
                     "refund" => DisputeStatus.Resolved_Refunded,
@@ -290,7 +365,6 @@ namespace BLL.Services.Admin
                 await _unitOfWork.ClassDisputes.UpdateAsync(dispute);
                 await _unitOfWork.SaveChangesAsync();
 
-                _logger.LogInformation("Dispute {DisputeId} resolved with resolution: {Resolution}", disputeId, dto.Resolution);
                 return true;
             }
             catch (Exception ex)
@@ -305,20 +379,12 @@ namespace BLL.Services.Admin
             try
             {
                 var teacherClass = await _unitOfWork.TeacherClasses.GetByIdAsync(classId);
-                if (teacherClass == null)
-                    return false;
+                if (teacherClass == null) return false;
 
-                // Check if class is completed and eligible for payout
-                if (teacherClass.Status != ClassStatus.Completed_PendingPayout)
-                {
-                    _logger.LogWarning("Class {ClassId} is not completed, cannot trigger payout", classId);
-                    return false;
-                }
+                if (teacherClass.Status != ClassStatus.Completed_PendingPayout) return false;
 
-                // Get enrollment count for calculation
                 var enrollmentCount = await _unitOfWork.ClassEnrollments.GetEnrollmentCountByClassAsync(classId);
 
-                // Create payout record
                 var payout = new TeacherPayout
                 {
                     TeacherPayoutId = Guid.NewGuid(),
@@ -332,7 +398,6 @@ namespace BLL.Services.Admin
                 await _unitOfWork.TeacherPayouts.CreateAsync(payout);
                 await _unitOfWork.SaveChangesAsync();
 
-                _logger.LogInformation("Payout triggered for class {ClassId}, amount: {Amount}", classId, payout.FinalAmount);
                 return true;
             }
             catch (Exception ex)
@@ -344,10 +409,8 @@ namespace BLL.Services.Admin
 
         private decimal CalculatePayoutAmount(TeacherClass teacherClass, int enrollmentCount)
         {
-            // Calculate payout amount based on enrollments and platform fee
-            // This is a simplified calculation - adjust based on your business logic
             var totalRevenue = teacherClass.PricePerStudent * enrollmentCount;
-            var platformFee = totalRevenue * 0.15m; // 15% platform fee
+            var platformFee = totalRevenue * 0.15m;
             return totalRevenue - platformFee;
         }
     }

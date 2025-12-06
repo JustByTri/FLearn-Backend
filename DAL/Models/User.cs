@@ -37,7 +37,15 @@ namespace DAL.Models
         public int DailyConversationLimit { get; set; } = 2;
         public int ConversationsUsedToday { get; set; } = 0;
         public DateTime LastConversationResetDate { get; set; } = TimeHelper.GetVietnamTime();
+        
+        /// <summary>
+        /// FCM Token dùng cho cả Mobile App và Web Push
+        /// - Mobile: Token từ Firebase iOS/Android SDK
+        /// - Web: Token từ Firebase JS SDK (Web Push)
+        /// </summary>
+        [StringLength(500)]
         public string? FcmToken { get; set; }
+        
         public virtual Wallet? Wallet { get; set; }
         public virtual TeacherProfile? TeacherProfile { get; set; }
         public virtual ManagerLanguage? ManagerLanguage { get; set; }

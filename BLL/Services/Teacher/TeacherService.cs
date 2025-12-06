@@ -1,4 +1,5 @@
 ﻿using BLL.IServices.Teacher;
+using BLL.IServices.FirebaseService;
 using Common.DTO.ApiResponse;
 using Common.DTO.Paging.Response;
 using Common.DTO.PayOut;
@@ -10,6 +11,7 @@ using DAL.Models;
 using DAL.Type;
 using DAL.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Net;
 using System.Text;
@@ -19,9 +21,17 @@ namespace BLL.Services.Teacher
     public class TeacherService : ITeacherService
     {
         private readonly IUnitOfWork _unit;
-        public TeacherService(IUnitOfWork unit)
+        private readonly IFirebaseNotificationService _firebaseNotificationService;
+        private readonly ILogger<TeacherService> _logger;
+
+        public TeacherService(
+            IUnitOfWork unit,
+            IFirebaseNotificationService firebaseNotificationService,
+            ILogger<TeacherService> logger)
         {
             _unit = unit;
+            _firebaseNotificationService = firebaseNotificationService;
+            _logger = logger;
         }
         public async Task<BaseResponse<TeacherProfileResponse>> GetTeacherProfileAsync(Guid userId)
         {
@@ -132,11 +142,53 @@ namespace BLL.Services.Teacher
                     await _unit.SaveChangesAsync();
                 });
 
+                // === GỬI THÔNG BÁO CHO ADMIN ===
+                await SendPayoutNotificationToAdminsAsync(teacherProfile.FullName, requestDto.Amount);
+
                 return BaseResponse<object>.Success(null, "Gửi yêu cầu rút tiền thành công. Yêu cầu của bạn đang chờ xử lý.", (int)HttpStatusCode.Created);
             }
             catch (Exception ex)
             {
                 return BaseResponse<object>.Error($"Đã xảy ra lỗi: {ex.Message}", (int)HttpStatusCode.InternalServerError);
+            }
+        }
+
+        /// <summary>
+        /// Helper: Gửi Web Push notification cho Admin(s) khi có yêu cầu rút tiền mới
+        /// </summary>
+        private async Task SendPayoutNotificationToAdminsAsync(string teacherName, decimal amount)
+        {
+            try
+            {
+                // Lấy danh sách Admin
+                var adminRole = await _unit.Roles.FindAsync(r => r.Name == "Admin");
+                if (adminRole == null) return;
+
+                var admins = await _unit.UserRoles.GetQuery()
+                    .Where(ur => ur.RoleID == adminRole.RoleID)
+                    .Select(ur => ur.User)
+                    .ToListAsync();
+
+                var adminTokens = admins
+                    .Where(a => a != null && !string.IsNullOrEmpty(a.FcmToken))
+                    .Select(a => a!.FcmToken!)
+                    .ToList();
+
+                if (adminTokens.Any())
+                {
+                    await _firebaseNotificationService.SendNewPayoutRequestToAdminAsync(
+                        adminTokens,
+                        teacherName,
+                        amount
+                    );
+
+                    _logger.LogInformation("[FCM-Web] ✅ Sent payout request notification to {Count} admin(s)",
+                        adminTokens.Count);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[FCM-Web] ❌ Failed to send payout notification to admins");
             }
         }
         public async Task<BaseResponse<TeacherBankAccountDto>> AddBankAccountAsync(Guid teacherId, CreateBankAccountDto dto)

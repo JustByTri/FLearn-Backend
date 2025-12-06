@@ -87,7 +87,7 @@ namespace BLL.Services.Teacher
         }
 
         /// <summary>
-        /// Giáo viên gửi yêu cầu hủy lớp (dành cho lớp < 3 ngày)
+        /// Giáo viên gửi yêu cầu hủy lớp (dành cho lớp < 7 ngày)
         /// Returns: ID của yêu cầu hủy lớp đã tạo
         /// </summary>
         public async Task<Guid> RequestCancelClassAsync(Guid teacherId, Guid classId, string reason)
@@ -125,9 +125,11 @@ namespace BLL.Services.Teacher
                 await _unitOfWork.ClassCancellationRequests.CreateAsync(request);
                 await _unitOfWork.SaveChangesAsync();
 
-                // TODO: Gửi thông báo cho Manager
                 _logger.LogInformation("📋 Teacher {TeacherId} requested to cancel class {ClassId} (reason: {Reason})",
                     teacherId, classId, reason);
+
+                // === GỬI THÔNG BÁO CHO MANAGER ===
+                await SendNotificationToManagersAsync(teacherClass, teacherId, reason);
 
                 return request.CancellationRequestId;
             }
@@ -135,6 +137,52 @@ namespace BLL.Services.Teacher
             {
                 _logger.LogError(ex, "❌ Error creating cancellation request for class {ClassId}", classId);
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// Helper: Gửi Web Push notification cho Manager(s) quản lý ngôn ngữ của lớp
+        /// </summary>
+        private async Task SendNotificationToManagersAsync(TeacherClass teacherClass, Guid teacherId, string reason)
+        {
+            try
+            {
+                // Lấy thông tin teacher
+                var teacher = await _unitOfWork.Users.GetByIdAsync(teacherId);
+                var teacherName = teacher?.FullName ?? teacher?.UserName ?? "Giáo viên";
+
+                // Lấy danh sách Manager quản lý ngôn ngữ này
+                var managers = await _unitOfWork.ManagerLanguages.GetQuery()
+                    .Where(m => m.LanguageId == teacherClass.LanguageID)
+                    .Select(m => m.User)
+                    .ToListAsync();
+
+                var managerTokens = managers
+                    .Where(m => m != null && !string.IsNullOrEmpty(m.FcmToken))
+                    .Select(m => m!.FcmToken!)
+                    .ToList();
+
+                if (managerTokens.Any())
+                {
+                    await _firebaseNotificationService.SendNewCancellationRequestToManagerAsync(
+                        managerTokens,
+                        teacherName,
+                        teacherClass.Title ?? "Lớp học",
+                        reason
+                    );
+
+                    _logger.LogInformation("[FCM-Web] ✅ Sent cancellation request notification to {Count} manager(s)",
+                        managerTokens.Count);
+                }
+                else
+                {
+                    _logger.LogWarning("[FCM-Web] ⚠️ No managers with FCM token found for language {LanguageId}",
+                        teacherClass.LanguageID);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[FCM-Web] ❌ Failed to send notification to managers");
             }
         }
 
