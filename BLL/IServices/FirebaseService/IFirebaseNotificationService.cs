@@ -2,7 +2,9 @@ namespace BLL.IServices.FirebaseService
 {
     public interface IFirebaseNotificationService
     {
-        // === MOBILE NOTIFICATIONS ===
+        // ============================================
+        // MOBILE NOTIFICATIONS (cho Student app)
+        // ============================================
         Task SendNotificationAsync(string deviceToken, string title, string body, Dictionary<string, string> data);
         Task SendClassRegistrationSuccessNotificationAsync(string deviceToken, string className, DateTime classStartTime);
         Task SendClassReminderOneHourNotificationAsync(string deviceToken, string className, DateTime classStartTime);
@@ -10,10 +12,9 @@ namespace BLL.IServices.FirebaseService
         Task SendClassCancellationNotificationAsync(string deviceToken, string className, string? reason = null);
         Task SendMulticastNotificationAsync(List<string> deviceTokens, string title, string body, Dictionary<string, string> data);
 
-        // === WEB PUSH NOTIFICATIONS (Desktop cho Teacher/Admin) ===
-        /// <summary>
-        /// G?i Web Push notification ??n browser (Desktop)
-        /// </summary>
+        // ============================================
+        // WEB PUSH NOTIFICATIONS (Desktop cho Teacher/Manager/Admin)
+        // ============================================
         Task SendWebPushNotificationAsync(
             string webToken,
             string title,
@@ -21,9 +22,6 @@ namespace BLL.IServices.FirebaseService
             Dictionary<string, string>? data = null,
             string? clickActionUrl = null);
 
-        /// <summary>
-        /// G?i Web Push ??n nhi?u browsers
-        /// </summary>
         Task SendWebPushMulticastAsync(
             List<string> webTokens,
             string title,
@@ -31,7 +29,10 @@ namespace BLL.IServices.FirebaseService
             Dictionary<string, string>? data = null,
             string? clickActionUrl = null);
 
-        // === TEACHER NOTIFICATIONS ===
+        // ============================================
+        // TEACHER NOTIFICATIONS
+        // ============================================
+        
         /// <summary>
         /// Thông báo cho giáo viên khi có h?c viên ??ng ký l?p
         /// </summary>
@@ -59,7 +60,61 @@ namespace BLL.IServices.FirebaseService
             bool isApproved, 
             string? reason = null);
 
-        // === MANAGER NOTIFICATIONS ===
+        /// <summary>
+        /// ? NEW: Thông báo cho giáo viên khi h?c sinh n?p bài t?p
+        /// </summary>
+        Task SendNewSubmissionNotificationToTeacherAsync(
+            string teacherToken,
+            string studentName,
+            string exerciseName,
+            string courseName);
+
+        /// <summary>
+        /// ? NEW: Thông báo cho giáo viên khi ??n rút ti?n ???c x? lý
+        /// </summary>
+        Task SendPayoutResultToTeacherAsync(
+            string teacherToken,
+            decimal amount,
+            bool isApproved,
+            string? reason = null);
+
+        // ============================================
+        // STUDENT NOTIFICATIONS
+        // ============================================
+
+        /// <summary>
+        /// ? NEW: Thông báo cho h?c sinh khi giáo viên ch?m bài xong
+        /// </summary>
+        Task SendGradingResultToStudentAsync(
+            string studentToken,
+            string exerciseName,
+            string courseName,
+            int? score,
+            string? feedback = null);
+
+        /// <summary>
+        /// ? NEW: Thông báo cho h?c sinh khi ??n hoàn ti?n ???c x? lý
+        /// </summary>
+        Task SendRefundResultToStudentAsync(
+            string studentToken,
+            string className,
+            decimal amount,
+            bool isApproved,
+            string? reason = null);
+
+        /// <summary>
+        /// ? NEW: Thông báo k?t qu? ??n ?ng tuy?n giáo viên
+        /// </summary>
+        Task SendApplicationResultToUserAsync(
+            string userToken,
+            string languageName,
+            bool isApproved,
+            string? reason = null);
+
+        // ============================================
+        // MANAGER NOTIFICATIONS
+        // ============================================
+        
         /// <summary>
         /// Thông báo cho manager khi có yêu c?u h?y l?p m?i c?n duy?t
         /// </summary>
@@ -69,7 +124,10 @@ namespace BLL.IServices.FirebaseService
             string className, 
             string reason);
 
-        // === ADMIN NOTIFICATIONS ===
+        // ============================================
+        // ADMIN NOTIFICATIONS
+        // ============================================
+        
         /// <summary>
         /// Thông báo cho admin khi có ??n hoàn ti?n m?i (?ã ?i?n STK)
         /// </summary>
@@ -88,7 +146,7 @@ namespace BLL.IServices.FirebaseService
             decimal amount);
 
         /// <summary>
-        /// Thông báo cho admin khi có ??n ?ng tuy?n giáo viên m?i
+        /// Thông báo cho admin/manager khi có ??n ?ng tuy?n giáo viên m?i
         /// </summary>
         Task SendNewTeacherApplicationToAdminAsync(
             List<string> adminTokens, 

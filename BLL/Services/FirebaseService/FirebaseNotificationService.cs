@@ -262,7 +262,9 @@ namespace BLL.Services.FirebaseService
             }
         }
 
-        // === TEACHER NOTIFICATIONS ===
+        // ============================================
+        // TEACHER NOTIFICATIONS
+        // ============================================
 
         public async Task SendNewEnrollmentNotificationToTeacherAsync(
             string teacherToken,
@@ -328,7 +330,133 @@ namespace BLL.Services.FirebaseService
             );
         }
 
-        // === MANAGER NOTIFICATIONS ===
+        public async Task SendNewSubmissionNotificationToTeacherAsync(
+            string teacherToken,
+            string studentName,
+            string exerciseName,
+            string courseName)
+        {
+            await SendWebPushNotificationAsync(
+                teacherToken,
+                "Học viên nộp bài mới! 📝",
+                $"{studentName} đã nộp bài '{exerciseName}' trong khóa '{courseName}'.",
+                new Dictionary<string, string>
+                {
+                    { "type", "new_submission" },
+                    { "studentName", studentName },
+                    { "exerciseName", exerciseName },
+                    { "courseName", courseName }
+                },
+                $"{_baseUrl}/teacher/grading"
+            );
+        }
+
+        public async Task SendPayoutResultToTeacherAsync(
+            string teacherToken,
+            decimal amount,
+            bool isApproved,
+            string? reason = null)
+        {
+            var title = isApproved ? "Yêu cầu rút tiền thành công! 💰" : "Yêu cầu rút tiền bị từ chối ❌";
+            var body = isApproved
+                ? $"Yêu cầu rút {amount:N0}đ đã được xử lý. Tiền sẽ được chuyển vào tài khoản của bạn."
+                : $"Yêu cầu rút {amount:N0}đ bị từ chối. Lý do: {reason ?? "Không có"}. Tiền đã được hoàn lại ví.";
+
+            await SendWebPushNotificationAsync(
+                teacherToken,
+                title,
+                body,
+                new Dictionary<string, string>
+                {
+                    { "type", "payout_result" },
+                    { "amount", amount.ToString("N0") },
+                    { "isApproved", isApproved.ToString() }
+                },
+                $"{_baseUrl}/teacher/wallet"
+            );
+        }
+
+        // ============================================
+        // STUDENT NOTIFICATIONS
+        // ============================================
+
+        public async Task SendGradingResultToStudentAsync(
+            string studentToken,
+            string exerciseName,
+            string courseName,
+            int? score,
+            string? feedback = null)
+        {
+            var scoreText = score.HasValue ? $"Điểm: {score}/100" : "Đã chấm";
+            var body = $"Bài '{exerciseName}' trong khóa '{courseName}' đã được chấm. {scoreText}";
+
+            await SendNotificationAsync(
+                studentToken,
+                "Bài tập đã được chấm! 📊",
+                body,
+                new Dictionary<string, string>
+                {
+                    { "type", "grading_result" },
+                    { "exerciseName", exerciseName },
+                    { "courseName", courseName },
+                    { "score", score?.ToString() ?? "" },
+                    { "feedback", feedback ?? "" }
+                });
+        }
+
+        public async Task SendRefundResultToStudentAsync(
+            string studentToken,
+            string className,
+            decimal amount,
+            bool isApproved,
+            string? reason = null)
+        {
+            var title = isApproved ? "Hoàn tiền thành công! 💰" : "Yêu cầu hoàn tiền bị từ chối ❌";
+            var body = isApproved
+                ? $"Đơn hoàn tiền lớp '{className}' ({amount:N0}đ) đã được xử lý. Tiền sẽ được chuyển vào tài khoản của bạn."
+                : $"Đơn hoàn tiền lớp '{className}' bị từ chối. Lý do: {reason ?? "Không có"}";
+
+            await SendNotificationAsync(
+                studentToken,
+                title,
+                body,
+                new Dictionary<string, string>
+                {
+                    { "type", "refund_result" },
+                    { "className", className },
+                    { "amount", amount.ToString("N0") },
+                    { "isApproved", isApproved.ToString() }
+                });
+        }
+
+        public async Task SendApplicationResultToUserAsync(
+            string userToken,
+            string languageName,
+            bool isApproved,
+            string? reason = null)
+        {
+            var title = isApproved 
+                ? "Chúc mừng! Đơn ứng tuyển được duyệt 🎉" 
+                : "Đơn ứng tuyển bị từ chối ❌";
+            var body = isApproved
+                ? $"Đơn ứng tuyển giáo viên {languageName} của bạn đã được phê duyệt! Bạn có thể bắt đầu tạo lớp học."
+                : $"Đơn ứng tuyển giáo viên {languageName} bị từ chối. Lý do: {reason ?? "Không có"}";
+
+            await SendNotificationAsync(
+                userToken,
+                title,
+                body,
+                new Dictionary<string, string>
+                {
+                    { "type", "application_result" },
+                    { "languageName", languageName },
+                    { "isApproved", isApproved.ToString() }
+                });
+        }
+
+        // ============================================
+        // MANAGER NOTIFICATIONS
+        // ============================================
 
         public async Task SendNewCancellationRequestToManagerAsync(
             List<string> managerTokens,
@@ -350,7 +478,9 @@ namespace BLL.Services.FirebaseService
             );
         }
 
-        // === ADMIN NOTIFICATIONS ===
+        // ============================================
+        // ADMIN NOTIFICATIONS
+        // ============================================
 
         public async Task SendNewRefundRequestToAdminAsync(
             List<string> adminTokens,

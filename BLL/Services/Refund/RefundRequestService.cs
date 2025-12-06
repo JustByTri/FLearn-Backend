@@ -231,6 +231,26 @@ namespace BLL.Services.Refund
                     request.AdminNote
                 );
 
+                // === GỬI NOTIFICATION CHO HỌC VIÊN KHI ĐƠN ĐƯỢC DUYỆT ===
+                if (!string.IsNullOrEmpty(student.FcmToken))
+                {
+                    try
+                    {
+                        await _firebaseNotificationService.SendRefundResultToStudentAsync(
+                            student.FcmToken,
+                            teacherClass?.Title ?? "Lớp học",
+                            request.RefundAmount,
+                            isApproved: true,
+                            reason: null
+                        );
+                        _logger.LogInformation("[FCM] ✅ Sent refund approval notification to student {StudentId}", student.UserID);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "[FCM] ❌ Failed to send refund approval notification");
+                    }
+                }
+
                 _logger.LogInformation("Đã chấp nhận đơn hoàn tiền {RefundRequestId}", dto.RefundRequestId);
             }
             else if (dto.Action == ProcessAction.Reject)
@@ -267,25 +287,23 @@ namespace BLL.Services.Refund
                     request.AdminNote
                 );
 
-                // Gửi notification qua FCM
+                // === GỬI NOTIFICATION CHO HỌC VIÊN KHI ĐƠN BỊ TỪ CHỐI ===
                 if (!string.IsNullOrEmpty(student.FcmToken))
                 {
                     try
                     {
-                        await _firebaseNotificationService.SendNotificationAsync(
+                        await _firebaseNotificationService.SendRefundResultToStudentAsync(
                             student.FcmToken,
-                            "Thông báo kết quả hoàn tiền",
-                            request.AdminNote ?? "Đơn hoàn tiền đã được xử lý",
-                            new Dictionary<string, string>
-                            {
-                                { "type", "refund_rejected" },
-                                { "refundRequestId", request.RefundRequestID.ToString() }
-                            }
+                            teacherClass?.Title ?? "Lớp học",
+                            request.RefundAmount,
+                            isApproved: false,
+                            reason: dto.AdminNote
                         );
+                        _logger.LogInformation("[FCM] ✅ Sent refund rejection notification to student {StudentId}", student.UserID);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "[FCM] Failed to send reject notification");
+                        _logger.LogError(ex, "[FCM] ❌ Failed to send refund rejection notification");
                     }
                 }
 
