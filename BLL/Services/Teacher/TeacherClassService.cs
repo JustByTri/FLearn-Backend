@@ -302,6 +302,13 @@ namespace BLL.Services.Teacher
                 if (teacher == null)
                     throw new UnauthorizedAccessException("Chỉ giáo viên mới có thể tạo lớp học");
 
+                // Validate MinStudents <= Capacity
+                if (createClassDto.MinStudents > createClassDto.Capacity)
+                {
+                    throw new InvalidOperationException(
+                        $"Số học sinh tối thiểu ({createClassDto.MinStudents}) không được lớn hơn sức chứa ({createClassDto.Capacity})");
+                }
+
                 // Choose assignment: prefer the one provided, else highest level assigned
                 TeacherProgramAssignment? assignment = null;
                 if (createClassDto.ProgramAssignmentId.HasValue)
@@ -343,6 +350,8 @@ namespace BLL.Services.Teacher
                     Description = createClassDto.Description,
                     StartDateTime = startDateTime,
                     EndDateTime = endDateTime,
+                    MinStudents = createClassDto.MinStudents,
+                    Capacity = createClassDto.Capacity,
                     PricePerStudent = createClassDto.PricePerStudent,
                     GoogleMeetLink = teacher.MeetingUrl, // take from TeacherProfile
                     Status = ClassStatus.Draft,
@@ -352,6 +361,9 @@ namespace BLL.Services.Teacher
 
                 await _unitOfWork.TeacherClasses.CreateAsync(teacherClass);
                 await _unitOfWork.SaveChangesAsync();
+
+                _logger.LogInformation("✅ Teacher {TeacherId} created class {ClassId} with MinStudents={MinStudents}, Capacity={Capacity}",
+                    teacherId, teacherClass.ClassID, teacherClass.MinStudents, teacherClass.Capacity);
 
                 var createdClass = await _unitOfWork.TeacherClasses.GetClassWithEnrollmentsAsync(teacherClass.ClassID);
                 return MapToTeacherClassDto(createdClass ?? teacherClass);
@@ -466,22 +478,39 @@ namespace BLL.Services.Teacher
                     teacherClass.EndDateTime = updateClassDto.EndDateTime.Value;
                 }
 
-                // Only allow capacity/pricing changes if no enrollments yet
+                // Only allow capacity/pricing/minStudents changes if no enrollments yet
                 if (enrollmentCount == 0)
                 {
                     if (updateClassDto.PricePerStudent.HasValue)
                     {
                         teacherClass.PricePerStudent = updateClassDto.PricePerStudent.Value;
                     }
+
+                    if (updateClassDto.MinStudents.HasValue)
+                    {
+                        teacherClass.MinStudents = updateClassDto.MinStudents.Value;
+                    }
+
+                    if (updateClassDto.Capacity.HasValue)
+                    {
+                        teacherClass.Capacity = updateClassDto.Capacity.Value;
+                    }
+
+                    // Validate MinStudents <= Capacity after update
+                    if (teacherClass.MinStudents > teacherClass.Capacity)
+                    {
+                        throw new InvalidOperationException(
+                            $"Số học sinh tối thiểu ({teacherClass.MinStudents}) không được lớn hơn sức chứa ({teacherClass.Capacity})");
+                    }
                 }
                 else
                 {
                     // If there are enrollments, only warn about restricted changes
-                    if (updateClassDto.MinStudents.HasValue || updateClassDto.PricePerStudent.HasValue)
+                    if (updateClassDto.MinStudents.HasValue || updateClassDto.PricePerStudent.HasValue || updateClassDto.Capacity.HasValue)
                     {
-                        _logger.LogWarning("⚠️ Teacher {TeacherId} attempted to change capacity/pricing for class {ClassId} with existing enrollments",
+                        _logger.LogWarning("⚠️ Teacher {TeacherId} attempted to change capacity/pricing/minStudents for class {ClassId} with existing enrollments",
                             teacherId, classId);
-                        throw new InvalidOperationException("Không thể thay đổi sức chứa hoặc giá khi đã có học sinh đăng ký");
+                        throw new InvalidOperationException("Không thể thay đổi số học sinh tối thiểu, sức chứa hoặc giá khi đã có học sinh đăng ký");
                     }
                 }
 
@@ -648,6 +677,7 @@ namespace BLL.Services.Teacher
                 LanguageName = teacherClass.Language?.LanguageName,
                 StartDateTime = teacherClass.StartDateTime,
                 EndDateTime = teacherClass.EndDateTime,
+                MinStudents = teacherClass.MinStudents,
                 Capacity = teacherClass.Capacity,
                 PricePerStudent = teacherClass.PricePerStudent,
                 GoogleMeetLink = teacherClass.GoogleMeetLink,
