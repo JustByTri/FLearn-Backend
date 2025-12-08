@@ -93,7 +93,7 @@ namespace DAL.DBContext
                     }
                 }
             }
-            DbSeeder.SeedData(modelBuilder);
+            //DbSeeder.SeedData(modelBuilder);
         }
     }
 }

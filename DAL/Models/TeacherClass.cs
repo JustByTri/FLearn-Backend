@@ -33,7 +33,19 @@ namespace DAL.Models
         public DateTime StartDateTime { get; set; }
         [Required]
         public DateTime EndDateTime { get; set; }
+
+        /// <summary>
+        /// Số học sinh tối thiểu để lớp được diễn ra.
+        /// Nếu không đủ số lượng này trước 3 ngày, lớp sẽ bị hủy tự động.
+        /// </summary>
+        [Range(1, 50)]
+        public int MinStudents { get; set; } = 3;
+
+        /// <summary>
+        /// Sức chứa tối đa của lớp
+        /// </summary>
         public int Capacity { get; set; } = 10;
+
         [Required]
         [Column(TypeName = "decimal(10,2)")]
         public decimal PricePerStudent { get; set; }

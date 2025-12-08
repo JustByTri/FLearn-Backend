@@ -12,7 +12,6 @@ namespace BLL.Background
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ClassEnrollmentCheckService> _logger;
-        private const int MIN_STUDENTS = 3; // Số học sinh tối thiểu
 
         public ClassEnrollmentCheckService(
             IServiceProvider serviceProvider,
@@ -69,14 +68,17 @@ namespace BLL.Background
                     if (teacherClass.Status == ClassStatus.Cancelled_InsufficientStudents)
                         continue;
 
-                    if (teacherClass.CurrentEnrollments < MIN_STUDENTS)
+                    // ✨ SỬ DỤNG MinStudents TỪ TEACHERCLASS THAY VÌ HARDCODE
+                    var minStudentsRequired = teacherClass.MinStudents;
+
+                    if (teacherClass.CurrentEnrollments < minStudentsRequired)
                     {
                         _logger.LogWarning(
                             "⚠️ Class {ClassId} ({ClassName}) has insufficient students: {Current}/{Min}",
                             teacherClass.ClassID,
                             teacherClass.Title,
                             teacherClass.CurrentEnrollments,
-                            MIN_STUDENTS
+                            minStudentsRequired
                         );
 
                         // ✅ TẠO RefundRequest TỰ ĐỘNG CHO HỌC VIÊN
@@ -89,9 +91,10 @@ namespace BLL.Background
                         await unitOfWork.SaveChangesAsync();
 
                         _logger.LogInformation(
-                            "❌ Class {ClassId} cancelled due to insufficient students. RefundRequests created for {Count} students.",
+                            "❌ Class {ClassId} cancelled due to insufficient students ({Current}/{Min}). RefundRequests created.",
                             teacherClass.ClassID,
-                            teacherClass.CurrentEnrollments
+                            teacherClass.CurrentEnrollments,
+                            minStudentsRequired
                         );
                     }
                     else
@@ -101,7 +104,7 @@ namespace BLL.Background
                             teacherClass.ClassID,
                             teacherClass.Title,
                             teacherClass.CurrentEnrollments,
-                            MIN_STUDENTS
+                            minStudentsRequired
                         );
                     }
                 }
@@ -127,10 +130,14 @@ namespace BLL.Background
                 .Where(e => e.Status == EnrollmentStatus.Paid)
                 .ToList();
 
+            // ✨ SỬ DỤNG MinStudents TỪ TEACHERCLASS
+            var minStudentsRequired = teacherClass.MinStudents;
+
             _logger.LogInformation(
-                "🔄 Creating RefundRequests for {Count} students in class {ClassId}",
+                "🔄 Creating RefundRequests for {Count} students in class {ClassId} (MinStudents was {MinStudents})",
                 paidEnrollments.Count,
-                teacherClass.ClassID
+                teacherClass.ClassID,
+                minStudentsRequired
             );
 
             int successCount = 0;
@@ -148,7 +155,7 @@ namespace BLL.Background
                         ClassID = teacherClass.ClassID,
                         StudentID = enrollment.StudentID,
                         RequestType = RefundRequestType.ClassCancelled_InsufficientStudents,
-                        Reason = $"Class cancelled due to insufficient students ({teacherClass.CurrentEnrollments}/{MIN_STUDENTS})",
+                        Reason = $"Lớp bị hủy do không đủ học viên tối thiểu ({teacherClass.CurrentEnrollments}/{minStudentsRequired})",
                         RefundAmount = enrollment.AmountPaid,
                         Status = RefundRequestStatus.Draft, // ✨ DRAFT: Chưa điền STK
 
@@ -177,7 +184,7 @@ namespace BLL.Background
                             await firebaseNotificationService.SendNotificationAsync(
                                 enrollment.Student.FcmToken,
                                 "Lớp học đã bị hủy ❌",
-                                $"Lớp '{teacherClass.Title}' đã bị hủy do không đủ học viên. Vui lòng cập nhật thông tin ngân hàng để nhận hoàn tiền.",
+                                $"Lớp '{teacherClass.Title}' đã bị hủy do không đủ học viên ({teacherClass.CurrentEnrollments}/{minStudentsRequired}). Vui lòng cập nhật thông tin ngân hàng để nhận hoàn tiền.",
                                 new Dictionary<string, string>
                                 {
                                     { "type", "class_cancelled_refund_required" },
@@ -206,7 +213,7 @@ namespace BLL.Background
                                 enrollment.Student.UserName,
                                 teacherClass.Title ?? "Lớp học",
                                 teacherClass.StartDateTime,
-                                $"Lớp không đủ số lượng học viên tối thiểu ({MIN_STUDENTS} người)"
+                                $"Lớp không đủ số lượng học viên tối thiểu ({minStudentsRequired} người)"
                             );
 
                             _logger.LogInformation("[EMAIL] ✅ Sent refund email to {Email}", enrollment.Student.Email);

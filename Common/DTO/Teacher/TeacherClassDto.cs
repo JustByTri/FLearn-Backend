@@ -16,11 +16,37 @@ namespace Common.DTO.Teacher
         public string? LanguageName { get; set; }
         public DateTime StartDateTime { get; set; } = TimeHelper.GetVietnamTime();
         public DateTime EndDateTime { get; set; } = TimeHelper.GetVietnamTime();
+
+        /// <summary>
+        /// Số học sinh tối thiểu để lớp được diễn ra
+        /// </summary>
+        public int MinStudents { get; set; }
+
+        /// <summary>
+        /// Sức chứa tối đa của lớp
+        /// </summary>
         public int Capacity { get; set; }
+
         public decimal PricePerStudent { get; set; }
         public string? GoogleMeetLink { get; set; }
         public string Status { get; set; } = string.Empty;
         public int CurrentEnrollments { get; set; }
+
+        /// <summary>
+        /// Số slot còn trống
+        /// </summary>
+        public int AvailableSlots => Capacity - CurrentEnrollments;
+
+        /// <summary>
+        /// Còn thiếu bao nhiêu học sinh để đủ tối thiểu
+        /// </summary>
+        public int StudentsNeeded => Math.Max(0, MinStudents - CurrentEnrollments);
+
+        /// <summary>
+        /// Lớp đã đủ học sinh tối thiểu chưa
+        /// </summary>
+        public bool HasMinimumStudents => CurrentEnrollments >= MinStudents;
+
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }

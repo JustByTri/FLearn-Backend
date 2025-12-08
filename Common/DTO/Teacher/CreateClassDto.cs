@@ -30,6 +30,21 @@ namespace Common.DTO.Teacher
         [Range(0.01, 10000000, ErrorMessage = "Giá học phí phải lớn hơn 0")]
         public decimal PricePerStudent { get; set; }
 
+        /// <summary>
+        /// Số học sinh tối thiểu để lớp được diễn ra.
+        /// Nếu không đủ số lượng này trước 3 ngày, lớp sẽ bị hủy tự động.
+        /// Mặc định: 3, Tối thiểu: 1, Tối đa: 20
+        /// </summary>
+        [Range(1, 20, ErrorMessage = "Số học sinh tối thiểu phải từ 1 đến 20")]
+        public int MinStudents { get; set; } = 3;
+
+        /// <summary>
+        /// Sức chứa tối đa của lớp (optional).
+        /// Mặc định: 10, Tối đa: 50
+        /// </summary>
+        [Range(1, 50, ErrorMessage = "Sức chứa tối đa phải từ 1 đến 50")]
+        public int Capacity { get; set; } = 10;
+
         public Guid? ProgramAssignmentId { get; set; }
     }
 
