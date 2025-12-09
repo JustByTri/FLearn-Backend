@@ -152,6 +152,7 @@ namespace Presentation.Controllers.Learner
         /// Lấy danh sách lớp học theo ngôn ngữ
         /// </summary>
         [HttpGet("available")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetAvailableClasses([FromQuery] Guid? languageId = null,
             [FromQuery] string? status = null,
             [FromQuery] int page = 1,

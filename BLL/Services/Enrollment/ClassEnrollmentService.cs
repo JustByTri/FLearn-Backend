@@ -252,7 +252,10 @@ namespace BLL.Services.Enrollment
                     Description = tc.Description,
                     LanguageID = tc.LanguageID,
                     LanguageName = tc.Language?.LanguageName ?? "Unknown",
-                    TeacherName = tc.Teacher?.FullName ?? "Unknown Teacher",
+                    // Lấy FullName từ TeacherProfile, fallback UserName
+                    TeacherName = tc.Teacher?.TeacherProfile?.FullName 
+                                  ?? tc.Teacher?.UserName 
+                                  ?? "Unknown Teacher",
                     StartDateTime = tc.StartDateTime,
                     EndDateTime = tc.EndDateTime,
                   
@@ -293,7 +296,10 @@ namespace BLL.Services.Enrollment
                     Description = e.Class?.Description ?? "",
                     LanguageID = e.Class?.LanguageID ?? Guid.Empty,
                     LanguageName = e.Class?.Language?.LanguageName ?? "Unknown",
-                    TeacherName = e.Class?.Teacher?.FullName ?? "Unknown Teacher",
+                    // Lấy FullName từ TeacherProfile, fallback UserName
+                    TeacherName = e.Class?.Teacher?.TeacherProfile?.FullName 
+                                  ?? e.Class?.Teacher?.UserName 
+                                  ?? "Unknown Teacher",
                     StartDateTime = e.Class?.StartDateTime ?? DateTime.MinValue,
                     EndDateTime = e.Class?.EndDateTime ?? DateTime.MinValue,
                     AmountPaid = e.AmountPaid,

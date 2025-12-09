@@ -31,9 +31,10 @@ namespace DAL.Repositories
         {
             return await _context.ClassEnrollments
                 .Include(e => e.Class)
-                    .ThenInclude(c => c.Teacher)
+                    .ThenInclude(c => c!.Teacher)
+                        .ThenInclude(t => t!.TeacherProfile)
                 .Include(e => e.Class)
-                    .ThenInclude(c => c.Language)
+                    .ThenInclude(c => c!.Language)
                 .Where(e => e.StudentID == studentId)
                 .OrderByDescending(e => e.EnrolledAt)
                 .ToListAsync();
@@ -66,11 +67,12 @@ namespace DAL.Repositories
         {
             var query = _context.ClassEnrollments
                 .Include(e => e.Class)
-                    .ThenInclude(c => c.Language)
+                    .ThenInclude(c => c!.Language)
                 .Include(e => e.Class)
-                    .ThenInclude(c => c.Teacher)
+                    .ThenInclude(c => c!.Teacher)
+                        .ThenInclude(t => t!.TeacherProfile)
                 .Include(e => e.Class)
-                    .ThenInclude(c => c.Enrollments)
+                    .ThenInclude(c => c!.Enrollments)
                 .Where(e => e.StudentID == studentId);
 
             if (status.HasValue)

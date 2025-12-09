@@ -11,7 +11,12 @@ namespace Common.DTO.Learner
         public Guid EnrollmentID { get; set; }
         public Guid ClassID { get; set; }
         public Guid StudentID { get; set; }
-        public string StudentName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Username của học viên (dùng để hiển thị)
+        /// </summary>
+        public string UserName { get; set; } = string.Empty;
+
         public string StudentEmail { get; set; } = string.Empty;
         public decimal AmountPaid { get; set; }
         public string? PaymentTransactionId { get; set; }
