@@ -12,7 +12,7 @@ namespace Presentation.Controllers.Learner
 {
     [Route("api/student/classes")]
     [ApiController]
-    [Authorize(Policy = "OnlyLearner")]
+    [Authorize] 
     public class ClassEnrollmentController : ControllerBase
     {
         private readonly IClassEnrollmentService _enrollmentService;
@@ -30,9 +30,10 @@ namespace Presentation.Controllers.Learner
         }
 
         /// <summary>
-        /// Bước 1: Student yêu cầu enroll - tạo link thanh toán
+        /// Bước 1: Student yêu cầu enroll - tạo link thanh toán (chỉ Learner)
         /// </summary>
         [HttpPost("{classId:guid}/enroll")]
+        [Authorize(Roles = "Learner")]
         public async Task<IActionResult> EnrollClass(Guid classId)
         {
             try
@@ -45,7 +46,7 @@ namespace Presentation.Controllers.Learner
                     UserID = studentId,
                     FullName = User.Identity?.Name ?? "Student",
                     Email = User.FindFirstValue(ClaimTypes.Email) ?? "",
-                    
+
                 };
 
                 var paymentResponse = await _enrollmentService.CreatePaymentLinkAsync(
@@ -134,9 +135,10 @@ namespace Presentation.Controllers.Learner
         }
 
         /// <summary>
-        /// Kiểm tra trạng thái enrollment
+        /// Kiểm tra trạng thái enrollment (Learner hoặc Teacher)
         /// </summary>
         [HttpGet("enrollments/{enrollmentId:guid}")]
+        [Authorize(Roles = "Learner,Teacher")]
         public async Task<IActionResult> GetEnrollmentStatus(Guid enrollmentId)
         {
             var studentId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -147,9 +149,9 @@ namespace Presentation.Controllers.Learner
 
             return Ok(new { success = true, data = enrollment });
         }
-        
+
         /// <summary>
-        /// Lấy danh sách lớp học theo ngôn ngữ
+        /// Lấy danh sách lớp học theo ngôn ngữ (Public - không cần auth)
         /// </summary>
         [HttpGet("available")]
         [AllowAnonymous]
@@ -181,11 +183,12 @@ namespace Presentation.Controllers.Learner
                 return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi lấy danh sách lớp học" });
             }
         }
-        
+
         /// <summary>
-        /// Lấy danh sách lớp học mà sinh viên đã đăng ký
+        /// Lấy danh sách lớp học mà user đã đăng ký (Learner hoặc Teacher đều xem được)
         /// </summary>
         [HttpGet("my-enrollments")]
+        [Authorize(Roles = "Learner,Teacher")]
         public async Task<IActionResult> GetMyEnrolledClasses([FromQuery] string? status = null,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10)
@@ -231,12 +234,13 @@ namespace Presentation.Controllers.Learner
         }
 
         /// <summary>
-        /// [Học viên] Hủy đăng ký lớp học (trong vòng 3 ngày)
+        /// [Học viên] Hủy đăng ký lớp học (chỉ Learner)
         /// Tự động tạo RefundRequest và yêu cầu học viên cập nhật thông tin ngân hàng
         /// </summary>
         /// <param name="enrollmentId">ID của enrollment cần hủy</param>
         /// <param name="dto">Lý do hủy (optional)</param>
         [HttpDelete("enrollments/{enrollmentId:guid}")]
+        [Authorize(Roles = "Learner")]
         [ProducesResponseType(typeof(object), 200)]
         [ProducesResponseType(typeof(object), 400)]
         [ProducesResponseType(typeof(object), 401)]
