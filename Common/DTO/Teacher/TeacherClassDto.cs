@@ -14,6 +14,12 @@ namespace Common.DTO.Teacher
         public string Description { get; set; } = string.Empty;
         public Guid LanguageID { get; set; }
         public string? LanguageName { get; set; }
+
+        /// <summary>
+        /// Tên giáo viên (ưu tiên UserName, fallback FullName)
+        /// </summary>
+        public string TeacherName { get; set; } = string.Empty;
+
         public DateTime StartDateTime { get; set; } = TimeHelper.GetVietnamTime();
         public DateTime EndDateTime { get; set; } = TimeHelper.GetVietnamTime();
 

@@ -588,7 +588,8 @@ namespace BLL.Services.Teacher
                     EnrollmentID = e.EnrollmentID,
                     ClassID = e.ClassID,
                     StudentID = e.StudentID,
-                    StudentName = e.Student?.FullName ?? "Unknown Student",
+                    // Dùng UserName để hiển thị
+                    UserName = e.Student?.UserName ?? "Unknown",
                     StudentEmail = e.Student?.Email ?? "",
                     AmountPaid = e.AmountPaid,
                     PaymentTransactionId = e.PaymentTransactionId,
@@ -675,6 +676,10 @@ namespace BLL.Services.Teacher
                 Description = teacherClass.Description,
                 LanguageID = teacherClass.LanguageID,
                 LanguageName = teacherClass.Language?.LanguageName,
+                // Lấy FullName từ TeacherProfile, fallback UserName
+                TeacherName = teacherClass.Teacher?.TeacherProfile?.FullName 
+                              ?? teacherClass.Teacher?.UserName 
+                              ?? "Unknown Teacher",
                 StartDateTime = teacherClass.StartDateTime,
                 EndDateTime = teacherClass.EndDateTime,
                 MinStudents = teacherClass.MinStudents,
