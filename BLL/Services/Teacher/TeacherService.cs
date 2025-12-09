@@ -548,7 +548,11 @@ namespace BLL.Services.Teacher
         public async Task<PagedResponse<IEnumerable<TeacherClassDto>>> SearchClassesAsync(Guid teacherId, string? keyword, string? status, DateTime? from, DateTime? to, Guid? programId, int page, int pageSize)
         {
             // Build query with filters that can be translated to SQL
-            var query = _unit.TeacherClasses.Query().Where(c => c.TeacherID == teacherId);
+            var query = _unit.TeacherClasses.Query()
+                .Include(c => c.Language)
+                .Include(c => c.Teacher)
+                    .ThenInclude(t => t!.TeacherProfile)
+                .Where(c => c.TeacherID == teacherId);
 
             if (!string.IsNullOrWhiteSpace(status))
             {
@@ -600,9 +604,23 @@ namespace BLL.Services.Teacher
                 {
                     ClassID = c.ClassID,
                     Title = c.Title,
+                    Description = c.Description ?? string.Empty,
+                    LanguageID = c.LanguageID,
+                    LanguageName = c.Language?.LanguageName,
+                    // Lấy FullName từ TeacherProfile, fallback UserName
+                    TeacherName = c.Teacher?.TeacherProfile?.FullName 
+                                  ?? c.Teacher?.UserName 
+                                  ?? "Unknown Teacher",
+                    StartDateTime = c.StartDateTime,
+                    EndDateTime = c.EndDateTime,
+                    MinStudents = c.MinStudents,
+                    Capacity = c.Capacity,
+                    PricePerStudent = c.PricePerStudent,
+                    GoogleMeetLink = c.GoogleMeetLink,
                     Status = c.Status.ToString(),
+                    CurrentEnrollments = c.CurrentEnrollments,
                     CreatedAt = c.CreatedAt,
-                    CurrentEnrollments = c.CurrentEnrollments
+                    UpdatedAt = c.UpdatedAt
                 }).ToList();
 
             return PagedResponse<IEnumerable<TeacherClassDto>>.Success(items, page, pageSize, total);
@@ -654,6 +672,7 @@ namespace BLL.Services.Teacher
             IQueryable<TeacherClass> query = _unit.TeacherClasses.Query()
                 .Include(c => c.Language)
                 .Include(c => c.Teacher)
+                    .ThenInclude(t => t!.TeacherProfile)
                 .Include(c => c.Enrollments); // Include enrollments for CurrentEnrollments calculation
 
             if (languageId.HasValue) query = query.Where(c => c.LanguageID == languageId.Value);
@@ -721,8 +740,13 @@ namespace BLL.Services.Teacher
                     Description = c.Description ?? string.Empty,
                     LanguageID = c.LanguageID,
                     LanguageName = c.Language?.LanguageName,
+                    // Lấy FullName từ TeacherProfile, fallback UserName
+                    TeacherName = c.Teacher?.TeacherProfile?.FullName 
+                                  ?? c.Teacher?.UserName 
+                                  ?? "Unknown Teacher",
                     StartDateTime = c.StartDateTime,
                     EndDateTime = c.EndDateTime,
+                    MinStudents = c.MinStudents,
                     Capacity = c.Capacity,
                     PricePerStudent = c.PricePerStudent,
                     GoogleMeetLink = c.GoogleMeetLink,
