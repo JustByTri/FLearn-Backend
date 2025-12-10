@@ -1,7 +1,7 @@
 ﻿using BLL.IServices.Assessment;
+using BLL.IServices.FirebaseService;
 using BLL.IServices.ProgressTracking;
 using BLL.IServices.Wallets;
-using BLL.IServices.FirebaseService;
 using Common.DTO.ApiResponse;
 using Common.DTO.ExerciseGrading.Request;
 using Common.DTO.ExerciseGrading.Response;
@@ -21,11 +21,11 @@ namespace BLL.Services.ProgressTracking
         private readonly IAssessmentService _assessmentService;
         private readonly IBackgroundJobClient _backgroundJobClient;
         private readonly IFirebaseNotificationService _notificationService;
-        
+
         public ExerciseGradingService(
-            IUnitOfWork unitOfWork, 
-            IAssessmentService assessmentService, 
-            IBackgroundJobClient backgroundJobClient, 
+            IUnitOfWork unitOfWork,
+            IAssessmentService assessmentService,
+            IBackgroundJobClient backgroundJobClient,
             IFirebaseNotificationService notificationService)
         {
             _unitOfWork = unitOfWork;
@@ -828,7 +828,7 @@ namespace BLL.Services.ProgressTracking
 
             var allocation = assignment.EarningAllocation;
 
-            if (allocation != null && isFirstTeacherGrading)
+            if (allocation != null)
             {
                 var learnerId = submission.Learner.UserId;
                 var courseId = submission.Exercise.Lesson.CourseUnit.CourseID;
