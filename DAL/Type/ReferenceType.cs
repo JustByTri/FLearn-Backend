@@ -6,8 +6,9 @@
         GradingFee,          // Phí chấm bài
         TeacherPayout,       // Thanh toán cho giáo viên
         WithdrawalRequest,   // Yêu cầu rút tiền của teacher
-        Refund,
-        CoursePurchase,
-        Class                // Thanh toán từ lớp học
+        Refund,              // Hoàn tiền
+        CoursePurchase,      // Mua khóa học
+        Class,               // Thanh toán từ lớp học (payout)
+        ClassEnrollment      // Đăng ký lớp học (học viên thanh toán)
     }
 }

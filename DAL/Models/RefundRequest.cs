@@ -62,11 +62,12 @@ namespace DAL.Models
         StudentPersonalReason = 2,
         ClassQualityIssue = 3,
         TechnicalIssue = 4,
-        Other = 5
+        Other = 5,
+        DisputeResolved = 6  // Dispute được chấp nhận → hoàn tiền
     }
 
     public enum RefundRequestStatus
-    {
+    {   
         Draft = 0,          // ✨ MỚI: Chưa điền STK
         Pending = 1,        // Đã điền STK, chờ admin xử lý
         UnderReview = 2,    // Admin đang review

@@ -95,6 +95,7 @@ namespace BLL.Services.Enrollment
 
         /// <summary>
         /// Bước 2: Sau khi callback thanh toán thành công, tạo enrollment
+        /// ✅ THÊM: Cộng tiền vào HoldBalance của Admin Wallet
         /// </summary>
         public async Task<bool> ConfirmEnrollmentAsync(Guid studentId, Guid classId, string transactionId)
         {
@@ -132,11 +133,15 @@ namespace BLL.Services.Enrollment
                 };
 
                 await _unitOfWork.ClassEnrollments.CreateAsync(enrollment);
+
+                // ✅ THÊM: Cộng tiền vào HoldBalance của Admin Wallet
+                await TransferClassPaymentToAdminWalletAsync(enrollment, teacherClass);
+
                 await _unitOfWork.SaveChangesAsync();
 
                 _logger.LogInformation(
-                    "Enrollment confirmed for student {StudentId} in class {ClassId}. TransactionId: {TransactionId}",
-                    studentId, classId, transactionId);
+                    "✅ Enrollment confirmed for student {StudentId} in class {ClassId}. TransactionId: {TransactionId}. Amount: {Amount} VND added to Admin HoldBalance",
+                    studentId, classId, transactionId, teacherClass.PricePerStudent);
 
                 // Lấy thông tin student và teacher
                 var student = await _unitOfWork.Users.GetByIdAsync(studentId);
@@ -456,6 +461,65 @@ namespace BLL.Services.Enrollment
             // Có thể join nếu lớp đã bắt đầu nhưng chưa kết thúc
             return now >= classStartTime && now <= classEndTime &&
                    (enrollment.Class.Status == ClassStatus.InProgress || enrollment.Class.Status == ClassStatus.Published);
+        }
+
+        /// <summary>
+        /// ✅ MỚI: Chuyển tiền thanh toán lớp học vào HoldBalance của Admin Wallet
+        /// - Tiền nằm trong HoldBalance cho đến khi:
+        ///   1. Lớp kết thúc + 3 ngày (dispute window)
+        ///   2. Tất cả disputes được giải quyết + 3 ngày
+        /// - Sau đó ClassLifecycleService sẽ chuyển từ HoldBalance sang Teacher
+        /// </summary>
+        private async Task TransferClassPaymentToAdminWalletAsync(ClassEnrollment enrollment, TeacherClass teacherClass)
+        {
+            var now = DateTime.UtcNow;
+
+            // Lấy hoặc tạo Admin Wallet
+            var adminWallet = await _unitOfWork.Wallets.Query()
+                .FirstOrDefaultAsync(w => w.OwnerType == DAL.Type.OwnerType.Admin);
+
+            if (adminWallet == null)
+            {
+                adminWallet = new DAL.Models.Wallet
+                {
+                    WalletId = Guid.NewGuid(),
+                    OwnerType = DAL.Type.OwnerType.Admin,
+                    Name = "System Administration Wallet",
+                    Currency = DAL.Type.CurrencyType.VND,
+                    TotalBalance = 0,
+                    AvailableBalance = 0,
+                    HoldBalance = 0,
+                    Status = true,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                await _unitOfWork.Wallets.CreateAsync(adminWallet);
+            }
+
+            // Cộng tiền vào HoldBalance (chờ dispute window)
+            adminWallet.TotalBalance += enrollment.AmountPaid;
+            adminWallet.HoldBalance += enrollment.AmountPaid;
+            adminWallet.UpdatedAt = now;
+
+            // Tạo transaction record
+            var transaction = new DAL.Models.WalletTransaction
+            {
+                WalletTransactionId = Guid.NewGuid(),
+                WalletId = adminWallet.WalletId,
+                TransactionType = DAL.Type.TransactionType.Transfer,
+                Amount = enrollment.AmountPaid,
+                ReferenceId = enrollment.EnrollmentID,
+                ReferenceType = DAL.Type.ReferenceType.ClassEnrollment,
+                Description = $"Học viên đăng ký lớp '{teacherClass.Title}' - Tiền tạm giữ chờ dispute window",
+                Status = DAL.Type.TransactionStatus.Succeeded,
+                CreatedAt = now
+            };
+
+            await _unitOfWork.WalletTransactions.AddAsync(transaction);
+
+            _logger.LogInformation(
+                "💰 [ClassEnrollment] Added {Amount:N0} VND to Admin HoldBalance for enrollment {EnrollmentId}",
+                enrollment.AmountPaid, enrollment.EnrollmentID);
         }
     }
 }
