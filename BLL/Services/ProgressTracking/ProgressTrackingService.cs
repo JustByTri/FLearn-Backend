@@ -1,7 +1,7 @@
-﻿using BLL.IServices.Gamification;
+﻿using BLL.IServices.FirebaseService;
+using BLL.IServices.Gamification;
 using BLL.IServices.ProgressTracking;
 using BLL.IServices.Upload;
-using BLL.IServices.FirebaseService;
 using Common.DTO.ApiResponse;
 using Common.DTO.ExerciseGrading.Request;
 using Common.DTO.ExerciseSubmission.Response;
@@ -29,6 +29,7 @@ namespace BLL.Services.ProgressTracking
         private readonly ILogger<ProgressTrackingService> _logger;
         private const double DefaultAIPercentage = 30;
         private const double DefaultTeacherPercentage = 70;
+        private const int MAX_DAILY_SUBMISSIONS = 5;
         public ProgressTrackingService(IUnitOfWork unitOfWork, IExerciseGradingService exerciseGradingService, ICloudinaryService cloudinaryService, IGamificationService gamificationService, IBackgroundJobClient backgroundJobClient, IFirebaseNotificationService notificationService, ILogger<ProgressTrackingService> logger)
         {
             _unitOfWork = unitOfWork;
@@ -1077,7 +1078,7 @@ namespace BLL.Services.ProgressTracking
                              es.SubmittedAt < tomorrow)
                 .CountAsync();
 
-            return todaysSubmissions < 100;
+            return todaysSubmissions < MAX_DAILY_SUBMISSIONS;
         }
         #endregion
     }
