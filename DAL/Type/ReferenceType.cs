@@ -7,6 +7,7 @@
         TeacherPayout,       // Thanh toán cho giáo viên
         WithdrawalRequest,   // Yêu cầu rút tiền của teacher
         Refund,
-        CoursePurchase
+        CoursePurchase,
+        Class                // Thanh toán từ lớp học
     }
 }

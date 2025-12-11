@@ -12,6 +12,7 @@ using BLL.IServices.CourseTemplate;
 using BLL.IServices.CourseUnit;
 using BLL.IServices.Coversation;
 using BLL.IServices.Dashboard;
+using BLL.IServices.Dispute;
 using BLL.IServices.Enrollment;
 using BLL.IServices.Exercise;
 using BLL.IServices.FirebaseService;
@@ -43,6 +44,7 @@ using BLL.Services.CourseReview;
 using BLL.Services.CourseTemplate;
 using BLL.Services.CourseUnits;
 using BLL.Services.Dashboard;
+using BLL.Services.Dispute;
 using BLL.Services.Enrollment;
 using BLL.Services.Exercise;
 using BLL.Services.FirebaseService;
@@ -185,6 +187,7 @@ namespace BLL
             services.AddScoped<ILessonProgressService, LessonProgressService>();
             services.AddHostedService<DailyConversationResetService>();
             services.AddHostedService<SubscriptionExpiryService>();
+            services.AddHostedService<ClassLifecycleService>(); // Quản lý vòng đời lớp học & payout
             services.AddScoped<IPronunciationService, PronunciationService>();
             services.AddScoped<IGamificationService, GamificationService>();
             services.AddScoped<IManagerDashboardService, ManagerDashboardService>();
@@ -192,8 +195,8 @@ namespace BLL
             services.AddScoped<ITeacherReviewService, TeacherReviewService>();
             services.AddScoped<IAIContentModerationService, AIContentModerationService>();
             services.AddScoped<IAppReviewService, AppReviewService>();
+            services.AddScoped<IClassDisputeService, ClassDisputeService>(); // Khiếu nại lớp học cho học viên
             
-          
             services.AddScoped<IFirebaseNotificationService, FirebaseNotificationService>();
             services.AddHostedService<ClassNotificationBackgroundService>();
             
