@@ -13,8 +13,9 @@ namespace BLL.Background
     /// <summary>
     /// Background Service quản lý vòng đời lớp học:
     /// 1. Tự động chuyển trạng thái: Published → InProgress → Finished → Completed_PendingPayout → Completed_Paid
-    /// 2. Xử lý dispute window (3 ngày sau khi lớp kết thúc)
+    /// 2. Xử lý dispute window (3 ngày sau khi lớp kết thúc HOẶC 3 ngày sau khi dispute được giải quyết)
     /// 3. Chuyển tiền vào ví giáo viên (90% cho teacher, 10% platform fee)
+    /// 4. Xử lý các dispute đã được resolved (hoàn tiền cho học viên)
     /// </summary>
     public class ClassLifecycleService : BackgroundService
     {
@@ -25,7 +26,7 @@ namespace BLL.Background
         private const decimal PLATFORM_FEE_PERCENTAGE = 0.10m;
         private const decimal TEACHER_PERCENTAGE = 0.90m;
 
-        // Dispute window: 3 ngày sau khi lớp kết thúc
+        // Dispute window: 3 ngày
         private const int DISPUTE_WINDOW_DAYS = 3;
 
         public ClassLifecycleService(IServiceProvider serviceProvider, ILogger<ClassLifecycleService> logger)
@@ -38,10 +39,10 @@ namespace BLL.Background
         {
             await Task.Yield();
 
-            // Delay khởi động 2 phút để đợi các service khác sẵn sàng
-            await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
+            // Delay khởi động 30 giây để đợi các service khác sẵn sàng
+            await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
 
-            _logger.LogInformation("🚀 [ClassLifecycle] Service started");
+            _logger.LogInformation("🚀 [ClassLifecycle] Service started at {Time} (Vietnam Time)", TimeHelper.GetVietnamTime());
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -51,17 +52,23 @@ namespace BLL.Background
                     var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
                     var firebaseService = scope.ServiceProvider.GetRequiredService<IFirebaseNotificationService>();
 
+                    var now = TimeHelper.GetVietnamTime();
+                    _logger.LogInformation("🔄 [ClassLifecycle] Running at {Time} (Vietnam Time)", now);
+
                     // 1. Cập nhật lớp đang diễn ra (Published → InProgress)
-                    await UpdateClassesToInProgress(unitOfWork);
+                    //    Hoặc xử lý lớp bị bỏ lỡ (Published → Finished)
+                    await UpdateClassesToInProgress(unitOfWork, now);
 
                     // 2. Cập nhật lớp đã kết thúc (InProgress → Finished)
-                    await UpdateClassesToFinished(unitOfWork);
+                    await UpdateClassesToFinished(unitOfWork, now);
 
                     // 3. Xử lý dispute window và chuyển sang Completed_PendingPayout
-                    await HandleDisputeWindowAndMarkPendingPayout(unitOfWork);
+                    //    - Nếu KHÔNG có dispute: 3 ngày sau khi lớp kết thúc
+                    //    - Nếu CÓ dispute: 3 ngày sau khi TẤT CẢ disputes được giải quyết
+                    await HandleDisputeWindowAndMarkPendingPayout(unitOfWork, firebaseService, now);
 
                     // 4. Xử lý payout cho giáo viên (Completed_PendingPayout → Completed_Paid)
-                    await ProcessTeacherPayouts(unitOfWork, firebaseService);
+                    await ProcessTeacherPayouts(unitOfWork, firebaseService, now);
 
                     await unitOfWork.SaveChangesAsync();
                 }
@@ -70,8 +77,8 @@ namespace BLL.Background
                     _logger.LogError(ex, "❌ [ClassLifecycle] Error in main loop");
                 }
 
-                // Chạy mỗi 15 phút
-                await Task.Delay(TimeSpan.FromMinutes(15), stoppingToken);
+                // Chạy mỗi 5 phút (có thể điều chỉnh lên 15 phút khi production)
+                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
             }
 
             _logger.LogInformation("🛑 [ClassLifecycle] Service stopped");
@@ -79,13 +86,13 @@ namespace BLL.Background
 
         /// <summary>
         /// Cập nhật lớp từ Published → InProgress khi đến giờ bắt đầu
+        /// HOẶC từ Published → Finished nếu đã qua cả giờ kết thúc (trường hợp bỏ lỡ)
         /// </summary>
-        private async Task UpdateClassesToInProgress(IUnitOfWork unitOfWork)
+        private async Task UpdateClassesToInProgress(IUnitOfWork unitOfWork, DateTime now)
         {
             try
             {
-                var now = DateTime.UtcNow;
-
+                // Lớp đang trong thời gian diễn ra (StartDateTime <= now < EndDateTime)
                 var classesToStart = await unitOfWork.TeacherClasses.Query()
                     .Where(c => c.Status == ClassStatus.Published
                              && c.StartDateTime <= now
@@ -98,14 +105,36 @@ namespace BLL.Background
                     teacherClass.UpdatedAt = now;
 
                     _logger.LogInformation(
-                        "▶️ [ClassLifecycle] Class {ClassId} ({Title}) started - Status: InProgress",
-                        teacherClass.ClassID, teacherClass.Title);
+                        "▶️ [ClassLifecycle] Class {ClassId} ({Title}) started - Status: InProgress. StartTime: {Start}, Now: {Now}",
+                        teacherClass.ClassID, teacherClass.Title, teacherClass.StartDateTime, now);
                 }
 
                 if (classesToStart.Any())
                 {
                     await unitOfWork.SaveChangesAsync();
                     _logger.LogInformation("✅ [ClassLifecycle] Updated {Count} classes to InProgress", classesToStart.Count);
+                }
+
+                // ⚠️ XỬ LÝ TRƯỜNG HỢP BỎ LỠ: Lớp đã qua cả giờ kết thúc nhưng vẫn ở Published
+                var missedClasses = await unitOfWork.TeacherClasses.Query()
+                    .Where(c => c.Status == ClassStatus.Published
+                             && c.EndDateTime <= now) // Đã qua giờ kết thúc
+                    .ToListAsync();
+
+                foreach (var teacherClass in missedClasses)
+                {
+                    teacherClass.Status = ClassStatus.Finished;
+                    teacherClass.UpdatedAt = now;
+
+                    _logger.LogWarning(
+                        "⚠️ [ClassLifecycle] Class {ClassId} ({Title}) missed InProgress - Status: Published → Finished directly. EndTime: {End}, Now: {Now}",
+                        teacherClass.ClassID, teacherClass.Title, teacherClass.EndDateTime, now);
+                }
+
+                if (missedClasses.Any())
+                {
+                    await unitOfWork.SaveChangesAsync();
+                    _logger.LogInformation("✅ [ClassLifecycle] Updated {Count} missed classes to Finished", missedClasses.Count);
                 }
             }
             catch (Exception ex)
@@ -117,12 +146,10 @@ namespace BLL.Background
         /// <summary>
         /// Cập nhật lớp từ InProgress → Finished khi hết giờ
         /// </summary>
-        private async Task UpdateClassesToFinished(IUnitOfWork unitOfWork)
+        private async Task UpdateClassesToFinished(IUnitOfWork unitOfWork, DateTime now)
         {
             try
             {
-                var now = DateTime.UtcNow;
-
                 var classesToFinish = await unitOfWork.TeacherClasses.Query()
                     .Where(c => c.Status == ClassStatus.InProgress
                              && c.EndDateTime <= now)
@@ -151,45 +178,82 @@ namespace BLL.Background
         }
 
         /// <summary>
-        /// Sau dispute window (3 ngày), chuyển lớp sang Completed_PendingPayout
-        /// Nếu có dispute chưa giải quyết, giữ nguyên trạng thái Finished
+        /// Xử lý dispute window và chuyển lớp sang Completed_PendingPayout:
+        /// - Nếu KHÔNG có dispute: 3 ngày sau khi lớp kết thúc
+        /// - Nếu CÓ dispute đang pending: Giữ nguyên Finished, chờ giải quyết
+        /// - Nếu CÓ dispute đã resolved: 3 ngày sau khi dispute cuối cùng được giải quyết
         /// </summary>
-        private async Task HandleDisputeWindowAndMarkPendingPayout(IUnitOfWork unitOfWork)
+        private async Task HandleDisputeWindowAndMarkPendingPayout(IUnitOfWork unitOfWork, IFirebaseNotificationService firebaseService, DateTime now)
         {
             try
             {
-                var now = DateTime.UtcNow;
-                var disputeWindowEnd = now.AddDays(-DISPUTE_WINDOW_DAYS);
-
                 var finishedClasses = await unitOfWork.TeacherClasses.Query()
                     .Include(c => c.Disputes)
                     .Include(c => c.Enrollments)
-                    .Where(c => c.Status == ClassStatus.Finished
-                             && c.EndDateTime <= disputeWindowEnd) // Đã qua 3 ngày
+                    .Where(c => c.Status == ClassStatus.Finished)
                     .ToListAsync();
 
                 foreach (var teacherClass in finishedClasses)
                 {
-                    // Kiểm tra có dispute chưa giải quyết không
-                    var hasUnresolvedDispute = teacherClass.Disputes?
-                        .Any(d => d.Status == DisputeStatus.Open 
-                               || d.Status == DisputeStatus.UnderReview
-                               || d.Status == DisputeStatus.Submmitted) ?? false;
+                    var disputes = teacherClass.Disputes?.ToList() ?? new List<ClassDispute>();
+
+                    // Kiểm tra có dispute CHƯA giải quyết không
+                    var hasUnresolvedDispute = disputes.Any(d => 
+                        d.Status == DisputeStatus.Open 
+                        || d.Status == DisputeStatus.UnderReview
+                        || d.Status == DisputeStatus.Submmitted);
 
                     if (hasUnresolvedDispute)
                     {
                         _logger.LogWarning(
-                            "⚠️ [ClassLifecycle] Class {ClassId} has unresolved disputes - holding payout",
+                            "⏸️ [ClassLifecycle] Class {ClassId} has unresolved disputes - holding payout until resolved",
                             teacherClass.ClassID);
                         continue;
                     }
 
-                    // Kiểm tra có học viên đã thanh toán không
-                    var paidEnrollments = teacherClass.Enrollments?
+                    // Tính thời điểm có thể payout
+                    DateTime payoutEligibleDate;
+
+                    if (disputes.Any())
+                    {
+                        // CÓ dispute (đã resolved): 3 ngày sau khi dispute cuối cùng được giải quyết
+                        var lastResolvedDate = disputes
+                            .Where(d => d.ResolvedAt.HasValue)
+                            .Select(d => d.ResolvedAt!.Value)
+                            .DefaultIfEmpty(teacherClass.EndDateTime)
+                            .Max();
+
+                        payoutEligibleDate = lastResolvedDate.AddDays(DISPUTE_WINDOW_DAYS);
+
+                        _logger.LogInformation(
+                            "📋 [ClassLifecycle] Class {ClassId} has {Count} resolved disputes. Last resolved: {LastResolved}. Payout eligible: {EligibleDate}",
+                            teacherClass.ClassID, disputes.Count, lastResolvedDate, payoutEligibleDate);
+                    }
+                    else
+                    {
+                        // KHÔNG có dispute: 3 ngày sau khi lớp kết thúc
+                        payoutEligibleDate = teacherClass.EndDateTime.AddDays(DISPUTE_WINDOW_DAYS);
+                    }
+
+                    // Kiểm tra đã đủ thời gian chưa
+                    if (now < payoutEligibleDate)
+                    {
+                        var daysRemaining = (payoutEligibleDate - now).TotalDays;
+                        _logger.LogInformation(
+                            "⏳ [ClassLifecycle] Class {ClassId} not yet eligible for payout. {Days:F1} days remaining",
+                            teacherClass.ClassID, daysRemaining);
+                        continue;
+                    }
+
+                    // Xử lý các dispute đã resolved (tạo RefundRequest nếu cần)
+                    await ProcessResolvedDisputesForClass(unitOfWork, firebaseService, teacherClass, disputes, now);
+
+                    // Kiểm tra có học viên đã thanh toán không (sau khi trừ các dispute refund)
+                    var paidEnrollmentsCount = teacherClass.Enrollments?
                         .Count(e => e.Status == DAL.Models.EnrollmentStatus.Paid 
                                  || e.Status == DAL.Models.EnrollmentStatus.Completed) ?? 0;
 
-                    if (paidEnrollments == 0)
+                    if (paidEnrollmentsCount == 0)
                     {
                         _logger.LogInformation(
                             "ℹ️ [ClassLifecycle] Class {ClassId} has no paid enrollments - marking as Completed_Paid directly",
@@ -221,22 +285,114 @@ namespace BLL.Background
         }
 
         /// <summary>
+        /// Xử lý các dispute đã resolved cho một lớp học:
+        /// - Tạo RefundRequest cho học viên có dispute được chấp nhận
+        /// - Cập nhật enrollment status
+        /// </summary>
+        private async Task ProcessResolvedDisputesForClass(
+            IUnitOfWork unitOfWork,
+            IFirebaseNotificationService firebaseService,
+            TeacherClass teacherClass,
+            List<ClassDispute> disputes,
+            DateTime now)
+        {
+            var resolvedDisputes = disputes.Where(d => 
+                d.Status == DisputeStatus.Resolved_Refunded 
+                || d.Status == DisputeStatus.Resolved_PartialRefund).ToList();
+
+            foreach (var dispute in resolvedDisputes)
+            {
+                // Kiểm tra đã tạo RefundRequest chưa
+                var existingRefund = await unitOfWork.RefundRequests.Query()
+                    .AnyAsync(r => r.EnrollmentID == dispute.EnrollmentID 
+                                && r.RequestType == RefundRequestType.DisputeResolved);
+
+                if (existingRefund)
+                {
+                    continue; // Đã xử lý rồi
+                }
+
+                // Lấy enrollment
+                var enrollment = await unitOfWork.ClassEnrollments.GetByIdAsync(dispute.EnrollmentID);
+                if (enrollment == null) continue;
+
+                // Tính số tiền hoàn
+                decimal refundAmount = dispute.Status == DisputeStatus.Resolved_Refunded
+                    ? enrollment.AmountPaid
+                    : enrollment.AmountPaid * 0.5m; // Partial = 50%
+
+                // Tạo RefundRequest cho học viên
+                var refundRequest = new RefundRequest
+                {
+                    RefundRequestID = Guid.NewGuid(),
+                    EnrollmentID = enrollment.EnrollmentID,
+                    ClassID = teacherClass.ClassID,
+                    StudentID = dispute.StudentID,
+                    RequestType = RefundRequestType.DisputeResolved,
+                    Reason = $"Dispute được chấp nhận: {dispute.Reason}",
+                    RefundAmount = refundAmount,
+                    Status = RefundRequestStatus.Draft,
+                    BankName = string.Empty,
+                    BankAccountNumber = string.Empty,
+                    BankAccountHolderName = string.Empty,
+                    RequestedAt = now,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                await unitOfWork.RefundRequests.CreateAsync(refundRequest);
+
+                // Cập nhật enrollment status
+                enrollment.Status = DAL.Models.EnrollmentStatus.PendingRefund;
+                enrollment.UpdatedAt = now;
+
+                _logger.LogInformation(
+                    "✅ [ClassLifecycle] Created RefundRequest {RefundId} for dispute {DisputeId}, Amount: {Amount}",
+                    refundRequest.RefundRequestID, dispute.DisputeID, refundAmount);
+
+                // Gửi thông báo cho học viên
+                var student = await unitOfWork.Users.GetByIdAsync(dispute.StudentID);
+                if (student != null && !string.IsNullOrEmpty(student.FcmToken))
+                {
+                    try
+                    {
+                        await firebaseService.SendNotificationAsync(
+                            student.FcmToken,
+                            "Khiếu nại được chấp nhận ✅",
+                            $"Bạn sẽ được hoàn {refundAmount:N0} VND từ lớp '{teacherClass.Title}'. Vui lòng cập nhật thông tin ngân hàng để nhận tiền.",
+                            new Dictionary<string, string>
+                            {
+                                { "type", "dispute_resolved_refund" },
+                                { "disputeId", dispute.DisputeID.ToString() },
+                                { "refundRequestId", refundRequest.RefundRequestID.ToString() },
+                                { "amount", refundAmount.ToString() }
+                            }
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "[FCM] Failed to send dispute result notification to student");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// Xử lý payout cho giáo viên:
-        /// - Tính tổng tiền từ enrollments
+        /// - Tính tổng tiền từ enrollments (TRỪ các enrollment có dispute refund)
         /// - Trừ platform fee (10%)
         /// - Cộng vào ví giáo viên (90%)
+        /// - Tạo transaction cho cả Admin và Teacher wallet
         /// - Chuyển trạng thái sang Completed_Paid
         /// </summary>
-        private async Task ProcessTeacherPayouts(IUnitOfWork unitOfWork, IFirebaseNotificationService firebaseService)
+        private async Task ProcessTeacherPayouts(IUnitOfWork unitOfWork, IFirebaseNotificationService firebaseService, DateTime now)
         {
             try
             {
-                var now = DateTime.UtcNow;
-
                 var classesForPayout = await unitOfWork.TeacherClasses.Query()
                     .Include(c => c.Teacher)
                         .ThenInclude(t => t!.TeacherProfile)
                     .Include(c => c.Enrollments)
+                    .Include(c => c.Disputes)
                     .Where(c => c.Status == ClassStatus.Completed_PendingPayout)
                     .ToListAsync();
 
@@ -269,26 +425,49 @@ namespace BLL.Background
             TeacherClass teacherClass,
             DateTime now)
         {
-            // 1. Tính tổng tiền từ các enrollment đã thanh toán
+            // Lấy danh sách enrollment IDs có dispute được refund (để loại trừ)
+            var refundedEnrollmentIds = teacherClass.Disputes?
+                .Where(d => d.Status == DisputeStatus.Resolved_Refunded 
+                         || d.Status == DisputeStatus.Resolved_PartialRefund)
+                .Select(d => d.EnrollmentID)
+                .ToHashSet() ?? new HashSet<Guid>();
+
+            // 1. Tính tổng tiền từ các enrollment đã thanh toán (LOẠI TRỪ các dispute refund)
             var paidEnrollments = teacherClass.Enrollments?
-                .Where(e => e.Status == DAL.Models.EnrollmentStatus.Paid 
-                         || e.Status == DAL.Models.EnrollmentStatus.Completed)
+                .Where(e => (e.Status == DAL.Models.EnrollmentStatus.Paid 
+                          || e.Status == DAL.Models.EnrollmentStatus.Completed)
+                         && !refundedEnrollmentIds.Contains(e.EnrollmentID))
                 .ToList() ?? new List<ClassEnrollment>();
 
-            if (!paidEnrollments.Any())
+            // Tính tiền từ partial refund (chỉ lấy 50%)
+            var partialRefundEnrollments = teacherClass.Enrollments?
+                .Where(e => refundedEnrollmentIds.Contains(e.EnrollmentID))
+                .Join(teacherClass.Disputes!.Where(d => d.Status == DisputeStatus.Resolved_PartialRefund),
+                      e => e.EnrollmentID,
+                      d => d.EnrollmentID,
+                      (e, d) => e)
+                .ToList() ?? new List<ClassEnrollment>();
+
+            var totalRevenue = paidEnrollments.Sum(e => e.AmountPaid) 
+                             + partialRefundEnrollments.Sum(e => e.AmountPaid * 0.5m); // 50% cho partial refund
+
+            if (totalRevenue <= 0)
             {
+                _logger.LogInformation(
+                    "ℹ️ [ClassLifecycle] Class {ClassId} has no revenue after disputes - marking as Completed_Paid directly",
+                    teacherClass.ClassID);
+
                 teacherClass.Status = ClassStatus.Completed_Paid;
                 teacherClass.UpdatedAt = now;
                 await unitOfWork.SaveChangesAsync();
                 return;
             }
 
-            var totalRevenue = paidEnrollments.Sum(e => e.AmountPaid);
             var platformFee = totalRevenue * PLATFORM_FEE_PERCENTAGE;
             var teacherPayout = totalRevenue * TEACHER_PERCENTAGE;
 
             _logger.LogInformation(
-                "💵 [ClassLifecycle] Class {ClassId}: TotalRevenue={Total}, PlatformFee={Fee} (10%), TeacherPayout={Payout} (90%)",
+                "💵 [ClassLifecycle] Class {ClassId}: TotalRevenue={Total} (after disputes), PlatformFee={Fee} (10%), TeacherPayout={Payout} (90%)",
                 teacherClass.ClassID, totalRevenue, platformFee, teacherPayout);
 
             // 2. Lấy ví của giáo viên
@@ -312,13 +491,71 @@ namespace BLL.Background
                 return;
             }
 
-            // 3. Cộng tiền vào ví giáo viên
+            // 3. Lấy ví Admin (Platform)
+            var adminWallet = await unitOfWork.Wallets.Query()
+                .FirstOrDefaultAsync(w => w.OwnerType == OwnerType.Admin);
+
+            if (adminWallet == null)
+            {
+                _logger.LogError("❌ [ClassLifecycle] Admin wallet not found!");
+                return;
+            }
+
+            // 4. Kiểm tra Admin HoldBalance có đủ tiền không (tiền học phí nằm trong Hold)
+            if (adminWallet.HoldBalance < totalRevenue)
+            {
+                _logger.LogError(
+                    "❌ [ClassLifecycle] Admin wallet insufficient HoldBalance! Hold: {Hold}, Required: {Required}",
+                    adminWallet.HoldBalance, totalRevenue);
+                return;
+            }
+
+            // 5. Chuyển tiền từ HoldBalance của Admin
+            // - Trừ toàn bộ từ HoldBalance
+            // - Platform fee (10%) vào AvailableBalance của Admin
+            // - Teacher payout (90%) chuyển sang Teacher
+            adminWallet.HoldBalance -= totalRevenue;
+            adminWallet.AvailableBalance += platformFee; // Admin giữ 10%
+            adminWallet.TotalBalance -= teacherPayout; // Trừ 90% khỏi Total
+            adminWallet.UpdatedAt = now;
+
+            // 6. Tạo transaction cho Admin (platform fee)
+            var adminPlatformFeeTransaction = new WalletTransaction
+            {
+                WalletTransactionId = Guid.NewGuid(),
+                WalletId = adminWallet.WalletId,
+                TransactionType = DAL.Type.TransactionType.Transfer,
+                Amount = platformFee,
+                ReferenceId = teacherClass.ClassID,
+                ReferenceType = DAL.Type.ReferenceType.Class,
+                Description = $"Platform fee (10%) từ lớp '{teacherClass.Title}'",
+                Status = DAL.Type.TransactionStatus.Succeeded,
+                CreatedAt = now
+            };
+            await unitOfWork.WalletTransactions.AddAsync(adminPlatformFeeTransaction);
+
+            // 7. Tạo transaction cho Admin (chuyển cho Teacher)
+            var adminPayoutTransaction = new WalletTransaction
+            {
+                WalletTransactionId = Guid.NewGuid(),
+                WalletId = adminWallet.WalletId,
+                TransactionType = DAL.Type.TransactionType.Payout,
+                Amount = -teacherPayout,
+                ReferenceId = teacherClass.ClassID,
+                ReferenceType = DAL.Type.ReferenceType.Class,
+                Description = $"Chuyển tiền cho GV từ lớp '{teacherClass.Title}' ({paidEnrollments.Count + partialRefundEnrollments.Count} học viên)",
+                Status = DAL.Type.TransactionStatus.Succeeded,
+                CreatedAt = now
+            };
+            await unitOfWork.WalletTransactions.AddAsync(adminPayoutTransaction);
+
+            // 8. Cộng tiền vào ví giáo viên
             teacherWallet.TotalBalance += teacherPayout;
             teacherWallet.AvailableBalance += teacherPayout;
             teacherWallet.UpdatedAt = now;
 
-            // 4. Tạo wallet transaction cho giáo viên
-            var walletTransaction = new WalletTransaction
+            // 9. Tạo wallet transaction cho giáo viên (cộng tiền)
+            var teacherTransaction = new WalletTransaction
             {
                 WalletTransactionId = Guid.NewGuid(),
                 WalletId = teacherWallet.WalletId,
@@ -326,14 +563,13 @@ namespace BLL.Background
                 Amount = teacherPayout,
                 ReferenceId = teacherClass.ClassID,
                 ReferenceType = DAL.Type.ReferenceType.Class,
-                Description = $"Thanh toán lớp học '{teacherClass.Title}' ({paidEnrollments.Count} học viên)",
+                Description = $"Nhận thanh toán lớp học '{teacherClass.Title}' ({paidEnrollments.Count + partialRefundEnrollments.Count} học viên, 90%)",
                 Status = DAL.Type.TransactionStatus.Succeeded,
                 CreatedAt = now
             };
+            await unitOfWork.WalletTransactions.AddAsync(teacherTransaction);
 
-            await unitOfWork.WalletTransactions.AddAsync(walletTransaction);
-
-            // 5. Tạo TeacherPayout record
+            // 10. Tạo TeacherPayout record
             var teacherPayoutRecord = new TeacherPayout
             {
                 TeacherPayoutId = Guid.NewGuid(),
@@ -345,45 +581,48 @@ namespace BLL.Background
                 TotalEarnings = (double)totalRevenue,
                 FinalAmount = (double)teacherPayout,
                 Status = TeacherPayoutStatus.Paid,
-                StaffId = Guid.Empty, // System auto-payout
+                StaffId = Guid.Empty,
                 CreatedAt = now,
                 UpdatedAt = now
             };
-
             await unitOfWork.TeacherPayouts.CreateAsync(teacherPayoutRecord);
 
-            // 6. Cập nhật trạng thái enrollments
+            // 11. Cập nhật trạng thái enrollments (chỉ các enrollment không bị refund)
             foreach (var enrollment in paidEnrollments)
             {
                 enrollment.Status = DAL.Models.EnrollmentStatus.Completed;
                 enrollment.UpdatedAt = now;
             }
 
-            // 7. Cập nhật trạng thái lớp
+            // 12. Cập nhật trạng thái lớp
             teacherClass.Status = ClassStatus.Completed_Paid;
             teacherClass.UpdatedAt = now;
 
             await unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation(
-                "✅ [ClassLifecycle] Payout completed for class {ClassId}: {Amount:N0} VND added to teacher wallet",
-                teacherClass.ClassID, teacherPayout);
+                "✅ [ClassLifecycle] Payout completed for class {ClassId}: {Amount:N0} VND transferred to Teacher wallet. Admin kept {Fee:N0} VND (10%)",
+                teacherClass.ClassID, teacherPayout, platformFee);
 
-            // 8. Gửi thông báo cho giáo viên
+            // 13. Gửi thông báo cho giáo viên
             if (teacherClass.Teacher != null && !string.IsNullOrEmpty(teacherClass.Teacher.FcmToken))
             {
                 try
                 {
+                    var disputeNote = refundedEnrollmentIds.Any() 
+                        ? $" (đã trừ {refundedEnrollmentIds.Count} dispute)" 
+                        : "";
+
                     await firebaseService.SendNotificationAsync(
                         teacherClass.Teacher.FcmToken,
                         "Thanh toán lớp học thành công 💰",
-                        $"Bạn đã nhận được {teacherPayout:N0} VND từ lớp '{teacherClass.Title}' ({paidEnrollments.Count} học viên)",
+                        $"Bạn đã nhận được {teacherPayout:N0} VND từ lớp '{teacherClass.Title}'{disputeNote}",
                         new Dictionary<string, string>
                         {
                             { "type", "class_payout_completed" },
                             { "classId", teacherClass.ClassID.ToString() },
                             { "amount", teacherPayout.ToString() },
-                            { "walletTransactionId", walletTransaction.WalletTransactionId.ToString() }
+                            { "walletTransactionId", teacherTransaction.WalletTransactionId.ToString() }
                         }
                     );
                 }
