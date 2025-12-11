@@ -138,6 +138,12 @@ namespace BLL.Services.Exercise
                 await _unit.Exercises.CreateAsync(newExercise);
                 selectedLesson.TotalExercises += 1;
                 await _unit.Lessons.UpdateAsync(selectedLesson);
+
+                if (selectedCourse.Status == CourseStatus.Rejected)
+                {
+                    selectedCourse.Status = CourseStatus.Draft;
+                }
+
                 await _unit.SaveChangesAsync();
 
                 var response = new ExerciseResponse
@@ -586,6 +592,11 @@ namespace BLL.Services.Exercise
 
                 var updated = await _unit.Exercises.UpdateAsync(selectedExercise);
                 if (updated <= 0) return BaseResponse<ExerciseResponse>.Fail("Failed to update exercise in DB.");
+
+                if (selectedCourse.Status == CourseStatus.Rejected)
+                {
+                    selectedCourse.Status = CourseStatus.Draft;
+                }
 
                 await _unit.SaveChangesAsync();
 

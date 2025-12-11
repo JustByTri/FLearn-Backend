@@ -69,6 +69,12 @@ namespace BLL.Services.CourseUnits
             try
             {
                 selectedCourse.NumUnits += 1;
+
+                if (selectedCourse.Status == CourseStatus.Rejected)
+                {
+                    selectedCourse.Status = CourseStatus.Draft;
+                }
+
                 await _unit.CourseUnits.CreateAsync(newUnit);
                 await _unit.SaveChangesAsync();
 
@@ -263,6 +269,11 @@ namespace BLL.Services.CourseUnits
 
             try
             {
+                if (selectedCourse.Status == CourseStatus.Rejected)
+                {
+                    selectedCourse.Status = CourseStatus.Draft;
+                }
+
                 var result = await _unit.SaveChangesAsync();
 
                 if (result < 0)
