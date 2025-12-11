@@ -342,14 +342,20 @@ namespace BLL.Services.Refund
         public async Task<BaseResponse<IEnumerable<RefundRequestDto>>> GetMyRefundRequestsAsync(Guid learnerId)
         {
             var requests = await _unitOfWork.RefundRequests.GetByLearnerIdAsync(learnerId);
-
-
             var myRequests = requests.Where(r => r.EnrollmentID != null);
 
-            var requestsDto = myRequests.Select(r => MapToDto(
-                r,
-                r.TeacherClass?.Title ?? (r.ClassEnrollment?.Class?.Title ?? "Lớp học không còn tồn tại")
-            )).ToList();
+            var requestsDto = new List<RefundRequestDto>();
+            foreach (var r in myRequests)
+            {
+                string className = "Lớp học không còn tồn tại";
+                if (r.ClassID != null)
+                {
+                    var teacherClass = await _unitOfWork.TeacherClasses.FindAsync(c => c.ClassID == r.ClassID);
+                    if (teacherClass != null)
+                        className = teacherClass.Title;
+                }
+                requestsDto.Add(MapToDto(r, r.Student?.UserName, className));
+            }
 
             return BaseResponse<IEnumerable<RefundRequestDto>>.Success(requestsDto, "Thành công", 200);
         }
