@@ -20,19 +20,28 @@ namespace BLL.Services.Assessment
         private static IConfiguration _configuration;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IPronunciationService _pronunciationService;
-        private const string MULTILINGUAL_SCORING_SYSTEM_PROMPT = @"You are an expert speaking examiner for English, Japanese and Chinese.
-                                                                    Always return EXACTLY valid JSON with the schema described.
-                                                                    Do NOT output anything outside that JSON.
-                                                                    IMPORTANT: Do NOT include a 'transcript' field in the JSON output.
-                                                                    You are grading the student's input provided in the prompt, not transcribing it.
-
-                                                                    Language codes: ""en"", ""ja"", ""zh"".
-
-                                                                    Scoring fields (0-100 integers):
-                                                                    pronunciation, fluency, coherence, accuracy, intonation, grammar, vocabulary
-                                                                    Also: cefr_level (A1..C2), overall (0-100), feedback (string).
-
-                                                                    Follow CEFR speaking descriptors. Use JLPT mapping for japanese and HSK mapping for chinese.";
+        private const string MULTILINGUAL_SCORING_SYSTEM_PROMPT = @"You are an expert speaking examiner.
+                                                                    Your task: Grade the student's speaking submission based on the provided transcript and context.
+                                                                    
+                                                                    CRITICAL OUTPUT RULES:
+                                                                    1. Return ONLY valid JSON. No markdown, no introductory text.
+                                                                    2. The 'feedback' field MUST be in VIETNAMESE (Tiếng Việt).
+                                                                    3. Do NOT include a 'transcript' field in the output.
+                                                                    
+                                                                    JSON Schema Example:
+                                                                    {
+                                                                      ""pronunciation"": 85,
+                                                                      ""fluency"": 80,
+                                                                      ""coherence"": 75,
+                                                                      ""accuracy"": 90,
+                                                                      ""intonation"": 70,
+                                                                      ""grammar"": 85,
+                                                                      ""vocabulary"": 80,
+                                                                      ""cefr_level"": ""B1"",
+                                                                      ""overall"": 82,
+                                                                      ""feedback"": ""Bạn phát âm khá tốt, tuy nhiên cần chú ý âm đuôi (ending sounds) ở các từ số nhiều. Ngữ điệu còn hơi phẳng, hãy thử lên xuống giọng tự nhiên hơn.""
+                                                                    }
+                                                                    ";
         public AssessmentService(IConfiguration configuration, IUnitOfWork unitOfWork, IPronunciationService pronunciationService)
         {
             _configuration = configuration;
@@ -258,7 +267,7 @@ namespace BLL.Services.Assessment
                 },
                 Overall = fallbackScore,
                 Feedback = feedbackReason,
-                Transcript = "Audio quality was unclear or system encountered an error."
+                Transcript = "Chất lượng âm thanh không rõ hoặc hệ thống gặp lỗi khi xử lý."
             };
 
             SetLanguageSpecificLevels(result, languageCode);
@@ -846,6 +855,8 @@ namespace BLL.Services.Assessment
             basePrompt.AppendLine("### INSTRUCTIONS");
             basePrompt.Append($"You are an expert examiner grading an English {GetEnglishExerciseType(exercise.Type)} task. ");
 
+            basePrompt.AppendLine("You must provide constructive feedback explaining the mistakes and how to improve in VIETNAMESE.");
+
             switch (exercise.Type)
             {
                 case SpeakingExerciseType.RepeatAfterMe:
@@ -882,7 +893,7 @@ namespace BLL.Services.Assessment
                                   ""vocabulary"": 0-100,
                                   ""cefr_level"": ""A1"",
                                   ""overall"": 0-100,
-                                  ""feedback"": ""Specific feedback citing examples from their speech and the image..."",
+                                  ""feedback"": ""Nhận xét chi tiết bằng tiếng Việt, chỉ ra lỗi sai cụ thể và cách khắc phục..."",
                                 }");
 
             return basePrompt.ToString();
@@ -912,6 +923,7 @@ namespace BLL.Services.Assessment
 
             basePrompt.AppendLine("### 採点指示 (Instructions)");
             basePrompt.Append($"あなたは日本語教育の専門家として、この{GetJapaneseExerciseType(exercise.Type)}の課題を評価します。");
+            basePrompt.AppendLine("Provide feedback in VIETNAMESE (Tiếng Việt) so the student can understand.");
 
             switch (exercise.Type)
             {
@@ -949,7 +961,7 @@ namespace BLL.Services.Assessment
                                       ""vocabulary"": 0-100,
                                       ""cefr_level"": ""A1"",
                                       ""overall"": 0-100,
-                                      ""feedback"": ""画像の内容や学生の発話内容に基づいた具体的なフィードバック..."",
+                                      ""feedback"": ""Nhận xét chi tiết bằng tiếng Việt về ngữ pháp, từ vựng và phát âm tiếng Nhật..."",
                                     }");
 
             return basePrompt.ToString();
@@ -979,6 +991,7 @@ namespace BLL.Services.Assessment
 
             basePrompt.AppendLine("### 评分指令 (Instructions)");
             basePrompt.Append($"请作为专业的中文口语考官，对这个{GetChineseExerciseType(exercise.Type)}练习进行评分。");
+            basePrompt.AppendLine("Provide feedback in VIETNAMESE (Tiếng Việt).");
 
             switch (exercise.Type)
             {
@@ -1016,7 +1029,7 @@ namespace BLL.Services.Assessment
                                       ""vocabulary"": 0-100,
                                       ""cefr_level"": ""A1"",
                                       ""overall"": 0-100,
-                                      ""feedback"": ""针对图片内容和学生表现的具体反馈..."",
+                                      ""feedback"": ""Nhận xét chi tiết bằng tiếng Việt về thanh điệu, phát âm và dùng từ..."",
                                     }");
 
             return basePrompt.ToString();
