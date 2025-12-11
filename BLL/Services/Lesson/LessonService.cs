@@ -137,6 +137,11 @@ namespace BLL.Services.Lesson
                 selectedCourse.NumLessons += 1;
                 selectedUnit.TotalLessons += 1;
 
+                if (selectedCourse.Status == CourseStatus.Rejected)
+                {
+                    selectedCourse.Status = CourseStatus.Draft;
+                }
+
                 await _unit.SaveChangesAsync();
 
                 var response = new LessonResponse
@@ -473,6 +478,11 @@ namespace BLL.Services.Lesson
                     }
 
                     return BaseResponse<LessonResponse>.Fail("Failed to update lesson.");
+                }
+
+                if (selectedCourse.Status == CourseStatus.Rejected)
+                {
+                    selectedCourse.Status = CourseStatus.Draft;
                 }
 
                 await _unit.SaveChangesAsync();
