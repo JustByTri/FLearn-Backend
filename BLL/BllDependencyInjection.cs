@@ -187,7 +187,7 @@ namespace BLL
             services.AddScoped<ILessonProgressService, LessonProgressService>();
             services.AddHostedService<DailyConversationResetService>();
             services.AddHostedService<SubscriptionExpiryService>();
-            services.AddHostedService<ClassLifecycleService>(); // Quản lý vòng đời lớp học & payout
+            services.AddScoped<ClassLifecycleHangfireJob>();
             services.AddScoped<IPronunciationService, PronunciationService>();
             services.AddScoped<IGamificationService, GamificationService>();
             services.AddScoped<IManagerDashboardService, ManagerDashboardService>();
@@ -195,7 +195,7 @@ namespace BLL
             services.AddScoped<ITeacherReviewService, TeacherReviewService>();
             services.AddScoped<IAIContentModerationService, AIContentModerationService>();
             services.AddScoped<IAppReviewService, AppReviewService>();
-            services.AddScoped<IClassDisputeService, ClassDisputeService>(); // Khiếu nại lớp học cho học viên
+            services.AddScoped<IClassDisputeService, ClassDisputeService>(); 
             
             services.AddScoped<IFirebaseNotificationService, FirebaseNotificationService>();
             services.AddHostedService<ClassNotificationBackgroundService>();

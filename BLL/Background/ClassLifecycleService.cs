@@ -5,83 +5,64 @@ using DAL.Type;
 using DAL.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace BLL.Background
 {
     /// <summary>
-    /// Background Service quản lý vòng đời lớp học:
-    /// 1. Tự động chuyển trạng thái: Published → InProgress → Finished → Completed_PendingPayout → Completed_Paid
-    /// 2. Xử lý dispute window (3 ngày sau khi lớp kết thúc HOẶC 3 ngày sau khi dispute được giải quyết)
-    /// 3. Chuyển tiền vào ví giáo viên (90% cho teacher, 10% platform fee)
-    /// 4. Xử lý các dispute đã được resolved (hoàn tiền cho học viên)
+    /// Service quản lý vòng đời lớp học (dùng cho Hangfire RecurringJob)
     /// </summary>
-    public class ClassLifecycleService : BackgroundService
+    public class ClassLifecycleHangfireJob
     {
         private readonly IServiceProvider _serviceProvider;
-        private readonly ILogger<ClassLifecycleService> _logger;
+        private readonly ILogger<ClassLifecycleHangfireJob> _logger;
 
         // Platform fee: 10% (có thể config sau)
         private const decimal PLATFORM_FEE_PERCENTAGE = 0.10m;
         private const decimal TEACHER_PERCENTAGE = 0.90m;
-
-        // Dispute window: 3 ngày
         private const int DISPUTE_WINDOW_DAYS = 3;
 
-        public ClassLifecycleService(IServiceProvider serviceProvider, ILogger<ClassLifecycleService> logger)
+        public ClassLifecycleHangfireJob(IServiceProvider serviceProvider, ILogger<ClassLifecycleHangfireJob> logger)
         {
             _serviceProvider = serviceProvider;
             _logger = logger;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        /// <summary>
+        /// Phương thức này sẽ được Hangfire gọi định kỳ
+        /// </summary>
+        public async Task RunLifecycleJob()
         {
-            await Task.Yield();
+            var now = TimeHelper.GetVietnamTime();
+            _logger.LogInformation("🔄 [ClassLifecycle] Hangfire job running at {Time} (Vietnam Time)", now);
 
-            // Delay khởi động 30 giây để đợi các service khác sẵn sàng
-            await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
-
-            _logger.LogInformation("🚀 [ClassLifecycle] Service started at {Time} (Vietnam Time)", TimeHelper.GetVietnamTime());
-
-            while (!stoppingToken.IsCancellationRequested)
+            try
             {
-                try
-                {
-                    using var scope = _serviceProvider.CreateScope();
-                    var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-                    var firebaseService = scope.ServiceProvider.GetRequiredService<IFirebaseNotificationService>();
+                using var scope = _serviceProvider.CreateScope();
+                var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+                var firebaseService = scope.ServiceProvider.GetRequiredService<IFirebaseNotificationService>();
 
-                    var now = TimeHelper.GetVietnamTime();
-                    _logger.LogInformation("🔄 [ClassLifecycle] Running at {Time} (Vietnam Time)", now);
+                // 1. Cập nhật lớp đang diễn ra (Published → InProgress)
+                //    Hoặc xử lý lớp bị bỏ lỡ (Published → Finished)
+                await UpdateClassesToInProgress(unitOfWork, now);
 
-                    // 1. Cập nhật lớp đang diễn ra (Published → InProgress)
-                    //    Hoặc xử lý lớp bị bỏ lỡ (Published → Finished)
-                    await UpdateClassesToInProgress(unitOfWork, now);
+                // 2. Cập nhật lớp đã kết thúc (InProgress → Finished)
+                await UpdateClassesToFinished(unitOfWork, now);
 
-                    // 2. Cập nhật lớp đã kết thúc (InProgress → Finished)
-                    await UpdateClassesToFinished(unitOfWork, now);
+                // 3. Xử lý dispute window và chuyển sang Completed_PendingPayout
+                //    - Nếu KHÔNG có dispute: 3 ngày sau khi lớp kết thúc
+                //    - Nếu CÓ dispute: 3 ngày sau khi TẤT CẢ disputes được giải quyết
+                await HandleDisputeWindowAndMarkPendingPayout(unitOfWork, firebaseService, now);
 
-                    // 3. Xử lý dispute window và chuyển sang Completed_PendingPayout
-                    //    - Nếu KHÔNG có dispute: 3 ngày sau khi lớp kết thúc
-                    //    - Nếu CÓ dispute: 3 ngày sau khi TẤT CẢ disputes được giải quyết
-                    await HandleDisputeWindowAndMarkPendingPayout(unitOfWork, firebaseService, now);
+                // 4. Xử lý payout cho giáo viên (Completed_PendingPayout → Completed_Paid)
+                await ProcessTeacherPayouts(unitOfWork, firebaseService, now);
 
-                    // 4. Xử lý payout cho giáo viên (Completed_PendingPayout → Completed_Paid)
-                    await ProcessTeacherPayouts(unitOfWork, firebaseService, now);
-
-                    await unitOfWork.SaveChangesAsync();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "❌ [ClassLifecycle] Error in main loop");
-                }
-
-                // Chạy mỗi 5 phút (có thể điều chỉnh lên 15 phút khi production)
-                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+                await unitOfWork.SaveChangesAsync();
             }
-
-            _logger.LogInformation("🛑 [ClassLifecycle] Service stopped");
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [ClassLifecycle] Error in Hangfire job");
+            }
         }
 
         /// <summary>
