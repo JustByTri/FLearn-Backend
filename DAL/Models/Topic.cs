@@ -11,6 +11,8 @@ namespace DAL.Models
         public string? Name { get; set; }
         [StringLength(500)]
         public string? Description { get; set; }
+        [StringLength(2000)]
+        public string? ContextPrompt { get; set; }
         public string? ImageUrl { get; set; }
         public string? PublicId { get; set; }
         public bool Status { get; set; } = true;

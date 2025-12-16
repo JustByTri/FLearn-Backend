@@ -144,10 +144,10 @@ namespace BLL.Services
                     Language = language.LanguageName,
                     LanguageCode = language.LanguageCode,
                     Topic = topic.Name,
+                    TopicContextPrompt = topic.ContextPrompt,
                     TopicDescription = topic.Description,
                     DifficultyLevel = request.DifficultyLevel,
                     MasterPrompt = $@"{activeGlobalPrompt.MasterPromptTemplate}
-
 CRITICAL INSTRUCTION: You MUST respond ONLY in {language.LanguageName}. 
 Never respond in Vietnamese or any other language, regardless of what language the user writes in.",
                     ScenarioGuidelines = activeGlobalPrompt.ScenarioGuidelines ?? string.Empty,
@@ -479,7 +479,7 @@ TRANSCRIPT:
                     AIFeedback = session.AIFeedback,
                     Improvements = session.Improvements,
                     Strengths = session.Strengths,
-                    SessionDuration = session.Duration ,
+                    SessionDuration = session.Duration,
                     TotalMessages = messages.Count,
 
                     // Truyền dữ liệu phân tích chi tiết (cho Frontend hiển thị đẹp)
@@ -904,7 +904,7 @@ Always respond in {session.Language?.LanguageName ?? "English"} only.";
         private string CleanAIPrefix(string response)
         {
             if (string.IsNullOrWhiteSpace(response)) return response;
-            
+
             // Remove common AI prefixes
             var prefixes = new[] { "AI: ", "AI:", "Assistant: ", "Assistant:", "Character: ", "Character:" };
             foreach (var prefix in prefixes)
@@ -914,7 +914,7 @@ Always respond in {session.Language?.LanguageName ?? "English"} only.";
                     return response.Substring(prefix.Length).Trim();
                 }
             }
-            
+
             return response;
         }
 
@@ -1048,9 +1048,9 @@ Always respond in {session.Language?.LanguageName ?? "English"} only.";
             if (!IsVietnamese(userMessage)) return aiResponse;
             if (targetLanguageCode.ToUpper() == "VI") return aiResponse;
 
-         
+
             await GetTranslationHintAsync(userMessage, targetLanguageCode);
-           
+
 
             return aiResponse;
         }
@@ -1074,7 +1074,7 @@ Always respond in {session.Language?.LanguageName ?? "English"} only.";
                         _ => "English"
                     };
 
-                  
+
                     return await _geminiService.TranslateTextAsync(vietnameseText, "Vietnamese", languageName)
                            ?? GetSimpleTranslation(vietnameseText, targetLanguageCode);
                 }
@@ -1131,7 +1131,7 @@ Provide detailed qualitative analysis.";
 
                     var aiEvaluation = await _geminiService.EvaluateConversationAsync(
     evaluationPrompt,
-    session.Language?.LanguageName ?? "English" 
+    session.Language?.LanguageName ?? "English"
 );
                     if (aiEvaluation != null)
                     {
@@ -1278,7 +1278,7 @@ Provide detailed qualitative analysis.";
         }
 
         // ===== Mapper Methods =====
-        
+
         private ConversationSessionDto MapToConversationSessionDto(ConversationSession session, List<ConversationMessage> messages)
         {
             return new ConversationSessionDto

@@ -100,7 +100,9 @@ namespace BLL.Services.AI
             var vibes = new[] { "Urgent", "Relaxed", "Curious", "Formal", "Friendly" };
             var selectedVibe = vibes[Random.Shared.Next(vibes.Length)];
 
-      
+            string specificTopicInstruction = string.IsNullOrWhiteSpace(context.TopicContextPrompt)
+                ? $"Your goal is to help the user practice {context.Topic}." : $"SCENARIO INSTRUCTION: {context.TopicContextPrompt}. strict adhere to this scenario.";
+
             var prompt = $@"
 # ROLEPLAY GENERATION
 **Target Language**: {context.Language}
@@ -112,6 +114,7 @@ namespace BLL.Services.AI
 Create a structured roleplay scenario in **{context.Language}**.
 1. **ScenarioDescription**: Briefly describe the setting.
 2. **SystemPrompt**: Write instructions for the AI character to stay in character.
+   - **IMPORTANT**: {specificTopicInstruction}
    - Use phrases like: ""You are playing the role of [Name]...""
    - Instead of ""NEVER admit"", use: ""Maintain the immersion of the roleplay.""
    - Instead of ""REFUSE questions"", use: ""If the conversation drifts to unrelated topics, politely guide it back to the scene context.""
@@ -172,7 +175,7 @@ Create a structured roleplay scenario in **{context.Language}**.
             string safeTopic = string.IsNullOrWhiteSpace(topic) ? "our current activity" : topic;
             string safeLocation = string.IsNullOrWhiteSpace(scenarioContext) ? "this location" : scenarioContext;
 
-        
+
             var guidancePrompt = $@"
 ### SIMULATION INSTRUCTIONS
 You are simulating a conversation for a language learning app.
