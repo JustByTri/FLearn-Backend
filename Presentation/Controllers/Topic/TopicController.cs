@@ -4,6 +4,7 @@ using Common.DTO.Paging.Request;
 using Common.DTO.Paging.Response;
 using Common.DTO.Topic.Request;
 using Common.DTO.Topic.Response;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Presentation.Controllers.Topic
@@ -27,34 +28,31 @@ namespace Presentation.Controllers.Topic
         /// <response code="500">Server error while fetching topics</response>
         [HttpGet]
         [ProducesResponseType(typeof(PagedResponse<IEnumerable<TopicResponse>>), 200)]
-        [ProducesResponseType(typeof(object), 404)]
-        [ProducesResponseType(typeof(object), 500)]
-        public async Task<IActionResult> GetTopics([FromQuery] PagingRequest request)
+        public async Task<IActionResult> GetTopicsForLearner([FromQuery] PagingRequest request)
         {
             try
             {
-                var response = await _topicService.GetTopicsAsync(request);
-
-                if (response.Data == null || !response.Data.Any())
-                {
-                    return NotFound(new
-                    {
-                        Message = "No topics found",
-                        Page = request.Page,
-                        PageSize = request.PageSize,
-                        TotalItems = response.Meta.TotalItems
-                    });
-                }
-
+                var response = await _topicService.GetTopicsAsync(request, isAdminView: false);
                 return Ok(response);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    Message = "An error occurred while fetching topics",
-                    Details = ex.Message
-                });
+                return StatusCode(500, new { Message = ex.Message });
+            }
+        }
+        [HttpGet("admin")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(PagedResponse<IEnumerable<TopicResponse>>), 200)]
+        public async Task<IActionResult> GetTopicsForAdmin([FromQuery] PagingRequest request)
+        {
+            try
+            {
+                var response = await _topicService.GetTopicsAsync(request, isAdminView: true);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = ex.Message });
             }
         }
         /// <summary>
@@ -66,6 +64,7 @@ namespace Presentation.Controllers.Topic
         /// <response code="400">Validation error or topic already exists</response>
         /// <response code="500">Server error</response>
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(BaseResponse<TopicResponse>), 201)]
         [ProducesResponseType(typeof(BaseResponse<TopicResponse>), 400)]
         [ProducesResponseType(typeof(BaseResponse<TopicResponse>), 500)]
@@ -126,10 +125,11 @@ namespace Presentation.Controllers.Topic
         /// <response code="400">Topic with the same name already exists or validation fails.</response>
         /// <response code="500">Internal server error.</response>
         [HttpPut("{topicId:guid}")]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(BaseResponse<TopicResponse>), 200)]
         [ProducesResponseType(typeof(BaseResponse<TopicResponse>), 400)]
         [ProducesResponseType(typeof(BaseResponse<TopicResponse>), 500)]
-        public async Task<IActionResult> UpdateTopic(Guid topicId, [FromForm] TopicRequest request)
+        public async Task<IActionResult> UpdateTopic(Guid topicId, [FromForm] UpdateTopicRequest request)
         {
             var result = await _topicService.UpdateTopicAsync(topicId, request);
 
@@ -140,6 +140,21 @@ namespace Presentation.Controllers.Topic
                 return BadRequest(result);
 
             return StatusCode(500, result);
+        }
+        /// <summary>
+        /// Deletes a topic by its ID.
+        /// </summary>
+        /// <param name="topicId">The unique identifier of the topic to delete.</param>
+        /// <returns>Success status.</returns>
+        [HttpDelete("{topicId:guid}")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(BaseResponse<bool>), 200)]
+        [ProducesResponseType(typeof(BaseResponse<bool>), 400)]
+        [ProducesResponseType(typeof(BaseResponse<bool>), 404)]
+        public async Task<IActionResult> DeleteTopic(Guid topicId)
+        {
+            var result = await _topicService.DeleteTopicAsync(topicId);
+            return StatusCode(result.Code, result);
         }
     }
 }

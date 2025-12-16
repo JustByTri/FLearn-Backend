@@ -8,9 +8,10 @@ namespace BLL.IServices.Topic
 {
     public interface ITopicService
     {
-        Task<PagedResponse<IEnumerable<TopicResponse>>> GetTopicsAsync(PagingRequest request);
+        Task<PagedResponse<IEnumerable<TopicResponse>>> GetTopicsAsync(PagingRequest request, bool isAdminView);
         Task<BaseResponse<TopicResponse>> GetTopicByIdAsync(Guid topicId);
         Task<BaseResponse<TopicResponse>> CreateTopicAsync(TopicRequest request);
-        Task<BaseResponse<TopicResponse>> UpdateTopicAsync(Guid topicId, TopicRequest request);
+        Task<BaseResponse<TopicResponse>> UpdateTopicAsync(Guid topicId, UpdateTopicRequest request);
+        Task<BaseResponse<bool>> DeleteTopicAsync(Guid topicId);
     }
 }
