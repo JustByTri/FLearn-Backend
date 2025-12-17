@@ -1,11 +1,11 @@
 ﻿using BLL.IServices.Admin;
 using BLL.IServices.Dashboard;
-using BLL.Services.Admin;
 using Common.DTO.Admin;
+using DAL.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Presentation.Controllers.Admin;
 using Presentation.Helpers;
+using System.Security.Claims;
 
 namespace Presentation.Controllers.Manager
 {
@@ -28,18 +28,25 @@ namespace Presentation.Controllers.Manager
         /// Default: 30 ngày gần nhất nếu không truyền tham số
         /// </summary>
         [HttpGet("overview")]
+        [Authorize(Roles = "Manager")]
         public async Task<IActionResult> GetOverview([FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate)
         {
-            // Xử lý default date: Nếu ko truyền thì lấy 30 ngày qua
-            var end = endDate ?? DateTime.Now;
-            var start = startDate ?? DateTime.Now.AddDays(-30);
+            var userIdClaim = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized("Teacher ID not found in token.");
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+                return BadRequest("Invalid user ID format in token.");
+
+            var end = endDate ?? TimeHelper.GetVietnamTime();
+            var start = startDate ?? TimeHelper.GetVietnamTime().AddDays(-30);
 
             if (start > end)
             {
                 return BadRequest(new { message = "Start date must be before end date" });
             }
 
-            var result = await _dashboardService.GetKpiOverviewAsync(start, end);
+            var result = await _dashboardService.GetKpiOverviewAsync(userId, start, end);
             return StatusCode(result.Code, result);
         }
 
@@ -47,17 +54,25 @@ namespace Presentation.Controllers.Manager
         /// Lấy số liệu về mức độ tương tác (Thời gian học, tỷ lệ hoàn thành)
         /// </summary>
         [HttpGet("engagement")]
+        [Authorize(Roles = "Manager")]
         public async Task<IActionResult> GetEngagementMetrics([FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate)
         {
-            var end = endDate ?? DateTime.Now;
-            var start = startDate ?? DateTime.Now.AddDays(-30);
+            var userIdClaim = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized("Teacher ID not found in token.");
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+                return BadRequest("Invalid user ID format in token.");
+
+            var end = endDate ?? TimeHelper.GetVietnamTime();
+            var start = startDate ?? TimeHelper.GetVietnamTime().AddDays(-30);
 
             if (start > end)
             {
                 return BadRequest(new { message = "Start date must be before end date" });
             }
 
-            var result = await _dashboardService.GetEngagementMetricsAsync(start, end);
+            var result = await _dashboardService.GetEngagementMetricsAsync(userId, start, end);
             return StatusCode(result.Code, result);
         }
 
@@ -66,12 +81,20 @@ namespace Presentation.Controllers.Manager
         /// </summary>
         /// <param name="top">Số lượng bản ghi muốn lấy (Default: 10)</param>
         [HttpGet("content-effectiveness")]
+        [Authorize(Roles = "Manager")]
         public async Task<IActionResult> GetContentEffectiveness([FromQuery] int top = 10)
         {
+            var userIdClaim = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized("Teacher ID not found in token.");
+
+            if (!Guid.TryParse(userIdClaim, out Guid userId))
+                return BadRequest("Invalid user ID format in token.");
+
             if (top <= 0) top = 10;
             if (top > 50) top = 50;
 
-            var result = await _dashboardService.GetContentEffectivenessAsync(top);
+            var result = await _dashboardService.GetContentEffectivenessAsync(userId, top);
             return StatusCode(result.Code, result);
         }
         /// <summary>
