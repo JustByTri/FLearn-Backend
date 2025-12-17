@@ -16,77 +16,99 @@ namespace BLL.Services.Dashboard
         {
             _unitOfWork = unitOfWork;
         }
-        public async Task<BaseResponse<DashboardOverviewResponse>> GetKpiOverviewAsync(DateTime startDate, DateTime endDate)
+        public async Task<BaseResponse<DashboardOverviewResponse>> GetKpiOverviewAsync(Guid userId, DateTime startDate, DateTime endDate)
         {
             try
             {
+                var targetLanguageId = await GetManagerLanguageIdAsync(userId);
                 // Chuẩn hóa thời gian: Start đầu ngày, End cuối ngày
                 var start = startDate.Date;
                 var end = endDate.Date.AddDays(1).AddTicks(-1);
                 var now = TimeHelper.GetVietnamTime();
                 var thirtyDaysAgo = now.AddDays(-30);
 
-                // 1. New Registrations & Total Users
-                var totalUsers = await _unitOfWork.Users.Query().CountAsync();
-                var newRegistrations = await _unitOfWork.Users.Query()
-                    .CountAsync(u => u.CreatedAt >= start && u.CreatedAt <= end);
+                // 1. New Registrations & Total Users (Lọc theo Language)
+                // Total User: Đếm số lượng User ĐANG HỌC ngôn ngữ này (có record trong LearnerLanguage)
+                var totalUsers = await _unitOfWork.LearnerLanguages.Query()
+                    .Where(ll => ll.LanguageId == targetLanguageId)
+                    .Select(ll => ll.UserId) // Distinct User vì 1 user có thể có nhiều level
+                    .Distinct()
+                    .CountAsync();
 
-                // 2. Active Learners (Theo yêu cầu 1: Dùng LessonActivityLog)
-                // Đếm số LearnerId duy nhất có log hoạt động trong khoảng thời gian lọc
+                // New Registration: Đếm User mới đăng ký học ngôn ngữ này trong khoảng thời gian
+                var newRegistrations = await _unitOfWork.LearnerLanguages.Query()
+                    .Where(ll => ll.LanguageId == targetLanguageId &&
+                                 ll.CreatedAt >= start && ll.CreatedAt <= end)
+                    .Select(ll => ll.UserId)
+                    .Distinct()
+                    .CountAsync();
+
+                // 2. Active Learners
+                // Logic: Learner có log activity -> Log thuộc Lesson -> Lesson thuộc Course -> Course thuộc Language
                 var activeLearners = await _unitOfWork.LessonActivityLogs.Query()
-                    .Where(log => log.CreatedAt >= start && log.CreatedAt <= end)
+                    .Include(log => log.Lesson)
+                        .ThenInclude(l => l.CourseUnit)
+                        .ThenInclude(cu => cu.Course)
+                    .Where(log => log.CreatedAt >= start && log.CreatedAt <= end &&
+                                  log.Lesson.CourseUnit.Course.LanguageId == targetLanguageId) // Filter Language
                     .Select(log => log.LearnerId)
                     .Distinct()
                     .CountAsync();
 
-                // 3. Revenue
+                // 3. Revenue (Lọc theo khóa học thuộc ngôn ngữ đó)
                 var revenueQuery = _unitOfWork.Purchases.Query()
+                    .Include(p => p.Course)
                     .Where(p => p.Status == PurchaseStatus.Completed &&
-                                p.CreatedAt >= start && p.CreatedAt <= end);
+                                p.CreatedAt >= start && p.CreatedAt <= end &&
+                                p.Course.LanguageId == targetLanguageId); // Filter Language
 
                 var totalRevenue = await revenueQuery.SumAsync(p => p.FinalAmount);
 
                 var rawRevenueData = await revenueQuery
-                    .GroupBy(p => p.CreatedAt.Date)
-                    .Select(g => new
-                    {
-                        Date = g.Key,
-                        TotalAmount = g.Sum(p => p.FinalAmount)
-                    })
-                    .OrderBy(x => x.Date)
-                    .ToListAsync();
+                                    .GroupBy(p => p.CreatedAt.Date)
+                                    .Select(g => new
+                                    {
+                                        Date = g.Key,
+                                        TotalAmount = g.Sum(p => p.FinalAmount)
+                                    })
+                                    .OrderBy(x => x.Date)
+                                    .ToListAsync();
 
                 var revenueChart = rawRevenueData
-                    .Select(x => new ChartDataPoint
-                    {
-                        Label = x.Date.ToString("dd/MM"),
-                        Value = (double)x.TotalAmount
-                    })
-                    .ToList();
+                                    .Select(x => new ChartDataPoint
+                                    {
+                                        Label = x.Date.ToString("dd/MM"),
+                                        Value = (double)x.TotalAmount
+                                    })
+                                    .ToList();
 
-                // 4. Churn Rate (Theo yêu cầu 2: Có mua khóa học nhưng ko học trong 30 ngày)
-                // Bước 4.1: Lấy danh sách user đã từng mua ít nhất 1 khóa học (Paid Users)
+                // 4. Churn Rate (Trong phạm vi Language đó)
+                // 4.1: Lấy Paid Users cho Language này
                 var paidUserIds = await _unitOfWork.Purchases.Query()
-                    .Where(p => p.Status == PurchaseStatus.Completed)
+                    .Include(p => p.Course)
+                    .Where(p => p.Status == PurchaseStatus.Completed &&
+                                p.Course.LanguageId == targetLanguageId)
                     .Select(p => p.UserId)
                     .Distinct()
-                    .ToListAsync(); // Lấy về memory để xử lý nếu DB không quá lớn, hoặc dùng Queryable join
+                    .ToListAsync();
 
                 double churnRate = 0;
                 if (paidUserIds.Any())
                 {
-                    // Bước 4.2: Trong số Paid Users, tìm những người CÓ hoạt động trong 30 ngày qua
-                    // Cần join từ LearnerLanguages để map UserId -> LearnerId -> ActivityLog
+                    // 4.2: Paid Users CÓ hoạt động (trong Language này) trong 30 ngày qua
                     var activePaidUsersCount = await _unitOfWork.LessonActivityLogs.Query()
                         .Include(log => log.Learner)
+                        .Include(log => log.Lesson)
+                            .ThenInclude(l => l.CourseUnit)
+                            .ThenInclude(cu => cu.Course)
                         .Where(log => log.CreatedAt >= thirtyDaysAgo &&
-                                      paidUserIds.Contains(log.Learner.UserId))
+                                      paidUserIds.Contains(log.Learner.UserId) &&
+                                      log.Lesson.CourseUnit.Course.LanguageId == targetLanguageId) // Quan trọng: Chỉ tính hoạt động ở ngôn ngữ này
                         .Select(log => log.Learner.UserId)
                         .Distinct()
                         .CountAsync();
 
-                    // Bước 4.3: Tính Churn
-                    // Churn = (Tổng User trả phí - User trả phí còn active) / Tổng User trả phí
+                    // 4.3: Tính Churn
                     int churnedUsers = paidUserIds.Count - activePaidUsersCount;
                     churnRate = ((double)churnedUsers / paidUserIds.Count) * 100;
                 }
@@ -107,16 +129,20 @@ namespace BLL.Services.Dashboard
             }
         }
 
-        public async Task<BaseResponse<EngagementResponse>> GetEngagementMetricsAsync(DateTime startDate, DateTime endDate)
+        public async Task<BaseResponse<EngagementResponse>> GetEngagementMetricsAsync(Guid userId, DateTime startDate, DateTime endDate)
         {
             try
             {
+                var targetLanguageId = await GetManagerLanguageIdAsync(userId);
                 var start = startDate.Date;
                 var end = endDate.Date.AddDays(1).AddTicks(-1);
 
-                // 1. Tính tổng thời gian học (Average Time Spent)
                 var logsInRange = _unitOfWork.LessonActivityLogs.Query()
-                    .Where(l => l.CreatedAt >= start && l.CreatedAt <= end);
+                                    .Include(l => l.Lesson)
+                                        .ThenInclude(l => l.CourseUnit)
+                                        .ThenInclude(cu => cu.Course)
+                                    .Where(l => l.CreatedAt >= start && l.CreatedAt <= end &&
+                                                l.Lesson.CourseUnit.Course.LanguageId == targetLanguageId);
 
                 var totalMinutes = await logsInRange.SumAsync(l => l.Value ?? 0);
                 var distinctLearners = await logsInRange.Select(l => l.LearnerId).Distinct().CountAsync();
@@ -142,13 +168,18 @@ namespace BLL.Services.Dashboard
                     })
                     .ToList();
 
-                // 3. Tỷ lệ hoàn thành trung bình (Completion Rate) trong giai đoạn này
-                // Đếm số lesson được set status = Completed trong khoảng thời gian
-                var completedCount = await _unitOfWork.LessonProgresses.Query()
-                    .CountAsync(lp => lp.Status == LearningStatus.Completed &&
-                                      lp.CompletedAt >= start && lp.CompletedAt <= end);
+                // 2. Tỷ lệ hoàn thành trung bình (Lọc theo Lesson của Language này)
+                var lessonProgressQuery = _unitOfWork.LessonProgresses.Query()
+                    .Include(lp => lp.Lesson)
+                        .ThenInclude(l => l.CourseUnit)
+                        .ThenInclude(cu => cu.Course)
+                    .Where(lp => lp.Lesson.CourseUnit.Course.LanguageId == targetLanguageId);
 
-                var startedCount = await _unitOfWork.LessonProgresses.Query()
+                var completedCount = await lessonProgressQuery
+                                    .CountAsync(lp => lp.Status == LearningStatus.Completed &&
+                                                      lp.CompletedAt >= start && lp.CompletedAt <= end);
+
+                var startedCount = await lessonProgressQuery
                     .CountAsync(lp => lp.StartedAt >= start && lp.StartedAt <= end);
 
                 double completionRate = startedCount > 0
@@ -168,24 +199,26 @@ namespace BLL.Services.Dashboard
             }
         }
 
-        public async Task<BaseResponse<List<ContentEffectivenessResponse>>> GetContentEffectivenessAsync(int topRecords = 10)
+        public async Task<BaseResponse<List<ContentEffectivenessResponse>>> GetContentEffectivenessAsync(Guid userId, int topRecords = 10)
         {
             try
             {
-                // Theo yêu cầu 3: Tìm Lesson có nhiều người bắt đầu nhưng ít người hoàn thành (Drop-off cao)
+                var targetLanguageId = await GetManagerLanguageIdAsync(userId);
 
-                // Lấy tất cả LessonProgress để tính toán
-                // Lưu ý: Query này có thể nặng nếu dữ liệu lớn -> Nên cache hoặc chạy background job định kỳ cập nhật bảng thống kê riêng
                 var lessonStats = await _unitOfWork.LessonProgresses.Query()
-                    .GroupBy(lp => lp.LessonId)
-                    .Select(g => new
-                    {
-                        LessonId = g.Key,
-                        TotalStarted = g.Count(), // Tất cả record trong LessonProgress đều là đã Start
-                        TotalCompleted = g.Count(lp => lp.Status == LearningStatus.Completed)
-                    })
-                    .Where(x => x.TotalStarted > 5) // Chỉ xét các bài học có ít nhất 5 người học để tránh nhiễu
-                    .ToListAsync();
+                                    .Include(lp => lp.Lesson)
+                                        .ThenInclude(l => l.CourseUnit)
+                                        .ThenInclude(cu => cu.Course)
+                                    .Where(lp => lp.Lesson.CourseUnit.Course.LanguageId == targetLanguageId) // Filter Language
+                                    .GroupBy(lp => lp.LessonId)
+                                    .Select(g => new
+                                    {
+                                        LessonId = g.Key,
+                                        TotalStarted = g.Count(),
+                                        TotalCompleted = g.Count(lp => lp.Status == LearningStatus.Completed)
+                                    })
+                                    .Where(x => x.TotalStarted > 5)
+                                    .ToListAsync();
 
                 // Tính Drop-off rate in-memory
                 var lessonIds = lessonStats.Select(x => x.LessonId).ToList();
@@ -205,14 +238,13 @@ namespace BLL.Services.Dashboard
                     double dropOffRate = 0;
                     if (stat.TotalStarted > 0)
                     {
-                        // Drop-off = (Started - Completed) / Started
                         dropOffRate = (double)(stat.TotalStarted - stat.TotalCompleted) / stat.TotalStarted * 100;
                     }
 
-                    // Tùy chọn: Lấy thời gian trung bình (nặng, có thể bỏ qua nếu cần tốc độ)
-                    // double avgTime = await _unitOfWork.LessonActivityLogs.Query()
-                    //     .Where(l => l.LessonId == stat.LessonId)
-                    //     .AverageAsync(l => l.Value ?? 0);
+
+                    double avgTime = await _unitOfWork.LessonActivityLogs.Query()
+                         .Where(l => l.LessonId == stat.LessonId)
+                         .AverageAsync(l => l.Value ?? 0);
 
                     report.Add(new ContentEffectivenessResponse
                     {
@@ -222,11 +254,10 @@ namespace BLL.Services.Dashboard
                         TotalStarted = stat.TotalStarted,
                         TotalCompleted = stat.TotalCompleted,
                         DropOffRate = Math.Round(dropOffRate, 2),
-                        AvgTimeSpent = 0 // Tạm để 0 để tối ưu performance
+                        AvgTimeSpent = avgTime
                     });
                 }
 
-                // Sắp xếp theo tỷ lệ Drop-off giảm dần (Bài nào drop nhiều nhất lên đầu)
                 var result = report
                     .OrderByDescending(x => x.DropOffRate)
                     .ThenByDescending(x => x.TotalStarted)
@@ -240,5 +271,18 @@ namespace BLL.Services.Dashboard
                 return BaseResponse<List<ContentEffectivenessResponse>>.Error($"Error analyzing content: {ex.Message}");
             }
         }
+        #region
+        private async Task<Guid> GetManagerLanguageIdAsync(Guid managerId)
+        {
+            var managerLang = await _unitOfWork.ManagerLanguages.FindAsync(ml => ml.UserId == managerId && ml.Status == true);
+
+            if (managerLang == null)
+            {
+                throw new Exception("Manager is not assigned to any language.");
+            }
+
+            return managerLang.LanguageId;
+        }
+        #endregion
     }
 }
