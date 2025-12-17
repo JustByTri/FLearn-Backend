@@ -134,6 +134,22 @@ namespace BLL.Services.Enrollment
 
                 await _unitOfWork.ClassEnrollments.CreateAsync(enrollment);
 
+                // ✅ Tạo Purchase cho lớp học
+                var purchase = new Purchase
+                {
+                    PurchasesId = Guid.NewGuid(),
+                    UserId = studentId,
+                    EnrollmentId = enrollment.EnrollmentID,
+                    TotalAmount = enrollment.AmountPaid,
+                    FinalAmount = enrollment.AmountPaid,
+                    Status = DAL.Type.PurchaseStatus.Completed,
+                    PaymentMethod = DAL.Type.PaymentMethod.PayOS,
+                    CurrencyType = DAL.Type.CurrencyType.VND,
+                    CreatedAt = DateTime.UtcNow,
+                    PaidAt = DateTime.UtcNow
+                };
+                await _unitOfWork.Purchases.CreateAsync(purchase);
+
                 // ✅ THÊM: Cộng tiền vào HoldBalance của Admin Wallet
                 await TransferClassPaymentToAdminWalletAsync(enrollment, teacherClass);
 
