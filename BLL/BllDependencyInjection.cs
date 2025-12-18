@@ -24,6 +24,7 @@ using BLL.IServices.ProgressTracking;
 using BLL.IServices.Purchases;
 using BLL.IServices.Redis;
 using BLL.IServices.Refund;
+using BLL.IServices.Statistics;
 using BLL.IServices.Subscription;
 using BLL.IServices.Teacher;
 using BLL.IServices.TeacherReview;
@@ -56,6 +57,7 @@ using BLL.Services.ProgressTracking;
 using BLL.Services.Purchases;
 using BLL.Services.Redis;
 using BLL.Services.Refund;
+using BLL.Services.Statistics;
 using BLL.Services.Subscription;
 using BLL.Services.Teacher;
 using BLL.Services.TeacherReview;
@@ -195,12 +197,13 @@ namespace BLL
             services.AddScoped<ITeacherReviewService, TeacherReviewService>();
             services.AddScoped<IAIContentModerationService, AIContentModerationService>();
             services.AddScoped<IAppReviewService, AppReviewService>();
-            services.AddScoped<IClassDisputeService, ClassDisputeService>(); 
-            
+            services.AddScoped<IClassDisputeService, ClassDisputeService>();
+
             services.AddScoped<IFirebaseNotificationService, FirebaseNotificationService>();
             services.AddHostedService<ClassNotificationBackgroundService>();
-            
+
             services.AddScoped<IWalletTransactionService, WalletTransactionService>();
+            services.AddScoped<IStatisticsService, StatisticsService>();
             return services;
         }
     }
