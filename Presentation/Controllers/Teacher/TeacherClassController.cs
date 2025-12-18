@@ -43,7 +43,20 @@ namespace Presentation.Controllers.Teacher
                 {
                     success = true,
                     message = "Tạo lớp học thành công",
-                    data = result
+                    data = new
+                    {
+                        classId = result.ClassID,
+                        title = result.Title,
+                        description = result.Description,
+                        classDate = result.StartDateTime.Date,
+                        startTime = result.StartDateTime.ToString("HH:mm:ss"),
+                        durationMinutes = (int)(result.EndDateTime - result.StartDateTime).TotalMinutes,
+                        pricePerStudent = result.PricePerStudent,
+                        minStudents = result.MinStudents,
+                        capacity = result.Capacity,
+                        programAssignmentId = createClassDto.ProgramAssignmentId,
+                        googleMeetLink = result.GoogleMeetLink
+                    }
                 });
             }
             catch (UnauthorizedAccessException ex)
@@ -165,7 +178,52 @@ namespace Presentation.Controllers.Teacher
                 return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi lấy thông tin lớp học" });
             }
         }
+        /// <summary>
+        /// Cập nhật thông tin lớp học
+        /// - Chỉ cho phép cập nhật lớp ở trạng thái Draft hoặc Scheduled
+        /// - Nếu đã có học sinh đăng ký, không thể thay đổi MinStudents, Capacity, PricePerStudent
+        /// - Cho phép cập nhật link Google Meet
+        /// </summary>
+        [HttpPut("{classId:guid}")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(typeof(object), 400)]
+        [ProducesResponseType(typeof(object), 404)]
+        public async Task<IActionResult> UpdateClass(Guid classId, [FromBody] UpdateClassDto updateClassDto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+                }
 
+                var teacherId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                var result = await _teacherClassService.UpdateClassAsync(teacherId, classId, updateClassDto);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Cập nhật lớp học thành công",
+                    data = result
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi cập nhật lớp học" });
+            }
+        }
         /// <summary>
         /// Lấy danh sách học sinh đã đăng ký lớp học
         /// </summary>

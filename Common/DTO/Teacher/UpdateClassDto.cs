@@ -30,5 +30,8 @@ namespace Common.DTO.Teacher
 
         [StringLength(500, ErrorMessage = "Link Google Meet không được vượt quá 500 ký tự")]
         public string? GoogleMeetLink { get; set; }
+
+        [Range(1, 1000, ErrorMessage = "Thời lượng phải lớn hơn 0")]
+        public int? DurationMinutes { get; set; }
     }
 }
