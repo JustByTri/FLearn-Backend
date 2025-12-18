@@ -61,6 +61,12 @@ builder.Services.Configure<FormOptions>(options =>
     options.MemoryBufferThreshold = int.MaxValue;
 });
 
+if (builder.Environment.IsProduction())
+{
+    string configPath = "/var/www/secrets/appsettings.Production.json";
+    builder.Configuration.AddJsonFile(configPath, optional: true, reloadOnChange: true);
+}
+
 var firebaseConfig = builder.Configuration.GetSection("Firebase");
 
 string projectId = firebaseConfig["ProjectId"];
