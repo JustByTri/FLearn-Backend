@@ -61,28 +61,31 @@ builder.Services.Configure<FormOptions>(options =>
     options.MemoryBufferThreshold = int.MaxValue;
 });
 
-var firebasePath = Path.Combine(Directory.GetCurrentDirectory(), "firebase-admin-sdk.json");
+var firebaseConfig = builder.Configuration.GetSection("Firebase");
 
-try
+string projectId = firebaseConfig["ProjectId"];
+string clientEmail = firebaseConfig["ClientEmail"];
+string privateKey = firebaseConfig["PrivateKey"];
+
+if (!string.IsNullOrEmpty(privateKey))
 {
-    if (File.Exists(firebasePath))
+    privateKey = privateKey.Replace("\\n", "\n");
+}
+
+if (FirebaseApp.DefaultInstance == null)
+{
+    FirebaseApp.Create(new AppOptions()
     {
-        FirebaseApp.Create(new AppOptions()
+        Credential = GoogleCredential.FromJson(System.Text.Json.JsonSerializer.Serialize(new
         {
-            Credential = GoogleCredential.FromFile(firebasePath)
-        });
-        Console.WriteLine("[Firebase] Initialized successfully.");
-    }
-    else
-    {
-        Console.WriteLine($"[Firebase] File not found at: {firebasePath}");
-    }
+            type = "service_account",
+            project_id = projectId,
+            private_key = privateKey,
+            client_email = clientEmail,
+            token_uri = "https://oauth2.googleapis.com/token"
+        }))
+    });
 }
-catch (Exception ex)
-{
-    Console.WriteLine($"[Firebase] Initialization failed: {ex.Message}");
-}
-
 
 builder.Services.Configure<KestrelServerOptions>(options =>
 {
