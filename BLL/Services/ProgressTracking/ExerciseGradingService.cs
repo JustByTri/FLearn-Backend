@@ -648,11 +648,7 @@ namespace BLL.Services.ProgressTracking
 
                 try
                 {
-                    var studentToken = await _unitOfWork.Users.Query()
-                            .AsNoTracking()
-                            .Where(u => u.LearnerLanguages.Any(ll => ll.LearnerLanguageId == submission.LearnerId))
-                            .Select(u => u.FcmToken)
-                            .FirstOrDefaultAsync();
+                    var studentToken = submission.Learner?.User?.FcmToken;
 
                     if (string.IsNullOrEmpty(studentToken))
                     {
