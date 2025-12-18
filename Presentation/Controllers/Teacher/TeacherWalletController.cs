@@ -8,26 +8,26 @@ using Presentation.Helpers;
 namespace Presentation.Controllers.Teacher
 {
     /// <summary>
-    /// Controller qu?n l˝ vÌ c?a gi·o viÍn
+    /// Controller qu·∫£n l√Ω v√≠ c?a gi√°o vi√™n
     /// 
-    /// LU?NG THANH TO¡N L?P H?C:
+    /// LU·ªíNG THANH TO√ÅN L·ªöP H?C:
     /// ???????????????????????????????????????????????????????????????????????????????
-    /// ?  1. H?c viÍn ??ng k˝ l?p ? Ti?n v‡o vÌ Admin                               ?
-    /// ?  2. L?p k?t th˙c ? 3 ng‡y dispute window                                    ?
-    /// ?  3. N?u cÛ dispute ? Ch? resolve + 3 ng‡y                                   ?
-    /// ?  4. TÌnh ti?n: TotalRevenue - DisputeRefunds = NetRevenue                   ?
+    /// ?  1. H?c vi√™n ??ng k√Ω l?p ? Ti?n v√†o v√≠ Admin                               ?
+    /// ?  2. L?p k?t th√∫c ? 3 ng√†y dispute window                                    ?
+    /// ?  3. N?u c√≥ dispute ? Ch? resolve + 3 ng√†y                                   ?
+    /// ?  4. T√≠nh ti?n: TotalRevenue - DisputeRefunds = NetRevenue                   ?
     /// ?  5. Teacher nh?n: NetRevenue * 90%                                          ?
     /// ?  6. Admin gi?: NetRevenue * 10% (platform fee)                              ?
     /// ???????????????????????????????????????????????????????????????????????????????
     /// 
     /// ENDPOINTS:
-    /// - GET  /api/teacher/wallet              ? Xem s? d? vÌ
+    /// - GET  /api/teacher/wallet              ? Xem s? d? v√≠
     /// - GET  /api/teacher/wallet/transactions ? L?ch s? giao d?ch (payout, withdraw, refund)
-    /// - GET  /api/teacher/wallet/payouts      ? L?ch s? thanh to·n t? l?p h?c
-    /// - POST /api/teacher/wallet/withdraw     ? YÍu c?u r˙t ti?n
-    /// - GET  /api/teacher/wallet/withdrawal-requests ? Danh s·ch yÍu c?u r˙t ti?n
+    /// - GET  /api/teacher/wallet/payouts      ? L?ch s? thanh to√°n t? l?p h?c
+    /// - POST /api/teacher/wallet/withdraw     ? Y√™u c?u r√∫t ti?n
+    /// - GET  /api/teacher/wallet/withdrawal-requests ? Danh s√°ch y√™u c?u r√∫t ti?n
     /// 
-    /// TODO: Implement c·c methods trong IWalletService v‡ IWalletTransactionService
+    /// TODO: Implement c√°c methods trong IWalletService v√† IWalletTransactionService
     /// </summary>
     [Route("api/teacher/wallet")]
     [ApiController]
@@ -49,9 +49,9 @@ namespace Presentation.Controllers.Teacher
         }
 
         /// <summary>
-        /// [Gi·o viÍn] Xem thÙng tin vÌ c?a mÏnh
+        /// [Gi√°o vi√™n] Xem th√¥ng tin v√≠ c?a m√¨nh
         /// - TotalBalance: T?ng s? d?
-        /// - AvailableBalance: S? d? kh? d?ng (cÛ th? r˙t)
+        /// - AvailableBalance: S? d? kh? d?ng (c√≥ th? r√∫t)
         /// - HoldBalance: S? d? t?m gi?
         /// 
         /// TODO: Implement GetTeacherWalletAsync trong IWalletService
@@ -79,16 +79,16 @@ namespace Presentation.Controllers.Teacher
         }
 
         /// <summary>
-        /// [Gi·o viÍn] Xem l?ch s? giao d?ch c?a vÌ
+        /// [Gi√°o vi√™n] Xem l?ch s? giao d?ch c?a v√≠
         /// - Payout: Nh?n ti?n t? l?p h?c
-        /// - Withdrawal: R˙t ti?n
-        /// - Refund: B? tr? ti?n do dispute (n?u cÛ)
+        /// - Withdrawal: R√∫t ti?n
+        /// - Refund: B? tr? ti?n do dispute (n?u c√≥)
         /// 
         /// TODO: Implement GetTeacherTransactionsAsync trong IWalletTransactionService
         /// </summary>
         /// <param name="type">Lo?i giao d?ch (Payout, Withdrawal, Refund, All)</param>
-        /// <param name="from">T? ng‡y</param>
-        /// <param name="to">??n ng‡y</param>
+        /// <param name="from">T? ng√†y</param>
+        /// <param name="to">??n ng√†y</param>
         /// <param name="page">Trang</param>
         /// <param name="pageSize">S? l??ng m?i trang</param>
         [HttpGet("transactions")]
@@ -120,12 +120,12 @@ namespace Presentation.Controllers.Teacher
         }
 
         /// <summary>
-        /// [Gi·o viÍn] Xem l?ch s? thanh to·n t? c·c l?p h?c
-        /// - ThÙng tin l?p h?c
-        /// - S? h?c viÍn
+        /// [Gi√°o vi√™n] Xem l?ch s? thanh to√°n t? c√°c l?p h?c
+        /// - Th√¥ng tin l?p h?c
+        /// - S? h?c vi√™n
         /// - T?ng doanh thu
-        /// - S? ti?n nh?n ???c (sau tr? phÌ + dispute)
-        /// - Ng‡y thanh to·n
+        /// - S? ti?n nh?n ???c (sau tr? ph√≠ + dispute)
+        /// - Ng√†y thanh to√°n
         /// 
         /// TODO: Implement GetTeacherClassPayoutsAsync trong IWalletTransactionService
         /// </summary>
@@ -164,9 +164,9 @@ namespace Presentation.Controllers.Teacher
         }
 
         /// <summary>
-        /// [Gi·o viÍn] YÍu c?u r˙t ti?n v? t‡i kho?n ng‚n h‡ng
+        /// [Gi√°o vi√™n] Y√™u c?u r√∫t ti?n v? t√†i kho?n ng√¢n h√†ng
         /// - S? ti?n ph?i nh? h?n ho?c b?ng AvailableBalance
-        /// - C?n cÛ t‡i kho?n ng‚n h‡ng ?„ x·c th?c
+        /// - C?n c√≥ t√†i kho?n ng√¢n h√†ng ?√£ x√°c th?c
         /// 
         /// TODO: Implement CreateWithdrawalRequestAsync trong IWalletService
         /// </summary>
@@ -187,7 +187,7 @@ namespace Presentation.Controllers.Teacher
         }
 
         /// <summary>
-        /// [Gi·o viÍn] Xem danh s·ch yÍu c?u r˙t ti?n c?a mÏnh
+        /// [Gi√°o vi√™n] Xem danh s√°ch y√™u c?u r√∫t ti?n c?a m√¨nh
         /// 
         /// TODO: Implement GetTeacherWithdrawalRequestsAsync trong IWalletService
         /// </summary>
@@ -219,17 +219,17 @@ namespace Presentation.Controllers.Teacher
     }
 
     /// <summary>
-    /// DTO yÍu c?u r˙t ti?n
+    /// DTO y√™u c?u r√∫t ti?n
     /// </summary>
     public class WithdrawalRequestDto
     {
         /// <summary>
-        /// S? ti?n mu?n r˙t (VND)
+        /// S? ti?n mu?n r√∫t (VND)
         /// </summary>
         public decimal Amount { get; set; }
 
         /// <summary>
-        /// ID t‡i kho?n ng‚n h‡ng ?? nh?n ti?n
+        /// ID t√†i kho?n ng√¢n h√†ng ?? nh?n ti?n
         /// </summary>
         public Guid BankAccountId { get; set; }
     }

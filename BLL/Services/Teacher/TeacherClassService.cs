@@ -440,10 +440,17 @@ namespace BLL.Services.Teacher
                     throw new UnauthorizedAccessException("Bạn không có quyền thao tác với lớp học này");
                 }
 
-                // Only allow updates for Draft and Scheduled classes
-                if (teacherClass.Status != ClassStatus.Draft && teacherClass.Status != ClassStatus.Scheduled)
+                // Chỉ cho phép update nếu trạng thái là Draft hoặc bất kỳ trạng thái Cancelled
+                var allowedStatuses = new[] {
+                    ClassStatus.Draft,
+                    ClassStatus.Cancelled,
+                    ClassStatus.Cancelled_InsufficientStudents,
+                    ClassStatus.Cancelled_TeacherUnavailable,
+                    ClassStatus.Cancelled_Other
+                };
+                if (!allowedStatuses.Contains(teacherClass.Status))
                 {
-                    throw new InvalidOperationException("Chỉ có thể chỉnh sửa lớp học ở trạng thái Draft hoặc Scheduled");
+                    throw new InvalidOperationException("Chỉ có thể chỉnh sửa lớp học ở trạng thái Draft hoặc Cancelled");
                 }
 
                 // Check if class has enrollments - limit what can be changed
@@ -460,6 +467,8 @@ namespace BLL.Services.Teacher
                     teacherClass.Description = updateClassDto.Description;
                 }
 
+                // Handle StartDateTime and DurationMinutes logic
+                bool startChanged = false;
                 if (updateClassDto.StartDateTime.HasValue)
                 {
                     if (updateClassDto.StartDateTime.Value <= DateTime.UtcNow)
@@ -467,15 +476,27 @@ namespace BLL.Services.Teacher
                         throw new InvalidOperationException("Thời gian bắt đầu phải sau thời điểm hiện tại");
                     }
                     teacherClass.StartDateTime = updateClassDto.StartDateTime.Value;
+                    startChanged = true;
                 }
 
-                if (updateClassDto.EndDateTime.HasValue)
+                // Nếu truyền DurationMinutes thì tự động tính lại EndDateTime
+                if (updateClassDto.DurationMinutes.HasValue && updateClassDto.DurationMinutes > 0)
+                {
+                    teacherClass.EndDateTime = teacherClass.StartDateTime.AddMinutes(updateClassDto.DurationMinutes.Value);
+                }
+                else if (updateClassDto.EndDateTime.HasValue)
                 {
                     if (updateClassDto.EndDateTime.Value <= teacherClass.StartDateTime)
                     {
                         throw new InvalidOperationException("Thời gian kết thúc phải sau thời gian bắt đầu");
                     }
                     teacherClass.EndDateTime = updateClassDto.EndDateTime.Value;
+                }
+                // Nếu chỉ đổi StartDateTime mà không truyền DurationMinutes/EndDateTime thì giữ nguyên duration cũ
+                else if (startChanged)
+                {
+                    var duration = (teacherClass.EndDateTime - teacherClass.StartDateTime).TotalMinutes;
+                    teacherClass.EndDateTime = teacherClass.StartDateTime.AddMinutes(duration);
                 }
 
                 // Only allow capacity/pricing/minStudents changes if no enrollments yet
@@ -517,6 +538,15 @@ namespace BLL.Services.Teacher
                 if (!string.IsNullOrEmpty(updateClassDto.GoogleMeetLink))
                 {
                     teacherClass.GoogleMeetLink = updateClassDto.GoogleMeetLink;
+                }
+
+                // Nếu trạng thái là Cancelled* thì chuyển về Draft sau khi update
+                if (teacherClass.Status == ClassStatus.Cancelled ||
+                    teacherClass.Status == ClassStatus.Cancelled_InsufficientStudents ||
+                    teacherClass.Status == ClassStatus.Cancelled_TeacherUnavailable ||
+                    teacherClass.Status == ClassStatus.Cancelled_Other)
+                {
+                    teacherClass.Status = ClassStatus.Draft;
                 }
 
                 teacherClass.UpdatedAt = DateTime.UtcNow;
