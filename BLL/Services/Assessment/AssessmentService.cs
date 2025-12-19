@@ -1,6 +1,7 @@
 ﻿using Azure;
 using Azure.AI.OpenAI;
 using BLL.IServices.Assessment;
+using BLL.Settings;
 using Common.DTO.Assessment.Response;
 using Common.DTO.ExerciseGrading.Request;
 using Common.DTO.ExerciseGrading.Response;
@@ -9,6 +10,7 @@ using DAL.UnitOfWork;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using OpenAI.Chat;
 using System.Text;
 using System.Text.Json;
@@ -20,6 +22,7 @@ namespace BLL.Services.Assessment
         private static IConfiguration _configuration;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IPronunciationService _pronunciationService;
+        private static GeminiSettings _geminiSettings;
         private const string MULTILINGUAL_SCORING_SYSTEM_PROMPT = @"You are an expert speaking examiner.
                                                                     Your task: Grade the student's speaking submission based on the provided transcript and context.
                                                                     
@@ -42,11 +45,12 @@ namespace BLL.Services.Assessment
                                                                       ""feedback"": ""Bạn phát âm khá tốt, tuy nhiên cần chú ý âm đuôi (ending sounds) ở các từ số nhiều. Ngữ điệu còn hơi phẳng, hãy thử lên xuống giọng tự nhiên hơn.""
                                                                     }
                                                                     ";
-        public AssessmentService(IConfiguration configuration, IUnitOfWork unitOfWork, IPronunciationService pronunciationService)
+        public AssessmentService(IConfiguration configuration, IUnitOfWork unitOfWork, IPronunciationService pronunciationService, IOptions<GeminiSettings> geminiSettings)
         {
             _configuration = configuration;
             _unitOfWork = unitOfWork;
             _pronunciationService = pronunciationService;
+            _geminiSettings = geminiSettings.Value;
         }
         public async Task<AssessmentResult> EvaluateSpeakingAsync(AssessmentRequest req)
         {
@@ -333,11 +337,12 @@ namespace BLL.Services.Assessment
         }
         public static async Task<CommonResponse> TranscribeSpeechByGeminiAsync(string audioUrl, CancellationToken cancellationToken = default)
         {
-            string[] apiKeys = new[]
+            var apiKeys = _geminiSettings.ApiKeys;
+
+            if (apiKeys == null || apiKeys.Count == 0)
             {
-                "AIzaSyAsAA8w7QSEdW5k2CcbuWuEhXLV17hiYHI",
-                "AIzaSyAtrnbsgiyDAQP1OCXpCbfXkroblGrryP0"
-            };
+                return new CommonResponse { IsSuccess = false, Content = "Gemini API Keys are missing in configuration." };
+            }
 
             if (string.IsNullOrWhiteSpace(audioUrl))
                 return new CommonResponse { IsSuccess = false, Content = "Invalid audio URL." };
@@ -361,7 +366,7 @@ namespace BLL.Services.Assessment
 
             string audioBase64 = Convert.ToBase64String(audioBytes);
 
-            for (int i = 0; i < apiKeys.Length; i++)
+            for (int i = 0; i < apiKeys.Count; i++)
             {
                 string currentKey = apiKeys[i];
                 Console.WriteLine($"[Gemini Transcribe] Trying Key #{i + 1}...");
@@ -684,11 +689,10 @@ namespace BLL.Services.Assessment
         }
         private async Task<AssessmentResult> EvaluateSpeakingByGeminiAsync(string promptInstruction, List<string> imageUrls, string languageCode)
         {
-            string[] apiKeys = new[]
-            {
-                "AIzaSyAsAA8w7QSEdW5k2CcbuWuEhXLV17hiYHI",
-                "AIzaSyAtrnbsgiyDAQP1OCXpCbfXkroblGrryP0"
-            };
+            var apiKeys = _geminiSettings.ApiKeys;
+
+            if (apiKeys == null || apiKeys.Count == 0)
+                throw new Exception("Gemini API Keys are missing configuration.");
 
             var parts = new List<object>();
             string combinedPrompt = $"{MULTILINGUAL_SCORING_SYSTEM_PROMPT}\n\n---\n\n{promptInstruction}";
@@ -723,7 +727,7 @@ namespace BLL.Services.Assessment
 
             string jsonPayload = JsonSerializer.Serialize(payload);
 
-            for (int i = 0; i < apiKeys.Length; i++)
+            for (int i = 0; i < apiKeys.Count; i++)
             {
                 string currentKey = apiKeys[i];
                 Console.WriteLine($"[Gemini Grading] Trying Key #{i + 1}...");
@@ -761,7 +765,7 @@ namespace BLL.Services.Assessment
                 catch (Exception ex)
                 {
                     Console.WriteLine($"[Gemini Grading Key #{i + 1} Error]: {ex.Message}");
-                    if (i < apiKeys.Length - 1) continue;
+                    if (i < apiKeys.Count - 1) continue;
                 }
             }
 
