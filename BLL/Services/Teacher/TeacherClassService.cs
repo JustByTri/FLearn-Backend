@@ -309,6 +309,22 @@ namespace BLL.Services.Teacher
                         $"Số học sinh tối thiểu ({createClassDto.MinStudents}) không được lớn hơn sức chứa ({createClassDto.Capacity})");
                 }
 
+                // Check for overlapping classes
+                var startDateTime = createClassDto.ClassDate.Date + createClassDto.StartTime;
+                var endDateTime = startDateTime.AddMinutes(createClassDto.DurationMinutes);
+                var overlap = await _unitOfWork.TeacherClasses.Query()
+                    .Where(c => c.TeacherID == teacherId
+                        && c.Status != ClassStatus.Cancelled
+                        && c.Status != ClassStatus.Cancelled_InsufficientStudents
+                        && c.Status != ClassStatus.Cancelled_TeacherUnavailable
+                        && c.Status != ClassStatus.Cancelled_Other
+                        && ((c.StartDateTime < endDateTime && c.EndDateTime > startDateTime)))
+                    .AnyAsync();
+                if (overlap)
+                {
+                    throw new InvalidOperationException("Bạn đã có lớp học khác bị trùng thời gian. Vui lòng chọn thời gian khác.");
+                }
+
                 // Choose assignment: prefer the one provided, else highest level assigned
                 TeacherProgramAssignment? assignment = null;
                 if (createClassDto.ProgramAssignmentId.HasValue)
@@ -333,8 +349,6 @@ namespace BLL.Services.Teacher
                         throw new InvalidOperationException("Giáo viên chưa được gán chương trình/level phù hợp");
                 }
 
-                var startDateTime = createClassDto.ClassDate.Date + createClassDto.StartTime;
-                var endDateTime = startDateTime.AddMinutes(createClassDto.DurationMinutes);
                 if (startDateTime <= DateTime.UtcNow.AddDays(7))
                     throw new InvalidOperationException($"Thời gian bắt đầu phải sau ít nhất 7 ngày");
 
@@ -497,6 +511,21 @@ namespace BLL.Services.Teacher
                 {
                     var duration = (teacherClass.EndDateTime - teacherClass.StartDateTime).TotalMinutes;
                     teacherClass.EndDateTime = teacherClass.StartDateTime.AddMinutes(duration);
+                }
+
+                // Check for overlapping classes (exclude this class)
+                var overlap = await _unitOfWork.TeacherClasses.Query()
+                    .Where(c => c.TeacherID == teacherId
+                        && c.ClassID != classId
+                        && c.Status != ClassStatus.Cancelled
+                        && c.Status != ClassStatus.Cancelled_InsufficientStudents
+                        && c.Status != ClassStatus.Cancelled_TeacherUnavailable
+                        && c.Status != ClassStatus.Cancelled_Other
+                        && ((c.StartDateTime < teacherClass.EndDateTime && c.EndDateTime > teacherClass.StartDateTime)))
+                    .AnyAsync();
+                if (overlap)
+                {
+                    throw new InvalidOperationException("Bạn đã có lớp học khác bị trùng thời gian. Vui lòng chọn thời gian khác.");
                 }
 
                 // Only allow capacity/pricing/minStudents changes if no enrollments yet
