@@ -1,19 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BLL.Settings
+﻿namespace BLL.Settings
 {
     public class GeminiSettings
     {
-        public string ApiKey { get; set; } = string.Empty;
-        // Use v1 to avoid404 for some models/endpoints
-        public string BaseUrl { get; set; } = "https://generativelanguage.googleapis.com/v1";
-        // Prefer -latest alias for better availability
-        public string Model { get; set; } = "gemini-1.5-flash-latest";
-        public int MaxTokens { get; set; } = 2048;
-        public double Temperature { get; set; } = 0.7;
+        public List<string> ApiKeys { get; set; } = new List<string>();
     }
 }

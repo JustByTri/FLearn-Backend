@@ -89,7 +89,7 @@ namespace BLL
             services.Configure<RedisSettings>(configuration.GetSection("RedisSettings"));
             services.Configure<AzureOpenAISettings>(configuration.GetSection("AzureOpenAISettings"));
             services.Configure<SpeechSettings>(configuration.GetSection("SpeechSettings"));
-
+            services.Configure<BLL.Settings.GeminiSettings>(configuration.GetSection("Gemini"));
             services.AddDalServices(configuration);
 
             //REDIS SETUP
