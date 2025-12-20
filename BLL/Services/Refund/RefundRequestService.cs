@@ -1,14 +1,13 @@
 ﻿using BLL.IServices.Auth;
+using BLL.IServices.FirebaseService;
 using BLL.IServices.Refund;
 using BLL.IServices.Upload;
-using BLL.IServices.FirebaseService;
 using Common.DTO.ApiResponse;
 using Common.DTO.Refund;
 using DAL.Models;
 using DAL.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System.Net;
 
 namespace BLL.Services.Refund
 {
@@ -85,6 +84,18 @@ namespace BLL.Services.Refund
             if (existingRequest != null)
             {
                 throw new InvalidOperationException("Bạn đã có một đơn hoàn tiền đang chờ xử lý cho lớp học này.");
+            }
+
+            var hasApprovedRequest = await _unitOfWork.RefundRequests
+                .Query()
+                .AnyAsync(r =>
+                    r.EnrollmentID == dto.EnrollmentID &&
+                    r.Status == RefundRequestStatus.Approved
+                );
+
+            if (hasApprovedRequest)
+            {
+                throw new InvalidOperationException("Enrollment này đã có refund request được duyệt.");
             }
 
             // 3. Lấy thông tin học viên để gửi email
@@ -276,8 +287,8 @@ namespace BLL.Services.Refund
                                        dto.AdminNote.Contains("tài khoản", StringComparison.OrdinalIgnoreCase) ||
                                        dto.AdminNote.Contains("ngân hàng", StringComparison.OrdinalIgnoreCase);
 
-                string emailTitle = isBankInfoError 
-                    ? "Vui lòng cập nhật lại thông tin ngân hàng" 
+                string emailTitle = isBankInfoError
+                    ? "Vui lòng cập nhật lại thông tin ngân hàng"
                     : "Từ chối hoàn tiền";
 
                 await _emailService.SendRefundRequestRejectedAsync(
@@ -307,7 +318,7 @@ namespace BLL.Services.Refund
                     }
                 }
 
-                _logger.LogInformation("Đã từ chối đơn hoàn tiền {RefundRequestId} (Lý do: {Reason})", 
+                _logger.LogInformation("Đã từ chối đơn hoàn tiền {RefundRequestId} (Lý do: {Reason})",
                     dto.RefundRequestId, isBankInfoError ? "Sai STK" : "Khác");
             }
 
@@ -494,7 +505,7 @@ namespace BLL.Services.Refund
             if (request == null)
                 throw new KeyNotFoundException("Không tìm thấy đơn hoàn tiền");
 
-            if (request.Status != RefundRequestStatus.Pending && 
+            if (request.Status != RefundRequestStatus.Pending &&
                 request.Status != RefundRequestStatus.Draft)
                 throw new InvalidOperationException(
                     "Chỉ có thể yêu cầu cập nhật cho đơn ở trạng thái Pending hoặc Draft"
@@ -599,8 +610,8 @@ namespace BLL.Services.Refund
                 foreach (var request in sortedRequests)
                 {
                     var student = await _unitOfWork.Users.GetByIdAsync(request.StudentID);
-                    var processedByAdmin = request.ProcessedByAdminID.HasValue 
-                        ? await _unitOfWork.Users.GetByIdAsync(request.ProcessedByAdminID.Value) 
+                    var processedByAdmin = request.ProcessedByAdminID.HasValue
+                        ? await _unitOfWork.Users.GetByIdAsync(request.ProcessedByAdminID.Value)
                         : null;
 
                     // Xác định loại đơn: Class hay Course
@@ -642,17 +653,17 @@ namespace BLL.Services.Refund
                     {
                         RefundRequestID = request.RefundRequestID,
                         RefundCategory = category,
-                        
+
                         StudentID = request.StudentID,
                         StudentName = student?.UserName ?? "N/A",
                         StudentEmail = student?.Email ?? "N/A",
                         StudentAvatar = student?.Avatar,
-                        
+
                         ClassID = request.ClassID,
                         ClassName = category == "Class" ? displayTitle : null,
                         PurchaseId = request.PurchaseId,
                         CourseName = category == "Course" ? displayTitle : null,
-                        
+
                         RequestType = request.RequestType,
                         Reason = request.Reason,
                         BankName = request.BankName ?? string.Empty,
@@ -662,19 +673,19 @@ namespace BLL.Services.Refund
                         AdminNote = request.AdminNote,
                         RefundAmount = request.RefundAmount,
                         OriginalAmount = originalAmount,
-                        
+
                         RequestedAt = request.RequestedAt,
                         ProcessedAt = request.ProcessedAt,
-                        
+
                         ProofImageUrl = request.ProofImageUrl,
                         ProcessedByAdminName = processedByAdmin?.UserName,
-                        
+
                         // Meta data
                         DisplayTitle = displayTitle,
                         StatusText = request.Status.ToString(),
                         RequestTypeText = request.RequestType.ToString()
                     };
-                    
+
                     result.Add(dto);
                 }
 
@@ -684,20 +695,20 @@ namespace BLL.Services.Refund
                     .Take(pageSize)
                     .ToList();
 
-                _logger.LogInformation("Tìm thấy {Total} đơn hoàn tiền. Trả về {Count} đơn (trang {Page})", 
+                _logger.LogInformation("Tìm thấy {Total} đơn hoàn tiền. Trả về {Count} đơn (trang {Page})",
                     result.Count, pagedResult.Count, page);
 
                 return BaseResponse<IEnumerable<UnifiedRefundRequestDto>>.Success(
-                    pagedResult, 
-                    $"Tìm thấy {result.Count} đơn hoàn tiền", 
+                    pagedResult,
+                    $"Tìm thấy {result.Count} đơn hoàn tiền",
                     200);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi lấy danh sách tất cả đơn hoàn tiền");
                 return BaseResponse<IEnumerable<UnifiedRefundRequestDto>>.Error(
-                    "Đã xảy ra lỗi khi lấy danh sách đơn hoàn tiền", 
-                    500, 
+                    "Đã xảy ra lỗi khi lấy danh sách đơn hoàn tiền",
+                    500,
                     ex.Message);
             }
         }
