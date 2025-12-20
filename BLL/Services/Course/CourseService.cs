@@ -889,7 +889,7 @@ namespace BLL.Services.Course
             {
                 var teacher = await _unit.TeacherProfiles.FindAsync(x => x.UserId == userId);
                 if (teacher == null || !teacher.Status)
-                    return BaseResponse<object>.Fail(null, "You do not have permission to submit this course.", 403);
+                    return BaseResponse<object>.Fail(null, "Bạn không có quyền nộp khóa học này.", 403);
 
                 var course = await _unit.Courses.Query()
                     .Include(c => c.Template)
@@ -901,14 +901,14 @@ namespace BLL.Services.Course
                     .FirstOrDefaultAsync(c => c.CourseID == courseId);
 
                 if (course == null)
-                    return BaseResponse<object>.Fail(null, "Course does not exist.", 404);
+                    return BaseResponse<object>.Fail(null, "Khóa học không tồn tại.", 404);
 
                 if (course.TeacherId != teacher.TeacherId)
-                    return BaseResponse<object>.Fail(null, "You do not have permission to submit this course.", 403);
+                    return BaseResponse<object>.Fail(null, "Bạn không có quyền nộp khóa học này.", 403);
 
                 if (course.Status != CourseStatus.Draft && course.Status != CourseStatus.Rejected)
                     return BaseResponse<object>.Fail(null,
-                        $"Course can only be submitted if it is in '{CourseStatus.Draft.ToString()}' or '{CourseStatus.Rejected.ToString()}' status. Current status: {course.Status.ToString()}",
+                        $"Để nộp khóa học, trạng thái phải là 'Bản nháp' hoặc 'Đã từ chối'.",
                         400);
 
                 var validationErrors = new List<string>();
@@ -924,45 +924,62 @@ namespace BLL.Services.Course
 
                 int unitCount = course.CourseUnits?.Count ?? 0;
                 if (unitCount < minUnits)
-                    validationErrors.Add($"Unit Count: Course must have at least {minUnits} unit(s). Found {unitCount}.");
+                    validationErrors.Add($"Số lượng bài học: Khóa học phải có ít nhất {minUnits} bài học. Hiện có {unitCount} bài.");
                 if (unitCount > maxUnits)
-                    validationWarnings.Add($"Unit Count: Maximum recommended units is {maxUnits}. Found {unitCount}.");
+                    validationWarnings.Add($"Số lượng bài học: Số bài học tối đa được khuyến nghị là {maxUnits}. Hiện có {unitCount} bài.");
 
                 foreach (var unit in course.CourseUnits ?? Enumerable.Empty<DAL.Models.CourseUnit>())
                 {
                     int lessonCount = unit.Lessons?.Count ?? 0;
 
                     if (lessonCount < minLessons)
-                        validationErrors.Add($"Unit '{unit.Title}': Each unit must have at least {minLessons} lesson(s). Found {lessonCount}.");
+                        validationErrors.Add($"Chương '{unit.Title}': Mỗi chương phải có ít nhất {minLessons} bài học. Hiện có {lessonCount} bài.");
                     if (lessonCount > maxLessons)
-                        validationWarnings.Add($"Unit '{unit.Title}': Maximum recommended lessons per unit is {maxLessons}. Found {lessonCount}.");
+                        validationWarnings.Add($"Chương '{unit.Title}': Số bài học tối đa được khuyến nghị cho mỗi chương là {maxLessons}. Hiện có {lessonCount} bài.");
 
                     foreach (var lesson in unit.Lessons ?? Enumerable.Empty<DAL.Models.Lesson>())
                     {
                         int exerciseCount = lesson.Exercises?.Count ?? 0;
 
                         if (exerciseCount > maxExercises)
-                            validationWarnings.Add($"Lesson '{lesson.Title}': Maximum recommended exercises per lesson is {maxExercises}. Found {exerciseCount}.");
+                            validationWarnings.Add($"Bài học '{lesson.Title}': Số bài tập tối đa được khuyến nghị cho mỗi bài học là {maxExercises}. Hiện có {exerciseCount} bài.");
                     }
                 }
 
                 if (course.CourseTopics?.Count == 0)
-                    validationErrors.Add("Topics: At least one topic is required for the course.");
+                    validationErrors.Add("Chủ đề: Khóa học cần phải có ít nhất một chủ đề.");
 
                 if (string.IsNullOrWhiteSpace(course.Title) || course.Title == "Untitled Course")
-                    validationErrors.Add("Title: Course title is required and cannot be the default value.");
+                    validationErrors.Add("Tiêu đề: Tiêu đề khóa học là bắt buộc và không được để giá trị mặc định.");
                 if (string.IsNullOrWhiteSpace(course.Description) || course.Description == "No description")
-                    validationErrors.Add("Description: Course description is required and cannot be the default value.");
+                    validationErrors.Add("Mô tả: Mô tả khóa học là bắt buộc và không được để giá trị mặc định.");
                 if (string.IsNullOrWhiteSpace(course.LearningOutcome) || course.LearningOutcome == "No learning outcomes")
-                    validationErrors.Add("Learning Outcomes: Learning outcomes are required and cannot be the default value.");
+                    validationErrors.Add("Mục tiêu học tập: Mục tiêu học tập là bắt buộc và không được để giá trị mặc định.");
 
                 if (string.IsNullOrWhiteSpace(course.ImageUrl))
-                    validationErrors.Add("Image: Course image is required.");
+                    validationErrors.Add("Hình ảnh: Hình ảnh khóa học là bắt buộc.");
 
                 if (course.CourseType == CourseType.Free && course.Price != 0)
-                    validationErrors.Add("Pricing: Free courses must have price set to 0.");
+                    validationErrors.Add("Giá cả: Khóa học miễn phí phải có giá được đặt là 0.");
                 if (course.CourseType == CourseType.Paid && course.Price <= 0)
-                    validationErrors.Add("Pricing: Paid courses must have price greater than 0.");
+                    validationErrors.Add("Giá cả: Khóa học trả phí phải có giá lớn hơn 0.");
+
+                var allExercises = course.CourseUnits?
+                    .SelectMany(u => u.Lessons ?? Enumerable.Empty<DAL.Models.Lesson>())
+                    .SelectMany(l => l.Exercises ?? Enumerable.Empty<DAL.Models.Exercise>())
+                    .ToList() ?? new List<DAL.Models.Exercise>();
+
+                if (course.CourseType == CourseType.Paid && course.GradingType == GradingType.AIAndTeacher)
+                {
+                    bool hasTeacherGradedExercise = allExercises.Any(e =>
+                        e.Type == SpeakingExerciseType.StoryTelling ||
+                        e.Type == SpeakingExerciseType.Debate);
+
+                    if (!hasTeacherGradedExercise)
+                    {
+                        validationErrors.Add("Yêu cầu bắt buộc: Khóa học trả phí với chế độ 'Giáo viên chấm điểm' phải có ít nhất 1 bài tập loại 'StoryTelling' hoặc 'Debate' để giáo viên thực hiện chấm.");
+                    }
+                }
 
                 if (validationErrors.Any())
                 {
@@ -991,8 +1008,8 @@ namespace BLL.Services.Course
 
                     return BaseResponse<object>.Fail(
                         templateRequirements,
-                        $"Course does not meet the requirements. Found {validationErrors.Count} error(s)." +
-                        (validationWarnings.Any() ? $" Also {validationWarnings.Count} suggestion(s) for improvement." : ""),
+                       $"Khóa học không đáp ứng các yêu cầu. Phát hiện {validationErrors.Count} lỗi." +
+                       (validationWarnings.Any() ? $" Ngoài ra có {validationWarnings.Count} gợi ý để cải thiện." : ""),
                         400
                     );
                 }
@@ -1012,9 +1029,9 @@ namespace BLL.Services.Course
                 await _unit.CourseSubmissions.CreateAsync(submission);
                 await _unit.SaveChangesAsync();
 
-                var successMessage = $"Course '{course.Title}' submitted for review successfully.";
+                var successMessage = $"Khóa học '{course.Title}' đã được gửi để xét duyệt thành công.";
                 if (validationWarnings.Any())
-                    successMessage += $" Note: {validationWarnings.Count} suggestion(s) were noted but did not block submission.";
+                    successMessage += $" Lưu ý: {validationWarnings.Count} gợi ý đã được ghi nhận nhưng không ngăn cản việc nộp bài.";
 
                 return BaseResponse<object>.Success(
                     new
@@ -1030,11 +1047,7 @@ namespace BLL.Services.Course
             }
             catch (Exception ex)
             {
-                return BaseResponse<object>.Error(
-                    "Submit failed",
-                    500,
-                    $"An error occurred while submitting the course for review: {ex.Message}"
-                );
+                return BaseResponse<object>.Error("Gửi không thành công", 500, $"Đã xảy ra lỗi khi gửi khóa học để xét duyệt: {ex.Message}");
             }
         }
         public async Task<PagedResponse<IEnumerable<CourseSubmissionResponse>>> GetCourseSubmissionsByManagerAsync(Guid userId, PagingRequest request, string status)
