@@ -76,7 +76,7 @@ namespace DAL
             services.AddScoped<IUserSubscriptionRepository, UserSubscriptionRepository>();
             services.AddScoped<IWalletRepository, WalletRepository>();
             services.AddScoped<IWalletTransactionRepository, WalletTransactionRepository>();
-
+            services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
             // Register UnitOfWork
             services.AddScoped<IUnitOfWork, UnitOfWork.UnitOfWork>();
 

@@ -61,6 +61,7 @@ namespace DAL.UnitOfWork
         IUserSubscriptionRepository UserSubscriptions { get; }
         IWalletRepository Wallets { get; }
         IWalletTransactionRepository WalletTransactions { get; }
+        ISubscriptionRepository Subscriptions { get; }
         int SaveChanges();
         Task<int> SaveChangesAsync();
         void BeginTransaction();

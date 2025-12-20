@@ -1,5 +1,4 @@
 ﻿using DAL.Models;
-using DAL.SeedData;
 using Microsoft.EntityFrameworkCore;
 
 namespace DAL.DBContext
@@ -63,7 +62,7 @@ namespace DAL.DBContext
         public DbSet<Wallet> Wallets { get; set; }
         public DbSet<WalletTransaction> WalletTransactions { get; set; }
         public DbSet<LearnerXpEvent> LearnerXpEvents { get; set; }
-
+        public DbSet<Subscription> Subscriptions { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

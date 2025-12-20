@@ -22,7 +22,7 @@ namespace Presentation.Controllers.Subscription
         public async Task<IActionResult> Purchase([FromBody] CreateSubscriptionPurchaseDto dto)
         {
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var result = await _subscriptionService.CreateSubscriptionPurchaseAsync(userId, dto.Plan);
+            var result = await _subscriptionService.CreateSubscriptionPurchaseAsync(userId, dto.PlanId);
             return Ok(new { success = true, data = result });
         }
 
