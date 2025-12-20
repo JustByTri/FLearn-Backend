@@ -1,12 +1,12 @@
+﻿using BLL.IServices.Payment;
 using BLL.IServices.Subscription;
-using BLL.IServices.Payment;
-using Common.Constants;
-using Common.DTO.Subscription;
 using Common.DTO.Payment;
+using Common.DTO.Subscription;
+using DAL.Helpers;
 using DAL.Models;
 using DAL.UnitOfWork;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using DAL.Helpers;
 
 namespace BLL.Services.Subscription
 {
@@ -23,30 +23,33 @@ namespace BLL.Services.Subscription
             _logger = logger;
         }
 
-        public async Task<SubscriptionPurchaseResponseDto> CreateSubscriptionPurchaseAsync(Guid userId, string plan)
+        public async Task<SubscriptionPurchaseResponseDto> CreateSubscriptionPurchaseAsync(Guid userId, int subscriptionPlanId)
         {
-            if (!Common.Constants.SubscriptionConstants.SubscriptionQuotas.ContainsKey(plan))
-                throw new ArgumentException("Invalid plan");
+            var planEntity = await _unit.Subscriptions.Query().Where(s => s.SubscriptionId == subscriptionPlanId).FirstOrDefaultAsync();
 
-            var quota = SubscriptionConstants.SubscriptionQuotas[plan];
-            var price = SubscriptionConstants.SubscriptionPrices[plan];
+            if (planEntity == null)
+                throw new ArgumentException("Subscription plan not found");
+
+            var price = planEntity.Price;
+            var quota = planEntity.ConversationQuota;
+            var planName = planEntity.Name;
 
             // Create a pending UserSubscription entry
             var sub = new UserSubscription
             {
                 SubscriptionID = Guid.NewGuid(),
                 UserID = userId,
-                SubscriptionType = plan,
+                SubscriptionType = planName,
                 ConversationQuota = quota,
                 IsActive = false,
                 Price = price,
                 StartDate = TimeHelper.GetVietnamTime(),
                 EndDate = null
             };
+
             await _unit.UserSubscriptions.CreateAsync(sub);
             await _unit.SaveChangesAsync();
 
-            // Create a Purchase record for subscription (no course)
             var purchase = new Purchase
             {
                 PurchasesId = Guid.NewGuid(),
@@ -66,11 +69,11 @@ namespace BLL.Services.Subscription
             // Create PayOS payment link
             var paymentDto = new CreatePaymentDto
             {
-                ClassID = Guid.Empty, // not used for subscription; PayOS service ignores this
+                ClassID = Guid.Empty,
                 StudentID = userId,
                 Amount = price,
-                Description = $"FLearn subscription {plan}",
-                ItemName = $"{plan} conversations/day"
+                Description = $"Nâng cấp gói {planName}",
+                ItemName = $"Gói: {planName} ({quota} cuộc hội thoại/ngày)"
             };
             var pay = await _payOs.CreatePaymentLinkAsync(paymentDto);
             if (!pay.Success)
@@ -98,7 +101,7 @@ namespace BLL.Services.Subscription
                 TransactionId = pay.TransactionId,
                 PaymentUrl = pay.PaymentUrl,
                 Amount = price,
-                Plan = plan,
+                Plan = planName,
                 ExpiryTime = pay.ExpiryTime
             };
         }
@@ -157,13 +160,13 @@ namespace BLL.Services.Subscription
                             if (user != null)
                             {
                                 user.DailyConversationLimit = sub.ConversationQuota;
-                                user.ConversationsUsedToday = 0; 
+                                user.ConversationsUsedToday = 0;
                                 user.LastConversationResetDate = TimeHelper.GetVietnamTime();
                                 await _unit.Users.UpdateAsync(user);
                             }
                         }
                     }
-                    
+
 
                     await _unit.SaveChangesAsync();
                     return true;

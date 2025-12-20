@@ -70,6 +70,7 @@ namespace DAL.UnitOfWork
             UserSubscriptions = new UserSubscriptionRepository(_context);
             Wallets = new WalletRepository(_context);
             WalletTransactions = new WalletTransactionRepository(_context);
+            Subscriptions = new SubscriptionRepository(_context);
         }
         #region Repository Properties
         public IAchievementRepository Achievements { get; private set; }
@@ -128,6 +129,7 @@ namespace DAL.UnitOfWork
         public IUserSubscriptionRepository UserSubscriptions { get; private set; }
         public IWalletRepository Wallets { get; private set; }
         public IWalletTransactionRepository WalletTransactions { get; private set; }
+        public ISubscriptionRepository Subscriptions { get; private set; }
         #endregion
         #region Transaction Methods
         public void BeginTransaction()

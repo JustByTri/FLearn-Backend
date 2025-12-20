@@ -204,6 +204,7 @@ namespace BLL
 
             services.AddScoped<IWalletTransactionService, WalletTransactionService>();
             services.AddScoped<IStatisticsService, StatisticsService>();
+            services.AddScoped<ISubscriptionPlanService, SubscriptionPlanService>();
             return services;
         }
     }
