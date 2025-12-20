@@ -143,6 +143,31 @@ namespace Presentation.Controllers.Purchases
             return StatusCode(result.Code, result);
         }
         [Authorize(Roles = "Learner")]
+        [HttpGet("purchases/classes")]
+        public async Task<IActionResult> GetClassPurchases([FromQuery] PurchasePagingRequest request)
+        {
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
+
+            request.PageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
+            request.PageSize = request.PageSize < 1 ? 10 : request.PageSize;
+            request.PageSize = request.PageSize > 100 ? 100 : request.PageSize;
+
+            var result = await _purchaseService.GetClassPurchasesAsync(userId, request);
+            return StatusCode(result.Code, result);
+        }
+
+        [Authorize(Roles = "Learner")]
+        [HttpGet("purchases/{purchaseId:guid}/class")]
+        public async Task<IActionResult> GetClassPurchaseDetail(Guid purchaseId)
+        {
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
+
+            var result = await _purchaseService.GetClassPurchaseDetailAsync(userId, purchaseId);
+            return StatusCode(result.Code, result);
+        }
+        [Authorize(Roles = "Learner")]
         [HttpGet("purchases/courses")]
         public async Task<IActionResult> GetCoursePurchases([FromQuery] PurchasePagingRequest request)
         {
