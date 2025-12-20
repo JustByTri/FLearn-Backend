@@ -119,7 +119,7 @@ namespace BLL.Services.Enrollment
                     await _unitOfWork.ClassEnrollments.DeleteAsync(existingEnrollment.EnrollmentID);
                 }
 
-                // Tạo enrollment mới với trạng thái Paid
+                // Đảm bảo enrollment được tạo trước khi tạo Purchase
                 var enrollment = new ClassEnrollment
                 {
                     EnrollmentID = Guid.NewGuid(),
@@ -133,13 +133,14 @@ namespace BLL.Services.Enrollment
                 };
 
                 await _unitOfWork.ClassEnrollments.CreateAsync(enrollment);
+                await _unitOfWork.SaveChangesAsync(); 
 
                 // ✅ Tạo Purchase cho lớp học
                 var purchase = new Purchase
                 {
                     PurchasesId = Guid.NewGuid(),
                     UserId = studentId,
-                    EnrollmentId = enrollment.EnrollmentID,
+                    ClassEnrollmentId = enrollment.EnrollmentID,
                     TotalAmount = enrollment.AmountPaid,
                     FinalAmount = enrollment.AmountPaid,
                     Status = DAL.Type.PurchaseStatus.Completed,

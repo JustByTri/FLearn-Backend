@@ -23,6 +23,10 @@ namespace DAL.Models
         public Guid? SubscriptionId { get; set; }
         [ForeignKey(nameof(SubscriptionId))]
         public virtual UserSubscription? Subscription { get; set; }
+        // NEW: ClassEnrollment purchase support
+        public Guid? ClassEnrollmentId { get; set; }
+        [ForeignKey(nameof(ClassEnrollmentId))]
+        public virtual ClassEnrollment? ClassEnrollment { get; set; }
         [Required]
         public decimal TotalAmount { get; set; }
         public decimal? DiscountAmount { get; set; }

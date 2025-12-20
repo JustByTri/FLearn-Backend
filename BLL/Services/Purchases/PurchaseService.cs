@@ -84,6 +84,139 @@ namespace BLL.Services.Purchases
                 return BaseResponse<PaymentCreateResponse>.Error("System error while creating payment");
             }
         }
+        public async Task<PagedResponse<List<ClassPurchaseResponse>>> GetClassPurchasesAsync(Guid userId, PurchasePagingRequest request)
+        {
+            try
+            {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null || !user.IsEmailConfirmed || !user.Status)
+                    return PagedResponse<List<ClassPurchaseResponse>>.Fail(new object(), "Access denied", 403);
+
+                var query = _unitOfWork.Purchases.Query()
+                    .Include(p => p.ClassEnrollment)
+                        .ThenInclude(e => e.Class)
+                            .ThenInclude(c => c.Language)
+                    .Include(p => p.ClassEnrollment)
+                        .ThenInclude(e => e.Class)
+                            .ThenInclude(c => c.Level)
+                    .Include(p => p.ClassEnrollment)
+                        .ThenInclude(e => e.Class)
+                            .ThenInclude(c => c.Teacher)
+                                .ThenInclude(t => t.TeacherProfile)
+                    .Where(p => p.UserId == userId && p.ClassEnrollmentId != null);
+
+                if (!string.IsNullOrEmpty(request.Status) && Enum.TryParse<PurchaseStatus>(request.Status, true, out var status))
+                    query = query.Where(p => p.Status == status);
+
+                var totalItems = await query.CountAsync();
+
+                var purchases = await query
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Skip((request.PageNumber - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToListAsync();
+
+                var now = TimeHelper.GetVietnamTime();
+                var result = purchases.Select(p =>
+                {
+                    var classEntity = p.ClassEnrollment?.Class;
+                    return new ClassPurchaseResponse
+                    {
+                        PurchaseId = p.PurchasesId,
+                        ClassId = classEntity?.ClassID ?? Guid.Empty,
+                        ClassTitle = classEntity?.Title ?? "",
+                        ClassDescription = classEntity?.Description ?? "",
+                        LanguageName = classEntity?.Language?.LanguageName ?? "",
+                        LevelName = classEntity?.Level?.Name ?? "",
+                        Price = p.TotalAmount,
+                        DiscountPrice = null,
+                        FinalAmount = p.FinalAmount,
+                        DiscountAmount = p.DiscountAmount,
+                        Status = p.Status.ToString(),
+                        PaymentMethod = p.PaymentMethod.ToString(),
+                        CreatedAt = p.CreatedAt.ToString("dd-MM-yyyy HH:mm"),
+                        PaidAt = p.PaidAt?.ToString("dd-MM-yyyy HH:mm"),
+                        StartsAt = classEntity?.StartDateTime.ToString("dd-MM-yyyy HH:mm"),
+                        EndsAt = classEntity?.EndDateTime.ToString("dd-MM-yyyy HH:mm"),
+                        EligibleForRefundUntil = p.EligibleForRefundUntil?.ToString("dd-MM-yyyy HH:mm"),
+                        DaysRemaining = classEntity?.EndDateTime != null ? (int)(classEntity.EndDateTime - now).TotalDays : 0,
+                        IsRefundEligible = p.EligibleForRefundUntil.HasValue && now <= p.EligibleForRefundUntil.Value,
+                        IsActive = p.Status == PurchaseStatus.Completed && (classEntity?.EndDateTime == null || classEntity.EndDateTime > now),
+                        ClassEnrollmentId = p.ClassEnrollmentId,
+                        EnrollmentStatus = p.ClassEnrollment?.Status.ToString() ?? "",
+                        TeacherName = classEntity?.Teacher?.TeacherProfile?.FullName ?? classEntity?.Teacher?.UserName ?? "",
+                        GoogleMeetLink = classEntity?.GoogleMeetLink ?? ""
+                    };
+                }).ToList();
+
+                return PagedResponse<List<ClassPurchaseResponse>>.Success(result, request.PageNumber, request.PageSize, totalItems, "Class purchases retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting class purchases for user {UserId}", userId);
+                return PagedResponse<List<ClassPurchaseResponse>>.Error("System error while retrieving class purchases");
+            }
+        }
+
+        public async Task<BaseResponse<ClassPurchaseResponse>> GetClassPurchaseDetailAsync(Guid userId, Guid purchaseId)
+        {
+            try
+            {
+                var user = await _unitOfWork.Users.GetByIdAsync(userId);
+                if (user == null || !user.IsEmailConfirmed || !user.Status)
+                    return BaseResponse<ClassPurchaseResponse>.Fail(new object(), "Access denied", 403);
+
+                var p = await _unitOfWork.Purchases.Query()
+                    .Include(x => x.ClassEnrollment)
+                        .ThenInclude(e => e.Class)
+                            .ThenInclude(c => c.Language)
+                    .Include(x => x.ClassEnrollment)
+                        .ThenInclude(e => e.Class)
+                            .ThenInclude(c => c.Level)
+                    .Include(x => x.ClassEnrollment)
+                        .ThenInclude(e => e.Class)
+                            .ThenInclude(c => c.Teacher)
+                                .ThenInclude(t => t.TeacherProfile)
+                    .FirstOrDefaultAsync(x => x.PurchasesId == purchaseId && x.UserId == userId && x.ClassEnrollmentId != null);
+
+                if (p == null)
+                    return BaseResponse<ClassPurchaseResponse>.Fail(new object(), "Purchase not found", 404);
+
+                var now = TimeHelper.GetVietnamTime();
+                var classEntity = p.ClassEnrollment?.Class;
+                var result = new ClassPurchaseResponse
+                {
+                    PurchaseId = p.PurchasesId,
+                    ClassId = classEntity?.ClassID ?? Guid.Empty,
+                    ClassTitle = classEntity?.Title ?? "",
+                    ClassDescription = classEntity?.Description ?? "",
+                    LanguageName = classEntity?.Language?.LanguageName ?? "",
+                    LevelName = classEntity?.Level?.Name ?? "",
+                    Price = p.TotalAmount,
+                    FinalAmount = p.FinalAmount,
+                    DiscountAmount = p.DiscountAmount,
+                    Status = p.Status.ToString(),
+                    PaymentMethod = p.PaymentMethod.ToString(),
+                    CreatedAt = p.CreatedAt.ToString("dd-MM-yyyy HH:mm"),
+                    PaidAt = p.PaidAt?.ToString("dd-MM-yyyy HH:mm"),
+                    StartsAt = classEntity?.StartDateTime.ToString("dd-MM-yyyy HH:mm"),
+                    EndsAt = classEntity?.EndDateTime.ToString("dd-MM-yyyy HH:mm"),
+                    DaysRemaining = classEntity?.EndDateTime != null ? (int)(classEntity.EndDateTime - now).TotalDays : 0,
+                    IsRefundEligible = p.EligibleForRefundUntil.HasValue && now <= p.EligibleForRefundUntil.Value,
+                    IsActive = p.Status == PurchaseStatus.Completed && (classEntity?.EndDateTime == null || classEntity.EndDateTime > now),
+                    ClassEnrollmentId = p.ClassEnrollmentId,
+                    EnrollmentStatus = p.ClassEnrollment?.Status.ToString() ?? "",
+                    TeacherName = classEntity?.Teacher?.TeacherProfile?.FullName ?? classEntity?.Teacher?.UserName ?? ""
+                };
+
+                return BaseResponse<ClassPurchaseResponse>.Success(result, "Class purchase detail retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting class purchase detail for purchase {PurchaseId}", purchaseId);
+                return BaseResponse<ClassPurchaseResponse>.Error("System error while retrieving class purchase detail");
+            }
+        }
         public async Task<BaseResponse<object>> CreateRefundRequestAsync(Guid userId, CreateRefundRequest request)
         {
             return await _unitOfWork.ExecuteInTransactionAsync(async () =>
