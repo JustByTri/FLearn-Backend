@@ -102,6 +102,7 @@ namespace BLL.Services.Refund
             var student = await _unitOfWork.Users.GetByIdAsync(studentId);
 
             // 4. Tạo đơn mới
+            var now = DAL.Helpers.TimeHelper.GetVietnamTime();
             var newRequest = new RefundRequest
             {
                 RefundRequestID = Guid.NewGuid(),
@@ -115,8 +116,8 @@ namespace BLL.Services.Refund
                 BankAccountHolderName = dto.BankAccountHolderName,
                 RefundAmount = enrollment.AmountPaid,
                 Status = RefundRequestStatus.Pending,
-                RequestedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                RequestedAt = now,
+                UpdatedAt = now
             };
 
             await _unitOfWork.RefundRequests.CreateAsync(newRequest);
@@ -127,12 +128,19 @@ namespace BLL.Services.Refund
             // 5. Gửi email xác nhận đã nhận đơn
             if (student != null && !string.IsNullOrEmpty(student.Email))
             {
-                await _emailService.SendRefundRequestConfirmationAsync(
-                    student.Email,
-                    student.UserName,
-                    dto.ClassName,
-                    newRequest.RefundRequestID.ToString()
-                );
+                try
+                {
+                    await _emailService.SendRefundRequestConfirmationAsync(
+                        student.Email,
+                        student.UserName,
+                        dto.ClassName,
+                        newRequest.RefundRequestID.ToString()
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send confirmation email for refund request {RefundRequestID}", newRequest.RefundRequestID);
+                }
             }
 
             return MapToDto(newRequest, student?.UserName, dto.ClassName);
