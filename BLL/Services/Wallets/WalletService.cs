@@ -57,7 +57,7 @@ namespace BLL.Services.Wallets
                 Amount = systemShare,
                 ReferenceId = purchase.PurchasesId,
                 ReferenceType = ReferenceType.CoursePurchase, // Hoặc dùng loại riêng nếu có
-                Description = $"System Fee (10%) - Purchase: {purchase.Course?.Title}",
+                Description = $"Phí hệ thống (10%) - Thanh toán cho khóa học: {purchase.Course?.Title}",
                 Status = TransactionStatus.Succeeded,
                 CreatedAt = TimeHelper.GetVietnamTime()
             };
@@ -71,7 +71,7 @@ namespace BLL.Services.Wallets
                 Amount = courseCreationShare,
                 ReferenceId = purchase.PurchasesId,
                 ReferenceType = ReferenceType.CourseCreationFee, // Dễ dàng filter sau này
-                Description = $"Hold: Course Creation Fee (55%) - Purchase: {purchase.Course?.Title}",
+                Description = $"Tạm giữ: Phí Tạo Khóa Học (55%) - Thanh toán cho: {purchase.Course?.Title}",
                 Status = TransactionStatus.Succeeded,
                 CreatedAt = TimeHelper.GetVietnamTime()
             };
@@ -85,7 +85,7 @@ namespace BLL.Services.Wallets
                 Amount = gradingShare,
                 ReferenceId = purchase.PurchasesId,
                 ReferenceType = ReferenceType.GradingFee, // Dễ dàng filter sau này
-                Description = $"Hold: Grading Fee (35%) - Purchase: {purchase.Course?.Title}",
+                Description = $"Tạm giữ: Phí Chấm Điểm (35%) - Thanh toán cho: {purchase.Course?.Title}",
                 Status = TransactionStatus.Succeeded,
                 CreatedAt = TimeHelper.GetVietnamTime()
             };
@@ -216,7 +216,7 @@ namespace BLL.Services.Wallets
                     Amount = courseCreationAmount,
                     ReferenceId = purchaseId,
                     ReferenceType = ReferenceType.CourseCreationFee,
-                    Description = $"Course creation fee released after refund period: {purchase.Course?.Title}",
+                    Description = $"Phí tạo khóa học được giải phóng sau thời gian hoàn tiền: {purchase.Course?.Title}",
                     Status = TransactionStatus.Succeeded,
                     CreatedAt = TimeHelper.GetVietnamTime()
                 };
@@ -252,7 +252,7 @@ namespace BLL.Services.Wallets
                 Amount = -amount,
                 ReferenceId = purchaseId,
                 ReferenceType = ReferenceType.TeacherPayout,
-                Description = $"Course creation fee to teacher: {purchase.Course.Teacher?.FullName} - {purchase.Course.Title}",
+                Description = $"Phí tạo khóa học cho giáo viên: {purchase.Course.Teacher?.FullName} - {purchase.Course.Title}",
                 Status = TransactionStatus.Succeeded,
                 CreatedAt = TimeHelper.GetVietnamTime()
             };
@@ -269,7 +269,7 @@ namespace BLL.Services.Wallets
                 Amount = amount,
                 ReferenceId = purchaseId,
                 ReferenceType = ReferenceType.TeacherPayout,
-                Description = $"Course creation fee: {purchase.Course.Title}",
+                Description = $"Phí tạo khóa học: {purchase.Course.Title}",
                 Status = TransactionStatus.Succeeded,
                 CreatedAt = TimeHelper.GetVietnamTime()
             };
@@ -315,7 +315,7 @@ namespace BLL.Services.Wallets
                     Amount = -amount,
                     ReferenceId = allocationId,
                     ReferenceType = ReferenceType.GradingFee,
-                    Description = $"Exercise grading fee to teacher: {allocation.Teacher?.FullName}",
+                    Description = $"Phí chấm điểm cho giáo viên: {allocation.Teacher?.FullName}",
                     Status = TransactionStatus.Succeeded,
                     CreatedAt = TimeHelper.GetVietnamTime()
                 };
@@ -332,7 +332,7 @@ namespace BLL.Services.Wallets
                     Amount = amount,
                     ReferenceId = allocationId,
                     ReferenceType = ReferenceType.GradingFee,
-                    Description = $"Exercise grading fee",
+                    Description = $"Phí chấm điểm cho giáo viên: {allocation.Teacher?.FullName}",
                     Status = TransactionStatus.Succeeded,
                     CreatedAt = TimeHelper.GetVietnamTime()
                 };
