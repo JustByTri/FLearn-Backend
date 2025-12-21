@@ -11,6 +11,7 @@ using System.Security.Claims;
 using System.Linq;
 using BLL.IServices.Course; 
 using BLL.IServices.Redis;
+using Microsoft.EntityFrameworkCore;
 
 
 namespace Presentation.Controllers.Assessment
@@ -382,6 +383,41 @@ namespace Presentation.Controllers.Assessment
                 _logger.LogError(ex, "Lỗi khi chuyển đổi ngôn ngữ cho User");
                 return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống." });
             }
+        }
+
+        /// <summary>
+        /// Trả về trạng thái profile cho learner.
+        /// </summary>
+        [HttpGet("profile/status")]
+        [Authorize(Roles = "Learner")]
+        public async Task<IActionResult> GetProfileStatus()
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var user = await _unitOfWork.Users.GetByIdAsync(userId);
+            if (user == null)
+                return NotFound(new { success = false, message = "User not found" });
+            var learnerLang = await _unitOfWork.LearnerLanguages.GetQuery()
+                .Where(ll => ll.UserId == userId && ll.LanguageId == user.ActiveLanguageId)
+                .FirstOrDefaultAsync();
+            var activeLanguage = user.ActiveLanguageId.HasValue
+                ? await _unitOfWork.Languages.GetByIdAsync(user.ActiveLanguageId.Value)
+                : null;
+            var isDoingAssessment = false;
+            string? assessmentStep = null;
+            if (learnerLang == null || learnerLang.ProficiencyLevel == "Pending Assessment")
+            {
+                isDoingAssessment = true;
+                assessmentStep = "Not Assessment";
+            }
+            var result = new Common.DTO.Learner.ProfileStatusDto
+            {
+                UserId = userId,
+                ActiveLanguageId = user.ActiveLanguageId,
+                ActiveLanguageName = activeLanguage?.LanguageName,
+                IsDoingAssessment = isDoingAssessment,
+                AssessmentStep = assessmentStep
+            };
+            return Ok(new { success = true, data = result });
         }
     }
 }
