@@ -13,5 +13,6 @@ namespace BLL.IServices.Subscription
         Task<BaseResponse<SubscriptionPlanResponse>> CreatePlanAsync(SubscriptionPlanRequest request);
         Task<BaseResponse<SubscriptionPlanResponse>> UpdatePlanAsync(int id, SubscriptionPlanRequest request);
         Task<BaseResponse<bool>> DeletePlanAsync(int id);
+        Task<BaseResponse<IEnumerable<SubscriptionPlanResponse>>> GetPlansForUserAsync(Guid userId);
     }
 }

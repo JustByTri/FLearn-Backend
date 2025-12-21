@@ -3,6 +3,7 @@ using Common.DTO.Paging.Request;
 using Common.DTO.Subscription.Request;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Presentation.Helpers;
 
 namespace Presentation.Controllers.Subscription
 {
@@ -20,6 +21,16 @@ namespace Presentation.Controllers.Subscription
         public async Task<IActionResult> GetPlans([FromQuery] PagingRequest request)
         {
             var result = await _subscriptionPlanService.GetAllPlansAsync(request);
+            return StatusCode(result.Code, result);
+        }
+        [HttpGet("me")]
+        [Authorize(Roles = "Learner")]
+        public async Task<IActionResult> GetPlansForCurrentUser()
+        {
+            if (!this.TryGetUserId(out var userId, out var error))
+                return error!;
+
+            var result = await _subscriptionPlanService.GetPlansForUserAsync(userId);
             return StatusCode(result.Code, result);
         }
         [HttpGet("{id}")]
