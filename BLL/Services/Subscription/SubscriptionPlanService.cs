@@ -179,6 +179,41 @@ namespace BLL.Services.Subscription
                 return BaseResponse<bool>.Error(ex.Message);
             }
         }
+        public async Task<BaseResponse<IEnumerable<SubscriptionPlanResponse>>> GetPlansForUserAsync(Guid userId)
+        {
+            try
+            {
+                // 1. Lấy tất cả các gói plan có sẵn (sắp xếp theo giá hoặc quota)
+                var plans = await _unit.Subscriptions.Query()
+                    .OrderBy(s => s.ConversationQuota)
+                    .ToListAsync();
+
+                // 2. Tìm gói active hiện tại của user (nếu có)
+                // Lưu ý: UserSubscription liên kết bằng SubscriptionType (Name) chứ không phải ID trong thiết kế của bạn
+                var activeSub = await _unit.UserSubscriptions.Query()
+                    .Where(us => us.UserID == userId && us.IsActive && us.EndDate > TimeHelper.GetVietnamTime())
+                    .FirstOrDefaultAsync();
+
+                var responseList = plans.Select(s => new SubscriptionPlanResponse
+                {
+                    SubscriptionId = s.SubscriptionId,
+                    Name = s.Name,
+                    Price = s.Price,
+                    ConversationQuota = s.ConversationQuota,
+                    CreatedAt = s.CreatedAt.ToString("dd-MM-yyyy"),
+                    UpdatedAt = s.UpdatedAt.ToString("dd-MM-yyyy"),
+                    // Logic check: Nếu tên gói trùng với SubscriptionType đang active
+                    IsCurrentPlan = activeSub != null && s.Name.Equals(activeSub.SubscriptionType, StringComparison.OrdinalIgnoreCase)
+                }).ToList();
+
+                return BaseResponse<IEnumerable<SubscriptionPlanResponse>>.Success(responseList, "Lấy danh sách gói thành công");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error fetching plans for user {userId}");
+                return BaseResponse<IEnumerable<SubscriptionPlanResponse>>.Error(ex.Message);
+            }
+        }
         private SubscriptionPlanResponse MapToResponse(DAL.Models.Subscription s)
         {
             return new SubscriptionPlanResponse
