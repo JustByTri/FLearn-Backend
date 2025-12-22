@@ -31,9 +31,6 @@ namespace BLL.Services.Enrollment
             _firebaseNotificationService = firebaseNotificationService;
         }
 
-        /// <summary>
-        /// Bước 1: Tạo link thanh toán (chưa tạo enrollment)
-        /// </summary>
         public async Task<PaymentResponseDto?> CreatePaymentLinkAsync(Guid studentId, Guid classId, User student)
         {
             try
@@ -42,22 +39,46 @@ namespace BLL.Services.Enrollment
                 if (teacherClass == null)
                     throw new KeyNotFoundException("Class not found");
 
-                // Kiểm tra student đã enroll chưa
+                // 1. Kiểm tra nếu là giáo viên tự đăng ký lớp mình (như yêu cầu trước)
+                if (teacherClass.TeacherID == studentId)
+                {
+                    throw new InvalidOperationException("Giáo viên không thể đăng ký tham gia lớp học do chính mình tạo.");
+                }
+
+                // 2. Kiểm tra student đã enroll lớp này chưa
                 var existingEnrollment = await _unitOfWork.ClassEnrollments
                     .GetEnrollmentByStudentAndClassAsync(studentId, classId);
 
                 if (existingEnrollment != null && existingEnrollment.Status != EnrollmentStatus.Cancelled)
-                    throw new InvalidOperationException("Student already enrolled in this class");
+                    throw new InvalidOperationException("Bạn đã đăng ký lớp học này rồi.");
 
-                // Kiểm tra lớp còn chỗ không
+                // 3. Kiểm tra lớp còn chỗ không
                 var currentEnrollments = await _unitOfWork.ClassEnrollments.GetQuery()
                     .Where(ce => ce.ClassID == classId && ce.Status == EnrollmentStatus.Paid)
                     .CountAsync();
 
                 if (currentEnrollments >= teacherClass.Capacity)
-                    throw new InvalidOperationException("Class is full");
+                    throw new InvalidOperationException("Lớp học đã đủ số lượng học viên.");
 
-                // Tạo payment link
+           
+
+                var conflictingEnrollment = await _unitOfWork.ClassEnrollments.GetQuery()
+                    .Where(e => e.StudentID == studentId && e.Status == EnrollmentStatus.Paid) 
+                    .Include(e => e.Class)
+                    .Where(e => e.Class != null &&
+                                e.Class.ClassID != classId && 
+                                e.Class.StartDateTime < teacherClass.EndDateTime &&
+                                e.Class.EndDateTime > teacherClass.StartDateTime)
+                    .FirstOrDefaultAsync();
+
+                if (conflictingEnrollment != null)
+                {
+                    
+                    string conflictTime = $"{conflictingEnrollment.Class.StartDateTime:dd/MM/yyyy HH:mm}";
+                    throw new InvalidOperationException(
+                        $"Lịch học bị trùng với lớp '{conflictingEnrollment.Class.Title}' bắt đầu lúc {conflictTime}. Vui lòng chọn khung giờ khác.");
+                }
+               
                 var paymentDto = new CreatePaymentDto
                 {
                     ClassID = classId,
@@ -67,8 +88,7 @@ namespace BLL.Services.Enrollment
                     ItemName = teacherClass.Title,
                     BuyerName = student.FullName,
                     BuyerEmail = student.Email,
-                    BuyerPhone =  null,
-                    
+                    BuyerPhone = null,
                 };
 
                 var paymentResponse = await _payOSService.CreatePaymentLinkAsync(paymentDto);
@@ -95,31 +115,45 @@ namespace BLL.Services.Enrollment
 
         /// <summary>
         /// Bước 2: Sau khi callback thanh toán thành công, tạo enrollment
-        /// ✅ THÊM: Cộng tiền vào HoldBalance của Admin Wallet
+        ///  THÊM: Cộng tiền vào HoldBalance của Admin Wallet
         /// </summary>
         public async Task<bool> ConfirmEnrollmentAsync(Guid studentId, Guid classId, string transactionId)
         {
             try
             {
-                // Kiểm tra class tồn tại
                 var teacherClass = await _unitOfWork.TeacherClasses.GetByIdAsync(classId);
                 if (teacherClass == null)
                     throw new KeyNotFoundException("Class not found");
+                if (teacherClass.TeacherID == studentId)
+                {
+                    _logger.LogWarning("Blocked attempt by teacher {TeacherId} to enroll in their own class {ClassId}", studentId, classId);
+                    throw new InvalidOperationException("Giáo viên không thể tham gia lớp học của chính mình.");
+                }
+                // Kiểm tra trùng lịch với các lớp đã đăng ký
+                var userEnrollments = await _unitOfWork.ClassEnrollments.GetQuery()
+                    .Where(e => e.StudentID == studentId && e.Status == EnrollmentStatus.Paid)
+                    .Include(e => e.Class)
+                    .ToListAsync();
+                bool isOverlapping = userEnrollments.Any(e =>
+                    e.Class != null &&
+                    e.Class.ClassID != classId &&
+                    e.Class.StartDateTime < teacherClass.EndDateTime &&
+                    e.Class.EndDateTime > teacherClass.StartDateTime
+                );
+                if (isOverlapping)
+                    throw new InvalidOperationException("Bạn đã đăng ký lớp khác trùng thời gian. Vui lòng chọn lớp khác.");
 
-                // Kiểm tra student đã enroll chưa
                 var existingEnrollment = await _unitOfWork.ClassEnrollments
                     .GetEnrollmentByStudentAndClassAsync(studentId, classId);
 
                 if (existingEnrollment != null && existingEnrollment.Status == EnrollmentStatus.Paid)
                     throw new InvalidOperationException("Student already enrolled in this class");
 
-                // Nếu có pending enrollment cũ, xóa nó
                 if (existingEnrollment != null && existingEnrollment.Status == EnrollmentStatus.Pending)
                 {
                     await _unitOfWork.ClassEnrollments.DeleteAsync(existingEnrollment.EnrollmentID);
                 }
 
-                // Đảm bảo enrollment được tạo trước khi tạo Purchase
                 var enrollment = new ClassEnrollment
                 {
                     EnrollmentID = Guid.NewGuid(),
@@ -135,7 +169,7 @@ namespace BLL.Services.Enrollment
                 await _unitOfWork.ClassEnrollments.CreateAsync(enrollment);
                 await _unitOfWork.SaveChangesAsync(); 
 
-                // ✅ Tạo Purchase cho lớp học
+              
                 var purchase = new Purchase
                 {
                     PurchasesId = Guid.NewGuid(),
@@ -151,7 +185,7 @@ namespace BLL.Services.Enrollment
                 };
                 await _unitOfWork.Purchases.CreateAsync(purchase);
 
-                // ✅ THÊM: Cộng tiền vào HoldBalance của Admin Wallet
+            
                 await TransferClassPaymentToAdminWalletAsync(enrollment, teacherClass);
 
                 await _unitOfWork.SaveChangesAsync();
@@ -160,7 +194,7 @@ namespace BLL.Services.Enrollment
                     "✅ Enrollment confirmed for student {StudentId} in class {ClassId}. TransactionId: {TransactionId}. Amount: {Amount} VND added to Admin HoldBalance",
                     studentId, classId, transactionId, teacherClass.PricePerStudent);
 
-                // Lấy thông tin student và teacher
+                
                 var student = await _unitOfWork.Users.GetByIdAsync(studentId);
                 var teacher = await _unitOfWork.Users.GetByIdAsync(teacherClass.TeacherID);
 

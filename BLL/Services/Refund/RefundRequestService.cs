@@ -228,7 +228,19 @@ namespace BLL.Services.Refund
                 {
                     proofImageUrl = await _cloudinaryService.UploadFileAsync(dto.ProofImage, "refund-proofs");
                 }
+                if (request.EnrollmentID.HasValue)
+                {
+                    var enrollment = await _unitOfWork.ClassEnrollments.GetByIdAsync(request.EnrollmentID.Value);
+                    if (enrollment != null)
+                    {
+                     
+                        enrollment.Status = EnrollmentStatus.Cancelled;
+                        enrollment.UpdatedAt = DateTime.UtcNow;
 
+                        _unitOfWork.ClassEnrollments.Update(enrollment);
+                        _logger.LogInformation("Enrollment {EnrollmentId} has been cancelled due to refund approval.", enrollment.EnrollmentID);
+                    }
+                }
                 // Cập nhật đơn
                 request.Status = RefundRequestStatus.Approved;
                 request.ProofImageUrl = proofImageUrl;
