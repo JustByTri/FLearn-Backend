@@ -1,4 +1,5 @@
 ﻿using DAL.Models;
+using DAL.SeedData;
 using Microsoft.EntityFrameworkCore;
 
 namespace DAL.DBContext
@@ -92,7 +93,7 @@ namespace DAL.DBContext
                     }
                 }
             }
-            //DbSeeder.SeedData(modelBuilder);
+            DbSeeder.SeedData(modelBuilder);
         }
     }
 }

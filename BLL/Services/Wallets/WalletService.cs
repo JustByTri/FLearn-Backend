@@ -199,8 +199,7 @@ namespace BLL.Services.Wallets
 
                 var adminWallet = await GetOrCreateAdminWalletAsync();
 
-                // Tính toán: 55% của 90%
-                decimal courseCreationAmount = purchase.FinalAmount * TEACHER_FEE_PERCENTAGE * COURSE_FEE_PERCENTAGE;
+                decimal courseCreationAmount = purchase.FinalAmount * COURSE_FEE_PERCENTAGE;
 
                 // Lưu ý: Admin HoldBalance giảm, Admin Available tăng (bước trung gian), sau đó chuyển sang Teacher
                 // Chuyển tiền từ hold balance sang available balance của admin
