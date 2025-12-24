@@ -19,6 +19,7 @@ namespace Common.DTO.Course.Response
         public string? GradingType { get; set; }
         public int LearnerCount { get; set; }
         public double AverageRating { get; set; }
+        public string? RejectionReason { get; set; }
         public int ReviewCount { get; set; }
         public int NumLessons { get; set; }
         public int NumUnits { get; set; }

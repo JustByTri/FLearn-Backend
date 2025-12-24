@@ -654,6 +654,7 @@ namespace BLL.Services.Course
                     .Include(c => c.Language)
                     .Include(c => c.CourseTopics)
                         .ThenInclude(ct => ct.Topic)
+                    .Include(c => c.CourseSubmissions)
                     .AsSplitQuery();
 
                 if (!string.IsNullOrWhiteSpace(status))
@@ -711,6 +712,7 @@ namespace BLL.Services.Course
                     DiscountPrice = course.DiscountPrice,
                     CourseType = course.CourseType.ToString(),
                     GradingType = course.GradingType.ToString(),
+                    RejectionReason = course.Status == CourseStatus.Rejected ? course.CourseSubmissions?.OrderByDescending(s => s.SubmittedAt).FirstOrDefault()?.Feedback : null,
                     LearnerCount = course.LearnerCount,
                     AverageRating = course.AverageRating,
                     ReviewCount = course.ReviewCount,

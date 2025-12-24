@@ -144,7 +144,7 @@ namespace BLL.Services.ProgressTracking
                                               p.Status == PurchaseStatus.Completed);
 
                 if (purchase == null)
-                    return BaseResponse<bool>.Fail(false, "Valid course purchase not found", 400);
+                    return BaseResponse<bool>.Fail(false, "Học viên chưa có giao dịch mua khóa học đã hoàn tất thanh toán, hoặc khóa học này đang trong quá trình yêu cầu hoàn tiền.", 400);
 
                 var hasRefundRequest = await _unitOfWork.RefundRequests.Query()
                     .AnyAsync(r => r.PurchaseId == purchase.PurchasesId &&
@@ -152,7 +152,7 @@ namespace BLL.Services.ProgressTracking
                                    r.Status == RefundRequestStatus.Approved));
 
                 if (hasRefundRequest)
-                    return BaseResponse<bool>.Fail(false, "Cannot assign: Course is being refunded.", 400);
+                    return BaseResponse<bool>.Fail(false, "Không thể gán khóa học: khóa học đang trong quá trình hoàn tiền.", 400);
 
                 // 4. Validate Assignment State
                 var now = TimeHelper.GetVietnamTime();
@@ -166,7 +166,7 @@ namespace BLL.Services.ProgressTracking
                         .First(a => a.Status == GradingStatus.Assigned && a.DeadlineAt > now);
 
                     return BaseResponse<bool>.Fail(false,
-                        $"Cannot reassign: This submission is currently assigned to a teacher (ID: {currentAssign.AssignedTeacherId}) and is NOT expired yet.",
+                        $"Không thể phân công lại: bài nộp này hiện đang được phân công cho giảng viên (ID: {currentAssign.AssignedTeacherId}) và chưa hết hạn.",
                         400);
                 }
 
@@ -175,7 +175,7 @@ namespace BLL.Services.ProgressTracking
                             .ToList();
 
                 if (!assignmentsToCleanUp.Any())
-                    return BaseResponse<bool>.Fail(false, "No active or expired assignment found to reassign.", 400);
+                    return BaseResponse<bool>.Fail(false, "Không tìm thấy phân công nào còn hiệu lực hoặc đã hết hạn để thực hiện phân công lại.", 400);
 
                 // 5. Validate New Teacher
                 var teacher = await _unitOfWork.TeacherProfiles.Query()
