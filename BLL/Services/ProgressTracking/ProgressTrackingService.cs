@@ -400,7 +400,7 @@ namespace BLL.Services.ProgressTracking
                                                 p.Status == PurchaseStatus.Completed);
 
                     if (purchase == null)
-                        return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Valid purchase not found for this paid course.", 403);
+                        return BaseResponse<ExerciseSubmissionResponse>.Fail(new object(), "Không tìm thấy giao dịch mua hợp lệ cho khóa học trả phí này.", 403);
 
                     // Kiểm tra Refund
                     var hasPendingRefund = await _unitOfWork.RefundRequests.Query()
@@ -425,7 +425,7 @@ namespace BLL.Services.ProgressTracking
                             MaxAttempts = 3,
                             CoolDownHours = 24
                         },
-                        @"**Đã đạt giới hạn nộp bài**\n\nSố lần nộp: 3/3\nTrạng thái: ĐẠT TỐI ĐA\nReset: 00:00\n\nBạn đã hoàn thành lượt nộp bài cho ngày hôm nay. Hệ thống sẽ reset vào ngày mai.",
+                        @"**Đã đạt giới hạn nộp bài**\n\nSố lần nộp: 5/5\nTrạng thái: ĐẠT TỐI ĐA\nReset: 00:00\n\nBạn đã hoàn thành lượt nộp bài cho ngày hôm nay. Hệ thống sẽ reset vào ngày mai.",
                         429);
                 }
 
@@ -588,8 +588,7 @@ namespace BLL.Services.ProgressTracking
 
                         if (teacherGradingExercises > 0)
                         {
-                            decimal amountForDistribution = purchase.FinalAmount * 0.9m;
-                            decimal gradingFeeAmount = amountForDistribution * 0.35m;
+                            decimal gradingFeeAmount = purchase.FinalAmount * 0.35m;
                             exerciseGradingAmount = gradingFeeAmount / teacherGradingExercises;
                         }
                     }
