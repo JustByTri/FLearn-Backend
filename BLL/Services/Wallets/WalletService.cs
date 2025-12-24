@@ -43,7 +43,7 @@ namespace BLL.Services.Wallets
 
             // Tiền Teacher (Tạo khóa + Chấm bài) vào Hold
             adminWallet.HoldBalance += (courseCreationShare + gradingShare);
-
+            adminWallet.TotalBalance = adminWallet.AvailableBalance + adminWallet.HoldBalance;
             adminWallet.UpdatedAt = TimeHelper.GetVietnamTime();
 
             // 3. Tạo 3 Transaction riêng biệt để dễ dàng phân biệt
@@ -117,6 +117,7 @@ namespace BLL.Services.Wallets
             if (!adminWallet.Any()) return;
             var adminWalletObj = adminWallet.First();
             adminWalletObj.HoldBalance -= teacherShare;
+            adminWalletObj.TotalBalance = adminWalletObj.AvailableBalance + adminWalletObj.HoldBalance;
             adminWalletObj.UpdatedAt = TimeHelper.GetVietnamTime();
 
             var adminDebitTransaction = new WalletTransaction
@@ -205,6 +206,7 @@ namespace BLL.Services.Wallets
                 // Chuyển tiền từ hold balance sang available balance của admin
                 adminWallet.HoldBalance -= courseCreationAmount;
                 adminWallet.AvailableBalance += courseCreationAmount;
+                adminWallet.TotalBalance = adminWallet.AvailableBalance + adminWallet.HoldBalance;
                 adminWallet.UpdatedAt = TimeHelper.GetVietnamTime();
 
                 var adminTransaction = new WalletTransaction
@@ -241,6 +243,7 @@ namespace BLL.Services.Wallets
             var teacherWallet = await GetOrCreateTeacherWalletAsync(purchase.Course.TeacherId);
 
             adminWallet.AvailableBalance -= amount;
+            adminWallet.TotalBalance = adminWallet.AvailableBalance + adminWallet.HoldBalance;
             adminWallet.UpdatedAt = TimeHelper.GetVietnamTime();
 
             var adminDebitTransaction = new WalletTransaction
@@ -304,6 +307,7 @@ namespace BLL.Services.Wallets
                 if (existingTransfer) return;
 
                 adminWallet.HoldBalance -= amount;
+                adminWallet.TotalBalance = adminWallet.AvailableBalance + adminWallet.HoldBalance;
                 adminWallet.UpdatedAt = TimeHelper.GetVietnamTime();
 
                 var adminDebitTransaction = new WalletTransaction
