@@ -396,6 +396,47 @@ namespace Presentation.Controllers.Teacher
                 return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống" });
             }
         }
+
+        /// <summary>
+        /// [Teacher] Xóa lớp học ở trạng thái Draft
+        /// </summary>
+        [HttpDelete("{classId:guid}/draft")]
+        [Authorize(Roles = "Teacher")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(typeof(object), 400)]
+        [ProducesResponseType(typeof(object), 404)]
+        public async Task<IActionResult> DeleteDraftClass(Guid classId)
+        {
+            try
+            {
+                if (!this.TryGetUserId(out var teacherId, out var error))
+                    return error!;
+
+                var result = await _teacherClassService.DeleteClassAsync(teacherId, classId);
+                return Ok(new
+                {
+                    success = true,
+                    message = "Lớp học ở trạng thái Draft đã được xóa thành công."
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { success = false, message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting draft class {ClassId}", classId);
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi hệ thống" });
+            }
+        }
     }
 }
 

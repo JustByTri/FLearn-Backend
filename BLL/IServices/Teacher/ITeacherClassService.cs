@@ -25,5 +25,6 @@ namespace BLL.IServices.Teacher
         Task<TeacherClassDto> GetClassDetailsAsync(Guid teacherId, Guid classId);
         Task<List<ClassEnrollmentDto>> GetClassEnrollmentsAsync(Guid teacherId, Guid classId);
         Task<List<TeacherAssignmentDto>> GetMyProgramAssignmentsAsync(Guid teacherId);
+        Task<bool> DeleteClassAsync(Guid teacherId, Guid classId);
     }
 }
