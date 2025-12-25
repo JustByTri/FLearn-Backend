@@ -506,14 +506,14 @@ namespace BLL.Services.Teacher
                     }
                     teacherClass.EndDateTime = updateClassDto.EndDateTime.Value;
                 }
-                // Nếu chỉ đổi StartDateTime mà không truyền DurationMinutes/EndDateTime thì giữ nguyên duration cũ
+           
                 else if (startChanged)
                 {
                     var duration = (teacherClass.EndDateTime - teacherClass.StartDateTime).TotalMinutes;
                     teacherClass.EndDateTime = teacherClass.StartDateTime.AddMinutes(duration);
                 }
 
-                // Check for overlapping classes (exclude this class)
+              
                 var overlap = await _unitOfWork.TeacherClasses.Query()
                     .Where(c => c.TeacherID == teacherId
                         && c.ClassID != classId
@@ -725,9 +725,42 @@ namespace BLL.Services.Teacher
             return list;
         }
 
+        /// <summary>
+        /// Xóa lớp học nếu ở trạng thái Draft (chỉ giáo viên sở hữu mới được xóa)
+        /// </summary>
+        public async Task<bool> DeleteClassAsync(Guid teacherId, Guid classId)
+        {
+            try
+            {
+                var teacherClass = await _unitOfWork.TeacherClasses.GetByIdAsync(classId);
+                if (teacherClass == null)
+                    throw new KeyNotFoundException("Lớp học không tồn tại");
+
+                if (teacherClass.TeacherID != teacherId)
+                    throw new UnauthorizedAccessException("Bạn không có quyền thao tác với lớp học này");
+
+                if (teacherClass.Status != ClassStatus.Draft)
+                    throw new InvalidOperationException("Chỉ có thể xóa lớp học ở trạng thái Draft");
+
+                await _unitOfWork.TeacherClasses.DeleteAsync(classId);
+                await _unitOfWork.SaveChangesAsync();
+
+                _logger.LogInformation(" Teacher {TeacherId} deleted draft class {ClassId}", teacherId, classId);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, " Error deleting class {ClassId} by teacher {TeacherId}", classId, teacherId);
+                throw;
+            }
+        }
+
         // Helper method
         private TeacherClassDto MapToTeacherClassDto(TeacherClass teacherClass)
+
         {
+            var programName = teacherClass.Program?.Name ?? "Unknown Program";
+            var levelName = teacherClass.Level?.Name ?? ""; 
             return new TeacherClassDto
             {
                 ClassID = teacherClass.ClassID,
@@ -735,7 +768,9 @@ namespace BLL.Services.Teacher
                 Description = teacherClass.Description,
                 LanguageID = teacherClass.LanguageID,
                 LanguageName = teacherClass.Language?.LanguageName,
-                // Lấy FullName từ TeacherProfile, fallback UserName
+                Program = string.IsNullOrEmpty(levelName)
+                  ? programName
+                  : $"{programName} - {levelName}",
                 TeacherName = teacherClass.Teacher?.TeacherProfile?.FullName 
                               ?? teacherClass.Teacher?.UserName 
                               ?? "Unknown Teacher",

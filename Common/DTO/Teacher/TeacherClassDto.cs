@@ -14,6 +14,7 @@ namespace Common.DTO.Teacher
         public string Description { get; set; } = string.Empty;
         public Guid LanguageID { get; set; }
         public string? LanguageName { get; set; }
+        public string Program {get; set; } = string.Empty;
 
         /// <summary>
         /// Tên giáo viên (ưu tiên UserName, fallback FullName)

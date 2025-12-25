@@ -22,8 +22,11 @@ namespace DAL.Repositories
             return await _context.TeacherClasses
                 .Include(tc => tc.Language)
                 .Include(tc => tc.Teacher)
+              
                     .ThenInclude(t => t!.TeacherProfile)
                 .Include(tc => tc.Enrollments)
+                .Include(tc => tc.Program)
+                .Include(tc =>tc.Level)
                 .Where(tc => tc.TeacherID == teacherId)
                 .OrderByDescending(tc => tc.CreatedAt)
                 .ToListAsync();
@@ -36,6 +39,8 @@ namespace DAL.Repositories
                 .Include(tc => tc.Teacher)
                     .ThenInclude(t => t!.TeacherProfile)
                 .Include(tc => tc.Enrollments)
+                .Include(tc => tc.Program)
+                .Include(tc => tc.Level)
                 .Where(tc => tc.TeacherID == teacherId && tc.Status == status)
                 .OrderByDescending(tc => tc.CreatedAt)
                 .ToListAsync();
@@ -48,7 +53,10 @@ namespace DAL.Repositories
                 .Include(tc => tc.Teacher)
                     .ThenInclude(t => t!.TeacherProfile)
                 .Include(tc => tc.Enrollments)
+
                     .ThenInclude(e => e.Student)
+                    .Include(tc => tc.Program)
+                .Include(tc => tc.Level)
                 .FirstOrDefaultAsync(tc => tc.ClassID == classId);
         }
 
@@ -71,6 +79,8 @@ namespace DAL.Repositories
                 .Include(tc => tc.Language)
                 .Include(tc => tc.Teacher)
                     .ThenInclude(t => t!.TeacherProfile)
+                    .Include(tc => tc.Program)
+                .Include(tc => tc.Level)
                 .Include(tc => tc.Enrollments)
                 .Where(tc => tc.Status == ClassStatus.Published &&
                              tc.StartDateTime > DateTime.UtcNow);
@@ -105,6 +115,8 @@ namespace DAL.Repositories
                 .Include(tc => tc.Language)
                 .Include(tc => tc.Teacher)
                     .ThenInclude(t => t!.TeacherProfile)
+                    .Include(tc => tc.Program)
+                .Include(tc => tc.Level)
                 .Include(tc => tc.Enrollments)
                 .Where(tc => tc.Status == ClassStatus.Published &&
                              tc.StartDateTime > DateTime.UtcNow);
@@ -124,9 +136,12 @@ namespace DAL.Repositories
         {
             return await _context.TeacherClasses
                 .Include(tc => tc.Language)
+                .Include(tc => tc.Program)
+                .Include(tc => tc.Level)
                 .Include(tc => tc.Teacher)
                     .ThenInclude(t => t!.TeacherProfile)
                 .Include(tc => tc.Enrollments)
+
                     .ThenInclude(e => e.Student)
                 .Where(tc => tc.StartDateTime >= startDate &&
                              tc.StartDateTime <= endDate &&
